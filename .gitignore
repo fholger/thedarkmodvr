@@ -1,3 +1,5 @@
 build
 TheDarkMod.opensdf
 TheDarkMod.sdf
+*.vcxproj.user
+ipch

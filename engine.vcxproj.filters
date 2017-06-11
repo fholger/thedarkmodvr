@@ -97,6 +97,9 @@
     <Filter Include="Ui">
       <UniqueIdentifier>{b3166d25-0562-49da-bc8d-961006fe1785}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vr">
+      <UniqueIdentifier>{04c9457c-b3e7-4fa1-9633-89dfb3a9fb41}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -563,6 +566,10 @@
       <Filter>Sys</Filter>
     </ClInclude>
     <ClInclude Include="sys\win32\rc\PDAEditor_resource.h" />
+    <ClInclude Include="vr\OpenVRSupport.h">
+      <Filter>Vr</Filter>
+    </ClInclude>
+    <ClInclude Include="vr\OpenVRSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -1592,6 +1599,10 @@
     <ClCompile Include="framework\I18N.cpp">
       <Filter>Framework</Filter>
     </ClCompile>
+    <ClCompile Include="vr\OpenVRSupport.cpp">
+      <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="vr\OpenVRSystem.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="openal\idal.py">

@@ -1169,6 +1169,7 @@ static const uint32_t k_unScreenshotHandleInvalid = 0;
 #define VR_INTERFACE extern "C" __declspec( dllexport )
 #else
 #define VR_INTERFACE extern "C" __declspec( dllimport )
+//#define VR_INTERFACE extern "C"
 #endif
 
 #elif defined(__GNUC__) || defined(COMPILER_GCC) || defined(__APPLE__)

@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
+#include "../vr/OpenVRSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: Common.cpp 6677 2016-11-18 15:08:57Z duzenko $");
@@ -2958,6 +2959,8 @@ void idCommonLocal::InitGame( void )
 
 	PrintLoadingMessage( Translate( "#str_04345" ) );
 
+	vrSupport->Init();
+
 	// exec the startup scripts
 	cmdSystem->BufferCommandText( CMD_EXEC_APPEND, "exec editor.cfg\n" );
 	cmdSystem->BufferCommandText( CMD_EXEC_APPEND, "exec default.cfg\n" );
@@ -3076,6 +3079,8 @@ void idCommonLocal::ShutdownGame( bool reloading ) {
 
 	// shut down the event loop
 	eventLoop->Shutdown();
+
+	vrSupport->Shutdown();
 
 	// shut down the renderSystem
 	renderSystem->Shutdown();
