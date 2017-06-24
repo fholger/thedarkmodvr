@@ -1,5 +1,10 @@
 #pragma once
-class OpenVRSystem;
+
+namespace vr
+{
+	class IVRSystem;
+}
+
 
 class OpenVRSupport
 {
@@ -8,8 +13,10 @@ public:
 	~OpenVRSupport();
 	void Init();
 	void Shutdown();
+
+	bool IsInitialized() const { return vrSystem != nullptr; }
 private:
-	std::auto_ptr<OpenVRSystem> vrSystem;
+	vr::IVRSystem* vrSystem;
 };
 
 extern OpenVRSupport* vrSupport;

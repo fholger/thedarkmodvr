@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_game.h"
+#include "../vr/OpenVRSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: PlayerView.cpp 6674 2016-11-16 13:07:45Z duzenko $");
@@ -431,6 +432,25 @@ idAngles idPlayerView::AngleOffset() const {
 
 /*
 ==================
+idPlayerView::RenderStereoView
+==================
+ */
+void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view, const int eye ) {
+	if (!view)	{
+		return;
+	}
+
+	renderView_t eyeView = *view;
+
+	// TODO: adjust FOV depending on eye
+
+	// TODO: adjust position based on eye separation
+
+	SingleView( hud, &eyeView );
+}
+
+/*
+==================
 idPlayerView::SingleView
 ==================
 */
@@ -804,7 +824,12 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 {
 	const renderView_t *view = player->GetRenderView();
 
-	if(g_skipViewEffects.GetBool())
+	if (vrSupport->IsInitialized()) {
+		StereoView( hud, view, 1 );
+		StereoView( hud, view, -1 );
+		// TODO: effects / post-processing?
+	}
+	else if(g_skipViewEffects.GetBool())
 	{
 		SingleView( hud, view );
 	} else {
