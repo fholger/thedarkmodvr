@@ -17,6 +17,7 @@
  
 ******************************************************************************/
 #include "precompiled_engine.h"
+#include "../vr/OpenVRSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: tr_backend.cpp 6656 2016-10-28 19:09:57Z duzenko $");
@@ -573,39 +574,31 @@ const void	RB_CopyRender( const void *data ) {
 
 /*
 ====================
-RB_ExecuteBackEndCommands
+RB_ExecuteBackEndCommandsMono
 
-This function will be called syncronously if running without
-smp extensions, or asyncronously by another thread.
+Called if VR support is disabled.
 ====================
-*/
-void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
-	static int backEndStartTime, backEndFinishTime;
-
-	if ( cmds->commandId == RC_NOP && !cmds->next ) {
-		return;
-	}
-
-	// r_debugRenderToTexture
-	int	c_draw3d = 0, c_draw2d = 0, c_setBuffers = 0, c_swapBuffers = 0, c_copyRenders = 0;
-
-	backEndStartTime = Sys_Milliseconds();
-
+ */
+void RB_ExecuteBackEndCommandsMono(const emptyCommand_t* cmds) {
 	// needed for editor rendering
 	RB_SetDefaultGLState();
 
 	// upload any image loads that have completed
 	globalImages->CompleteBackgroundImageLoads();
 
-	while ( cmds ) {
-		switch ( cmds->commandId ) {
+	// r_debugRenderToTexture
+	int	c_draw3d = 0, c_draw2d = 0, c_setBuffers = 0, c_swapBuffers = 0, c_copyRenders = 0;
+
+	while (cmds) {
+		switch (cmds->commandId) {
 		case RC_NOP:
 			break;
 		case RC_DRAW_VIEW:
 			RB_DrawView( cmds );
-			if ( ((const drawSurfsCommand_t *)cmds)->viewDef->viewEntitys ) {
+			if (((const drawSurfsCommand_t *)cmds)->viewDef->viewEntitys) {
 				c_draw3d++;
-			} else {
+			}
+			else {
 				c_draw2d++;
 			}
 			break;
@@ -622,23 +615,136 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 			c_swapBuffers++;
 			break;
 		default:
-			common->Error( "RB_ExecuteBackEndCommands: bad commandId" );
+			common->Error( "RB_ExecuteBackEndCommandsMono: bad commandId" );
 			break;
 		}
 		cmds = (const emptyCommand_t *)cmds->next;
 	}
 
+	if (r_debugRenderToTexture.GetInteger()) {
+		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, SwpBuf: %i, CpyRenders: %i, CpyFrameBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_swapBuffers, c_copyRenders, backEnd.c_copyFrameBuffer );
+		backEnd.c_copyFrameBuffer = 0;
+	}
+
 	// go back to the default texture so the editor doesn't mess up a bound image
 	qglBindTexture( GL_TEXTURE_2D, 0 );
 	backEnd.glState.tmu[0].current2DMap = -1;
+}
+
+/*
+====================
+R_MakeStereoRenderImage
+====================
+*/
+static void R_MakeStereoRenderImage( idImage* image )
+{
+	uint32_t width, height;
+	vrSupport->DetermineRenderTargetSize( &width, &height );
+	common->Printf( "OpenVR: Recommended render texture size: %d x %d\n", width, height );
+	width = MakePowerOfTwo( width );
+	height = MakePowerOfTwo( height );
+	common->Printf( "OpenVR: Adjusted to power of 2: %d x %d\n", width, height );
+
+	byte *data = (byte *)Mem_Alloc( width * height * 4 );
+	memset( data, 0, width * height * 4 );
+	image->GenerateImage(data, width, height, TF_LINEAR, false, TR_CLAMP, TD_HIGH_QUALITY );
+	Mem_Free( data );
+}
+
+/*
+====================
+RB_ExecuteBackEndCommandsStereo
+
+Called if VR support is enabled.
+====================
+ */
+void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
+	// create the stereoRenderImage if we haven't already
+	static idImage * stereoRenderImage;
+	if (stereoRenderImage == NULL) {
+		stereoRenderImage = globalImages->ImageFromFunction( "_stereoRender", R_MakeStereoRenderImage );
+	}
+
+	vrSupport->FrameStart();
+
+	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
+		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
+		const emptyCommand_t* cmds = allcmds;
+
+		// needed for editor rendering
+		RB_SetDefaultGLState();
+
+		// upload any image loads that have completed
+		globalImages->CompleteBackgroundImageLoads();
+
+		while (cmds) {
+			switch (cmds->commandId) {
+			case RC_NOP:
+				break;
+			case RC_DRAW_VIEW:
+			{
+				const drawSurfsCommand_t* const dsc = (const drawSurfsCommand_t*)cmds;
+				const viewDef_t& eyeViewDef = *dsc->viewDef;
+
+				if (eyeViewDef.renderView.viewEyeBuffer && eyeViewDef.renderView.viewEyeBuffer != stereoEye) {
+					// this is the render view for the other eye
+					break;
+				}
+
+				RB_DrawView( cmds );
+				break;
+			}
+			case RC_SET_BUFFER:
+				RB_SetBuffer( cmds );
+				break;
+			case RC_COPY_RENDER:
+				RB_CopyRender( cmds );
+				break;
+			case RC_SWAP_BUFFERS:
+				RB_SwapBuffers( cmds );
+				break;
+			default:
+				common->Error( "RB_ExecuteBackEndCommandsStereo: bad commandId" );
+				break;
+			}
+			cmds = (const emptyCommand_t *)cmds->next;
+		}
+
+		// copy to target image
+		stereoRenderImage->CopyFramebuffer( 0, 0, renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight(), true );
+		vrSupport->SubmitEyeFrame( stereoEye, stereoRenderImage );
+
+		// go back to the default texture so the editor doesn't mess up a bound image
+		qglBindTexture( GL_TEXTURE_2D, 0 );
+		backEnd.glState.tmu[0].current2DMap = -1;
+	}
+}
+
+/*
+====================
+RB_ExecuteBackEndCommands
+
+This function will be called syncronously if running without
+smp extensions, or asyncronously by another thread.
+====================
+*/
+void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
+	static int backEndStartTime, backEndFinishTime;
+
+	if ( cmds->commandId == RC_NOP && !cmds->next ) {
+		return;
+	}
+
+	backEndStartTime = Sys_Milliseconds();
+
+	if (vrSupport->IsInitialized()) {
+		RB_ExecuteBackEndCommandsStereo( cmds );
+	} else {
+		RB_ExecuteBackEndCommandsMono( cmds );
+	}
 
 	// stop rendering on this thread
 	backEndFinishTime = Sys_Milliseconds();
 	backEnd.pc.msecLast = backEndFinishTime - backEndStartTime;
 	backEnd.pc.msec += backEnd.pc.msecLast;
-
-	if ( r_debugRenderToTexture.GetInteger() ) {
-		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, SwpBuf: %i, CpyRenders: %i, CpyFrameBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_swapBuffers, c_copyRenders, backEnd.c_copyFrameBuffer );
-		backEnd.c_copyFrameBuffer = 0;
-	}
 }

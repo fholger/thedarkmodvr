@@ -1,6 +1,7 @@
 #include "precompiled_engine.h"
 #include "OpenVRSupport.h"
 #include <openvr.h>
+#include "../renderer/Image.h"
 
 class OpenVRSupportLocal : public OpenVRSupport {
 public:
@@ -11,9 +12,13 @@ public:
 	void Shutdown() override;
 	bool IsInitialized() const override;
 	float GetInterPupillaryDistance() const override;
+	void DetermineRenderTargetSize( uint32_t *width, uint32_t *height ) const override;
+	void SubmitEyeFrame( int eye, idImage* image ) override;
+	void FrameStart() override;
 
 private:
 	vr::IVRSystem *vrSystem;
+	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
 };
 
 OpenVRSupportLocal vrLocal;
@@ -51,6 +56,7 @@ void OpenVRSupportLocal::Init()
 		Shutdown();
 		return;
 	}
+	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
 	common->Printf( "OpenVR support ready.\n" );
 }
 
@@ -70,4 +76,20 @@ bool OpenVRSupportLocal::IsInitialized() const {
 
 float OpenVRSupportLocal::GetInterPupillaryDistance() const {
 	return vrSystem->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_UserIpdMeters_Float ) * 100;
+}
+
+void OpenVRSupportLocal::DetermineRenderTargetSize( uint32_t* width, uint32_t* height ) const {
+	vrSystem->GetRecommendedRenderTargetSize( width, height );
+}
+
+void OpenVRSupportLocal::SubmitEyeFrame( int eye, idImage* image ) {
+	vr::Texture_t texture = { (void*)image->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
+	vr::EVRCompositorError error = vr::VRCompositor()->Submit(eye == LEFT_EYE ? vr::Eye_Left : vr::Eye_Right, &texture);
+	if (error != vr::VRCompositorError_None) {
+		common->Warning( "Submitting eye texture failed: %d", error );
+	}
+}
+
+void OpenVRSupportLocal::FrameStart() {
+	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
 }
