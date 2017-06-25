@@ -442,9 +442,10 @@ void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view, c
 
 	renderView_t eyeView = *view;
 
-	// TODO: adjust FOV depending on eye
-
-	// TODO: adjust position based on eye separation
+	float halfEyeSeparationCentimeters = 0.5f * vrSupport->GetInterPupillaryDistance();
+	float halfEyeSeparationWorldUnits = halfEyeSeparationCentimeters / 2.54f;  // world units are in inches
+	eyeView.vieworg += eye * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
+	eyeView.viewEyeBuffer = eye;
 
 	SingleView( hud, &eyeView );
 }
@@ -825,8 +826,8 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 	const renderView_t *view = player->GetRenderView();
 
 	if (vrSupport->IsInitialized()) {
-		StereoView( hud, view, 1 );
-		StereoView( hud, view, -1 );
+		StereoView( hud, view, RIGHT_EYE );
+		StereoView( hud, view, LEFT_EYE );
 		// TODO: effects / post-processing?
 	}
 	else if(g_skipViewEffects.GetBool())

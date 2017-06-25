@@ -2,19 +2,34 @@
 #include "OpenVRSupport.h"
 #include <openvr.h>
 
-OpenVRSupport vrLocal;
+class OpenVRSupportLocal : public OpenVRSupport {
+public:
+	OpenVRSupportLocal();
+	~OpenVRSupportLocal() override;
+	
+	void Init() override;
+	void Shutdown() override;
+	bool IsInitialized() const override;
+	float GetInterPupillaryDistance() const override;
+
+private:
+	vr::IVRSystem *vrSystem;
+};
+
+OpenVRSupportLocal vrLocal;
 OpenVRSupport* vrSupport = &vrLocal;
 
-OpenVRSupport::OpenVRSupport(): vrSystem(nullptr)
+OpenVRSupportLocal::OpenVRSupportLocal(): vrSystem(nullptr)
 {
 }
 
-OpenVRSupport::~OpenVRSupport()
+OpenVRSupportLocal::~OpenVRSupportLocal()
 {
 }
 
-void OpenVRSupport::Init()
+void OpenVRSupportLocal::Init()
 {
+	common->Printf( "Initializing OpenVR support...\n" );
 	if (!vr::VR_IsHmdPresent())
 	{
 		common->Printf("No OpenVR HMD detected.\n");
@@ -36,9 +51,10 @@ void OpenVRSupport::Init()
 		Shutdown();
 		return;
 	}
+	common->Printf( "OpenVR support ready.\n" );
 }
 
-void OpenVRSupport::Shutdown()
+void OpenVRSupportLocal::Shutdown()
 {
 	if (vrSystem != nullptr)
 	{
@@ -46,4 +62,12 @@ void OpenVRSupport::Shutdown()
 		vr::VR_Shutdown();
 		vrSystem = nullptr;
 	}
+}
+
+bool OpenVRSupportLocal::IsInitialized() const {
+	return vrSystem != nullptr;
+}
+
+float OpenVRSupportLocal::GetInterPupillaryDistance() const {
+	return vrSystem->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_UserIpdMeters_Float ) * 100;
 }

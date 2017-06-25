@@ -5,18 +5,19 @@ namespace vr
 	class IVRSystem;
 }
 
+const int LEFT_EYE = -1;
+const int RIGHT_EYE = 1;
 
 class OpenVRSupport
 {
 public:
-	OpenVRSupport();
-	~OpenVRSupport();
-	void Init();
-	void Shutdown();
+	virtual ~OpenVRSupport() {}
+	
+	virtual void Init() = 0;
+	virtual void Shutdown() = 0;
 
-	bool IsInitialized() const { return vrSystem != nullptr; }
-private:
-	vr::IVRSystem* vrSystem;
+	virtual bool IsInitialized() const = 0;
+	virtual float GetInterPupillaryDistance() const = 0;
 };
 
 extern OpenVRSupport* vrSupport;

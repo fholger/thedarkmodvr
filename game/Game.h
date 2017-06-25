@@ -71,6 +71,7 @@ class idRenderWorld;
 class idSoundWorld;
 class usercmd_t;
 class idUserInterface;
+class OpenVRSupport;
 
 class idGame {
 public:
@@ -373,6 +374,7 @@ typedef struct {
 	idDeclManager *				declManager;			// declaration manager
 	idAASFileManager *			AASFileManager;			// AAS file manager
 	idCollisionModelManager *	collisionModelManager;	// collision model manager
+	OpenVRSupport *				vrSupport;				// VR support
 
 } gameImport_t;
 

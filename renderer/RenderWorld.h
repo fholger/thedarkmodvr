@@ -215,6 +215,9 @@ typedef struct renderView_s {
 	bool					cramZNear;			// for cinematics, we want to set ZNear much lower
 	bool					forceUpdate;		// for an update 
 
+	// which buffer to render to in stereo mode
+	int						viewEyeBuffer;		// -1 = left eye, 1 = right eye, 0 = monoscopic view or GUI
+
 	// time in milliseconds for shader effects and other time dependent rendering issues
 	int						time;
 	float					shaderParms[MAX_GLOBAL_SHADER_PARMS];		// can be used in any way by shader
