@@ -640,15 +640,11 @@ static void R_MakeStereoRenderImage( idImage* image )
 {
 	uint32_t width, height;
 	vrSupport->DetermineRenderTargetSize( &width, &height );
-	common->Printf( "OpenVR: Recommended render texture size: %d x %d\n", width, height );
-	width = MakePowerOfTwo( width );
-	height = MakePowerOfTwo( height );
-	common->Printf( "OpenVR: Adjusted to power of 2: %d x %d\n", width, height );
-
-	byte *data = (byte *)Mem_Alloc( width * height * 4 );
-	memset( data, 0, width * height * 4 );
-	image->GenerateImage(data, width, height, TF_LINEAR, false, TR_CLAMP, TD_HIGH_QUALITY );
-	Mem_Free( data );
+	// fixme: remove this once we can render directly to the texture
+	width = renderSystem->GetScreenWidth();
+	height = renderSystem->GetScreenHeight();
+	common->Printf( "OpenVR: Render texture size: %d x %d\n", width, height );
+	image->AllocImage(width, height, TF_LINEAR, TR_CLAMP, TD_HIGH_QUALITY );
 }
 
 /*
@@ -660,9 +656,11 @@ Called if VR support is enabled.
  */
 void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 	// create the stereoRenderImage if we haven't already
-	static idImage * stereoRenderImage;
-	if (stereoRenderImage == NULL) {
-		stereoRenderImage = globalImages->ImageFromFunction( "_stereoRender", R_MakeStereoRenderImage );
+	static idImage * stereoRenderImages[2];
+	for (int i = 0; i < 2; ++i) {
+		if (stereoRenderImages[i] == NULL) {
+			stereoRenderImages[i] = globalImages->ImageFromFunction( va("_stereoRender%d", i), R_MakeStereoRenderImage );
+		}
 	}
 
 	vrSupport->FrameStart();
@@ -711,13 +709,14 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 		}
 
 		// copy to target image
-		stereoRenderImage->CopyFramebuffer( 0, 0, renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight(), true );
-		vrSupport->SubmitEyeFrame( stereoEye, stereoRenderImage );
+		stereoRenderImages[targetEye]->CopyFramebuffer( 0, 0, renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight() );
 
 		// go back to the default texture so the editor doesn't mess up a bound image
 		qglBindTexture( GL_TEXTURE_2D, 0 );
 		backEnd.glState.tmu[0].current2DMap = -1;
 	}
+	vrSupport->SubmitEyeFrame( LEFT_EYE, stereoRenderImages[0] );
+	vrSupport->SubmitEyeFrame( RIGHT_EYE, stereoRenderImages[1] );
 }
 
 /*

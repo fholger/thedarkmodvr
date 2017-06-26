@@ -170,7 +170,11 @@ public:
 						textureFilter_t filter, bool allowDownSize, 
 						textureDepth_t depth );
 
+	void		AllocImage( int width, int height, textureFilter_t filter, textureRepeat_t repeat, textureDepth_t depth );
+
 	void		CopyFramebuffer( int x, int y, int width, int height, bool useOversizedBuffer );
+
+	void		CopyFramebuffer( int x, int y, int width, int height );
 
 	void		CopyDepthbuffer( int x, int y, int width, int height, bool useOversizedBuffer );
 
