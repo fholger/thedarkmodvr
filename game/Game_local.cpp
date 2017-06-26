@@ -50,7 +50,7 @@ static bool versioned = RegisterVersionedFile("$Id: Game_local.cpp 6723 2016-12-
 #include "Http/HttpConnection.h"
 #include "Http/HttpRequest.h"
 #include "StimResponse/StimType.h" // grayman #2721
-#include "../vr/OpenVRSupport.h"
+#include "../vr/VrSupport.h"
 
 #include "randomizer/randomc.h"
 #include <boost/algorithm/string/trim.hpp>
@@ -82,7 +82,7 @@ idDeclManager *				declManager = NULL;
 idAASFileManager *			AASFileManager = NULL;
 idCollisionModelManager *	collisionModelManager = NULL;
 idCVar *					idCVar::staticVars = NULL;
-OpenVRSupport *				vrSupport = NULL;
+VrSupport *				vrSupport = NULL;
 
 idCVar com_forceGenericSIMD( "com_forceGenericSIMD", "0", CVAR_BOOL|CVAR_SYSTEM, "force generic platform independent SIMD" );
 

@@ -566,7 +566,7 @@
       <Filter>Sys</Filter>
     </ClInclude>
     <ClInclude Include="sys\win32\rc\PDAEditor_resource.h" />
-    <ClInclude Include="vr\OpenVRSupport.h">
+    <ClInclude Include="vr\VrSupport.h">
       <Filter>Vr</Filter>
     </ClInclude>
   </ItemGroup>
@@ -1598,7 +1598,7 @@
     <ClCompile Include="framework\I18N.cpp">
       <Filter>Framework</Filter>
     </ClCompile>
-    <ClCompile Include="vr\OpenVRSupport.cpp">
+    <ClCompile Include="vr\OpenVrSupport.cpp">
       <Filter>Vr</Filter>
     </ClCompile>
   </ItemGroup>

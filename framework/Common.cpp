@@ -18,7 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
-#include "../vr/OpenVRSupport.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: Common.cpp 6677 2016-11-18 15:08:57Z duzenko $");

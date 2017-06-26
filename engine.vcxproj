@@ -466,7 +466,7 @@
     <ClInclude Include="sys\win32\rc\Radiant_resource.h" />
     <ClInclude Include="sys\win32\rc\ScriptEditor_resource.h" />
     <ClInclude Include="sys\win32\rc\SoundEditor_resource.h" />
-    <ClInclude Include="vr\OpenVRSupport.h" />
+    <ClInclude Include="vr\VrSupport.h" />
     <CustomBuildStep Include="tools\edit_public.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug with inlines|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Dedicated Debug|Win32'">true</ExcludedFromBuild>
@@ -2589,7 +2589,7 @@
     <ClCompile Include="ui\UserInterface.cpp" />
     <ClCompile Include="ui\Window.cpp" />
     <ClCompile Include="ui\Winvar.cpp" />
-    <ClCompile Include="vr\OpenVRSupport.cpp" />
+    <ClCompile Include="vr\OpenVrSupport.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="openal\idal.py" />

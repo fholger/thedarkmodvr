@@ -18,7 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_game.h"
-#include "../vr/OpenVRSupport.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: PlayerView.cpp 6674 2016-11-16 13:07:45Z duzenko $");
