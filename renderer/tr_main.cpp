@@ -22,6 +22,7 @@
 
 static bool versioned = RegisterVersionedFile("$Id: tr_main.cpp 5171 2012-01-07 08:08:06Z greebo $");
 
+#include "../vr/VrSupport.h"
 #include "tr_local.h"
 #ifdef __ppc__
 #include <vecLib/vecLib.h>
@@ -886,6 +887,11 @@ This uses the "infinite far z" trick
 ===============
 */
 void R_SetupProjection( void ) {
+	if (vrSupport->IsInitialized()) {
+		vrSupport->SetupProjectionMatrix( tr.viewDef );
+		return;
+	}
+
 	float	xmin, xmax, ymin, ymax;
 	float	width, height;
 	float	zNear;

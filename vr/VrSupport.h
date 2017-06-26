@@ -4,6 +4,7 @@ namespace vr
 {
 	class IVRSystem;
 }
+struct viewDef_s;
 
 const int LEFT_EYE = -1;
 const int RIGHT_EYE = 1;
@@ -21,6 +22,8 @@ public:
 	virtual void DetermineRenderTargetSize( uint32_t* width, uint32_t* height ) const = 0;
 	virtual void SubmitEyeFrame( int eye, idImage* image ) = 0;
 	virtual void FrameStart() = 0;
+	virtual void SetupProjectionMatrix( viewDef_s* viewDef ) = 0;
+	virtual void GetFov( float& fovX, float& fovY ) = 0;
 };
 
 extern VrSupport* vrSupport;

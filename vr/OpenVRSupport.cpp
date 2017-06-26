@@ -2,6 +2,7 @@
 #include "VrSupport.h"
 #include <openvr.h>
 #include "../renderer/Image.h"
+#include "../renderer/tr_local.h"
 
 class OpenVrSupport : public VrSupport {
 public:
@@ -15,10 +16,12 @@ public:
 	void DetermineRenderTargetSize( uint32_t *width, uint32_t *height ) const override;
 	void SubmitEyeFrame( int eye, idImage* image ) override;
 	void FrameStart() override;
-
+	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
+	void GetFov( float& fovX, float& fovY ) override;
 private:
 	vr::IVRSystem *vrSystem;
 	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
+	float rawProjection[2][4];
 	float fovX;
 	float fovY;
 	float aspect;
@@ -29,7 +32,7 @@ private:
 OpenVrSupport vrLocal;
 VrSupport* vrSupport = &vrLocal;
 
-OpenVrSupport::OpenVrSupport(): vrSystem(nullptr), fovX(0), fovY(0), aspect(0) {
+OpenVrSupport::OpenVrSupport(): vrSystem(nullptr) {
 }
 
 OpenVrSupport::~OpenVrSupport()
@@ -61,6 +64,7 @@ void OpenVrSupport::Init()
 		return;
 	}
 	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
+	InitParameters();
 	common->Printf( "OpenVR support ready.\n" );
 }
 
@@ -98,12 +102,45 @@ void OpenVrSupport::FrameStart() {
 	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
 }
 
+void OpenVrSupport::SetupProjectionMatrix( viewDef_t* viewDef ) {
+	const float zNear = (viewDef->renderView.cramZNear) ? (r_znear.GetFloat() * 0.25f) : r_znear.GetFloat();
+	const int eye = viewDef->renderView.viewEyeBuffer == LEFT_EYE ? 0 : 1;
+	const float idx = 1.0f / (rawProjection[eye][1] - rawProjection[eye][0]);
+	const float idy = 1.0f / (rawProjection[eye][3] - rawProjection[eye][2]);
+	const float sx = rawProjection[eye][0] + rawProjection[eye][1];
+	const float sy = rawProjection[eye][2] + rawProjection[eye][3];
+
+	viewDef->projectionMatrix[0 * 4 + 0] = 2.0f * idx;
+	viewDef->projectionMatrix[1 * 4 + 0] = 0.0f;
+	viewDef->projectionMatrix[2 * 4 + 0] = sx * idx;
+	viewDef->projectionMatrix[3 * 4 + 0] = 0.0f;
+
+	viewDef->projectionMatrix[0 * 4 + 1] = 0.0f;
+	viewDef->projectionMatrix[1 * 4 + 1] = 2.0f * idy;
+	viewDef->projectionMatrix[2 * 4 + 1] = sy*idy;	
+	viewDef->projectionMatrix[3 * 4 + 1] = 0.0f;
+
+	viewDef->projectionMatrix[0 * 4 + 2] = 0.0f;
+	viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
+	viewDef->projectionMatrix[2 * 4 + 2] = -0.999f; 
+	viewDef->projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
+
+	viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
+	viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
+	viewDef->projectionMatrix[2 * 4 + 3] = -1.0f;
+	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
+}
+
+void OpenVrSupport::GetFov( float& fovX, float& fovY ) {
+	fovX = this->fovX;
+	fovY = this->fovY;
+}
+
 void OpenVrSupport::InitParameters() {
-	float proj[2][4];
-	vrSystem->GetProjectionRaw( vr::Eye_Left, &proj[0][0], &proj[0][1], &proj[0][2], &proj[0][3] );
-	vrSystem->GetProjectionRaw( vr::Eye_Right, &proj[1][0], &proj[1][1], &proj[1][2], &proj[1][3] );
-	float combinedTanHalfFovHoriz = max( max( proj[0][0], proj[0][1] ), max( proj[1][0], proj[1][1] ) );
-	float combinedTanHalfFovVert = max( max( proj[0][2], proj[0][3] ), max( proj[1][2], proj[1][3] ) );
+	vrSystem->GetProjectionRaw( vr::Eye_Left, &rawProjection[0][0], &rawProjection[0][1], &rawProjection[0][2], &rawProjection[0][3] );
+	vrSystem->GetProjectionRaw( vr::Eye_Right, &rawProjection[1][0], &rawProjection[1][1], &rawProjection[1][2], &rawProjection[1][3] );
+	float combinedTanHalfFovHoriz = max( max( rawProjection[0][0], rawProjection[0][1] ), max( rawProjection[1][0], rawProjection[1][1] ) );
+	float combinedTanHalfFovVert = max( max( rawProjection[0][2], rawProjection[0][3] ), max( rawProjection[1][2], rawProjection[1][3] ) );
 
 	fovX = RAD2DEG( 2 * atanf( combinedTanHalfFovHoriz ) );
 	fovY = RAD2DEG( 2 * atanf( combinedTanHalfFovVert ) );
