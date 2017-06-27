@@ -88,6 +88,7 @@ float OpenVrSupport::GetInterPupillaryDistance() const {
 
 void OpenVrSupport::DetermineRenderTargetSize( uint32_t* width, uint32_t* height ) const {
 	vrSystem->GetRecommendedRenderTargetSize( width, height );
+	common->Printf( "OpenVR: Recommended render target size %d x %d\n", *width, *height );
 }
 
 void OpenVrSupport::SubmitEyeFrame( int eye, idImage* image ) {
@@ -145,4 +146,5 @@ void OpenVrSupport::InitParameters() {
 	fovX = RAD2DEG( 2 * atanf( combinedTanHalfFovHoriz ) );
 	fovY = RAD2DEG( 2 * atanf( combinedTanHalfFovVert ) );
 	aspect = combinedTanHalfFovHoriz / combinedTanHalfFovVert;
+	common->Printf( "OpenVR field of view x: %.1f  y: %.1f  Aspect: %.2f\n", fovX, fovY, aspect );
 }
