@@ -444,7 +444,7 @@ void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view, c
 
 	float halfEyeSeparationCentimeters = 0.5f * vrSupport->GetInterPupillaryDistance();
 	float halfEyeSeparationWorldUnits = halfEyeSeparationCentimeters / 2.309f;  // 1.1 world units are 1 inch
-	eyeView.vieworg += eye * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
+	eyeView.vieworg -= eye * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
 	eyeView.viewEyeBuffer = eye;
 
 	SingleView( hud, &eyeView );
