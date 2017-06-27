@@ -969,16 +969,13 @@ static void R_SetupViewFrustum( void ) {
 	float	xs, xc;
 	float	ang;
 
-	float fov_x, fov_y;
-	vrSupport->GetFov( fov_x, fov_y );
-
-	ang = DEG2RAD( fov_x ) * 0.5f;
+	ang = DEG2RAD( tr.viewDef->renderView.fov_x ) * 0.5f;
 	idMath::SinCos( ang, xs, xc );
 
 	tr.viewDef->frustum[0] = xs * tr.viewDef->renderView.viewaxis[0] + xc * tr.viewDef->renderView.viewaxis[1];
 	tr.viewDef->frustum[1] = xs * tr.viewDef->renderView.viewaxis[0] - xc * tr.viewDef->renderView.viewaxis[1];
 
-	ang = DEG2RAD( fov_y ) * 0.5f;
+	ang = DEG2RAD( tr.viewDef->renderView.fov_y ) * 0.5f;
 	idMath::SinCos( ang, xs, xc );
 
 	tr.viewDef->frustum[2] = xs * tr.viewDef->renderView.viewaxis[0] + xc * tr.viewDef->renderView.viewaxis[2];
@@ -987,14 +984,10 @@ static void R_SetupViewFrustum( void ) {
 	// plane four is the front clipping plane
 	tr.viewDef->frustum[4] = /* vec3_origin - */ tr.viewDef->renderView.viewaxis[0];
 
-	// we want the frustum for both eyes to be identical, so that there are no artifacts due to one eye having an object
-	// or light culled while the other is displaying it. thus shift the origin back to the middle position between both eyes
-	idVec3 headOrigin = tr.viewDef->renderView.vieworg - tr.viewDef->renderView.viewEyeBuffer * tr.viewDef->renderView.halfEyeSeparation * tr.viewDef->renderView.viewaxis[1];
-
 	for ( i = 0; i < 5; i++ ) {
 		// flip direction so positive side faces out (FIXME: globally unify this)
 		tr.viewDef->frustum[i] = -tr.viewDef->frustum[i].Normal();
-		tr.viewDef->frustum[i][3] = -( headOrigin * tr.viewDef->frustum[i].Normal() );
+		tr.viewDef->frustum[i][3] = -( tr.viewDef->renderView.vieworg * tr.viewDef->frustum[i].Normal() );
 	}
 
 	// eventually, plane five will be the rear clipping plane for fog
@@ -1007,9 +1000,9 @@ static void R_SetupViewFrustum( void ) {
 	}
 
 	dFar = MAX_WORLD_SIZE;
-	dLeft = dFar * tan( DEG2RAD( fov_x * 0.5f ) );
-	dUp = dFar * tan( DEG2RAD( fov_y * 0.5f ) );
-	tr.viewDef->viewFrustum.SetOrigin( headOrigin );
+	dLeft = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_x * 0.5f ) );
+	dUp = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_y * 0.5f ) );
+	tr.viewDef->viewFrustum.SetOrigin( tr.viewDef->renderView.vieworg );
 	tr.viewDef->viewFrustum.SetAxis( tr.viewDef->renderView.viewaxis );
 	tr.viewDef->viewFrustum.SetSize( dNear, dFar, dLeft, dUp );
 }
