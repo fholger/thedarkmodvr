@@ -569,6 +569,7 @@
     <ClInclude Include="vr\VrSupport.h">
       <Filter>Vr</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\Framebuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -1601,6 +1602,7 @@
     <ClCompile Include="vr\OpenVrSupport.cpp">
       <Filter>Vr</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\Framebuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="openal\idal.py">

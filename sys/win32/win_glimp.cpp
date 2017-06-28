@@ -265,6 +265,13 @@ static void GLW_GetWGLExtensionsWithFakeWindow( void ) {
 		HGLRC gRC = wglCreateContext( hDC );
 		wglMakeCurrent( hDC, gRC );
 		GLW_CheckWGLExtensions( hDC );
+
+		// initialize GLEW extensions (primarily needed for framebuffer objects)
+		GLenum err = glewInit();
+		if (err != GLEW_OK) {
+			common->FatalError( "GLimp_Init: Could not initialize GLEW extensions - %s", glewGetErrorString( err ) );
+		}
+
 		wglDeleteContext( gRC );
 		ReleaseDC( hWnd, hDC );
 
