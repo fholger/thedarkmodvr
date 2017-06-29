@@ -5,12 +5,6 @@ class Framebuffer
 public:
 	Framebuffer(const char* name, int width, int height);
 
-	static void Init();
-	static void Shutdown();
-
-	// deletes OpenGL object but leaves structure intact for reloading
-	void PurgeFramebuffer();
-	
 	void Bind();
 
 	void AddColorBuffer( GLuint format, int index );
@@ -21,7 +15,7 @@ public:
 	idStr GetName() const { return fboName; }
 
 	// check for OpenGL errors
-	int Check();
+	void Check();
 	
 private:
 	idStr fboName;
