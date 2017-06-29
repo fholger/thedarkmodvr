@@ -3,6 +3,7 @@
 #include "../tools/radiant/NewTexWnd.h"
 #include "../sys/win32/win_local.h"
 
+Framebuffer* primaryFramebuffer = nullptr;
 
 Framebuffer::Framebuffer( const char* name, int width, int height ): 
 fboName(name), frameBuffer(0), colorFormat(0), depthBuffer(0), depthFormat(0), stencilBuffer(0), 
@@ -17,6 +18,19 @@ void Framebuffer::Bind() {
 		glBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
 		backEnd.glState.currentFramebuffer = this;
 		wglSwapIntervalEXT( 0 );
+	}
+}
+
+void Framebuffer::BindPrimary() {
+	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+	glBindRenderbuffer( GL_RENDERBUFFER, 0 );
+	backEnd.glState.currentFramebuffer = nullptr;
+
+	if (primaryFramebuffer != nullptr) {
+		primaryFramebuffer->Bind();
+	} else {
+		glDrawBuffer( GL_BACK );
+		glReadBuffer( GL_BACK );
 	}
 }
 
@@ -43,6 +57,15 @@ void Framebuffer::AddColorBuffer( GLuint format, int index ) {
 		glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_RENDERBUFFER, colorBuffers[index] );
 		GL_CheckErrors();
 	}
+}
+
+void Framebuffer::AddColorImage( idImage* colorImage, int index, int mipmapLod ) {
+	if (index < 0 || index >= 16) { // FIXME: retrieve actual upper value from OpenGL
+		common->Warning( "Framebuffer::AddColorBuffer( %s ): bad index = %i", fboName.c_str(), index );
+		return;
+	}
+
+	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_2D, colorImage->texnum, mipmapLod );
 }
 
 void Framebuffer::AddDepthStencilBuffer( GLuint format ) {

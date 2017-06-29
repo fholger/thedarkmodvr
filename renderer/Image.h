@@ -193,8 +193,8 @@ public:
 	// check for changed timestamp on disk and reload if necessary
 	void		Reload( bool checkPrecompressed, bool force );
 
-	void		AddReference()				{ refCount++; };
-
+	void		AddReference()				{ refCount++; }
+	
 //==========================================================
 
 	void		GetDownsize( int &scaled_width, int &scaled_height ) const;

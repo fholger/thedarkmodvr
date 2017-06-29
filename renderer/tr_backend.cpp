@@ -53,6 +53,8 @@ void RB_SetDefaultGLState( void ) {
 	memset( &backEnd.glState, 0, sizeof( backEnd.glState ) );
 	backEnd.glState.forceGlState = true;
 
+	Framebuffer::BindPrimary();
+
 	qglColorMask( 1, 1, 1, 1 );
 
 	qglEnable( GL_DEPTH_TEST );
@@ -580,12 +582,6 @@ Called if VR support is disabled.
 ====================
  */
 void RB_ExecuteBackEndCommandsMono(const emptyCommand_t* cmds) {
-	// needed for editor rendering
-	RB_SetDefaultGLState();
-
-	// upload any image loads that have completed
-	globalImages->CompleteBackgroundImageLoads();
-
 	// r_debugRenderToTexture
 	int	c_draw3d = 0, c_draw2d = 0, c_setBuffers = 0, c_swapBuffers = 0, c_copyRenders = 0;
 
@@ -625,10 +621,6 @@ void RB_ExecuteBackEndCommandsMono(const emptyCommand_t* cmds) {
 		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, SwpBuf: %i, CpyRenders: %i, CpyFrameBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_swapBuffers, c_copyRenders, backEnd.c_copyFrameBuffer );
 		backEnd.c_copyFrameBuffer = 0;
 	}
-
-	// go back to the default texture so the editor doesn't mess up a bound image
-	qglBindTexture( GL_TEXTURE_2D, 0 );
-	backEnd.glState.tmu[0].current2DMap = -1;
 }
 
 /*
@@ -640,11 +632,19 @@ static void R_MakeStereoRenderImage( idImage* image )
 {
 	uint32_t width, height;
 	vrSupport->DetermineRenderTargetSize( &width, &height );
-	// fixme: remove this once we can render directly to the texture
-	width = renderSystem->GetScreenWidth();
-	height = renderSystem->GetScreenHeight();
 	common->Printf( "OpenVR: Render texture size: %d x %d\n", width, height );
 	image->AllocImage(width, height, TF_LINEAR, TR_CLAMP, TD_HIGH_QUALITY );
+}
+
+void RB_CreateStereoRenderFBO(int eye, Framebuffer*& framebuffer, idImage*& renderImage) {
+	renderImage = globalImages->ImageFromFunction( va( "_stereoRender%d", eye ), R_MakeStereoRenderImage );
+	uint32_t width, height;
+	vrSupport->DetermineRenderTargetSize( &width, &height );
+	framebuffer = new Framebuffer( va( "_stereoRenderFBO%d", eye ), width, height );
+	framebuffer->Bind();
+	framebuffer->AddColorImage( renderImage, 0 );
+	framebuffer->AddDepthStencilBuffer( GL_DEPTH24_STENCIL8 );
+	framebuffer->Check();
 }
 
 /*
@@ -655,11 +655,13 @@ Called if VR support is enabled.
 ====================
  */
 void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
-	// create the stereoRenderImage if we haven't already
+	// create the stereoRenderFBOs if we haven't already
+	// TODO delete created framebuffers on shutdown
+	static Framebuffer * stereoRenderFBOs[2];
 	static idImage * stereoRenderImages[2];
 	for (int i = 0; i < 2; ++i) {
-		if (stereoRenderImages[i] == NULL) {
-			stereoRenderImages[i] = globalImages->ImageFromFunction( va("_stereoRender%d", i), R_MakeStereoRenderImage );
+		if (stereoRenderFBOs[i] == NULL) {
+			RB_CreateStereoRenderFBO(i, stereoRenderFBOs[i], stereoRenderImages[i] );
 		}
 	}
 
@@ -669,11 +671,11 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
 		const emptyCommand_t* cmds = allcmds;
 
-		// needed for editor rendering
+		primaryFramebuffer = stereoRenderFBOs[targetEye];
+		// FIXME: this is a hack
+		glConfig.vidWidth = primaryFramebuffer->GetWidth();
+		glConfig.vidHeight = primaryFramebuffer->GetHeight();
 		RB_SetDefaultGLState();
-
-		// upload any image loads that have completed
-		globalImages->CompleteBackgroundImageLoads();
 
 		while (cmds) {
 			switch (cmds->commandId) {
@@ -707,13 +709,6 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 			}
 			cmds = (const emptyCommand_t *)cmds->next;
 		}
-
-		// copy to target image
-		stereoRenderImages[targetEye]->CopyFramebuffer( 0, 0, renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight() );
-
-		// go back to the default texture so the editor doesn't mess up a bound image
-		qglBindTexture( GL_TEXTURE_2D, 0 );
-		backEnd.glState.tmu[0].current2DMap = -1;
 	}
 	vrSupport->SubmitEyeFrame( LEFT_EYE, stereoRenderImages[0] );
 	vrSupport->SubmitEyeFrame( RIGHT_EYE, stereoRenderImages[1] );
@@ -736,11 +731,21 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 
 	backEndStartTime = Sys_Milliseconds();
 
+	// needed for editor rendering
+	RB_SetDefaultGLState();
+
+	// upload any image loads that have completed
+	globalImages->CompleteBackgroundImageLoads();
+
 	if (vrSupport->IsInitialized()) {
 		RB_ExecuteBackEndCommandsStereo( cmds );
 	} else {
 		RB_ExecuteBackEndCommandsMono( cmds );
 	}
+
+	// go back to the default texture so the editor doesn't mess up a bound image
+	qglBindTexture( GL_TEXTURE_2D, 0 );
+	backEnd.glState.tmu[0].current2DMap = -1;
 
 	// stop rendering on this thread
 	backEndFinishTime = Sys_Milliseconds();

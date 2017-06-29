@@ -6,8 +6,10 @@ public:
 	Framebuffer(const char* name, int width, int height);
 
 	void Bind();
+	static void BindPrimary();
 
 	void AddColorBuffer( GLuint format, int index );
+	void AddColorImage( idImage* colorImage, int index, int mipmapLod = 0 );
 	void AddDepthStencilBuffer( GLuint format );
 
 	int GetWidth() const { return width; }
@@ -16,7 +18,7 @@ public:
 
 	// check for OpenGL errors
 	void Check();
-	
+
 private:
 	idStr fboName;
 
@@ -37,4 +39,6 @@ private:
 	GLuint colorTexnum;
 	GLuint depthTexnum;
 };
+
+extern Framebuffer* primaryFramebuffer;
 
