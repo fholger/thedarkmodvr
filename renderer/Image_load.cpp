@@ -1946,7 +1946,8 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight, bo
 	GetDownsize( imageWidth, imageHeight );
 	GetDownsize( potWidth, potHeight );
 
-	qglReadBuffer( GL_BACK );
+	// FIXME: do we need this?
+	//qglReadBuffer( GL_BACK );
 
 	// only resize if the current dimensions can't hold it at all,
 	// otherwise subview renderings could thrash this
@@ -1995,23 +1996,6 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight, bo
 
 	backEnd.c_copyFrameBuffer++;
 }
-
-void idImage::CopyFramebuffer( int x, int y, int width, int height ) {
-	qglBindTexture( GL_TEXTURE_2D, texnum );
-	qglReadBuffer( GL_BACK );
-
-	qglCopyTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, x, y, width, height, 0 );
-
-	// these shouldn't be necessary if the image was initialized properly
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-
-	backEnd.c_copyFrameBuffer++;
-}
-
 
 /*
 ====================

@@ -174,8 +174,6 @@ public:
 
 	void		CopyFramebuffer( int x, int y, int width, int height, bool useOversizedBuffer );
 
-	void		CopyFramebuffer( int x, int y, int width, int height );
-
 	void		CopyDepthbuffer( int x, int y, int width, int height, bool useOversizedBuffer );
 
 

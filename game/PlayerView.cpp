@@ -447,7 +447,24 @@ void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view, c
 	eyeView.vieworg -= eye * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
 	eyeView.viewEyeBuffer = eye;
 
-	SingleView( hud, &eyeView );
+	if (g_skipViewEffects.GetBool()) {
+		SingleView( hud, &eyeView );
+	}
+	else {
+		// greebo: For underwater effects, use the Doom3 Doubleview
+		if (static_cast<idPhysics_Player*>(player->GetPlayerPhysics())->GetWaterLevel() >= WATERLEVEL_HEAD) {
+			DoubleVision( hud, &eyeView, cv_tdm_underwater_blur.GetInteger() );
+		}
+		else {
+			SingleView( hud, &eyeView, false );
+		}
+
+		// Bloom related - J.C.Denton
+		/* Update  post-process */
+		//this->m_postProcessManager.Update();
+
+		ScreenFade();
+	}
 }
 
 /*
@@ -828,7 +845,6 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 	if (vrSupport->IsInitialized()) {
 		StereoView( hud, view, RIGHT_EYE );
 		StereoView( hud, view, LEFT_EYE );
-		// TODO: effects / post-processing?
 	}
 	else if(g_skipViewEffects.GetBool())
 	{

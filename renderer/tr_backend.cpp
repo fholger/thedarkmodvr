@@ -647,6 +647,35 @@ void RB_CreateStereoRenderFBO(int eye, Framebuffer*& framebuffer, idImage*& rend
 	framebuffer->Check();
 }
 
+void RB_DisplayEyeView(idImage* image) {
+	primaryFramebuffer = nullptr;
+	//RB_SetDefaultGLState();
+	Framebuffer::BindPrimary();
+
+	qglMatrixMode( GL_PROJECTION );
+	qglLoadIdentity();
+	qglOrtho( 0, 1, 0, 1, -1, 1 );
+	qglMatrixMode( GL_MODELVIEW );
+	qglLoadIdentity();
+
+	qglClear( GL_COLOR_BUFFER_BIT );
+	qglBindTexture( GL_TEXTURE_2D, image->texnum );
+	qglEnable( GL_TEXTURE_2D );
+
+	// Draw a textured quad
+	// FIXME: something about the view / transformation is not quite right
+	qglBegin( GL_QUADS );
+	qglTexCoord2f( 0, 0 ); qglVertex2f( 0, 0 );
+	qglTexCoord2f( 0, 1 ); qglVertex2f( 0, 0.5 );
+	qglTexCoord2f( 1, 1 ); qglVertex2f( 0.5, 0.5 );
+	qglTexCoord2f( 1, 0 ); qglVertex2f( 0.5, 0 );
+	qglEnd();
+
+	qglDisable( GL_TEXTURE_2D );
+	qglBindTexture( GL_TEXTURE_2D, 0 );
+	qglFlush();
+}
+
 /*
 ====================
 RB_ExecuteBackEndCommandsStereo
@@ -665,6 +694,11 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 		}
 	}
 
+	// FIXME: this is a hack
+	glConfig.vidWidth = stereoRenderFBOs[0]->GetWidth();
+	glConfig.vidHeight = stereoRenderFBOs[0]->GetHeight();
+
+
 	vrSupport->FrameStart();
 
 	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
@@ -672,9 +706,7 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 		const emptyCommand_t* cmds = allcmds;
 
 		primaryFramebuffer = stereoRenderFBOs[targetEye];
-		// FIXME: this is a hack
-		glConfig.vidWidth = primaryFramebuffer->GetWidth();
-		glConfig.vidHeight = primaryFramebuffer->GetHeight();
+
 		RB_SetDefaultGLState();
 
 		while (cmds) {
@@ -695,13 +727,13 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 				break;
 			}
 			case RC_SET_BUFFER:
-				RB_SetBuffer( cmds );
+				//RB_SetBuffer( cmds );
 				break;
 			case RC_COPY_RENDER:
 				RB_CopyRender( cmds );
 				break;
 			case RC_SWAP_BUFFERS:
-				RB_SwapBuffers( cmds );
+				//RB_SwapBuffers( cmds );
 				break;
 			default:
 				common->Error( "RB_ExecuteBackEndCommandsStereo: bad commandId" );
@@ -709,9 +741,15 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 			}
 			cmds = (const emptyCommand_t *)cmds->next;
 		}
+		//glConfig.vidWidth = screenWidth;
+		//glConfig.vidHeight = screenHeight;
 	}
 	vrSupport->SubmitEyeFrame( LEFT_EYE, stereoRenderImages[0] );
 	vrSupport->SubmitEyeFrame( RIGHT_EYE, stereoRenderImages[1] );
+
+
+	RB_DisplayEyeView( stereoRenderImages[1] );
+	GLimp_SwapBuffers();
 }
 
 /*
