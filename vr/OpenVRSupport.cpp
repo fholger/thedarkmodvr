@@ -21,6 +21,7 @@ public:
 	void GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) override;
 	void AdjustViewWithPredictedHeadPose( renderView_t& eyeView, const int eye ) override;
 	void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) override;
+	void FrameEnd() override;
 private:
 	void UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis );
 
@@ -137,9 +138,9 @@ void OpenVrSupport::UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t device
 
 void OpenVrSupport::FrameStart() {
 	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
-	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, predictedDevicePose, vr::k_unMaxTrackedDeviceCount );
+	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
 	UpdateHmdOriginAndAxis( trackedDevicePose, hmdOrigin, hmdAxis );
-	UpdateHmdOriginAndAxis( predictedDevicePose, predictedHmdOrigin, predictedHmdAxis );
+	//UpdateHmdOriginAndAxis( predictedDevicePose, predictedHmdOrigin, predictedHmdAxis );
 }
 
 void OpenVrSupport::SetupProjectionMatrix( viewDef_t* viewDef ) {
@@ -211,6 +212,10 @@ void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef ) {
 	for (viewEntity_t * vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next) {
 		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
 	}
+}
+
+void OpenVrSupport::FrameEnd() {
+	vr::VRCompositor()->PostPresentHandoff();
 }
 
 

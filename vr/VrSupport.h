@@ -28,6 +28,7 @@ public:
 	virtual void GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) = 0;
 	virtual void AdjustViewWithPredictedHeadPose( renderView_t& eyeView, const int eye ) = 0;
 	virtual void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) = 0;
+	virtual void FrameEnd() = 0;
 };
 
 extern VrSupport* vrSupport;

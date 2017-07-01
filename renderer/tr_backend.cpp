@@ -754,6 +754,8 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 
 	RB_DisplayEyeView( stereoRenderImages[1] );
 	GLimp_SwapBuffers();
+
+	vrSupport->FrameEnd();
 }
 
 /*
