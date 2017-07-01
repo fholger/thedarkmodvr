@@ -17,6 +17,7 @@
  
 ******************************************************************************/
 #include "precompiled_engine.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: RenderSystem.cpp 6755 2017-01-15 13:41:13Z grayman $");
@@ -624,6 +625,9 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 		return;
 	}
 
+	if (vrSupport->IsInitialized()) {
+		vrSupport->FrameStart();
+	}
 	// determine which back end we will use
 	SetBackEndRenderer();
 
@@ -1014,7 +1018,8 @@ void idRenderSystemLocal::CaptureRenderToBuffer(unsigned char* buffer)
 	guiModel->Clear();
 	R_IssueRenderCommands();
 
-	qglReadBuffer( GL_BACK );
+	// FIXME: do we need to adapt this?
+	//qglReadBuffer( GL_BACK );
 
 // #4395 Duzenko lightem pixel pack buffer optimization
 

@@ -217,6 +217,7 @@ typedef struct renderView_s {
 
 	// which buffer to render to in stereo mode
 	int						viewEyeBuffer;		// -1 = left eye, 1 = right eye, 0 = monoscopic view or GUI
+	float					halfEyeDistance;
 
 	// time in milliseconds for shader effects and other time dependent rendering issues
 	int						time;

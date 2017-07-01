@@ -24,6 +24,7 @@ public:
 	virtual void FrameStart() = 0;
 	virtual void SetupProjectionMatrix( viewDef_s* viewDef ) = 0;
 	virtual void GetFov( float& fovX, float& fovY ) = 0;
+	virtual void GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) = 0;
 };
 
 extern VrSupport* vrSupport;

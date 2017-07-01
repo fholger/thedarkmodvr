@@ -18,6 +18,7 @@ public:
 	void FrameStart() override;
 	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
 	void GetFov( float& fovX, float& fovY ) override;
+	void GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) override;
 private:
 	vr::IVRSystem *vrSystem;
 	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
@@ -25,6 +26,10 @@ private:
 	float fovX;
 	float fovY;
 	float aspect;
+	float eyeForward;
+	idVec3 hmdOrigin;
+	idMat3 hmdAxis;
+	float scale;
 
 	void InitParameters();
 };
@@ -92,6 +97,8 @@ void OpenVrSupport::DetermineRenderTargetSize( uint32_t* width, uint32_t* height
 }
 
 void OpenVrSupport::SubmitEyeFrame( int eye, idImage* image ) {
+	glViewport( 0, 0, image->uploadWidth, image->uploadHeight );
+	glScissor( 0, 0, image->uploadWidth, image->uploadHeight );
 	vr::Texture_t texture = { (void*)image->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
 	vr::EVRCompositorError error = vr::VRCompositor()->Submit(eye == LEFT_EYE ? vr::Eye_Left : vr::Eye_Right, &texture);
 	if (error != vr::VRCompositorError_None) {
@@ -100,7 +107,30 @@ void OpenVrSupport::SubmitEyeFrame( int eye, idImage* image ) {
 }
 
 void OpenVrSupport::FrameStart() {
+	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
 	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
+	vr::TrackedDevicePose_t &hmdPose = trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd];
+	if (hmdPose.bPoseIsValid) {
+		// OpenVR coordinate system:
+		//   x is right
+		//   y is up
+		//  -z is forward
+		//   distance in meters
+		// Doom3 coordinate system
+		//  x is forward
+		//  y is left
+		//  z is up
+		//  distance in world units (1.1 inches)
+		vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
+		hmdOrigin.Set( -scale * mat.m[2][3], -scale * mat.m[0][3], scale * mat.m[1][3] );
+		hmdAxis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
+		hmdAxis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
+		hmdAxis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
+		hmdOrigin += eyeForward * scale * hmdAxis[0];
+	} else {
+		hmdOrigin.Zero();
+		hmdAxis.Identity();
+	}
 }
 
 void OpenVrSupport::SetupProjectionMatrix( viewDef_t* viewDef ) {
@@ -137,9 +167,16 @@ void OpenVrSupport::GetFov( float& fovX, float& fovY ) {
 	fovY = this->fovY;
 }
 
+void OpenVrSupport::GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) {
+	headOrigin = hmdOrigin;
+	headAxis = hmdAxis;
+}
+
 void OpenVrSupport::InitParameters() {
 	vrSystem->GetProjectionRaw( vr::Eye_Left, &rawProjection[0][0], &rawProjection[0][1], &rawProjection[0][2], &rawProjection[0][3] );
+	common->Printf( "OpenVR left eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[0][0], rawProjection[0][1], rawProjection[0][2], rawProjection[0][3] );
 	vrSystem->GetProjectionRaw( vr::Eye_Right, &rawProjection[1][0], &rawProjection[1][1], &rawProjection[1][2], &rawProjection[1][3] );
+	common->Printf( "OpenVR right eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[1][0], rawProjection[1][1], rawProjection[1][2], rawProjection[1][3] );
 	float combinedTanHalfFovHoriz = max( max( rawProjection[0][0], rawProjection[0][1] ), max( rawProjection[1][0], rawProjection[1][1] ) );
 	float combinedTanHalfFovVert = max( max( rawProjection[0][2], rawProjection[0][3] ), max( rawProjection[1][2], rawProjection[1][3] ) );
 
@@ -147,4 +184,10 @@ void OpenVrSupport::InitParameters() {
 	fovY = RAD2DEG( 2 * atanf( combinedTanHalfFovVert ) );
 	aspect = combinedTanHalfFovHoriz / combinedTanHalfFovVert;
 	common->Printf( "OpenVR field of view x: %.1f  y: %.1f  Aspect: %.2f\n", fovX, fovY, aspect );
+
+	scale = 1 / 0.02309f; // meters to world units (1.1 inch)
+
+	vr::HmdMatrix34_t eyeToHead = vrSystem->GetEyeToHeadTransform( vr::Eye_Right );
+	eyeForward = -eyeToHead.m[2][3];
+	common->Printf( "Distance from eye to head: %.2f m\n", eyeForward );
 }

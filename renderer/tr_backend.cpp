@@ -698,9 +698,6 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 	glConfig.vidWidth = stereoRenderFBOs[0]->GetWidth();
 	glConfig.vidHeight = stereoRenderFBOs[0]->GetHeight();
 
-
-	vrSupport->FrameStart();
-
 	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
 		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
 		const emptyCommand_t* cmds = allcmds;
