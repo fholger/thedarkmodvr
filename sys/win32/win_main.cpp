@@ -967,7 +967,7 @@ static void Sys_AsyncThread( void *parm ) {
 
 	while ( 1 ) {
 #ifdef WIN32	
-		// this will trigger 60 times a second
+		// this will trigger 90 times a second
 		int r = WaitForSingleObject( hTimer, 100 );
 		if ( r != WAIT_OBJECT_0 ) {
 			OutputDebugString( "idPacketServer::PacketServerInterrupt: bad wait return" );

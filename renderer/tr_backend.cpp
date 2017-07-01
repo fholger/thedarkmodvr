@@ -727,7 +727,7 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 				//RB_SetBuffer( cmds );
 				break;
 			case RC_COPY_RENDER:
-				RB_CopyRender( cmds );
+				//RB_CopyRender( cmds );
 				break;
 			case RC_SWAP_BUFFERS:
 				//RB_SwapBuffers( cmds );
@@ -743,7 +743,6 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 	}
 	vrSupport->SubmitEyeFrame( LEFT_EYE, stereoRenderImages[0] );
 	vrSupport->SubmitEyeFrame( RIGHT_EYE, stereoRenderImages[1] );
-
 
 	RB_DisplayEyeView( stereoRenderImages[1] );
 	GLimp_SwapBuffers();
