@@ -1,4 +1,5 @@
 #pragma once
+#include "../tools/compilers/dmap/dmap.h"
 
 namespace vr
 {
@@ -25,6 +26,8 @@ public:
 	virtual void SetupProjectionMatrix( viewDef_s* viewDef ) = 0;
 	virtual void GetFov( float& fovX, float& fovY ) = 0;
 	virtual void GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) = 0;
+	virtual void AdjustViewWithPredictedHeadPose( renderView_t& eyeView, const int eye ) = 0;
+	virtual void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) = 0;
 };
 
 extern VrSupport* vrSupport;

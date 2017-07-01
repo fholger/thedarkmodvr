@@ -625,9 +625,6 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 		return;
 	}
 
-	if (vrSupport->IsInitialized()) {
-		vrSupport->FrameStart();
-	}
 	// determine which back end we will use
 	SetBackEndRenderer();
 

@@ -651,6 +651,8 @@ void RB_DisplayEyeView(idImage* image) {
 	primaryFramebuffer = nullptr;
 	//RB_SetDefaultGLState();
 	Framebuffer::BindPrimary();
+	qglViewport( 0, 0, 1280, 1024 );
+	qglScissor( 0, 0, 1280, 1024 );
 
 	qglMatrixMode( GL_PROJECTION );
 	qglLoadIdentity();
@@ -659,16 +661,16 @@ void RB_DisplayEyeView(idImage* image) {
 	qglLoadIdentity();
 
 	qglClear( GL_COLOR_BUFFER_BIT );
-	qglBindTexture( GL_TEXTURE_2D, image->texnum );
+	image->Bind();
 	qglEnable( GL_TEXTURE_2D );
 
 	// Draw a textured quad
 	// FIXME: something about the view / transformation is not quite right
 	qglBegin( GL_QUADS );
 	qglTexCoord2f( 0, 0 ); qglVertex2f( 0, 0 );
-	qglTexCoord2f( 0, 1 ); qglVertex2f( 0, 0.5 );
-	qglTexCoord2f( 1, 1 ); qglVertex2f( 0.5, 0.5 );
-	qglTexCoord2f( 1, 0 ); qglVertex2f( 0.5, 0 );
+	qglTexCoord2f( 0, 1 ); qglVertex2f( 0, 1 );
+	qglTexCoord2f( 1, 1 ); qglVertex2f( 1, 1 );
+	qglTexCoord2f( 1, 0 ); qglVertex2f( 1, 0 );
 	qglEnd();
 
 	qglDisable( GL_TEXTURE_2D );
@@ -698,6 +700,8 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 	glConfig.vidWidth = stereoRenderFBOs[0]->GetWidth();
 	glConfig.vidHeight = stereoRenderFBOs[0]->GetHeight();
 
+	vrSupport->FrameStart();
+
 	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
 		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
 		const emptyCommand_t* cmds = allcmds;
@@ -713,11 +717,15 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 			case RC_DRAW_VIEW:
 			{
 				const drawSurfsCommand_t* const dsc = (const drawSurfsCommand_t*)cmds;
-				const viewDef_t& eyeViewDef = *dsc->viewDef;
+				viewDef_t& eyeViewDef = *dsc->viewDef;
 
 				if (eyeViewDef.renderView.viewEyeBuffer && eyeViewDef.renderView.viewEyeBuffer != stereoEye) {
 					// this is the render view for the other eye
 					break;
+				}
+
+				if (eyeViewDef.renderView.viewEyeBuffer) {
+					//vrSupport->AdjustViewWithActualHeadPose( &eyeViewDef );
 				}
 
 				RB_DrawView( cmds );

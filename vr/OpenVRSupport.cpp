@@ -19,9 +19,14 @@ public:
 	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
 	void GetFov( float& fovX, float& fovY ) override;
 	void GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) override;
+	void AdjustViewWithPredictedHeadPose( renderView_t& eyeView, const int eye ) override;
+	void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) override;
 private:
+	void UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis );
+
 	vr::IVRSystem *vrSystem;
 	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
+	vr::TrackedDevicePose_t predictedDevicePose[vr::k_unMaxTrackedDeviceCount];
 	float rawProjection[2][4];
 	float fovX;
 	float fovY;
@@ -29,6 +34,8 @@ private:
 	float eyeForward;
 	idVec3 hmdOrigin;
 	idMat3 hmdAxis;
+	idVec3 predictedHmdOrigin;
+	idMat3 predictedHmdAxis;
 	float scale;
 
 	void InitParameters();
@@ -106,10 +113,8 @@ void OpenVrSupport::SubmitEyeFrame( int eye, idImage* image ) {
 	}
 }
 
-void OpenVrSupport::FrameStart() {
-	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
-	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
-	vr::TrackedDevicePose_t &hmdPose = trackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd];
+void OpenVrSupport::UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis ) {
+	const vr::TrackedDevicePose_t &hmdPose = devicePose[vr::k_unTrackedDeviceIndex_Hmd];
 	if (hmdPose.bPoseIsValid) {
 		// OpenVR coordinate system:
 		//   x is right
@@ -121,16 +126,20 @@ void OpenVrSupport::FrameStart() {
 		//  y is left
 		//  z is up
 		//  distance in world units (1.1 inches)
-		vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
-		hmdOrigin.Set( -scale * mat.m[2][3], -scale * mat.m[0][3], scale * mat.m[1][3] );
-		hmdAxis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
-		hmdAxis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
-		hmdAxis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
-		hmdOrigin += eyeForward * scale * hmdAxis[0];
-	} else {
-		hmdOrigin.Zero();
-		hmdAxis.Identity();
+		const vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
+		origin.Set( -scale * mat.m[2][3], -scale * mat.m[0][3], scale * mat.m[1][3] );
+		axis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
+		axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
+		axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
+		origin += eyeForward * scale * axis[0];
 	}
+}
+
+void OpenVrSupport::FrameStart() {
+	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
+	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, predictedDevicePose, vr::k_unMaxTrackedDeviceCount );
+	UpdateHmdOriginAndAxis( trackedDevicePose, hmdOrigin, hmdAxis );
+	UpdateHmdOriginAndAxis( predictedDevicePose, predictedHmdOrigin, predictedHmdAxis );
 }
 
 void OpenVrSupport::SetupProjectionMatrix( viewDef_t* viewDef ) {
@@ -172,6 +181,39 @@ void OpenVrSupport::GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) {
 	headAxis = hmdAxis;
 }
 
+void OpenVrSupport::AdjustViewWithPredictedHeadPose( renderView_t& eyeView, const int eye ) {
+	eyeView.vieworg += hmdOrigin * eyeView.viewaxis;
+	eyeView.viewaxis = hmdAxis * eyeView.viewaxis;
+
+	float halfEyeSeparationCentimeters = 0.5f * GetInterPupillaryDistance();
+	float halfEyeSeparationWorldUnits = halfEyeSeparationCentimeters / 2.309f;  // 1.1 world units are 1 inch
+	eyeView.vieworg -= eye * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
+	eyeView.viewEyeBuffer = eye;
+	eyeView.halfEyeDistance = halfEyeSeparationWorldUnits;
+	eyeView.hmdOrigin = predictedHmdOrigin;
+	eyeView.hmdAxis = predictedHmdAxis;
+}
+
+void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef ) {
+	// revert the predicted HMD pose and redo calculations with actual pose
+	renderView_t& eyeView = viewDef->renderView;
+	int eye = eyeView.viewEyeBuffer;
+	eyeView.vieworg += eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
+	eyeView.viewaxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
+	eyeView.vieworg -= eyeView.hmdOrigin * eyeView.viewaxis;
+
+	eyeView.vieworg += hmdOrigin * eyeView.viewaxis;
+	eyeView.viewaxis = hmdAxis * eyeView.viewaxis;
+	eyeView.vieworg -= eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
+
+	// we need to also adapt the model view matrix of all objects to be rendered
+	R_SetViewMatrix( viewDef );
+	for (viewEntity_t * vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next) {
+		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
+	}
+}
+
+
 void OpenVrSupport::InitParameters() {
 	vrSystem->GetProjectionRaw( vr::Eye_Left, &rawProjection[0][0], &rawProjection[0][1], &rawProjection[0][2], &rawProjection[0][3] );
 	common->Printf( "OpenVR left eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[0][0], rawProjection[0][1], rawProjection[0][2], rawProjection[0][3] );
@@ -190,4 +232,9 @@ void OpenVrSupport::InitParameters() {
 	vr::HmdMatrix34_t eyeToHead = vrSystem->GetEyeToHeadTransform( vr::Eye_Right );
 	eyeForward = -eyeToHead.m[2][3];
 	common->Printf( "Distance from eye to head: %.2f m\n", eyeForward );
+
+	hmdOrigin.Zero();
+	hmdAxis.Identity();
+	predictedHmdOrigin.Zero();
+	predictedHmdAxis.Identity();
 }
