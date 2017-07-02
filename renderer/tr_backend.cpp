@@ -688,9 +688,9 @@ Called if VR support is enabled.
 void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 	// create the stereoRenderFBOs if we haven't already
 	// TODO delete created framebuffers on shutdown
-	static Framebuffer * stereoRenderFBOs[2];
-	static idImage * stereoRenderImages[2];
-	for (int i = 0; i < 2; ++i) {
+	static Framebuffer * stereoRenderFBOs[3]; // third one's for the menu
+	static idImage * stereoRenderImages[3];
+	for (int i = 0; i < 3; ++i) {
 		if (stereoRenderFBOs[i] == NULL) {
 			RB_CreateStereoRenderFBO(i, stereoRenderFBOs[i], stereoRenderImages[i] );
 		}
@@ -700,8 +700,9 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 	glConfig.vidWidth = stereoRenderFBOs[0]->GetWidth();
 	glConfig.vidHeight = stereoRenderFBOs[0]->GetHeight();
 
-	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
-		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
+	bool menuRendered = false;
+	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 1) {
+		const int targetEye = stereoEye == RIGHT_EYE ? 1 : (stereoEye == LEFT_EYE ? 0 : 2);
 		const emptyCommand_t* cmds = allcmds;
 
 		primaryFramebuffer = stereoRenderFBOs[targetEye];
@@ -715,15 +716,15 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 			case RC_DRAW_VIEW:
 			{
 				const drawSurfsCommand_t* const dsc = (const drawSurfsCommand_t*)cmds;
-				viewDef_t& eyeViewDef = *dsc->viewDef;
+				const viewDef_t& eyeViewDef = *dsc->viewDef;
 
-				if (eyeViewDef.renderView.viewEyeBuffer && eyeViewDef.renderView.viewEyeBuffer != stereoEye) {
-					// this is the render view for the other eye
+				if (eyeViewDef.renderView.viewEyeBuffer != stereoEye) {
+					// this is the render view for the other eye (or menu)
 					break;
 				}
 
-				if (eyeViewDef.renderView.viewEyeBuffer) {
-					//vrSupport->AdjustViewWithActualHeadPose( &eyeViewDef );
+				if (stereoEye == 0) {
+					menuRendered = true;
 				}
 
 				RB_DrawView( cmds );
@@ -733,7 +734,7 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 				//RB_SetBuffer( cmds );
 				break;
 			case RC_COPY_RENDER:
-				//RB_CopyRender( cmds );
+				RB_CopyRender( cmds );
 				break;
 			case RC_SWAP_BUFFERS:
 				//RB_SwapBuffers( cmds );
@@ -744,14 +745,17 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 			}
 			cmds = (const emptyCommand_t *)cmds->next;
 		}
-		//glConfig.vidWidth = screenWidth;
-		//glConfig.vidHeight = screenHeight;
 	}
 
 	// mirror one of the eyes to the screen
-	RB_DisplayEyeView( stereoRenderImages[1] );
+	RB_DisplayEyeView( stereoRenderImages[menuRendered ? 2 : 1] );
 	GLimp_SwapBuffers();
 
+	if (menuRendered) {
+		vrSupport->EnableMenuOverlay( stereoRenderImages[2] );
+	} else {
+		vrSupport->DisableMenuOverlay();
+	}
 	vrSupport->FrameEnd( stereoRenderImages[0], stereoRenderImages[1] );
 }
 

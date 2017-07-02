@@ -19,12 +19,15 @@ public:
 	void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) override;
 	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
 	void FrameEnd( idImage *leftEyeImage, idImage *rightEyeImage ) override;
+	void EnableMenuOverlay( idImage* menuImage ) override;
+	void DisableMenuOverlay() override;
 private:
 	float GetInterPupillaryDistance() const;
 	void SubmitEyeFrame( int eye, idImage* image );
 	void UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis );
 
 	vr::IVRSystem *vrSystem;
+	vr::VROverlayHandle_t menuOverlay;
 	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
 	vr::TrackedDevicePose_t predictedDevicePose[vr::k_unMaxTrackedDeviceCount];
 	float rawProjection[2][4];
@@ -65,17 +68,17 @@ void OpenVrSupport::Init()
 	if (initError != vr::VRInitError_None)
 	{
 		vrSystem = nullptr;
-		common->Printf("OpenVR initialization failed: %s\n", vr::VR_GetVRInitErrorAsEnglishDescription(initError));
+		common->Warning("OpenVR initialization failed: %s", vr::VR_GetVRInitErrorAsEnglishDescription(initError));
 		return;
 	}
 
-	if (!vr::VRCompositor())
-	{
-		common->Printf("OpenVR compositor initialization failed.\n");
+	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
+	vr::EVROverlayError overlayError = vr::VROverlay()->CreateOverlay( "tdm_menu_overlay", "The Dark Mod Menu", &menuOverlay );
+	if (overlayError != vr::VROverlayError_None) {
+		common->Warning( "OpenVR overlay initialization failed: %d", overlayError );
 		Shutdown();
 		return;
 	}
-	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
 	InitParameters();
 	common->Printf( "OpenVR support ready.\n" );
 }
@@ -212,6 +215,26 @@ void OpenVrSupport::FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) {
 	SubmitEyeFrame( LEFT_EYE, leftEyeImage );
 	SubmitEyeFrame( RIGHT_EYE, rightEyeImage );
 	vr::VRCompositor()->PostPresentHandoff();
+}
+
+void OpenVrSupport::EnableMenuOverlay( idImage* menuImage ) {
+	vr::Texture_t texture = { (void*)menuImage->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
+	vr::VROverlay()->SetOverlayTexture( menuOverlay, &texture );
+	vr::VROverlay()->SetHighQualityOverlay( menuOverlay );
+	vr::HmdMatrix34_t transform;
+	memset( transform.m, 0, sizeof( transform.m ) );
+	transform.m[0][0] = 1;
+	transform.m[1][1] = -1;
+	transform.m[2][2] = -1;
+	transform.m[2][3] = -2;
+	vr::VROverlay()->SetOverlayWidthInMeters( menuOverlay, 4 );
+	vr::VROverlay()->SetOverlayTransformAbsolute( menuOverlay, vr::TrackingUniverseSeated, &transform );
+	vr::VROverlay()->ShowOverlay( menuOverlay );
+}
+
+void OpenVrSupport::DisableMenuOverlay() {
+	vr::VROverlay()->HideOverlay( menuOverlay );
+	vr::VROverlay()->ClearOverlayTexture( menuOverlay );
 }
 
 

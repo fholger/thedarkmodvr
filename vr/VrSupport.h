@@ -25,6 +25,8 @@ public:
 	virtual void AdjustViewWithActualHeadPose( viewDef_s* viewDef ) = 0;
 	virtual void SetupProjectionMatrix( viewDef_s* viewDef ) = 0;
 	virtual void FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) = 0;
+	virtual void EnableMenuOverlay( idImage* menuImage ) = 0;
+	virtual void DisableMenuOverlay() = 0;
 };
 
 extern VrSupport* vrSupport;
