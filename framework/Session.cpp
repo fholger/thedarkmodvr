@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: Session.cpp 6695 2016-11-26 15:34:21Z grayman $");
@@ -2445,6 +2446,10 @@ idSessionLocal::Draw
 */
 void idSessionLocal::Draw() {
 	bool fullConsole = false;
+
+	if (vrSupport->IsInitialized()) {
+		vrSupport->FrameStart();
+	}
 
 	if ( insideExecuteMapChange ) {
 		if ( guiLoading ) {

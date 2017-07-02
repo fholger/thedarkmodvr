@@ -211,7 +211,7 @@ void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef ) {
 void OpenVrSupport::FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) {
 	SubmitEyeFrame( LEFT_EYE, leftEyeImage );
 	SubmitEyeFrame( RIGHT_EYE, rightEyeImage );
-	FrameStart();
+	vr::VRCompositor()->PostPresentHandoff();
 }
 
 
