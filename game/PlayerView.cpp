@@ -442,7 +442,7 @@ void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view, c
 
 	renderView_t eyeView = *view;
 
-	vrSupport->AdjustViewWithPredictedHeadPose( eyeView, eye );
+	vrSupport->AdjustViewWithCurrentHeadPose( eyeView, eye );
 
 	if (g_skipViewEffects.GetBool()) {
 		SingleView( hud, &eyeView );

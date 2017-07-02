@@ -12,17 +12,16 @@ public:
 	void Init() override;
 	void Shutdown() override;
 	bool IsInitialized() const override;
-	float GetInterPupillaryDistance() const override;
 	void DetermineRenderTargetSize( uint32_t *width, uint32_t *height ) const override;
-	void SubmitEyeFrame( int eye, idImage* image ) override;
 	void FrameStart() override;
-	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
 	void GetFov( float& fovX, float& fovY ) override;
-	void GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) override;
-	void AdjustViewWithPredictedHeadPose( renderView_t& eyeView, const int eye ) override;
+	void AdjustViewWithCurrentHeadPose( renderView_t& eyeView, const int eye ) override;
 	void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) override;
-	void FrameEnd() override;
+	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
+	void FrameEnd( idImage *leftEyeImage, idImage *rightEyeImage ) override;
 private:
+	float GetInterPupillaryDistance() const;
+	void SubmitEyeFrame( int eye, idImage* image );
 	void UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis );
 
 	vr::IVRSystem *vrSystem;
@@ -133,14 +132,14 @@ void OpenVrSupport::UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t device
 		axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
 		axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
 		origin += eyeForward * scale * axis[0];
+	} else {
+		common->Warning( "OpenVR tracking pose is invalid" );
 	}
 }
 
 void OpenVrSupport::FrameStart() {
-	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
 	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
 	UpdateHmdOriginAndAxis( trackedDevicePose, hmdOrigin, hmdAxis );
-	//UpdateHmdOriginAndAxis( predictedDevicePose, predictedHmdOrigin, predictedHmdAxis );
 }
 
 void OpenVrSupport::SetupProjectionMatrix( viewDef_t* viewDef ) {
@@ -177,12 +176,7 @@ void OpenVrSupport::GetFov( float& fovX, float& fovY ) {
 	fovY = this->fovY;
 }
 
-void OpenVrSupport::GetHeadTracking( idVec3& headOrigin, idMat3& headAxis ) {
-	headOrigin = hmdOrigin;
-	headAxis = hmdAxis;
-}
-
-void OpenVrSupport::AdjustViewWithPredictedHeadPose( renderView_t& eyeView, const int eye ) {
+void OpenVrSupport::AdjustViewWithCurrentHeadPose( renderView_t& eyeView, const int eye ) {
 	eyeView.vieworg += hmdOrigin * eyeView.viewaxis;
 	eyeView.viewaxis = hmdAxis * eyeView.viewaxis;
 
@@ -191,8 +185,8 @@ void OpenVrSupport::AdjustViewWithPredictedHeadPose( renderView_t& eyeView, cons
 	eyeView.vieworg -= eye * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
 	eyeView.viewEyeBuffer = eye;
 	eyeView.halfEyeDistance = halfEyeSeparationWorldUnits;
-	eyeView.hmdOrigin = predictedHmdOrigin;
-	eyeView.hmdAxis = predictedHmdAxis;
+	eyeView.hmdOrigin = hmdOrigin;
+	eyeView.hmdAxis = hmdAxis;
 }
 
 void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef ) {
@@ -214,8 +208,10 @@ void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef ) {
 	}
 }
 
-void OpenVrSupport::FrameEnd() {
-	vr::VRCompositor()->PostPresentHandoff();
+void OpenVrSupport::FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) {
+	SubmitEyeFrame( LEFT_EYE, leftEyeImage );
+	SubmitEyeFrame( RIGHT_EYE, rightEyeImage );
+	FrameStart();
 }
 
 

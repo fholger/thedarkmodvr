@@ -700,8 +700,6 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 	glConfig.vidWidth = stereoRenderFBOs[0]->GetWidth();
 	glConfig.vidHeight = stereoRenderFBOs[0]->GetHeight();
 
-	vrSupport->FrameStart();
-
 	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
 		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
 		const emptyCommand_t* cmds = allcmds;
@@ -749,13 +747,12 @@ void RB_ExecuteBackEndCommandsStereo(const emptyCommand_t* allcmds) {
 		//glConfig.vidWidth = screenWidth;
 		//glConfig.vidHeight = screenHeight;
 	}
-	vrSupport->SubmitEyeFrame( LEFT_EYE, stereoRenderImages[0] );
-	vrSupport->SubmitEyeFrame( RIGHT_EYE, stereoRenderImages[1] );
 
+	// mirror one of the eyes to the screen
 	RB_DisplayEyeView( stereoRenderImages[1] );
 	GLimp_SwapBuffers();
 
-	vrSupport->FrameEnd();
+	vrSupport->FrameEnd( stereoRenderImages[0], stereoRenderImages[1] );
 }
 
 /*
