@@ -4,6 +4,7 @@ class Framebuffer
 {
 public:
 	Framebuffer(const char* name, int width, int height);
+	~Framebuffer();
 
 	void Bind();
 	static void BindPrimary();

@@ -1603,6 +1603,9 @@
       <Filter>Vr</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Framebuffer.cpp" />
+    <ClCompile Include="vr\vr_backend.cpp">
+      <Filter>Vr</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="openal\idal.py">

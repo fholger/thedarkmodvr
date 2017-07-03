@@ -13,6 +13,18 @@ stencilFormat(0), width(width), height(height), colorTexnum(0), depthTexnum(0) {
 	glGenFramebuffers( 1, &frameBuffer );
 }
 
+Framebuffer::~Framebuffer() {
+	if (depthBuffer != 0) {
+		glDeleteRenderbuffers( 1, &depthBuffer );
+	}
+	for (int i = 0; i < 16; ++i) {
+		if (colorBuffers[i] != 0) {
+			glDeleteRenderbuffers( 1, &colorBuffers[i] );
+		}
+	}
+	glDeleteFramebuffers( 1, &frameBuffer );
+}
+
 void Framebuffer::Bind() {
 	if (backEnd.glState.currentFramebuffer != this) {
 		glBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );

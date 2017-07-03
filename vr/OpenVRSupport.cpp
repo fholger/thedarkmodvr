@@ -47,6 +47,10 @@ private:
 OpenVrSupport vrLocal;
 VrSupport* vrSupport = &vrLocal;
 
+extern Framebuffer * stereoRenderFBOs[2];
+extern idImage * stereoRenderImages[2];
+
+
 OpenVrSupport::OpenVrSupport(): vrSystem(nullptr) {
 }
 
@@ -90,6 +94,10 @@ void OpenVrSupport::Shutdown()
 		common->Printf("Shutting down OpenVR.");
 		vr::VR_Shutdown();
 		vrSystem = nullptr;
+		for (int i = 0; i < 2; ++i) {
+			delete stereoRenderFBOs[i];
+			delete stereoRenderImages[i];
+		}
 	}
 }
 
