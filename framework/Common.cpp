@@ -2960,8 +2960,6 @@ void idCommonLocal::InitGame( void )
 
 	PrintLoadingMessage( Translate( "#str_04345" ) );
 
-	vrSupport->Init();
-
 	// exec the startup scripts
 	cmdSystem->BufferCommandText( CMD_EXEC_APPEND, "exec editor.cfg\n" );
 	cmdSystem->BufferCommandText( CMD_EXEC_APPEND, "exec default.cfg\n" );
@@ -3000,6 +2998,8 @@ void idCommonLocal::InitGame( void )
 
 	// init async network
 	idAsyncNetwork::Init();
+
+	vrSupport->Init();
 
 #ifdef	ID_DEDICATED
 	idAsyncNetwork::server.InitPort();

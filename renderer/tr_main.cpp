@@ -182,11 +182,6 @@ R_ToggleSmpFrame
 ====================
 */
 void R_ToggleSmpFrame( void ) {
-	if ( r_lockSurfaces.GetBool() ) {
-		return;
-	}
-	R_FreeDeferredTriSurfs( frameData );
-
 	// update the highwater mark
 	if (frameData->frameMemoryAllocated > frameData->memoryHighwater) {
 		frameData->memoryHighwater = frameData->frameMemoryAllocated;
@@ -197,6 +192,7 @@ void R_ToggleSmpFrame( void ) {
 	frameData = &smpFrameData[smpFrame % NUM_FRAME_DATA];
 
 	// reset the memory allocation
+	R_FreeDeferredTriSurfs( frameData );
 
 	// RB: 64 bit fixes, changed unsigned int to uintptr_t
 	const uintptr_t bytesNeededForAlignment = FRAME_ALLOC_ALIGNMENT - ((uintptr_t)frameData->frameMemory & (FRAME_ALLOC_ALIGNMENT - 1));

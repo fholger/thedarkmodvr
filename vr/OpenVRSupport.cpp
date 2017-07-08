@@ -4,6 +4,8 @@
 #include "../renderer/Image.h"
 #include "../renderer/tr_local.h"
 
+idCVar vr_enable( "vr_enable", "0", CVAR_RENDERER | CVAR_BOOL, "enable OpenVR support" );
+
 class OpenVrSupport : public VrSupport {
 public:
 	OpenVrSupport();
@@ -60,6 +62,10 @@ OpenVrSupport::~OpenVrSupport()
 
 void OpenVrSupport::Init()
 {
+	if (!vr_enable.GetBool()) {
+		return;
+	}
+
 	common->Printf( "Initializing OpenVR support...\n" );
 	if (!vr::VR_IsHmdPresent())
 	{
