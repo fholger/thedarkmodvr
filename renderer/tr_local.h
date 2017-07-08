@@ -23,6 +23,7 @@
 #include "Image.h"
 #include "MegaTexture.h"
 #include "Framebuffer.h"
+#include <atomic>
 
 #define RENDERTOOLS_SKIP_ID			-1 // DARKMOD_LG_VIEWID
 #define TR_SCREEN_VIEW_ID			 0 // viewIDs of 0 and above are those drawn on sreen. Negative numbers are for special 
@@ -529,14 +530,11 @@ typedef struct frameMemoryBlock_s {
 // all of the information needed by the back end must be
 // contained in a frameData_t.  This entire structure is
 // duplicated so the front and back end can run in parallel
-// on an SMP machine (OBSOLETE: this capability has been removed)
+// on an SMP machine
 typedef struct {
-	// one or more blocks of memory for all frame
-	// temporary allocations
-	frameMemoryBlock_t	*memory;
-
-	// alloc will point somewhere into the memory chain
-	frameMemoryBlock_t	*alloc;
+	std::atomic<int>	frameMemoryAllocated;
+	std::atomic<int>	frameMemoryUsed;
+	byte*				frameMemory;
 
 	srfTriangles_t *	firstDeferredFreeTriSurf;
 	srfTriangles_t *	lastDeferredFreeTriSurf;

@@ -32,7 +32,13 @@ static bool versioned = RegisterVersionedFile("$Id: tr_main.cpp 5171 2012-01-07 
 #endif
 
 //====================================================================
+static const unsigned int NUM_FRAME_DATA = 2;
+static const unsigned int FRAME_ALLOC_ALIGNMENT = 128;
+static const unsigned int MAX_FRAME_MEMORY = 64 * 1024 * 1024;	// larger so that we can noclip on PC for dev purposes
 
+frameData_t		smpFrameData[NUM_FRAME_DATA];
+frameData_t* 	frameData;
+unsigned int	smpFrame;
 /*
 ======================
 idScreenRect::Clear
@@ -181,22 +187,23 @@ void R_ToggleSmpFrame( void ) {
 	}
 	R_FreeDeferredTriSurfs( frameData );
 
-	// clear frame-temporary data
-	frameData_t		*frame;
-	frameMemoryBlock_t	*block;
-
 	// update the highwater mark
-	R_CountFrameData();
-
-	frame = frameData;
-
-	// reset the memory allocation to the first block
-	frame->alloc = frame->memory;
-
-	// clear all the blocks
-	for ( block = frame->memory ; block ; block = block->next ) {
-		block->used = 0;
+	if (frameData->frameMemoryAllocated > frameData->memoryHighwater) {
+		frameData->memoryHighwater = frameData->frameMemoryAllocated;
 	}
+
+	// switch to the next frame
+	smpFrame++;
+	frameData = &smpFrameData[smpFrame % NUM_FRAME_DATA];
+
+	// reset the memory allocation
+
+	// RB: 64 bit fixes, changed unsigned int to uintptr_t
+	const uintptr_t bytesNeededForAlignment = FRAME_ALLOC_ALIGNMENT - ((uintptr_t)frameData->frameMemory & (FRAME_ALLOC_ALIGNMENT - 1));
+	// RB end
+
+	frameData->frameMemoryAllocated = bytesNeededForAlignment;
+	frameData->frameMemoryUsed = 0;
 
 	R_ClearCommandChain();
 }
@@ -212,24 +219,12 @@ R_ShutdownFrameData
 =====================
 */
 void R_ShutdownFrameData( void ) {
-	frameData_t *frame;
-	frameMemoryBlock_t *block;
-
-	// free any current data
-	frame = frameData;
-	if ( !frame ) {
-		return;
-	}
-
-	R_FreeDeferredTriSurfs( frame );
-
-	frameMemoryBlock_t *nextBlock;
-	for ( block = frame->memory ; block ; block = nextBlock ) {
-		nextBlock = block->next;
-		Mem_Free( block );
-	}
-	Mem_Free( frame );
+	R_FreeDeferredTriSurfs( frameData );
 	frameData = NULL;
+	for (int i = 0; i < NUM_FRAME_DATA; i++) {
+		Mem_Free16( smpFrameData[i].frameMemory );
+		smpFrameData[i].frameMemory = NULL;
+	}
 }
 
 /*
@@ -238,53 +233,16 @@ R_InitFrameData
 =====================
 */
 void R_InitFrameData( void ) {
-	int size;
-	frameData_t *frame;
-	frameMemoryBlock_t *block;
-
 	R_ShutdownFrameData();
 
-	frameData = (frameData_t *)Mem_ClearedAlloc( sizeof( *frameData ));
-	frame = frameData;
-	size = MEMORY_BLOCK_SIZE;
-	block = (frameMemoryBlock_t *)Mem_Alloc( size + sizeof( *block ) );
-	if ( !block ) {
-		common->FatalError( "R_InitFrameData: Mem_Alloc() failed" );
+	for (int i = 0; i < NUM_FRAME_DATA; i++) {
+		smpFrameData[i].frameMemory = (byte*)Mem_Alloc16( MAX_FRAME_MEMORY );
 	}
-	block->size = size;
-	block->used = 0;
-	block->next = NULL;
-	frame->memory = block;
-	frame->memoryHighwater = 0;
+
+	// must be set before calling R_ToggleSmpFrame()
+	frameData = &smpFrameData[0];
 
 	R_ToggleSmpFrame();
-}
-
-/*
-================
-R_CountFrameData
-================
-*/
-int R_CountFrameData( void ) {
-	frameData_t		*frame;
-	frameMemoryBlock_t	*block;
-	int				count;
-
-	count = 0;
-	frame = frameData;
-	for ( block = frame->memory ; block ; block=block->next ) {
-		count += block->used;
-		if ( block == frame->alloc ) {
-			break;
-		}
-	}
-
-	// note if this is a new highwater mark
-	if ( count > frame->memoryHighwater ) {
-		frame->memoryHighwater = count;
-	}
-
-	return count;
 }
 
 /*
@@ -357,50 +315,17 @@ Should part of this be inlined in a macro?
 ================
 */
 void *R_FrameAlloc( int bytes ) {
-	frameData_t		*frame;
-	frameMemoryBlock_t	*block;
-	void			*buf;
-    
-	bytes = (bytes+16)&~15;
-	// see if it can be satisfied in the current block
-	frame = frameData;
-	block = frame->alloc;
+	bytes = (bytes + FRAME_ALLOC_ALIGNMENT - 1) & ~(FRAME_ALLOC_ALIGNMENT - 1);
 
-	if ( block->size - block->used >= bytes ) {
-		buf = block->base + block->used;
-		block->used += bytes;
-		return buf;
+	// thread safe add
+	int	end = frameData->frameMemoryAllocated += bytes;
+	if (end > MAX_FRAME_MEMORY) {
+		idLib::Error( "R_FrameAlloc ran out of memory. bytes = %d, end = %d, highWaterAllocated = %d\n", bytes, end, frameData->memoryHighwater );
 	}
 
-	// advance to the next memory block if available
-	block = block->next;
-	// create a new block if we are at the end of
-	// the chain
-	if ( !block ) {
-		int		size;
+	byte* ptr = frameData->frameMemory + end - bytes;
 
-		size = MEMORY_BLOCK_SIZE;
-		block = (frameMemoryBlock_t *)Mem_Alloc( size + sizeof( *block ) );
-		if ( !block ) {
-			common->FatalError( "R_FrameAlloc: Mem_Alloc() failed" );
-		}
-		block->size = size;
-		block->used = 0;
-		block->next = NULL;
-		frame->alloc->next = block;
-	}
-
-	// we could fix this if we needed to...
-	if ( bytes > block->size ) {
-		common->FatalError( "R_FrameAlloc of %i exceeded MEMORY_BLOCK_SIZE",
-			bytes );
-	}
-
-	frame->alloc = block;
-
-	block->used = bytes;
-
-	return block->base;
+	return ptr;
 }
 
 /*

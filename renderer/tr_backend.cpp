@@ -25,7 +25,6 @@ static bool versioned = RegisterVersionedFile("$Id: tr_backend.cpp 6656 2016-10-
 #include "tr_local.h"
 
 
-frameData_t		*frameData;
 backEndState_t	backEnd;
 
 
