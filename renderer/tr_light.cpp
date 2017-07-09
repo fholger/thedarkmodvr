@@ -18,10 +18,13 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
+#include <set>
+#include <unordered_set>
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: tr_light.cpp 6674 2016-11-16 13:07:45Z duzenko $");
 
+#include <tbb/parallel_for_each.h>
 #include "tr_local.h"
 #include "Model_local.h" // Added in #3878 (soft particles) to allow r_AddAmbientDrawSurfs to access info about particles to 
 						 // pass to the backend without bloating the modelSurface_t struct used everywhere. That struct is the only
@@ -1470,6 +1473,7 @@ void R_AddModelSurfaces( void ) {
 
 	// go through each entity that is either visible to the view, or to
 	// any light that intersects the view (for shadows)
+	std::unordered_set<idInteraction*> activeInteractions;
 	for ( vEntity = tr.viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 
 		if ( r_useEntityScissors.GetBool() ) {
@@ -1545,7 +1549,8 @@ void R_AddModelSurfaces( void ) {
 					if ( inter->lightDef->viewCount != tr.viewCount ) {
 						continue;
 					}
-					inter->AddActiveInteraction();
+					activeInteractions.insert( inter );
+					//inter->AddActiveInteraction();
 				}
 			}
 		} else {
@@ -1560,7 +1565,8 @@ void R_AddModelSurfaces( void ) {
 				if ( inter->lightDef->viewCount != tr.viewCount ) {
 					continue;
 				}
-				inter->AddActiveInteraction();
+				activeInteractions.insert( inter );
+				//inter->AddActiveInteraction();
 			}
 		}
 
@@ -1569,6 +1575,11 @@ void R_AddModelSurfaces( void ) {
 			tr.viewDef->renderView.time = oldTime;
 		}
 
+	}
+
+	tbb::parallel_for_each( activeInteractions, []( idInteraction* inter ) { inter->CalcShadowScissor(); } );
+	for (idInteraction* active : activeInteractions) {
+		active->AddActiveInteraction();
 	}
 }
 

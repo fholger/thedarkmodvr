@@ -133,6 +133,7 @@ public:
 	// will be used to determine when we need to start purging old interactions
 	int						MemoryUsed( void );
 
+	void					CalcShadowScissor( void );
 	// makes sure all necessary light surfaces and shadow surfaces are created, and
 	// calls R_LinkLightSurf() for each one
 	void					AddActiveInteraction( void );
@@ -148,6 +149,7 @@ private:
 	areaNumRef_t *			frustumAreas;			// numbers of the areas the frustum touches
 
 	int						dynamicModelFrameCount;	// so we can tell if a callback model animated
+	idScreenRect			shadowScissor;
 
 private:
 	// actually create the interaction
