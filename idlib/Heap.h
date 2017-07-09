@@ -25,6 +25,10 @@
 #include <cstdlib>
 #include <cstddef> // for NULL
 
+#include <tbb/spin_mutex.h>
+#include <tbb/atomic.h>
+#include <ppltasks.h>
+
 /*
 ===============================================================================
 
@@ -162,19 +166,26 @@ public:
 	int						GetFreeCount( void ) const { return total - active; }
 
 private:
-	typedef struct element_s {
-		struct element_s *	next;
-		type				t;
-	} element_t;
+	static const int		BLOCK_ALIGNMENT = 16;
+
+	void					AllocNewBlock();
+
+	tbb::spin_mutex			blockAllocMutex;
+
+	union element_t {
+		type*				data;
+		element_t*			next;
+		byte				buffer[(max( sizeof( type ), sizeof( element_t* ) ) + BLOCK_ALIGNMENT - 1) & ~(BLOCK_ALIGNMENT - 1)];
+	};
 	typedef struct block_s {
 		element_t			elements[blockSize];
 		struct block_s *	next;
 	} block_t;
 
 	block_t *				blocks;
-	element_t *				free;
+	tbb::atomic<element_t*> free;
 	int						total;
-	int						active;
+	tbb::atomic<int>		active;
 };
 
 template<class type, int blockSize>
@@ -190,32 +201,62 @@ idBlockAlloc<type,blockSize>::~idBlockAlloc( void ) {
 }
 
 template<class type, int blockSize>
-type *idBlockAlloc<type,blockSize>::Alloc( void ) {
-	return new type;
-	if ( !free ) {
-		block_t *block = new block_t;
-		block->next = blocks;
-		blocks = block;
-		for ( int i = 0; i < blockSize; i++ ) {
-			block->elements[i].next = free;
-			free = &block->elements[i];
+type *idBlockAlloc<type, blockSize>::Alloc( void ) {
+	while (true) {
+		element_t *curFree = free;
+		if (curFree == nullptr) {
+			AllocNewBlock();
+			continue;
 		}
-		total += blockSize;
+		element_t *element = curFree;
+
+		if (free.compare_and_swap(curFree->next, curFree) != curFree) {
+			continue;
+		}
+		active++;
+
+		element->next = nullptr;
+		type *t = (type*)element->buffer;
+		new (t)type;
+		return t;
 	}
-	active++;
-	element_t *element = free;
-	free = free->next;
-	element->next = NULL;
-	return &element->t;
 }
 
 template<class type, int blockSize>
-void idBlockAlloc<type,blockSize>::Free( type *t ) {
-	delete t; return;
-	element_t *element = (element_t *)( ( (unsigned char *) t ) - ( (int) &((element_t *)0)->t ) );
-	element->next = free;
-	free = element;
-	active--;
+void idBlockAlloc<type, blockSize>::Free( type *t ) {
+	if (t == nullptr) {
+		return;
+	}
+
+	t->~type();
+
+	element_t *element = (element_t*)t;
+	while (true) {
+		element_t *curFree = free;
+		element->next = curFree;
+		if (free.compare_and_swap(element, curFree) == curFree) {
+			break;
+		}
+	}
+	--active;
+}
+
+template <class type, int blockSize>
+void idBlockAlloc<type, blockSize>::AllocNewBlock() {
+	tbb::spin_mutex::scoped_lock lock( blockAllocMutex );
+	if (free != nullptr) {
+		return;
+	}
+	block_t *block = (block_t*)Mem_Alloc16( sizeof( block_t ) );
+	block->next = blocks;
+	blocks = block;
+	block->elements[0].next = free;
+	for (int i = 1; i < blockSize; ++i) {
+		block->elements[i].next = &block->elements[i - 1];
+		assert( (((uintptr_t)&block->elements[i]) & (BLOCK_ALIGNMENT - 1) ) == 0 );
+	}
+	total += blockSize;
+	free = &block->elements[blockSize - 1];
 }
 
 template<class type, int blockSize>
@@ -223,7 +264,7 @@ void idBlockAlloc<type,blockSize>::Shutdown( void ) {
 	while( blocks ) {
 		block_t *block = blocks;
 		blocks = blocks->next;
-		delete block;
+		Mem_Free16( block );
 	}
 	blocks = NULL;
 	free = NULL;

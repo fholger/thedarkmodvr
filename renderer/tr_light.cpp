@@ -1577,8 +1577,9 @@ void R_AddModelSurfaces( void ) {
 
 	}
 
-	tbb::parallel_for_each( activeInteractions, []( idInteraction* inter ) { inter->CalcShadowScissor(); } );
+	//tbb::parallel_for_each( activeInteractions, []( idInteraction* inter ) { inter->CalcShadowScissor(); } );
 	for (idInteraction* active : activeInteractions) {
+		active->CalcShadowScissor();
 		active->AddActiveInteraction();
 	}
 }
