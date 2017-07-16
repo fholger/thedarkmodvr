@@ -214,11 +214,13 @@ void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef ) {
 	eyeView.viewaxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
 	eyeView.vieworg -= eyeView.hmdOrigin * eyeView.viewaxis;
 
+	eye = eyeView.viewEyeBuffer = -eye;
 	eyeView.vieworg += hmdOrigin * eyeView.viewaxis;
 	eyeView.viewaxis = hmdAxis * eyeView.viewaxis;
 	eyeView.vieworg -= eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
 
 	// we need to also adapt the model view matrix of all objects to be rendered
+	SetupProjectionMatrix( viewDef );
 	R_SetViewMatrix( viewDef );
 	for (viewEntity_t * vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next) {
 		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
