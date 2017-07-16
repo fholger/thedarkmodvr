@@ -107,6 +107,9 @@ public:
 
 	virtual int			GetSaveGameVersion( void );
 
+	virtual void		FireGameTics();
+	virtual void		WaitForGameTicCompletion();
+
 	virtual const char *GetCurrentMapName();
 
 	//=====================================
@@ -203,6 +206,7 @@ public:
 	int					latchedTicNumber;	// set to com_ticNumber each frame
 	int					lastGameTic;		// while latchedTicNumber > lastGameTic, run game frames
 	int					lastDemoTic;
+	int					gameTicsToRun;
 	bool				syncNextGameFrame;
 
 
@@ -249,6 +253,8 @@ public:
 #if ID_CONSOLE_LOCK
 	int					emptyDrawCount;				// watchdog to force the main menu to restart
 #endif
+
+	tbb::task *			backgroundGameTics;
 
 	//=====================================
 	void				Clear();

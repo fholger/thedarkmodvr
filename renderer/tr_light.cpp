@@ -1549,8 +1549,8 @@ void R_AddModelSurfaces( void ) {
 					if ( inter->lightDef->viewCount != tr.viewCount ) {
 						continue;
 					}
-					activeInteractions.insert( inter );
-					//inter->AddActiveInteraction();
+					//activeInteractions.insert( inter );
+					inter->AddActiveInteraction();
 				}
 			}
 		} else {
@@ -1565,8 +1565,8 @@ void R_AddModelSurfaces( void ) {
 				if ( inter->lightDef->viewCount != tr.viewCount ) {
 					continue;
 				}
-				activeInteractions.insert( inter );
-				//inter->AddActiveInteraction();
+				//activeInteractions.insert( inter );
+				inter->AddActiveInteraction();
 			}
 		}
 
@@ -1578,10 +1578,10 @@ void R_AddModelSurfaces( void ) {
 	}
 
 	//tbb::parallel_for_each( activeInteractions, []( idInteraction* inter ) { inter->CalcShadowScissor(); } );
-	for (idInteraction* active : activeInteractions) {
+	/*for (idInteraction* active : activeInteractions) {
 		active->CalcShadowScissor();
 		active->AddActiveInteraction();
-	}
+	}*/
 }
 
 /*

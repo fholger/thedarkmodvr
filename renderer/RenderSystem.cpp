@@ -723,14 +723,10 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	cmd = (emptyCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
 	cmd->commandId = RC_SWAP_BUFFERS;
 
-	// duzenko #4408 - allow background game tic
-	Sys_LeaveCriticalSection(CRITICAL_SECTION_TWO);
-
 	// start the back end up again with the new command list
+	session->FireGameTics();
 	R_IssueRenderCommands();
-
-	// duzenko #4408 - wait/forbid background game tic
-	Sys_EnterCriticalSection(CRITICAL_SECTION_TWO);
+	session->WaitForGameTicCompletion();
 
 	// use the other buffers next frame, because another CPU
 	// may still be rendering into the current buffers
