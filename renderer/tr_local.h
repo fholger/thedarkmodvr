@@ -1145,6 +1145,9 @@ void		GLimp_DeactivateContext( void );
 
 void		GLimp_EnableLogging( bool enable );
 
+void		GLimp_ActivateFrontendContext();
+void		GLimp_DeactivateFrontendContext();
+
 
 /*
 ====================================================================

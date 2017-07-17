@@ -64,8 +64,8 @@ void idVertexCache::ActuallyFree( vertCache_t *block ) {
 		if ( block->vbo ) {
 #if 0		// this isn't really necessary, it will be reused soon enough
 			// filling with zero length data is the equivalent of freeing
-			qglBindBufferARB(GL_ARRAY_BUFFER_ARB, block->vbo);
-			qglBufferDataARB(GL_ARRAY_BUFFER_ARB, 0, 0, GL_DYNAMIC_DRAW_ARB);
+			glBindBufferARB(GL_ARRAY_BUFFER_ARB, block->vbo);
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB, 0, 0, GL_DYNAMIC_DRAW_ARB);
 #endif
 		} else if ( block->virtMem ) {
 			Mem_Free( block->virtMem );
@@ -118,9 +118,9 @@ void *idVertexCache::Position( vertCache_t *buffer ) {
 			}
 		}
 		if ( buffer->indexBuffer ) {
-			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, buffer->vbo );
+			glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, buffer->vbo );
 		} else {
-			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, buffer->vbo );
+			glBindBufferARB( GL_ARRAY_BUFFER_ARB, buffer->vbo );
 		}
 		return (void *)buffer->offset;
 	}
@@ -130,7 +130,7 @@ void *idVertexCache::Position( vertCache_t *buffer ) {
 }
 
 void idVertexCache::UnbindIndex() {
-	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+	glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
 }
 
 
@@ -164,7 +164,9 @@ void idVertexCache::Init() {
 	staticHeaders.next = staticHeaders.prev = &staticHeaders;
 	freeDynamicHeaders.next = freeDynamicHeaders.prev = &freeDynamicHeaders;
 	dynamicHeaders.next = dynamicHeaders.prev = &dynamicHeaders;
+	dynamicHeadersLastFrame.next = dynamicHeadersLastFrame.prev = &dynamicHeadersLastFrame;
 	deferredFreeList.next = deferredFreeList.prev = &deferredFreeList;
+	deferredFreeListLastFrame.next = deferredFreeListLastFrame.prev = &deferredFreeListLastFrame;
 
 	// set up the dynamic frame memory
 	staticAllocTotal = 0;
@@ -233,7 +235,7 @@ void idVertexCache::Alloc( void *data, int size, vertCache_t **buffer, bool inde
 			block->prev->next = block;
 
 			if( !virtualMemory ) {
-				qglGenBuffersARB( 1, & block->vbo );
+				glGenBuffersARB( 1, & block->vbo );
 			}
 		}
 	}
@@ -271,14 +273,14 @@ void idVertexCache::Alloc( void *data, int size, vertCache_t **buffer, bool inde
 	// copy the data
 	if ( block->vbo ) {
 		if ( indexBuffer ) {
-			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, block->vbo );
-			qglBufferDataARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
+			glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, block->vbo );
+			glBufferDataARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
 		} else {
-			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
+			glBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
 			if ( allocatingTempBuffer ) {
-				qglBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STREAM_DRAW_ARB );
+				glBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STREAM_DRAW_ARB );
 			} else {
-				qglBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
+				glBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
 			}
 		}
 	} else {
@@ -409,8 +411,8 @@ vertCache_t	*idVertexCache::AllocFrameTemp( void *data, int size ) {
 	block->vbo = tempBuffers[listNum]->vbo;
 
 	if ( block->vbo ) {
-		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
-		qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, block->offset, (GLsizeiptrARB)size, data );
+		glBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
+		glBufferSubDataARB( GL_ARRAY_BUFFER_ARB, block->offset, (GLsizeiptrARB)size, data );
 	} else {
 		SIMDProcessor->Memcpy( (byte *)block->virtMem + block->offset, data, size );
 	}
@@ -456,8 +458,8 @@ void idVertexCache::EndFrame() {
 	if( !virtualMemory ) {
 		// unbind vertex buffers so normal virtual memory will be used in case
 		// r_useVertexBuffers / r_useIndexBuffers
-		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
-		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+		glBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+		glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
 	}
 
 
@@ -469,19 +471,37 @@ void idVertexCache::EndFrame() {
 	dynamicCountThisFrame = 0;
 	tempOverflow = false;
 
-	// free all the deferred free headers
-	while( deferredFreeList.next != &deferredFreeList ) {
-		ActuallyFree( deferredFreeList.next );
+	// free all the deferred free headers from last frame
+	while( deferredFreeListLastFrame.next != &deferredFreeListLastFrame ) {
+		ActuallyFree( deferredFreeListLastFrame.next );
+	}
+	// move deferred free headers from this frame to last frame
+	vertCache_t *defFree = deferredFreeList.next;
+	if (defFree != &deferredFreeList) {
+		defFree->prev = &deferredFreeListLastFrame;
+		deferredFreeList.prev->next = deferredFreeListLastFrame.next;
+		deferredFreeListLastFrame.next->prev = deferredFreeList.prev;
+		deferredFreeListLastFrame.next = defFree;
+		deferredFreeList.next = deferredFreeList.prev = &deferredFreeList;
 	}
 
-	// free all the frame temp headers
-	vertCache_t	*block = dynamicHeaders.next;
-	if ( block != &dynamicHeaders ) {
+	// free all the frame temp headers from last frame
+	vertCache_t	*block = dynamicHeadersLastFrame.next;
+	if ( block != &dynamicHeadersLastFrame ) {
 		block->prev = &freeDynamicHeaders;
-		dynamicHeaders.prev->next = freeDynamicHeaders.next;
-		freeDynamicHeaders.next->prev = dynamicHeaders.prev;
+		dynamicHeadersLastFrame.prev->next = freeDynamicHeaders.next;
+		freeDynamicHeaders.next->prev = dynamicHeadersLastFrame.prev;
 		freeDynamicHeaders.next = block;
 
+		dynamicHeadersLastFrame.next = dynamicHeadersLastFrame.prev = &dynamicHeadersLastFrame;
+	}
+	// move frame temp headers from this frame to the last
+	block = dynamicHeaders.next;
+	if (block != &dynamicHeaders) {
+		block->prev = &dynamicHeadersLastFrame;
+		dynamicHeaders.prev->next = dynamicHeadersLastFrame.next;
+		dynamicHeadersLastFrame.next->prev = dynamicHeaders.prev;
+		dynamicHeadersLastFrame.next = block;
 		dynamicHeaders.next = dynamicHeaders.prev = &dynamicHeaders;
 	}
 }

@@ -19,6 +19,8 @@
 
 #ifndef __SESSIONLOCAL_H__
 #define __SESSIONLOCAL_H__
+#include <thread>
+#include <condition_variable>
 
 /*
 
@@ -254,7 +256,14 @@ public:
 	int					emptyDrawCount;				// watchdog to force the main menu to restart
 #endif
 
-	tbb::task *			backgroundGameTics;
+	std::thread			frontendThread;
+	std::condition_variable signalFrontendThread;
+	std::condition_variable signalMainThread;
+	std::mutex			signalMutex;
+	volatile bool		frontendActive;
+	volatile bool		shutdownFrontend;
+
+	void				FrontendThreadFunction();
 
 	//=====================================
 	void				Clear();

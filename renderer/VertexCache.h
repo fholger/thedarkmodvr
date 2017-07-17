@@ -126,7 +126,9 @@ private:
 	vertCache_t		freeStaticHeaders;		// head of doubly linked list
 	vertCache_t		freeDynamicHeaders;		// head of doubly linked list
 	vertCache_t		dynamicHeaders;			// head of doubly linked list
+	vertCache_t		dynamicHeadersLastFrame;
 	vertCache_t		deferredFreeList;		// head of doubly linked list
+	vertCache_t		deferredFreeListLastFrame;
 	vertCache_t		staticHeaders;			// head of doubly linked list in MRU order,
 											// staticHeaders.next is most recently used
 };

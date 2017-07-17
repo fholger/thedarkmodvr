@@ -361,9 +361,14 @@ idSessionLocal::Shutdown
 void idSessionLocal::Shutdown() {
 	int i;
 
-	backgroundGameTics->wait_for_all();
-	backgroundGameTics->destroy( *backgroundGameTics );
-	backgroundGameTics = nullptr;
+	if (frontendThread.joinable()) {
+		{  // lock scope
+			std::lock_guard<std::mutex> lock( signalMutex );
+			shutdownFrontend = true;
+			signalFrontendThread.notify_one();
+		}
+		frontendThread.join();
+	}
 
 	if ( aviCaptureMode ) {
 		EndAVICapture();
@@ -2855,33 +2860,57 @@ void idSessionLocal::RunGameTic() {
 
 /*
 ===============
+idSessionLocal::FrontendThreadFunction
+
+Runs game tics and draw call creation in a background thread.
+===============
+*/
+void idSessionLocal::FrontendThreadFunction() {
+	GLimp_ActivateFrontendContext();  // needs its own context to fill buffers
+	glewInit();
+
+	while (true) {
+		{ // lock scope
+			std::unique_lock<std::mutex> lock( signalMutex );
+			while (!frontendActive && !shutdownFrontend) {
+				signalFrontendThread.wait( lock );
+			}
+			if (shutdownFrontend) {
+				return;
+			}
+		}
+
+		// run game tics
+		for (int i = 0; i < gameTicsToRun; ++i) {
+			RunGameTic();
+			if (!mapSpawned || syncNextGameFrame) {
+				break;
+			}
+		}
+		// render next frame
+		Draw();
+
+		{ // lock scope
+			std::unique_lock<std::mutex> lock( signalMutex );
+			frontendActive = false;
+			signalMainThread.notify_one();
+		}
+	}
+}
+
+/*
+===============
 idSessionLocal::fireGameTics
 
 Called before the rendering backend starts working.
 Runs game tics as a task in the background.
 ===============
 */
-class GameTicTask : public tbb::task {
-	int numGameTics;
-public:
-	GameTicTask(int tics) : numGameTics(tics) {}
-
-	task* execute() override {
-		for (int i = 0; i < numGameTics; ++i) {
-			sessLocal.RunGameTic();
-			if (!sessLocal.mapSpawned || sessLocal.syncNextGameFrame) {
-				break;
-			}
-		}
-		//sessLocal.Draw();
-		return nullptr;
-	}
-};
 void idSessionLocal::FireGameTics() {
-	Draw();
-	tbb::task& ticTask = *new(backgroundGameTics->allocate_child()) GameTicTask( gameTicsToRun );
-	backgroundGameTics->set_ref_count( 2 );  // root + child
-	backgroundGameTics->spawn( ticTask );
+	//Draw();
+	std::unique_lock<std::mutex> lock( signalMutex );
+	frontendActive = true;
+	signalFrontendThread.notify_one();
 }
 
 /*
@@ -2893,8 +2922,10 @@ Waits for the game tics task to complete.
 ===============
 */
 void idSessionLocal::WaitForGameTicCompletion() {
-	backgroundGameTics->wait_for_all();
-	backgroundGameTics->set_ref_count( 1 );
+	std::unique_lock<std::mutex> lock( signalMutex );
+	while (frontendActive) {
+		signalMainThread.wait( lock );
+	}
 }
 
 /*
@@ -2970,8 +3001,8 @@ void idSessionLocal::Init() {
 	guiActive = NULL;
 	guiHandle = NULL;
 
-	backgroundGameTics = new(tbb::task::allocate_root()) tbb::empty_task;
-	backgroundGameTics->set_ref_count( 1 );
+	frontendActive = shutdownFrontend = false;
+	frontendThread = std::thread( &idSessionLocal::FrontendThreadFunction, this );
 
 	common->Printf( "session initialized\n" );
 	common->Printf( "--------------------------------------\n" );
