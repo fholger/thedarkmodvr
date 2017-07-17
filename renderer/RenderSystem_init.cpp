@@ -306,7 +306,7 @@ PFNGLPROGRAMLOCALPARAMETER4FVARBPROC	qglProgramLocalParameter4fvARB;
 PFNGLDEPTHBOUNDSEXTPROC                 qglDepthBoundsEXT;
 
 // mipmaps
-PFNGLGENERATEMIPMAPPROC              glGenerateMipmap;
+//PFNGLGENERATEMIPMAPPROC              glGenerateMipmap;
 
 /*
 =================

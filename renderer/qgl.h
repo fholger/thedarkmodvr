@@ -141,7 +141,7 @@ extern PFNGLPROGRAMLOCALPARAMETER4FVARBPROC	qglProgramLocalParameter4fvARB;
 extern PFNGLDEPTHBOUNDSEXTPROC              qglDepthBoundsEXT;
 
 // mipmaps
-extern PFNGLGENERATEMIPMAPPROC              glGenerateMipmap;
+//extern PFNGLGENERATEMIPMAPPROC              glGenerateMipmap;
 
 //===========================================================================
 

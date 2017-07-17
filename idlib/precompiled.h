@@ -133,6 +133,7 @@ const int MAX_EXPRESSION_REGISTERS = 4096;
 
 // renderer
 #include <GL/glew.h>
+GLEWContext* glewGetContext();
 #include "../renderer/qgl.h"
 #include "../renderer/Cinematic.h"
 #include "../renderer/Material.h"

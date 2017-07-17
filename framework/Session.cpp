@@ -2575,7 +2575,7 @@ void idSessionLocal::UpdateScreen( bool outOfSequence ) {
 	renderSystem->BeginFrame( renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight() );
 
 	if (mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0) {
-		game->DrawLightgem( GetLocalClientNum() );
+		//game->DrawLightgem( GetLocalClientNum() );
 	}
 
 	// draw everything
@@ -2867,7 +2867,7 @@ Runs game tics and draw call creation in a background thread.
 */
 void idSessionLocal::FrontendThreadFunction() {
 	GLimp_ActivateFrontendContext();  // needs its own context to fill buffers
-	glewInit();
+	GLimp_InitGlewContext();
 
 	while (true) {
 		{ // lock scope
@@ -2880,6 +2880,8 @@ void idSessionLocal::FrontendThreadFunction() {
 			}
 		}
 
+		// render next frame
+		Draw();
 		// run game tics
 		for (int i = 0; i < gameTicsToRun; ++i) {
 			RunGameTic();
@@ -2887,8 +2889,6 @@ void idSessionLocal::FrontendThreadFunction() {
 				break;
 			}
 		}
-		// render next frame
-		Draw();
 
 		{ // lock scope
 			std::unique_lock<std::mutex> lock( signalMutex );

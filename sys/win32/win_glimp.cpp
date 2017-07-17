@@ -32,6 +32,7 @@
 ** related functions that are relevant ONLY to win_glimp.c
 */
 #include "precompiled_engine.h"
+#include <boost/thread.hpp>
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: win_glimp.cpp 6632 2016-10-07 04:07:07Z nbohr1more $");
@@ -266,12 +267,6 @@ static void GLW_GetWGLExtensionsWithFakeWindow( void ) {
 		wglMakeCurrent( hDC, gRC );
 		GLW_CheckWGLExtensions( hDC );
 
-		// initialize GLEW extensions (primarily needed for framebuffer objects)
-		GLenum err = glewInit();
-		if (err != GLEW_OK) {
-			common->FatalError( "GLimp_Init: Could not initialize GLEW extensions - %s", glewGetErrorString( err ) );
-		}
-
 		wglDeleteContext( gRC );
 		ReleaseDC( hWnd, hDC );
 
@@ -440,7 +435,7 @@ static bool GLW_InitDriver( glimpParms_t parms ) {
 		return false;
 	}
 	common->Printf( "succeeded\n" );
-	glewInit();
+	GLimp_InitGlewContext();
 	return true;
 }
 
@@ -1212,4 +1207,17 @@ void GLimp_ActivateFrontendContext() {
 
 void GLimp_DeactivateFrontendContext() {
 	qwglMakeCurrent( NULL, NULL );
+}
+
+boost::thread_specific_ptr<GLEWContext> glewContext;
+GLEWContext* glewGetContext() {
+	return glewContext.get();
+}
+
+void GLimp_InitGlewContext() {
+	glewContext.reset( new GLEWContext );
+	GLenum err = glewInit();
+	if (err != GLEW_OK) {
+		common->FatalError( "GLimp_Init: Could not initialize GLEW extensions - %s", glewGetErrorString( err ) );
+	}
 }
