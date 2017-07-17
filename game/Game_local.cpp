@@ -3655,24 +3655,28 @@ bool idGameLocal::Draw( int clientNum )
 		return false;
 	}
 
-	// Make the rendershot appear on the hud
-	// duzenko #4408 - moved this half from game tic
-	if (cv_lg_hud.GetInteger() == 0)
-	{
-		player->ProcessLightgem(true);
-	}
-
 	// render the scene
 	player->playerView.RenderPlayerView(player->hud);
 
 	// Make the rendershot appear on the hud
-	if (cv_lg_hud.GetInteger() != 0)
+	/*if (cv_lg_hud.GetInteger() != 0)
 	{
 		player->ProcessLightgem(true);
-	}
+	}*/
 
 	m_DoLightgem = true;
 	return true;
+}
+
+void idGameLocal::DrawLightgem( int clientNum ) {
+	idPlayer *player = static_cast<idPlayer *>(entities[clientNum]);
+	if (!player) {
+		return;
+	}
+
+	if (cv_lg_hud.GetInteger() == 0) {
+		player->ProcessLightgem( true );
+	}
 }
 
 /*

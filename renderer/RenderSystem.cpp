@@ -121,9 +121,10 @@ R_IssueRenderCommands
 Called by R_EndFrame each frame
 ====================
 */
-static void R_IssueRenderCommands( void ) {
-	if ( frameData->cmdHead->commandId == RC_NOP
-		&& !frameData->cmdHead->next ) {
+static void R_IssueRenderCommands( frameData_t *frameData ) {
+	emptyCommand_t *cmds = frameData->cmdHead;
+	if ( cmds->commandId == RC_NOP
+		&& !cmds->next ) {
 		// nothing to issue
 		return;
 	}
@@ -137,10 +138,10 @@ static void R_IssueRenderCommands( void ) {
 	// r_skipRender is usually more usefull, because it will still
 	// draw 2D graphics
 	if ( !r_skipBackEnd.GetBool() ) {
-		RB_ExecuteBackEndCommands( frameData->cmdHead );
+		RB_ExecuteBackEndCommands( cmds );
 	}
 
-	R_ClearCommandChain();
+	R_ClearCommandChain( frameData );
 }
 
 /*
@@ -172,7 +173,7 @@ Called after every buffer submission
 and by R_ToggleSmpFrame
 ====================
 */
-void R_ClearCommandChain( void ) {
+void R_ClearCommandChain( frameData_t *frameData ) {
 	// clear the command chain
 	frameData->cmdHead = frameData->cmdTail = (emptyCommand_t *)R_FrameAlloc( sizeof( *frameData->cmdHead ) );
 	frameData->cmdHead->commandId = RC_NOP;
@@ -681,6 +682,10 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 	} else {
 		cmd->buffer = (int)GL_BACK;
 	}
+
+	if (vrSupport->IsInitialized()) {
+		vrSupport->FrameStart();
+	}
 }
 
 void idRenderSystemLocal::WriteDemoPics() {
@@ -703,9 +708,15 @@ Returns the number of msec spent in the back end
 void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	emptyCommand_t *cmd;
 
-	if ( !glConfig.isInitialized ) {
+	if (!glConfig.isInitialized) {
 		return;
 	}
+
+	R_IssueRenderCommands( backendFrameData );
+
+	// start the back end up again with the new command list
+	session->FireGameTics();
+	session->WaitForGameTicCompletion();
 
 	// close any gui drawing
 	guiModel->EmitFullScreen();
@@ -715,18 +726,13 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	R_CheckCvars();
 
 #ifdef DEBUG
-    // check for errors
+	// check for errors
 	GL_CheckErrors();
 #endif
 
 	// add the swapbuffers command
 	cmd = (emptyCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
 	cmd->commandId = RC_SWAP_BUFFERS;
-
-	// start the back end up again with the new command list
-	session->FireGameTics();
-	R_IssueRenderCommands();
-	session->WaitForGameTicCompletion();
 
 	// use the other buffers next frame, because another CPU
 	// may still be rendering into the current buffers
@@ -964,7 +970,7 @@ void idRenderSystemLocal::CaptureRenderToFile( const char *fileName, bool fixAlp
 
 	guiModel->EmitFullScreen();
 	guiModel->Clear();
-	R_IssueRenderCommands();
+	R_IssueRenderCommands( frameData );
 
 	qglReadBuffer( GL_BACK );
 
@@ -1010,7 +1016,7 @@ void idRenderSystemLocal::CaptureRenderToBuffer(unsigned char* buffer)
 
 	guiModel->EmitFullScreen();
 	guiModel->Clear();
-	R_IssueRenderCommands();
+	R_IssueRenderCommands( frameData );
 
 	// FIXME: do we need to adapt this?
 	//qglReadBuffer( GL_BACK );

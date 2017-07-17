@@ -548,11 +548,12 @@ typedef struct {
 } frameData_t;
 
 extern	frameData_t	*frameData;
+extern	frameData_t *backendFrameData;
 
 //=======================================================================
 
 void R_LockSurfaceScene( viewDef_t *parms );
-void R_ClearCommandChain( void );
+void R_ClearCommandChain( frameData_t *frameData );
 void R_AddDrawViewCmd( viewDef_t *parms );
 
 void R_ReloadGuis_f( const idCmdArgs &args );

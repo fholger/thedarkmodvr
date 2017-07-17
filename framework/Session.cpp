@@ -2451,10 +2451,6 @@ idSessionLocal::Draw
 void idSessionLocal::Draw() {
 	bool fullConsole = false;
 
-	if (vrSupport->IsInitialized()) {
-		vrSupport->FrameStart();
-	}
-
 	if ( insideExecuteMapChange ) {
 		if ( guiLoading ) {
 			guiLoading->Redraw( com_frameTime );
@@ -2573,8 +2569,12 @@ void idSessionLocal::UpdateScreen( bool outOfSequence ) {
 	
 	renderSystem->BeginFrame( renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight() );
 
+	if (mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0) {
+		game->DrawLightgem( GetLocalClientNum() );
+	}
+
 	// draw everything
-	Draw();
+	//Draw();
 
 	if (com_speeds.GetBool()) {
 		time_backendLast = backEnd.pc.msecLast;
@@ -2873,10 +2873,12 @@ public:
 				break;
 			}
 		}
+		//sessLocal.Draw();
 		return nullptr;
 	}
 };
 void idSessionLocal::FireGameTics() {
+	Draw();
 	tbb::task& ticTask = *new(backgroundGameTics->allocate_child()) GameTicTask( gameTicsToRun );
 	backgroundGameTics->set_ref_count( 2 );  // root + child
 	backgroundGameTics->spawn( ticTask );

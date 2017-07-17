@@ -38,6 +38,7 @@ static const unsigned int MAX_FRAME_MEMORY = 64 * 1024 * 1024;	// larger so that
 
 frameData_t		smpFrameData[NUM_FRAME_DATA];
 frameData_t* 	frameData;
+frameData_t*	backendFrameData;
 unsigned int	smpFrame;
 /*
 ======================
@@ -189,6 +190,7 @@ void R_ToggleSmpFrame( void ) {
 
 	// switch to the next frame
 	smpFrame++;
+	backendFrameData = frameData;
 	frameData = &smpFrameData[smpFrame % NUM_FRAME_DATA];
 
 	// reset the memory allocation
@@ -201,7 +203,7 @@ void R_ToggleSmpFrame( void ) {
 	frameData->frameMemoryAllocated = bytesNeededForAlignment;
 	frameData->frameMemoryUsed = 0;
 
-	R_ClearCommandChain();
+	R_ClearCommandChain( frameData );
 }
 
 
@@ -237,8 +239,10 @@ void R_InitFrameData( void ) {
 
 	// must be set before calling R_ToggleSmpFrame()
 	frameData = &smpFrameData[0];
+	backendFrameData = &smpFrameData[1];
 
 	R_ToggleSmpFrame();
+	R_ClearCommandChain( backendFrameData );
 }
 
 /*

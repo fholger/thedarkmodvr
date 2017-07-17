@@ -430,7 +430,7 @@ void idVertexCache::EndFrame() {
 		int staticUseSize = 0;
 
 		for ( vertCache_t *block = staticHeaders.next ; block != &staticHeaders ; block = block->next ) {
-			if ( block->frameUsed == currentFrame ) {
+			if ( block->frameUsed == currentFrame) {
 				staticUseCount++;
 				staticUseSize += block->size;
 			}
