@@ -2578,9 +2578,6 @@ void idSessionLocal::UpdateScreen( bool outOfSequence ) {
 		game->DrawLightgem( GetLocalClientNum() );
 	}
 
-	// draw everything
-	//Draw();
-
 	if (com_speeds.GetBool()) {
 		time_backendLast = backEnd.pc.msecLast;
 		time_frontendLast = tr.pc.frontEndMsecLast;
@@ -2869,16 +2866,22 @@ void idSessionLocal::FrontendThreadFunction() {
 	GLimp_ActivateFrontendContext();  // needs its own context to fill buffers
 	GLimp_InitGlewContext();
 
+	idFile* logFile = fileSystem->OpenFileWrite( "frontend_timings.txt", "fs_savepath", "" );
+
 	while (true) {
+		int beginLoop = Sys_Milliseconds();
 		{ // lock scope - wait for render thread
 			std::unique_lock<std::mutex> lock( signalMutex );
 			while (!frontendActive && !shutdownFrontend) {
 				signalFrontendThread.wait( lock );
 			}
 			if (shutdownFrontend) {
+				logFile->Flush();
+				fileSystem->CloseFile( logFile );
 				return;
 			}
 		}
+		int endWaitForRenderThread = Sys_Milliseconds();
 		// run game tics
 		for (int i = 0; i < gameTicsToRun; ++i) {
 			RunGameTic();
@@ -2886,18 +2889,28 @@ void idSessionLocal::FrontendThreadFunction() {
 				break;
 			}
 		}
+		int endGameTics = Sys_Milliseconds();
 
 		// render next frame
 		Draw();
 
 		// ensure all buffers are ready before returning them to the render thread
 		glFlush();
+		int endDraw = Sys_Milliseconds();
 
 		{ // lock scope - signal render thread
 			std::unique_lock<std::mutex> lock( signalMutex );
 			frontendActive = false;
 			signalMainThread.notify_one();
 		}
+		int endSignalRenderThread = Sys_Milliseconds();
+
+		int timeWaiting = endWaitForRenderThread - beginLoop;
+		int timeGameTics = endGameTics - endWaitForRenderThread;
+		int timeDrawing = endDraw - endGameTics;
+		int timeSignal = endSignalRenderThread - endDraw;
+
+		logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal );
 	}
 }
 

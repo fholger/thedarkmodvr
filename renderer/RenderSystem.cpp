@@ -713,10 +713,13 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	}
 
 	// start the back end up again with the new command list
+	int startLoop = Sys_Milliseconds();
 	session->FireGameTics();
+	int endSignal = Sys_Milliseconds();
 	R_IssueRenderCommands( backendFrameData );
+	int endRender = Sys_Milliseconds();
 	session->WaitForGameTicCompletion();
-	glFinish();
+	int endWait = Sys_Milliseconds();
 
 	// close any gui drawing
 	guiModel->EmitFullScreen();
