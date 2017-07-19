@@ -2910,7 +2910,7 @@ void idSessionLocal::FrontendThreadFunction() {
 		int timeDrawing = endDraw - endGameTics;
 		int timeSignal = endSignalRenderThread - endDraw;
 
-		logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal );
+		//logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal );
 	}
 }
 
