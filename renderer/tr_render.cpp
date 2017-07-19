@@ -159,7 +159,7 @@ RB_T_RenderTriangleSurface
 ===============
 */
 void RB_T_RenderTriangleSurface( const drawSurf_t *surf ) {
-	RB_RenderTriangleSurface( surf->geo );
+	RB_RenderTriangleSurface( surf->backendGeo );
 }
 
 /*
@@ -413,7 +413,7 @@ void RB_BindStageTexture( const float *shaderRegisters, const textureStage_t *te
 
 	// texgens
 	if ( texture->texgen == TG_DIFFUSE_CUBE ) {
-		qglTexCoordPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ((idDrawVert *)vertexCache.Position( surf->geo->ambientCache ))->normal.ToFloatPtr() );
+		qglTexCoordPointer( 3, GL_FLOAT, sizeof( idDrawVert ), ((idDrawVert *)vertexCache.Position( surf->backendGeo->ambientCache ))->normal.ToFloatPtr() );
 	}
 	else if ( texture->texgen & (TG_SKYBOX_CUBE | TG_WOBBLESKY_CUBE) ) {
 		qglTexCoordPointer( 3, GL_FLOAT, 0, vertexCache.Position( surf->dynamicTexCoords ) );
@@ -426,7 +426,7 @@ void RB_BindStageTexture( const float *shaderRegisters, const textureStage_t *te
 		qglTexGenf( GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP_EXT );
 		qglTexGenf( GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP_EXT );
 		qglEnableClientState( GL_NORMAL_ARRAY );
-		qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), ((idDrawVert *)vertexCache.Position( surf->geo->ambientCache ))->normal.ToFloatPtr() );
+		qglNormalPointer( GL_FLOAT, sizeof( idDrawVert ), ((idDrawVert *)vertexCache.Position( surf->backendGeo->ambientCache ))->normal.ToFloatPtr() );
 
 		qglMatrixMode( GL_TEXTURE );
 		float	mat[16];
@@ -452,7 +452,7 @@ void RB_FinishStageTexture( const textureStage_t *texture, const drawSurf_t *sur
 
 	if ( texture->texgen & (TG_DIFFUSE_CUBE | TG_SKYBOX_CUBE  | TG_WOBBLESKY_CUBE) ) {
 		qglTexCoordPointer( 2, GL_FLOAT, sizeof( idDrawVert ),
-			(void *)&(((idDrawVert *)vertexCache.Position( surf->geo->ambientCache ))->st) );
+			(void *)&(((idDrawVert *)vertexCache.Position( surf->backendGeo->ambientCache ))->st) );
 	}
 	else if ( texture->texgen == TG_REFLECT_CUBE ) {
 		qglDisable( GL_TEXTURE_GEN_S );
@@ -722,7 +722,7 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf, void (*DrawInterac
 	const float			*lightRegs = vLight->shaderRegisters;
 	drawInteraction_t	inter;
 
-	if ( !surf->geo || !surf->geo->ambientCache || r_skipInteractions.GetBool() ) {
+	if ( !surf->backendGeo || !surf->backendGeo->ambientCache || r_skipInteractions.GetBool() ) {
 		return;
 	}
 

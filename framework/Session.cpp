@@ -2575,7 +2575,7 @@ void idSessionLocal::UpdateScreen( bool outOfSequence ) {
 	renderSystem->BeginFrame( renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight() );
 
 	if (mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0) {
-		//game->DrawLightgem( GetLocalClientNum() );
+		game->DrawLightgem( GetLocalClientNum() );
 	}
 
 	// draw everything
@@ -2870,7 +2870,7 @@ void idSessionLocal::FrontendThreadFunction() {
 	GLimp_InitGlewContext();
 
 	while (true) {
-		{ // lock scope
+		{ // lock scope - wait for render thread
 			std::unique_lock<std::mutex> lock( signalMutex );
 			while (!frontendActive && !shutdownFrontend) {
 				signalFrontendThread.wait( lock );
@@ -2890,7 +2890,10 @@ void idSessionLocal::FrontendThreadFunction() {
 			}
 		}
 
-		{ // lock scope
+		// ensure all buffers are ready before returning them to the render thread
+		glFlush();
+
+		{ // lock scope - signal render thread
 			std::unique_lock<std::mutex> lock( signalMutex );
 			frontendActive = false;
 			signalMainThread.notify_one();

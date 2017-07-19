@@ -385,7 +385,7 @@ void RB_T_FillDepthBuffer( const drawSurf_t *surf ) {
 	float		color[4];
 	const srfTriangles_t	*tri;
 
-	tri = surf->geo;
+	tri = surf->backendGeo;
 	shader = surf->material;
 
 	// update the clip plane if needed
@@ -767,7 +767,7 @@ void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf ) {
 	float		color[4];
 	const srfTriangles_t	*tri;
 
-	tri = surf->geo;
+	tri = surf->backendGeo;
 	shader = surf->material;
 
 	if ( !shader->HasAmbient() ) {
@@ -1242,7 +1242,7 @@ static void RB_T_Shadow( const drawSurf_t *surf ) {
 		qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, PP_LIGHT_ORIGIN, localLight.ToFloatPtr() );
 	}
 
-	tri = surf->geo;
+	tri = surf->backendGeo;
 
 	if ( !tri->shadowCache ) {
 		return;
@@ -1262,10 +1262,10 @@ static void RB_T_Shadow( const drawSurf_t *surf ) {
 		// if we aren't inside the shadow projection, no caps are ever needed needed
 		numIndexes = tri->numShadowIndexesNoCaps;
 		external = true;
-	} else if ( !backEnd.vLight->viewInsideLight && !(surf->geo->shadowCapPlaneBits & SHADOW_CAP_INFINITE) ) {
+	} else if ( !backEnd.vLight->viewInsideLight && !(surf->backendGeo->shadowCapPlaneBits & SHADOW_CAP_INFINITE) ) {
 		// if we are inside the shadow projection, but outside the light, and drawing
 		// a non-infinite shadow, we can skip some caps
-		if ( backEnd.vLight->viewSeesShadowPlaneBits & surf->geo->shadowCapPlaneBits ) {
+		if ( backEnd.vLight->viewSeesShadowPlaneBits & surf->backendGeo->shadowCapPlaneBits ) {
 			// we can see through a rear cap, so we need to draw it, but we can skip the
 			// caps on the actual surface
 			numIndexes = tri->numShadowIndexesNoFrontCaps;
@@ -1295,7 +1295,7 @@ static void RB_T_Shadow( const drawSurf_t *surf ) {
 			}
 		} else {
 			// draw different color for turboshadows
-			if ( surf->geo->shadowCapPlaneBits & SHADOW_CAP_INFINITE ) {
+			if ( surf->backendGeo->shadowCapPlaneBits & SHADOW_CAP_INFINITE ) {
 				if ( numIndexes == tri->numIndexes ) {
 					qglColor3f( 1/backEnd.overBright, 0.1/backEnd.overBright, 0.1/backEnd.overBright );
 				} else {
@@ -1533,7 +1533,7 @@ RB_T_BlendLight
 static void RB_T_BlendLight( const drawSurf_t *surf ) {
 	const srfTriangles_t *tri;
 
-	tri = surf->geo;
+	tri = surf->backendGeo;
 
 	if ( backEnd.currentSpace != surf->space ) {
 		idPlane	lightProject[4];
@@ -1715,7 +1715,7 @@ static void RB_FogPass( const drawSurf_t *drawSurfs,  const drawSurf_t *drawSurf
 	if ( !backEnd.vLight->noFogBoundary ) // No need to create the drawsurf if we're not fogging the bounding box -- #3664
 	{
 		ds.space = &backEnd.viewDef->worldSpace;
-		ds.geo = frustumTris;
+		ds.backendGeo = frustumTris;
 		ds.scissorRect = backEnd.viewDef->scissor;
 	}
 

@@ -110,7 +110,8 @@ static const int	DSF_VIEW_INSIDE_SHADOW	= 1;
 static const int	DSF_SOFT_PARTICLE		= 2; // #3878
 
 typedef struct drawSurf_s {
-	const srfTriangles_t	*geo;
+	const srfTriangles_t	*frontendGeo;  // do not use in the backend; may be modified by the frontend
+	const srfTriangles_t	*backendGeo;
 	const struct viewEntity_s *space;
 	const idMaterial		*material;	// may be NULL for shadow volumes
 	float					sort;		// material->sort, modified by gui / entity sort offsets

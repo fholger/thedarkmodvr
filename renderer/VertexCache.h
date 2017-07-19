@@ -123,14 +123,12 @@ private:
 
 	idBlockAlloc<vertCache_t,1024>	headerAllocator;
 
-	vertCache_t		freeStaticHeaders;		// head of doubly linked list
-	vertCache_t		freeDynamicHeaders;		// head of doubly linked list
-	vertCache_t		dynamicHeaders;			// head of doubly linked list
-	vertCache_t		dynamicHeadersLastFrame;
-	vertCache_t		deferredFreeList;		// head of doubly linked list
-	vertCache_t		deferredFreeListLastFrame;
-	vertCache_t		staticHeaders;			// head of doubly linked list in MRU order,
-											// staticHeaders.next is most recently used
+	vertCache_t		freeStaticHeaders[NUM_VERTEX_FRAMES];		// head of doubly linked list
+	vertCache_t		freeDynamicHeaders[NUM_VERTEX_FRAMES];		// head of doubly linked list
+	vertCache_t		dynamicHeaders[NUM_VERTEX_FRAMES];			// head of doubly linked list
+	vertCache_t		deferredFreeList[NUM_VERTEX_FRAMES];		// head of doubly linked list
+	vertCache_t		staticHeaders[NUM_VERTEX_FRAMES];			// head of doubly linked list in MRU order,
+																// staticHeaders.next is most recently used
 };
 
 extern	idVertexCache	vertexCache;

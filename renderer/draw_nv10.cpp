@@ -52,7 +52,7 @@ static void RB_RenderInteraction( const drawSurf_t *surf ) {
 	const idMaterial	*lightShader = vLight->lightShader;
 	const float			*lightRegs = vLight->shaderRegisters;
 	static idPlane		lightProject[4];	// reused across function calls
-	const srfTriangles_t	*tri = surf->geo;
+	const srfTriangles_t	*tri = surf->backendGeo;
 	const shaderStage_t	*lastBumpStage = NULL;
 
 	RB_LogComment( "---------- RB_RenderInteraction %s on %s ----------\n", 

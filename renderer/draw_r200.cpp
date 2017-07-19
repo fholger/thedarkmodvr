@@ -113,7 +113,7 @@ static void RB_R200_ARB_DrawInteraction( const drawInteraction_t *din ) {
 	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, PP_SPECULAR_MATRIX_S, din->diffuseMatrix[0].ToFloatPtr() );
 	qglProgramEnvParameter4fvARB( GL_VERTEX_PROGRAM_ARB, PP_SPECULAR_MATRIX_T, din->diffuseMatrix[1].ToFloatPtr() );
 
-	const srfTriangles_t	*tri = din->surf->geo;
+	const srfTriangles_t	*tri = din->surf->backendGeo;
 	idDrawVert	*ac = (idDrawVert *)vertexCache.Position( tri->ambientCache );
 	qglVertexPointer( 3, GL_FLOAT, sizeof( idDrawVert ), (void *)&ac->xyz );
 

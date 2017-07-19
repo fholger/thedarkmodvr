@@ -714,8 +714,9 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 
 	// start the back end up again with the new command list
 	session->FireGameTics();
-	session->WaitForGameTicCompletion();
 	R_IssueRenderCommands( backendFrameData );
+	session->WaitForGameTicCompletion();
+	glFinish();
 
 	// close any gui drawing
 	guiModel->EmitFullScreen();
