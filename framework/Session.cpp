@@ -2879,9 +2879,6 @@ void idSessionLocal::FrontendThreadFunction() {
 				return;
 			}
 		}
-
-		// render next frame
-		Draw();
 		// run game tics
 		for (int i = 0; i < gameTicsToRun; ++i) {
 			RunGameTic();
@@ -2889,6 +2886,9 @@ void idSessionLocal::FrontendThreadFunction() {
 				break;
 			}
 		}
+
+		// render next frame
+		Draw();
 
 		// ensure all buffers are ready before returning them to the render thread
 		glFlush();
