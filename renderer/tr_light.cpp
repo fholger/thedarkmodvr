@@ -24,7 +24,6 @@
 
 static bool versioned = RegisterVersionedFile("$Id: tr_light.cpp 6674 2016-11-16 13:07:45Z duzenko $");
 
-#include <tbb/parallel_for_each.h>
 #include "tr_local.h"
 #include "Model_local.h" // Added in #3878 (soft particles) to allow r_AddAmbientDrawSurfs to access info about particles to 
 						 // pass to the backend without bloating the modelSurface_t struct used everywhere. That struct is the only

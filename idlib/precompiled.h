@@ -97,7 +97,6 @@
 #include <typeinfo>
 #include <errno.h>
 #include <math.h>
-#include <tbb/tbb.h>
 //-----------------------------------------------------
 
 // non-portable system services
