@@ -40,9 +40,13 @@ void Framebuffer::BindPrimary() {
 
 	if (primaryFramebuffer != nullptr) {
 		primaryFramebuffer->Bind();
+		glConfig.vidWidth = primaryFramebuffer->GetWidth();
+		glConfig.vidHeight = primaryFramebuffer->GetHeight();
 	} else {
 		glDrawBuffer( GL_BACK );
 		glReadBuffer( GL_BACK );
+		//glConfig.vidWidth = glConfig.windowWidth;
+		//glConfig.vidHeight = glConfig.windowHeight;
 	}
 }
 

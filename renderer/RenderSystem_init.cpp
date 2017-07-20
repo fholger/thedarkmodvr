@@ -628,10 +628,10 @@ void R_InitOpenGL( void ) {
 	//
 	for ( i = 0 ; i < 2 ; i++ ) {
 		// set the parameters we are trying
-		R_GetModeInfo( &glConfig.vidWidth, &glConfig.vidHeight, r_mode.GetInteger() );
+		R_GetModeInfo( &glConfig.windowWidth, &glConfig.windowHeight, r_mode.GetInteger() );
 
-		parms.width = glConfig.vidWidth;
-		parms.height = glConfig.vidHeight;
+		parms.width = glConfig.windowWidth;
+		parms.height = glConfig.windowHeight;
 		parms.fullScreen = r_fullscreen.GetBool();
 		parms.displayHz = r_displayRefresh.GetInteger();
 		parms.multiSamples = r_multiSamples.GetInteger();
@@ -653,6 +653,8 @@ void R_InitOpenGL( void ) {
 		r_displayRefresh.SetInteger( 0 );
 		r_multiSamples.SetInteger( 0 );
 	}
+	glConfig.vidWidth = glConfig.windowWidth;
+	glConfig.vidHeight = glConfig.windowHeight;
 
 	// input and sound systems need to be tied to the new window
 	Sys_InitInput();

@@ -36,8 +36,8 @@ void RB_DisplayEyeView( idImage* image ) {
 	primaryFramebuffer = nullptr;
 	//RB_SetDefaultGLState();
 	Framebuffer::BindPrimary();
-	qglViewport( 0, 0, 1280, 1024 );
-	qglScissor( 0, 0, 1280, 1024 );
+	qglViewport( 0, 0, glConfig.windowWidth, glConfig.windowHeight );
+	qglScissor( 0, 0, glConfig.windowWidth, glConfig.windowHeight );
 
 	qglMatrixMode( GL_PROJECTION );
 	qglLoadIdentity();
@@ -77,10 +77,6 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 			RB_CreateStereoRenderFBO( i, stereoRenderFBOs[i], stereoRenderImages[i] );
 		}
 	}
-
-	// FIXME: this is a hack
-	glConfig.vidWidth = stereoRenderFBOs[0]->GetWidth();
-	glConfig.vidHeight = stereoRenderFBOs[0]->GetHeight();
 
 	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
 		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;

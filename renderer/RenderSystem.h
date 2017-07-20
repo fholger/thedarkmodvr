@@ -71,6 +71,7 @@ typedef struct glconfig_s {
 	bool				pixelBufferAvailable;
 
 	int					vidWidth, vidHeight;	// passed to R_BeginFrame
+	int					windowWidth, windowHeight;
 	int					displayFrequency;
 	bool				isFullscreen;
 
