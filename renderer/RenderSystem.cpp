@@ -684,7 +684,7 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 	}
 
 	if (vrSupport->IsInitialized()) {
-		vrSupport->FrameStart();
+		//vrSupport->FrameStart();
 	}
 }
 
@@ -708,8 +708,15 @@ Returns the number of msec spent in the back end
 void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	emptyCommand_t *cmd;
 
+	static idFile* logFile = fileSystem->OpenFileWrite( "backend_timings.txt", "fs_savepath", "" );
+
 	if (!glConfig.isInitialized) {
 		return;
+	}
+
+	int waitForPoses = Sys_Milliseconds();
+	if (vrSupport->IsInitialized()) {
+		vrSupport->FrameStart();
 	}
 
 	// start the back end up again with the new command list
@@ -721,9 +728,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	session->WaitForGameTicCompletion();
 	int endWait = Sys_Milliseconds();
 
-	// close any gui drawing
-	guiModel->EmitFullScreen();
-	guiModel->Clear();
+	logFile->Printf("Backend timing: poses %d - signal %d - render %d - wait %d | begin %d - end %d", startLoop - waitForPoses, endSignal - startLoop, endRender - endSignal, endWait - endRender, waitForPoses, endWait);
 
 	// check for dynamic changes that require some initialization
 	R_CheckCvars();
@@ -732,10 +737,6 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	// check for errors
 	GL_CheckErrors();
 #endif
-
-	// add the swapbuffers command
-	cmd = (emptyCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
-	cmd->commandId = RC_SWAP_BUFFERS;
 
 	// use the other buffers next frame, because another CPU
 	// may still be rendering into the current buffers

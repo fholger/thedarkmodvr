@@ -24,7 +24,7 @@
 
 
 #if !defined( ID_REDIRECT_NEWDELETE ) && !defined( MACOS_X )
-	#define USE_STRING_DATA_ALLOCATOR
+//	#define USE_STRING_DATA_ALLOCATOR
 #endif
 
 #ifdef USE_STRING_DATA_ALLOCATOR

@@ -2894,6 +2894,14 @@ void idSessionLocal::FrontendThreadFunction() {
 		// render next frame
 		Draw();
 
+		// close any gui drawing
+		tr.guiModel->EmitFullScreen();
+		tr.guiModel->Clear();
+
+		// add the swapbuffers command
+		emptyCommand_t *cmd = (emptyCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
+		cmd->commandId = RC_SWAP_BUFFERS;
+
 		// ensure all buffers are ready before returning them to the render thread
 		glFlush();
 		int endDraw = Sys_Milliseconds();
@@ -2910,7 +2918,7 @@ void idSessionLocal::FrontendThreadFunction() {
 		int timeDrawing = endDraw - endGameTics;
 		int timeSignal = endSignalRenderThread - endDraw;
 
-		//logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal );
+		logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal );
 	}
 }
 
