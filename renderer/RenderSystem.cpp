@@ -728,7 +728,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	session->WaitForGameTicCompletion();
 	int endWait = Sys_Milliseconds();
 
-	logFile->Printf("Backend timing: poses %d - signal %d - render %d - wait %d | begin %d - end %d", startLoop - waitForPoses, endSignal - startLoop, endRender - endSignal, endWait - endRender, waitForPoses, endWait);
+	logFile->Printf("Backend timing: poses %d - signal %d - render %d - wait %d | begin %d - end %d\n", startLoop - waitForPoses, endSignal - startLoop, endRender - endSignal, endWait - endRender, waitForPoses, endWait);
 
 	// check for dynamic changes that require some initialization
 	R_CheckCvars();
