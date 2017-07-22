@@ -7,7 +7,12 @@ The VR mod is based on the v2.05 codebase of The Dark Mod.
 
 ## Installation
 Download and install The Dark Mod v2.05 from here: http://www.thedarkmod.com/download-the-mod/
-Then download the current release of this VR mod and extract all files to the directory where you installed The Dark Mod. Then run it as normal. Don't forget to reset your seated position in SteamVR.
+Then download the current release of this VR mod and extract all files to the directory where you installed The Dark Mod. To enable VR mode, create a file autoexec.cfg in the install directory (if it doesn't exist already) and add the line
+
+``` set vr_enable 1```
+
+to it. 
+Then run the game as normal. Don't forget to reset your seated position in SteamVR.
 
 ## Known caveats
 - Some shadows are rendered inconsistently between left and right eye views, leading to visual artifacts.
