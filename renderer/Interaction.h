@@ -133,7 +133,6 @@ public:
 	// will be used to determine when we need to start purging old interactions
 	int						MemoryUsed( void );
 
-	void					CalcShadowScissor( void );
 	// makes sure all necessary light surfaces and shadow surfaces are created, and
 	// calls R_LinkLightSurf() for each one
 	void					AddActiveInteraction( void );

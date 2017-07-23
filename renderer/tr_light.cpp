@@ -1478,8 +1478,6 @@ void R_AddModelSurfaces( void ) {
 
 	// go through each entity that is either visible to the view, or to
 	// any light that intersects the view (for shadows)
-	//std::unordered_set<idInteraction*> uniqueInteractions;
-	std::vector<idInteraction*> interactions;
 	for ( vEntity = tr.viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 
 		if ( r_useEntityScissors.GetBool() ) {
@@ -1555,9 +1553,7 @@ void R_AddModelSurfaces( void ) {
 					if ( inter->lightDef->viewCount != tr.viewCount ) {
 						continue;
 					}
-					//uniqueInteractions.insert( inter );
-					interactions.push_back( inter );
-					//inter->AddActiveInteraction();
+					inter->AddActiveInteraction();
 				}
 			}
 		} else {
@@ -1572,9 +1568,7 @@ void R_AddModelSurfaces( void ) {
 				if ( inter->lightDef->viewCount != tr.viewCount ) {
 					continue;
 				}
-				//uniqueInteractions.insert( inter );
-				interactions.push_back( inter );
-				//inter->AddActiveInteraction();
+				inter->AddActiveInteraction();
 			}
 		}
 
@@ -1583,12 +1577,6 @@ void R_AddModelSurfaces( void ) {
 			tr.viewDef->renderView.time = oldTime;
 		}
 
-	}
-
-	//tbb::parallel_for_each( uniqueInteractions, []( idInteraction* inter ) { inter->CalcShadowScissor(); } );
-	for (idInteraction* inter : interactions) {
-		inter->CalcShadowScissor();
-		inter->AddActiveInteraction();
 	}
 }
 
