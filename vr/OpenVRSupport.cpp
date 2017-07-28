@@ -4,7 +4,7 @@
 #include "../renderer/Image.h"
 #include "../renderer/tr_local.h"
 
-idCVar vr_enable( "vr_enable", "0", CVAR_RENDERER | CVAR_BOOL, "enable OpenVR support" );
+idCVar vr_enable( "vr_enable", "1", CVAR_RENDERER | CVAR_BOOL, "enable OpenVR support" );
 
 class OpenVrSupport : public VrSupport {
 public:
