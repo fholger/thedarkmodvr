@@ -866,12 +866,104 @@ Create any new interactions needed between the viewLights
 and the viewEntitys due to game movement
 =================
 */
+void R_CheckSingleLight( viewLight_t *vLight ) {
+	idRenderLightLocal *light = vLight->lightDef;
+	const idMaterial *lightShader = light->lightShader;
+	vLight->removeFromList = true;
+
+	if (!lightShader) {
+		common->Error( "R_AddLightSurfaces: NULL lightShader" );
+		return;
+	}
+
+	// see if we are suppressing the light in this view
+	if (!r_skipSuppress.GetBool()) {
+		if (light->parms.suppressLightInViewID	&& light->parms.suppressLightInViewID == tr.viewDef->renderView.viewID) {
+			return;
+		}
+		if (light->parms.allowLightInViewID && light->parms.allowLightInViewID != tr.viewDef->renderView.viewID) {
+			return;
+		}
+	}
+
+	// evaluate the light shader registers
+	float *lightRegs = (float *)R_FrameAlloc( lightShader->GetNumRegisters() * sizeof( float ) );
+	vLight->shaderRegisters = lightRegs;
+	lightShader->EvaluateRegisters( lightRegs, light->parms.shaderParms, tr.viewDef, light->parms.referenceSound );
+
+	// if this is a purely additive light and no stage in the light shader evaluates
+	// to a positive light value, we can completely skip the light
+	if (!lightShader->IsFogLight() && !lightShader->IsBlendLight()) {
+		int lightStageNum;
+		for (lightStageNum = 0; lightStageNum < lightShader->GetNumStages(); lightStageNum++) {
+			const shaderStage_t	*lightStage = lightShader->GetStage( lightStageNum );
+
+			// ignore stages that fail the condition
+			if (!lightRegs[lightStage->conditionRegister]) {
+				continue;
+			}
+
+			const int *registers = lightStage->color.registers;
+
+			// snap tiny values to zero to avoid lights showing up with the wrong color
+			if (lightRegs[registers[0]] < 0.001f) {
+				lightRegs[registers[0]] = 0.0f;
+			}
+			if (lightRegs[registers[1]] < 0.001f) {
+				lightRegs[registers[1]] = 0.0f;
+			}
+			if (lightRegs[registers[2]] < 0.001f) {
+				lightRegs[registers[2]] = 0.0f;
+			}
+
+			// FIXME:	when using the following values the light shows up bright red when using nvidia drivers/hardware
+			//			this seems to have been fixed ?
+			//lightRegs[ registers[0] ] = 1.5143074e-005f;
+			//lightRegs[ registers[1] ] = 1.5483369e-005f;
+			//lightRegs[ registers[2] ] = 1.7014690e-005f;
+
+			if (lightRegs[registers[0]] > 0.0f ||
+				lightRegs[registers[1]] > 0.0f ||
+				lightRegs[registers[2]] > 0.0f) {
+				break;
+			}
+		}
+		if (lightStageNum == lightShader->GetNumStages()) {
+			// we went through all the stages and didn't find one that adds anything
+			// remove the light from the viewLights list, and change its frame marker
+			// so interaction generation doesn't think the light is visible and
+			// create a shadow for it
+			return;
+		}
+	}
+
+	if (r_useLightScissors.GetBool()) {
+		// calculate the screen area covered by the light frustum
+		// which will be used to crop the stencil cull
+		idScreenRect scissorRect = R_CalcLightScissorRectangle( vLight );
+		// intersect with the portal crossing scissor rectangle
+		vLight->scissorRect.Intersect( scissorRect );
+	}
+
+	// this one stays on the list
+	vLight->removeFromList = false;
+}
+
+#include <tbb/parallel_for_each.h>
+
 void R_AddLightSurfaces( void ) {
 	viewLight_t		*vLight;
 	idRenderLightLocal *light;
 	viewLight_t		**ptr;
 
 	// go through each visible light, possibly removing some from the list
+	std::vector<viewLight_t*> allLights;
+	for (vLight = tr.viewDef->viewLights; vLight; vLight = vLight->next) {
+		allLights.push_back( vLight );
+	}
+	tbb::parallel_for_each( allLights, &R_CheckSingleLight );
+
+	// clean up list and generate interactions
 	ptr = &tr.viewDef->viewLights;
 	while ( *ptr ) {
 		vLight = *ptr;
@@ -883,86 +975,17 @@ void R_AddLightSurfaces( void ) {
 			return;
 		}
 
-		// see if we are suppressing the light in this view
-		if ( !r_skipSuppress.GetBool() ) {
-			if ( light->parms.suppressLightInViewID	&& light->parms.suppressLightInViewID == tr.viewDef->renderView.viewID ) {
-				*ptr = vLight->next;
-				light->viewCount = -1;
-				continue;
-			} else if ( light->parms.allowLightInViewID && light->parms.allowLightInViewID != tr.viewDef->renderView.viewID ) {
-				*ptr = vLight->next;
-				light->viewCount = -1;
-				continue;
-			}
+		if (vLight->removeFromList) {
+			*ptr = vLight->next;
+			light->viewCount = -1;
+			continue;
 		}
 
-		// evaluate the light shader registers
-		float *lightRegs =(float *)R_FrameAlloc( lightShader->GetNumRegisters() * sizeof( float ) );
-		vLight->shaderRegisters = lightRegs;
-		lightShader->EvaluateRegisters( lightRegs, light->parms.shaderParms, tr.viewDef, light->parms.referenceSound );
-
-		// if this is a purely additive light and no stage in the light shader evaluates
-		// to a positive light value, we can completely skip the light
-		if ( !lightShader->IsFogLight() && !lightShader->IsBlendLight() ) {
-			int lightStageNum;
-			for ( lightStageNum = 0 ; lightStageNum < lightShader->GetNumStages() ; lightStageNum++ ) {
-				const shaderStage_t	*lightStage = lightShader->GetStage( lightStageNum );
-
-				// ignore stages that fail the condition
-				if ( !lightRegs[ lightStage->conditionRegister ] ) {
-					continue;
-				}
-
-				const int *registers = lightStage->color.registers;
-
-				// snap tiny values to zero to avoid lights showing up with the wrong color
-				if ( lightRegs[ registers[0] ] < 0.001f ) {
-					lightRegs[ registers[0] ] = 0.0f;
-				}
-				if ( lightRegs[ registers[1] ] < 0.001f ) {
-					lightRegs[ registers[1] ] = 0.0f;
-				}
-				if ( lightRegs[ registers[2] ] < 0.001f ) {
-					lightRegs[ registers[2] ] = 0.0f;
-				}
-
-				// FIXME:	when using the following values the light shows up bright red when using nvidia drivers/hardware
-				//			this seems to have been fixed ?
-				//lightRegs[ registers[0] ] = 1.5143074e-005f;
-				//lightRegs[ registers[1] ] = 1.5483369e-005f;
-				//lightRegs[ registers[2] ] = 1.7014690e-005f;
-
-				if (lightRegs[ registers[0] ] > 0.0f ||
-					lightRegs[ registers[1] ] > 0.0f ||
-					lightRegs[ registers[2] ] > 0.0f ) {
-					break;
-				}
-			}
-			if ( lightStageNum == lightShader->GetNumStages() ) {
-				// we went through all the stages and didn't find one that adds anything
-				// remove the light from the viewLights list, and change its frame marker
-				// so interaction generation doesn't think the light is visible and
-				// create a shadow for it
-				*ptr = vLight->next;
-				light->viewCount = -1;
-				continue;
-			}
-		}
-
-		if ( r_useLightScissors.GetBool() ) {
-			// calculate the screen area covered by the light frustum
-			// which will be used to crop the stencil cull
-			idScreenRect scissorRect = R_CalcLightScissorRectangle( vLight );
-			// intersect with the portal crossing scissor rectangle
-			vLight->scissorRect.Intersect( scissorRect );
-
-			if ( r_showLightScissors.GetBool() ) {
-				R_ShowColoredScreenRect( vLight->scissorRect, light->index );
-			}
-		}
-
-		// this one stays on the list
 		ptr = &vLight->next;
+
+		if ( r_useLightScissors.GetBool() && r_showLightScissors.GetBool() ) {
+			R_ShowColoredScreenRect( vLight->scissorRect, light->index );
+		}
 
 		// if we are doing a soft-shadow novelty test, regenerate the light with
 		// a random offset every time
@@ -1455,6 +1478,51 @@ idScreenRect R_CalcEntityScissorRectangle( viewEntity_t *vEntity ) {
 	return R_ScreenRectFromViewFrustumBounds( bounds );
 }
 
+viewEntity_t * R_SortViewEntities( viewEntity_t * vEntities ) {
+	// We want to avoid having a single AddModel for something complex be
+	// the last thing processed and hurt the parallel occupancy, so
+	// sort dynamic models first, _area models second, then everything else.
+	viewEntity_t * dynamics = NULL;
+	viewEntity_t * areas = NULL;
+	viewEntity_t * others = NULL;
+	for (viewEntity_t * vEntity = vEntities; vEntity != NULL;) {
+		viewEntity_t * next = vEntity->next;
+		const idRenderModel * model = vEntity->entityDef->parms.hModel;
+		if (model->IsDynamicModel() != DM_STATIC) {
+			vEntity->next = dynamics;
+			dynamics = vEntity;
+		}
+		else if (model->IsStaticWorldModel()) {
+			vEntity->next = areas;
+			areas = vEntity;
+		}
+		else {
+			vEntity->next = others;
+			others = vEntity;
+		}
+		vEntity = next;
+	}
+
+	// concatenate the lists
+	viewEntity_t * all = others;
+
+	for (viewEntity_t * vEntity = areas; vEntity != NULL;) {
+		viewEntity_t * next = vEntity->next;
+		vEntity->next = all;
+		all = vEntity;
+		vEntity = next;
+	}
+
+	for (viewEntity_t * vEntity = dynamics; vEntity != NULL;) {
+		viewEntity_t * next = vEntity->next;
+		vEntity->next = all;
+		all = vEntity;
+		vEntity = next;
+	}
+
+	return all;
+}
+
 /*
 ===================
 R_AddModelSurfaces
@@ -1476,10 +1544,11 @@ void R_AddModelSurfaces( void ) {
 	tr.viewDef->maxDrawSurfs = 0;	// will be set to INITIAL_DRAWSURFS on R_AddDrawSurf
 	g_enablePortalSky = cvarSystem->GetCVarInteger("g_enablePortalSky"); // duzenko #4414: cache the game cvar
 
+	//tr.viewDef->viewEntitys = R_SortViewEntities( tr.viewDef->viewEntitys );
+
 	// go through each entity that is either visible to the view, or to
 	// any light that intersects the view (for shadows)
 	for ( vEntity = tr.viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
-
 		if ( r_useEntityScissors.GetBool() ) {
 			// calculate the screen area covered by the entity
 			idScreenRect scissorRect = R_CalcEntityScissorRectangle( vEntity );

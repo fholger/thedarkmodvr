@@ -301,6 +301,8 @@ public:
 typedef struct viewLight_s {
 	struct viewLight_s *	next;
 
+	bool					removeFromList;
+
 	// back end should NOT reference the lightDef, because it can change when running SMP
 	idRenderLightLocal *	lightDef;
 
