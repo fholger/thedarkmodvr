@@ -229,6 +229,20 @@ void idBlockAlloc<type,blockSize>::Shutdown( void ) {
 }
 
 /*
+ * Allocator for multi-threading access
+ */
+#include <tbb/scalable_allocator.h>
+template<class type>
+class idConcurrentAlloc {
+public:
+	type* Alloc() { return allocator.allocate( 1 ); }
+	void Free( type* element ) { allocator.deallocate( element, 0 ); }
+	void Shutdown() {}
+private:
+	tbb::scalable_allocator<type> allocator;
+};
+
+/*
 ==============================================================================
 
 	Dynamic allocator, simple wrapper for normal allocations which can

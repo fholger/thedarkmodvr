@@ -137,6 +137,8 @@ public:
 	// calls R_LinkLightSurf() for each one
 	void					AddActiveInteraction( void );
 
+	void					CalcShadowScissor( void );
+
 private:
 	enum {
 		FRUSTUM_UNINITIALIZED,

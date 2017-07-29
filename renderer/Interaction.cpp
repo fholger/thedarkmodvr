@@ -1033,44 +1033,12 @@ instantiate the dynamic model to find out
 void idInteraction::AddActiveInteraction( void ) {
 	viewLight_t *	vLight;
 	viewEntity_t *	vEntity;
-	idScreenRect	shadowScissor;
 	idScreenRect	lightScissor;
 	idVec3			localLightOrigin;
 	idVec3			localViewOrigin;
 
 	vLight = lightDef->viewLight;
 	vEntity = entityDef->viewEntity;
-	
-
-	// nbohr1more: #4379 lightgem culling
-	if ((!HasShadows() ) && ( !entityDef->parms.islightgem ) && (tr.viewDef->renderView.viewID == RENDERTOOLS_SKIP_ID )) {
-		    return;
-			} 
-	
-	// do not waste time culling the interaction frustum if there will be no shadows
-	else if ( !HasShadows() ) {
-
-		// use the entity scissor rectangle
-		shadowScissor = vEntity->scissorRect;
-
-	// culling does not seem to be worth it for static world models
-	} else if ( entityDef->parms.hModel->IsStaticWorldModel() ) {
-
-		// use the light scissor rectangle
-		shadowScissor = vLight->scissorRect;
-
-	} else {
-
-		// try to cull the interaction
-		// this will also cull the case where the light origin is inside the
-		// view frustum and the entity bounds are outside the view frustum
-		if ( CullInteractionByViewFrustum( tr.viewDef->viewFrustum ) ) {
-			return;
-		}
-
-		// calculate the shadow scissor rectangle
-		shadowScissor = CalcInteractionScissorRectangle( tr.viewDef->viewFrustum );
-	}
 
 	// get out before making the dynamic model if the shadow scissor rectangle is empty
 	if ( shadowScissor.IsEmpty() ) {
@@ -1255,6 +1223,37 @@ void idInteraction::AddActiveInteraction( void ) {
 					shadowTris, vEntity, lightDef, NULL, shadowScissor, inside );
 			}
 		}
+	}
+}
+
+void idInteraction::CalcShadowScissor() {
+	shadowScissor.Clear();
+
+	// nbohr1more: #4379 lightgem culling
+	if ((!HasShadows()) && (!entityDef->parms.islightgem) && (tr.viewDef->renderView.viewID == RENDERTOOLS_SKIP_ID)) {
+		return;
+	}
+
+	// do not waste time culling the interaction frustum if there will be no shadows
+	if (!HasShadows()) {
+		// use the entity scissor rectangle
+		shadowScissor = entityDef->viewEntity->scissorRect;
+		// culling does not seem to be worth it for static world models
+	}
+	else if (entityDef->parms.hModel->IsStaticWorldModel()) {
+		// use the light scissor rectangle
+		shadowScissor = lightDef->viewLight->scissorRect;
+	}
+	else {
+		// try to cull the interaction
+		// this will also cull the case where the light origin is inside the
+		// view frustum and the entity bounds are outside the view frustum
+		if (CullInteractionByViewFrustum( tr.viewDef->viewFrustum )) {
+			return;
+		}
+
+		// calculate the shadow scissor rectangle
+		shadowScissor = CalcInteractionScissorRectangle( tr.viewDef->viewFrustum );
 	}
 }
 

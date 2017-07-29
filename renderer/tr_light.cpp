@@ -1545,6 +1545,8 @@ void R_AddModelSurfaces( void ) {
 	g_enablePortalSky = cvarSystem->GetCVarInteger("g_enablePortalSky"); // duzenko #4414: cache the game cvar
 
 	//tr.viewDef->viewEntitys = R_SortViewEntities( tr.viewDef->viewEntitys );
+	std::vector<idInteraction*> interactionsToAdd;
+	std::unordered_set<idInteraction*> uniqueInteractions;
 
 	// go through each entity that is either visible to the view, or to
 	// any light that intersects the view (for shadows)
@@ -1622,7 +1624,9 @@ void R_AddModelSurfaces( void ) {
 					if ( inter->lightDef->viewCount != tr.viewCount ) {
 						continue;
 					}
-					inter->AddActiveInteraction();
+					//inter->AddActiveInteraction();
+					interactionsToAdd.push_back( inter );
+					uniqueInteractions.insert( inter );
 				}
 			}
 		} else {
@@ -1637,7 +1641,9 @@ void R_AddModelSurfaces( void ) {
 				if ( inter->lightDef->viewCount != tr.viewCount ) {
 					continue;
 				}
-				inter->AddActiveInteraction();
+				//inter->AddActiveInteraction();
+				interactionsToAdd.push_back( inter );
+				uniqueInteractions.insert( inter );
 			}
 		}
 
@@ -1647,6 +1653,16 @@ void R_AddModelSurfaces( void ) {
 		}
 
 	}
+
+	if (interactionsToAdd.size() != uniqueInteractions.size()) {
+		common->FatalError( "Active interactions are not unique: %d total, %d unique\n", interactionsToAdd.size(), uniqueInteractions.size() );
+	}
+	tbb::parallel_for_each( interactionsToAdd, []( idInteraction* inter ) {inter->CalcShadowScissor(); } );
+	for (idInteraction* inter : interactionsToAdd) {
+		//inter->CalcShadowScissor();
+		inter->AddActiveInteraction();
+	}
+	//common->Printf( "Active interactions: %d  (unique: %d)\n", interactionsToAdd.size(), uniqueInteractions.size() );
 }
 
 /*
