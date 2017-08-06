@@ -211,9 +211,7 @@
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
     <OutDir>$(SolutionDir)..\darkmod_2.05\</OutDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">
-    <OutDir>$(SolutionDir)..\darkmod_2.05\</OutDir>
-  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Without MFC|Win32'">
     <OutDir>$(SolutionDir)..\darkmod_2.05\</OutDir>
   </PropertyGroup>
