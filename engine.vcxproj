@@ -207,9 +207,7 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\darkmod_2.05\</OutDir>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\darkmod_2.05\</OutDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">
-    <OutDir>..\darkmod_2.05\</OutDir>
-  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release Without MFC|Win32'">
     <OutDir>..\darkmod_2.05\</OutDir>
   </PropertyGroup>
@@ -274,7 +272,7 @@
       <AdditionalOptions>/arch:SSE2 /Zm512 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Manifest>
-      <EnableDPIAwareness>true</EnableDPIAwareness>
+      <EnableDPIAwareness>PerMonitorHighDPIAware</EnableDPIAwareness>
     </Manifest>
     <PostBuildEvent>
       <Command>copy /Y "$(SolutionDir)win32\bin\*.dll" "$(OutDir)"</Command>
@@ -357,7 +355,7 @@
       <AdditionalOptions>/arch:SSE2 /Zm512 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Manifest>
-      <EnableDPIAwareness>true</EnableDPIAwareness>
+      <EnableDPIAwareness>PerMonitorHighDPIAware</EnableDPIAwareness>
     </Manifest>
     <PostBuildEvent>
       <Command>copy /Y "$(SolutionDir)win32\bin\*.dll" "$(OutDir)"</Command>
@@ -438,6 +436,7 @@
     <ClInclude Include="renderer\simplex.h" />
     <ClInclude Include="renderer\tr_local.h" />
     <ClInclude Include="renderer\VertexCache.h" />
+    <ClInclude Include="sound\dxerr.h" />
     <ClInclude Include="sound\snd_local.h" />
     <ClInclude Include="sound\sound.h" />
     <ClInclude Include="sound\OggVorbis\vorbissrc\backends.h" />
@@ -1487,6 +1486,7 @@
     <ClCompile Include="renderer\tr_trisurf.cpp" />
     <ClCompile Include="renderer\tr_turboshadow.cpp" />
     <ClCompile Include="renderer\VertexCache.cpp" />
+    <ClCompile Include="sound\dxerr.cpp" />
     <ClCompile Include="sound\snd_cache.cpp" />
     <ClCompile Include="sound\snd_decoder.cpp" />
     <ClCompile Include="sound\snd_efxfile.cpp" />

@@ -570,6 +570,9 @@
       <Filter>Vr</Filter>
     </ClInclude>
     <ClInclude Include="renderer\Framebuffer.h" />
+    <ClInclude Include="sound\dxerr.h">
+      <Filter>Sound</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -1605,6 +1608,9 @@
     <ClCompile Include="renderer\Framebuffer.cpp" />
     <ClCompile Include="vr\vr_backend.cpp">
       <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\dxerr.cpp">
+      <Filter>Sound</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
