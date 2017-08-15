@@ -2870,6 +2870,12 @@ void idSessionLocal::FrontendThreadFunction() {
 
 	while (true) {
 		int beginLoop = Sys_Milliseconds();
+		{ // lock scope - signal render thread that we finished synchronizing resources
+			std::unique_lock<std::mutex> lock(signalMutex);
+			frontendSynced = true;
+			signalMainThread.notify_one();
+		}
+
 		{ // lock scope - wait for render thread
 			std::unique_lock<std::mutex> lock( signalMutex );
 			while (!frontendActive && !shutdownFrontend) {
@@ -2881,6 +2887,7 @@ void idSessionLocal::FrontendThreadFunction() {
 				return;
 			}
 		}
+		frontendSynced = false;
 		int endWaitForRenderThread = Sys_Milliseconds();
 		// run game tics
 		for (int i = 0; i < gameTicsToRun; ++i) {
@@ -2902,8 +2909,6 @@ void idSessionLocal::FrontendThreadFunction() {
 		emptyCommand_t *cmd = (emptyCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
 		cmd->commandId = RC_SWAP_BUFFERS;
 
-		// ensure all buffers are ready before returning them to the render thread
-		glFlush();
 		int endDraw = Sys_Milliseconds();
 
 		{ // lock scope - signal render thread
@@ -2913,12 +2918,18 @@ void idSessionLocal::FrontendThreadFunction() {
 		}
 		int endSignalRenderThread = Sys_Milliseconds();
 
+		// sync all GL commands so that created buffers will be ready for backend thread in the next frame
+		GLsync glSync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		glClientWaitSync(glSync, GL_SYNC_FLUSH_COMMANDS_BIT, 100000000);
+		int endGlSync = Sys_Milliseconds();
+
 		int timeWaiting = endWaitForRenderThread - beginLoop;
 		int timeGameTics = endGameTics - endWaitForRenderThread;
 		int timeDrawing = endDraw - endGameTics;
 		int timeSignal = endSignalRenderThread - endDraw;
+		int timeSync = endGlSync - endSignalRenderThread;
 
-		logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal );
+		logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d - GLsync %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal, timeSync );
 	}
 }
 
@@ -2932,9 +2943,17 @@ Runs game tics as a task in the background.
 */
 void idSessionLocal::FireGameTics() {
 	//Draw();
-	std::unique_lock<std::mutex> lock( signalMutex );
-	frontendActive = true;
-	signalFrontendThread.notify_one();
+	{
+		std::unique_lock<std::mutex> lock(signalMutex);
+		while (!frontendSynced) {
+			signalMainThread.wait(lock);
+		}
+	}
+	{
+		std::unique_lock<std::mutex> lock(signalMutex);
+		frontendActive = true;
+		signalFrontendThread.notify_one();
+	}
 }
 
 /*

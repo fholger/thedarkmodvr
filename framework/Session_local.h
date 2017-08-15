@@ -261,6 +261,7 @@ public:
 	std::condition_variable signalMainThread;
 	std::mutex			signalMutex;
 	volatile bool		frontendActive;
+	volatile bool		frontendSynced;
 	volatile bool		shutdownFrontend;
 
 	void				FrontendThreadFunction();
