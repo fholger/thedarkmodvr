@@ -2870,14 +2870,13 @@ void idSessionLocal::FrontendThreadFunction() {
 
 	while (true) {
 		int beginLoop = Sys_Milliseconds();
-		{ // lock scope - signal render thread that we finished synchronizing resources
+		{ // lock scope 
+			// signal render thread that we finished synchronizing resources
 			std::unique_lock<std::mutex> lock(signalMutex);
 			frontendSynced = true;
 			signalMainThread.notify_one();
-		}
 
-		{ // lock scope - wait for render thread
-			std::unique_lock<std::mutex> lock( signalMutex );
+		    // wait for render thread
 			while (!frontendActive && !shutdownFrontend) {
 				signalFrontendThread.wait( lock );
 			}
@@ -2942,18 +2941,12 @@ Runs game tics as a task in the background.
 ===============
 */
 void idSessionLocal::FireGameTics() {
-	//Draw();
-	{
-		std::unique_lock<std::mutex> lock(signalMutex);
-		while (!frontendSynced) {
-			signalMainThread.wait(lock);
-		}
+	std::unique_lock<std::mutex> lock(signalMutex);
+	while (!frontendSynced) {
+		signalMainThread.wait(lock);
 	}
-	{
-		std::unique_lock<std::mutex> lock(signalMutex);
-		frontendActive = true;
-		signalFrontendThread.notify_one();
-	}
+	frontendActive = true;
+	signalFrontendThread.notify_one();
 }
 
 /*
