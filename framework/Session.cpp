@@ -2574,16 +2574,16 @@ void idSessionLocal::UpdateScreen( bool outOfSequence ) {
 	
 	renderSystem->BeginFrame( renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight() );
 
-	if (mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0) {
-		game->DrawLightgem( GetLocalClientNum() );
-	}
-
 	if (com_speeds.GetBool()) {
 		time_backendLast = backEnd.pc.msecLast;
 		time_frontendLast = tr.pc.frontEndMsecLast;
 		renderSystem->EndFrame(&time_frontend, &time_backend);
 	} else {
 		renderSystem->EndFrame( NULL, NULL );
+	}
+
+	if (mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0) {
+		game->DrawLightgem( GetLocalClientNum() );
 	}
 
 	insideUpdateScreen = false;
