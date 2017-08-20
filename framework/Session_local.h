@@ -264,7 +264,6 @@ public:
 	std::condition_variable signalMainThread;
 	std::mutex			signalMutex;
 	volatile bool		frontendActive;
-	volatile bool		frontendReady;
 	volatile bool		shutdownFrontend;
 	std::shared_ptr<ErrorReportedException> frontendException;
 
