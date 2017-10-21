@@ -1495,7 +1495,7 @@ void idRenderWorldLocal::GenerateAllInteractions() {
 				count++;
 
 				// the interaction may create geometry
-				inter->CreateStaticInteraction();
+				//inter->CreateStaticInteraction();
 			}
 		}
 	}
