@@ -3070,6 +3070,10 @@ void idSessionLocal::FrontendThreadFunction() {
 	}
 }
 
+bool idSessionLocal::IsFrontend() const {
+	return std::this_thread::get_id() == frontendThread.get_id();
+}
+
 /*
 ===============
 idSessionLocal::ActivateFrontend
