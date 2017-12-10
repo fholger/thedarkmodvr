@@ -850,6 +850,7 @@ GL_CheckErrors
 ==================
 */
 void GL_CheckErrors( void ) {
+#ifdef DEBUG
     int		err;
     char	s[64];
 	int		i;
@@ -890,6 +891,7 @@ void GL_CheckErrors( void ) {
 			common->Printf( "GL_CheckErrors: %s\n", s );
 		}
 	}
+#endif
 }
 
 /*
