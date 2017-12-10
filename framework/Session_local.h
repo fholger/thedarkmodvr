@@ -268,6 +268,7 @@ public:
 	std::shared_ptr<ErrorReportedException> frontendException;
 
 	void				FrontendThreadFunction();
+	bool				IsFrontend() const;
 
 	//=====================================
 	void				Clear();
