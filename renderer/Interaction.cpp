@@ -1184,10 +1184,6 @@ void idInteraction::AddActiveInteraction( void ) {
 		return;
 	}
 
-	// We will need the dynamic surface created to make interactions, even if the
-	// model itself wasn't visible.  This just returns a cached value after it
-	// has been generated once in the view.
-	idRenderModel *model = R_EntityDefDynamicModel( entityDef );
 	if ( model == NULL || model->NumSurfaces() <= 0 ) {
 		return;
 	}
@@ -1262,13 +1258,13 @@ void idInteraction::AddActiveInteraction( void ) {
 
 					// there will only be localSurfaces if the light casts shadows and there are surfaces with NOSELFSHADOW
 					if ( sint->shader->Coverage() == MC_TRANSLUCENT && sint->shader->ReceivesLighting() ) {
-						R_LinkLightSurf( &vLight->translucentInteractions, lightTris, 
+						R_LinkLightSurf( vLight->translucentInteractions, lightTris, 
 							vEntity, lightDef, shader, lightScissor, false );
 					} else if ( !lightDef->parms.noShadows && sint->shader->TestMaterialFlag(MF_NOSELFSHADOW) ) {
-						R_LinkLightSurf( &vLight->localInteractions, lightTris, 
+						R_LinkLightSurf( vLight->localInteractions, lightTris, 
 							vEntity, lightDef, shader, lightScissor, false );
 					} else {
-						R_LinkLightSurf( &vLight->globalInteractions, lightTris, 
+						R_LinkLightSurf( vLight->globalInteractions, lightTris, 
 							vEntity, lightDef, shader, lightScissor, false );
 					}
 				}
@@ -1334,10 +1330,10 @@ void idInteraction::AddActiveInteraction( void ) {
 			bool inside = R_PotentiallyInsideInfiniteShadow( sint->ambientTris, localViewOrigin, localLightOrigin );
 
 			if ( sint->shader->TestMaterialFlag( MF_NOSELFSHADOW ) ) {
-				R_LinkLightSurf( &vLight->localShadows,
+				R_LinkLightSurf( vLight->localShadows,
 					shadowTris, vEntity, lightDef, NULL, shadowScissor, inside );
 			} else {
-				R_LinkLightSurf( &vLight->globalShadows,
+				R_LinkLightSurf( vLight->globalShadows,
 					shadowTris, vEntity, lightDef, NULL, shadowScissor, inside );
 			}
 		}

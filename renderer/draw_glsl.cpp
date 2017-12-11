@@ -220,7 +220,7 @@ void RB_GLSL_DrawLight_Stencil() {
 	qglUniform1f( pointInteractionShader.shadows, 1 );
 
 	// clear the stencil buffer if needed
-	if ( backEnd.vLight->globalShadows || backEnd.vLight->localShadows ) {
+	if ( backEnd.vLight->globalShadows.load() || backEnd.vLight->localShadows.load() ) {
 		backEnd.currentScissor = backEnd.vLight->scissorRect;
 		if ( r_useScissor.GetBool() ) {
 			qglScissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
@@ -335,7 +335,7 @@ void RB_GLSL_DrawInteractions() {
 		if ( backEnd.vLight->lightShader->IsBlendLight() )
 			continue;
 		// if there are no interactions, get out!
-		if ( !backEnd.vLight->localInteractions && !backEnd.vLight->globalInteractions && !backEnd.vLight->translucentInteractions )
+		if ( !backEnd.vLight->localInteractions.load() && !backEnd.vLight->globalInteractions.load() && !backEnd.vLight->translucentInteractions.load() )
 			continue;
 		if ( r_shadows.GetInteger() == 2 )
 			RB_GLSL_DrawLight_ShadowMap();
@@ -728,7 +728,7 @@ void pointInteractionProgram_t::AfterLoad() {
 
 void pointInteractionProgram_t::UpdateUniforms( bool translucent ) {
 	qglUniform1f( advanced, r_testARBProgram.GetFloat() );
-	if ( !translucent && (backEnd.vLight->globalShadows || backEnd.vLight->localShadows || r_shadows.GetInteger() == 2) && !backEnd.viewDef->IsLightGem() ) {
+	if ( !translucent && (backEnd.vLight->globalShadows.load() || backEnd.vLight->localShadows.load() || r_shadows.GetInteger() == 2) && !backEnd.viewDef->IsLightGem() ) {
 		qglUniform1i( softShadowsQuality, r_softShadowsQuality.GetInteger() );
 		qglUniform1f( softShadowsRadius, r_softShadowsRadius.GetFloat() );
 

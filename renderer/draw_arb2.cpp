@@ -382,8 +382,8 @@ void RB_ARB2_DrawInteractions( void ) {
 			continue;
 		}
 
-		if ( !vLight->localInteractions && !vLight->globalInteractions
-			&& !vLight->translucentInteractions ) {
+		if( !vLight->localInteractions.load() && !vLight->globalInteractions.load()
+			&& !vLight->translucentInteractions.load() ) {
 			continue;
 		}
 
@@ -405,7 +405,7 @@ void RB_ARB2_DrawInteractions( void ) {
 		//anon end
 
 		// clear the stencil buffer if needed
-		if ( vLight->globalShadows || vLight->localShadows ) {
+		if ( vLight->globalShadows.load() || vLight->localShadows.load() ) {
 			backEnd.currentScissor = vLight->scissorRect;
 			if ( r_useScissor.GetBool() ) {
 				qglScissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1, 

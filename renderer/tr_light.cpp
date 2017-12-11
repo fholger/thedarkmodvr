@@ -14,8 +14,7 @@
 ******************************************************************************/
 
 #include "precompiled.h"
-#include <set>
-#include <unordered_set>
+#include "tbb/parallel_for_each.h"
 #pragma hdrstop
 
 #include "tr_local.h"
@@ -499,7 +498,7 @@ void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) 
 R_LinkLightSurf
 =================
 */
-void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const viewEntity_t *space,
+void R_LinkLightSurf( std::atomic<const drawSurf_t *>& link, const srfTriangles_t *tri, const viewEntity_t *space,
 				   const idRenderLightLocal *light, const idMaterial *shader, const idScreenRect &scissor, bool viewInsideShadow ) {
 	if ( !space )
 		space = &tr.viewDef->worldSpace;
@@ -541,8 +540,9 @@ void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const 
 	}
 
 	// actually link it in
-	drawSurf->nextOnLight = *link;
-	*link = drawSurf;
+	do {
+		drawSurf->nextOnLight = link;
+	} while( !link.compare_exchange_weak( drawSurf->nextOnLight, drawSurf ) );
 }
 
 /*
@@ -862,7 +862,7 @@ void R_AddLightSurfaces( void ) {
 				}
 			}
 
-			R_LinkLightSurf( &vLight->globalShadows, tri, NULL, light, NULL, vLight->scissorRect, true /* FIXME ? */ );
+			R_LinkLightSurf( vLight->globalShadows, tri, NULL, light, NULL, vLight->scissorRect, true /* FIXME ? */ );
 		}
 	}
 }
@@ -1270,6 +1270,50 @@ idScreenRect R_CalcEntityScissorRectangle( viewEntity_t *vEntity ) {
 	return R_ScreenRectFromViewFrustumBounds( bounds );
 }
 
+viewEntity_t * R_SortViewEntities( viewEntity_t * vEntities ) {
+	// We want to avoid having a single AddModel for something complex be
+	// the last thing processed and hurt the parallel occupancy, so
+	// sort dynamic models first, _area models second, then everything else.
+	viewEntity_t * dynamics = NULL;
+	viewEntity_t * areas = NULL;
+	viewEntity_t * others = NULL;
+	for( viewEntity_t * vEntity = vEntities; vEntity != NULL; ) {
+		viewEntity_t * next = vEntity->next;
+		const idRenderModel * model = vEntity->entityDef->parms.hModel;
+		if( model->IsDynamicModel() != DM_STATIC ) {
+			vEntity->next = dynamics;
+			dynamics = vEntity;
+		}
+		else if( model->IsStaticWorldModel() ) {
+			vEntity->next = areas;
+			areas = vEntity;
+		}
+		else {
+			vEntity->next = others;
+			others = vEntity;
+		}
+		vEntity = next;
+	}
+
+	// concatenate the lists
+	viewEntity_t * all = others;
+
+	for( viewEntity_t * vEntity = areas; vEntity != NULL; ) {
+		viewEntity_t * next = vEntity->next;
+		vEntity->next = all;
+		all = vEntity;
+		vEntity = next;
+	}
+
+	for( viewEntity_t * vEntity = dynamics; vEntity != NULL; ) {
+		viewEntity_t * next = vEntity->next;
+		vEntity->next = all;
+		all = vEntity;
+		vEntity = next;
+	}
+
+	return all;
+}
 /*
 ===================
 R_AddModelSurfaces
@@ -1290,6 +1334,9 @@ void R_AddModelSurfaces( void ) {
 	tr.viewDef->numDrawSurfs = 0;
 	tr.viewDef->maxDrawSurfs = 0;	// will be set to INITIAL_DRAWSURFS on R_AddDrawSurf
 //	g_enablePortalSky = cvarSystem->GetCVarInteger("g_enablePortalSky"); // duzenko #4414: cache the game cvar
+
+	//tr.viewDef->viewEntitys = R_SortViewEntities( tr.viewDef->viewEntitys );
+	std::vector<idInteraction*> interactionsToAdd;
 
 	// go through each entity that is either visible to the view, or to
 	// any light that intersects the view (for shadows)
@@ -1377,7 +1424,9 @@ void R_AddModelSurfaces( void ) {
 					if ( inter->lightDef->viewCount != tr.viewCount ) {
 						continue;
 					}
-					inter->AddActiveInteraction();
+					//inter->AddActiveInteraction();
+					inter->model = R_EntityDefDynamicModel( vEntity->entityDef );
+					interactionsToAdd.push_back( inter );
 				}
 			}
 		} else {
@@ -1392,7 +1441,9 @@ void R_AddModelSurfaces( void ) {
 				if ( inter->lightDef->viewCount != tr.viewCount ) {
 					continue;
 				}
-				inter->AddActiveInteraction();
+				//inter->AddActiveInteraction();
+				inter->model = R_EntityDefDynamicModel( vEntity->entityDef );
+				interactionsToAdd.push_back( inter );
 			}
 		}
 
@@ -1402,6 +1453,18 @@ void R_AddModelSurfaces( void ) {
 		}
 
 	}
+
+	double ticksBefore = Sys_GetClockTicks();
+	if( r_ignore2.GetBool() ) {
+		tbb::parallel_for_each( interactionsToAdd, []( idInteraction* inter ) {	inter->AddActiveInteraction(); } );
+	}
+	else {
+		for( idInteraction* inter : interactionsToAdd ) {
+			inter->AddActiveInteraction();
+		}
+	}
+	double ticksAfter = Sys_GetClockTicks();
+	common->Printf( "Adding %d active interactions took %.2f us.\n", interactionsToAdd.size(), ( ticksAfter - ticksBefore ) * 1000000 / Sys_ClockTicksPerSecond() );
 }
 
 /*
@@ -1419,7 +1482,7 @@ void R_RemoveUnecessaryViewLights( void ) {
 		// if the light didn't have any lit surfaces visible, there is no need to
 		// draw any of the shadows.  We still keep the vLight for debugging
 		// draws
-		if ( !vLight->localInteractions && !vLight->globalInteractions && !vLight->translucentInteractions ) {
+		if ( !vLight->localInteractions.load() && !vLight->globalInteractions.load() && !vLight->translucentInteractions.load() ) {
 			vLight->localShadows = NULL;
 			vLight->globalShadows = NULL;
 		}
