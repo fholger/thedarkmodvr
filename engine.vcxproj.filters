@@ -97,6 +97,9 @@
     <Filter Include="Ui">
       <UniqueIdentifier>{b3166d25-0562-49da-bc8d-961006fe1785}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vr">
+      <UniqueIdentifier>{04c9457c-b3e7-4fa1-9633-89dfb3a9fb41}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -563,6 +566,13 @@
       <Filter>Sys</Filter>
     </ClInclude>
     <ClInclude Include="sys\win32\rc\PDAEditor_resource.h" />
+    <ClInclude Include="vr\VrSupport.h">
+      <Filter>Vr</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\Framebuffer.h" />
+    <ClInclude Include="sound\dxerr.h">
+      <Filter>Sound</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -1591,6 +1601,16 @@
     <ClCompile Include="framework\precompiled_engine.cpp" />
     <ClCompile Include="framework\I18N.cpp">
       <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="vr\OpenVrSupport.cpp">
+      <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\Framebuffer.cpp" />
+    <ClCompile Include="vr\vr_backend.cpp">
+      <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\dxerr.cpp">
+      <Filter>Sound</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

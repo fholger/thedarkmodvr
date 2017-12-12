@@ -71,6 +71,7 @@ class idRenderWorld;
 class idSoundWorld;
 class usercmd_t;
 class idUserInterface;
+class VrSupport;
 
 class idGame {
 public:
@@ -139,6 +140,8 @@ public:
 
 	// Makes rendering and sound system calls to display for a given clientNum.
 	virtual bool				Draw( int clientNum ) = 0;
+
+	virtual void				DrawLightgem( int clientNum ) = 0;
 
 	// Let the game do it's own UI when ESCAPE is used
 	virtual escReply_t			HandleESC( idUserInterface **gui ) = 0;
@@ -373,6 +376,7 @@ typedef struct {
 	idDeclManager *				declManager;			// declaration manager
 	idAASFileManager *			AASFileManager;			// AAS file manager
 	idCollisionModelManager *	collisionModelManager;	// collision model manager
+	VrSupport *				vrSupport;				// VR support
 
 } gameImport_t;
 

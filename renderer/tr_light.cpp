@@ -18,6 +18,8 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
+#include <set>
+#include <unordered_set>
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: tr_light.cpp 6674 2016-11-16 13:07:45Z duzenko $");
@@ -196,8 +198,8 @@ void R_SkyboxTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 
 	R_GlobalPointToLocal( surf->space->modelMatrix, viewOrg, localViewOrigin );
 
-	const idDrawVert *verts = surf->geo->verts;
-	const int numVerts = surf->geo->numVerts;
+	const idDrawVert *verts = surf->frontendGeo->verts;
+	const int numVerts = surf->frontendGeo->numVerts;
 	const int size = numVerts * sizeof( idVec3 );
 	idVec3 *texCoords = (idVec3 *) _alloca16( size );
 
@@ -269,11 +271,11 @@ void R_WobbleskyTexGen( drawSurf_t *surf, const idVec3 &viewOrg ) {
 
 	R_GlobalPointToLocal( surf->space->modelMatrix, viewOrg, localViewOrigin );
 
-	const int numVerts = surf->geo->numVerts;
+	const int numVerts = surf->frontendGeo->numVerts;
 	const int size = numVerts * sizeof( idVec3 );
 	idVec3 *texCoords = (idVec3 *) _alloca16( size );
 
-	const idDrawVert *verts = surf->geo->verts;
+	const idDrawVert *verts = surf->frontendGeo->verts;
 	idVec3 v;
 	for (int i = 0; i < numVerts; i++ ) {
 		v[0] = verts[i].xyz[0] - localViewOrigin[0];
@@ -300,7 +302,7 @@ static void R_SpecularTexGen( drawSurf_t *surf, const idVec3 &globalLightOrigin,
 	R_GlobalPointToLocal( surf->space->modelMatrix, globalLightOrigin, localLightOrigin );
 	R_GlobalPointToLocal( surf->space->modelMatrix, viewOrg, localViewOrigin );
 
-	tri = surf->geo;
+	tri = surf->frontendGeo;
 
 	// Serp - Changed to 3 component from 4 in gpl release
 	const int size = tri->numVerts * sizeof( idVec3 );
@@ -653,12 +655,17 @@ void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const 
 
 	drawSurf = (drawSurf_t *)R_FrameAlloc( sizeof( *drawSurf ) );
 
-	drawSurf->geo = tri;
+	drawSurf->frontendGeo = tri;
+	drawSurf->backendGeo = nullptr;
 	drawSurf->space = space;
 	drawSurf->material = shader;
 	drawSurf->scissorRect = scissor;
 	drawSurf->dsFlags = 0;
 	drawSurf->particle_radius = 0.0f; // #3878
+
+	srfTriangles_t* copiedGeo = (srfTriangles_t*)R_FrameAlloc( sizeof( srfTriangles_t ) );
+	memcpy( copiedGeo, drawSurf->frontendGeo, sizeof( srfTriangles_t ) );
+	drawSurf->backendGeo = copiedGeo;
 
 	if ( viewInsideShadow ) {
 		drawSurf->dsFlags |= DSF_VIEW_INSIDE_SHADOW;
@@ -1162,7 +1169,8 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 	float			generatedShaderParms[MAX_ENTITY_SHADER_PARMS];
 
 	drawSurf = (drawSurf_t *)R_FrameAlloc( sizeof( *drawSurf ) );
-	drawSurf->geo = tri;
+	drawSurf->frontendGeo = tri;
+	drawSurf->backendGeo = nullptr;
 	drawSurf->space = space;
 	drawSurf->material = shader;
 	drawSurf->scissorRect = scissor;

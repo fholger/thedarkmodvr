@@ -17,6 +17,7 @@
  
 ******************************************************************************/
 #include "precompiled_game.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 #pragma warning(disable : 4355) // greebo: Disable warning "'this' used in constructor"
@@ -8802,7 +8803,12 @@ void idPlayer::CalculateRenderView( void ) {
 		}
 		
 		// field of view
-		gameLocal.CalcFov( CalcFov( true ), renderView->fov_x, renderView->fov_y );
+		if (renderView->viewEyeBuffer != 0 && vrSupport->IsInitialized()) {
+			vrSupport->GetFov( renderView->fov_x, renderView->fov_y );
+		}
+		else {
+			gameLocal.CalcFov( CalcFov( true ), renderView->fov_x, renderView->fov_y );
+		}
 	}
 
 	if ( renderView->fov_y == 0 ) {

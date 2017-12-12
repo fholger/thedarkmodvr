@@ -17,6 +17,7 @@
  
 ******************************************************************************/
 #include "precompiled_engine.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: RenderSystem.cpp 6755 2017-01-15 13:41:13Z grayman $");
@@ -99,8 +100,9 @@ static void R_PerformanceCounters( void ) {
 			tr.pc.c_lightUpdates, tr.pc.c_lightReferences );
 	}
 	if ( r_showMemory.GetBool() ) {
+		int m0 = frameData ? frameData->frameMemoryAllocated.load() : 0;
 		int	m1 = frameData ? frameData->memoryHighwater : 0;
-		common->Printf( "frameData: %i (%i)\n", R_CountFrameData(), m1 );
+		common->Printf( "frameData: %i (%i)\n", m0, m1 );
 	}
 	if ( r_showLightScale.GetBool() ) {
 		common->Printf( "lightScale: %f\n", backEnd.pc.maxLightValue );
@@ -119,9 +121,10 @@ R_IssueRenderCommands
 Called by R_EndFrame each frame
 ====================
 */
-static void R_IssueRenderCommands( void ) {
-	if ( frameData->cmdHead->commandId == RC_NOP
-		&& !frameData->cmdHead->next ) {
+static void R_IssueRenderCommands( frameData_t *frameData ) {
+	emptyCommand_t *cmds = frameData->cmdHead;
+	if ( cmds->commandId == RC_NOP
+		&& !cmds->next ) {
 		// nothing to issue
 		return;
 	}
@@ -135,10 +138,10 @@ static void R_IssueRenderCommands( void ) {
 	// r_skipRender is usually more usefull, because it will still
 	// draw 2D graphics
 	if ( !r_skipBackEnd.GetBool() ) {
-		RB_ExecuteBackEndCommands( frameData->cmdHead );
+		RB_ExecuteBackEndCommands( cmds );
 	}
 
-	R_ClearCommandChain();
+	R_ClearCommandChain( frameData );
 }
 
 /*
@@ -170,7 +173,7 @@ Called after every buffer submission
 and by R_ToggleSmpFrame
 ====================
 */
-void R_ClearCommandChain( void ) {
+void R_ClearCommandChain( frameData_t *frameData ) {
 	// clear the command chain
 	frameData->cmdHead = frameData->cmdTail = (emptyCommand_t *)R_FrameAlloc( sizeof( *frameData->cmdHead ) );
 	frameData->cmdHead->commandId = RC_NOP;
@@ -679,6 +682,10 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 	} else {
 		cmd->buffer = (int)GL_BACK;
 	}
+
+	if (vrSupport->IsInitialized()) {
+		//vrSupport->FrameStart();
+	}
 }
 
 void idRenderSystemLocal::WriteDemoPics() {
@@ -701,34 +708,35 @@ Returns the number of msec spent in the back end
 void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	emptyCommand_t *cmd;
 
-	if ( !glConfig.isInitialized ) {
+	static idFile* logFile = fileSystem->OpenFileWrite( "backend_timings.txt", "fs_savepath", "" );
+
+	if (!glConfig.isInitialized) {
 		return;
 	}
 
-	// close any gui drawing
-	guiModel->EmitFullScreen();
-	guiModel->Clear();
+	int waitForPoses = Sys_Milliseconds();
+	if (vrSupport->IsInitialized()) {
+		vrSupport->FrameStart();
+	}
+
+	// start the back end up again with the new command list
+	int startLoop = Sys_Milliseconds();
+	session->FireGameTics();
+	int endSignal = Sys_Milliseconds();
+	R_IssueRenderCommands( backendFrameData );
+	int endRender = Sys_Milliseconds();
+	session->WaitForGameTicCompletion();
+	int endWait = Sys_Milliseconds();
+
+	logFile->Printf("Backend timing: poses %d - signal %d - render %d - wait %d | begin %d - end %d\n", startLoop - waitForPoses, endSignal - startLoop, endRender - endSignal, endWait - endRender, waitForPoses, endWait);
 
 	// check for dynamic changes that require some initialization
 	R_CheckCvars();
 
 #ifdef DEBUG
-    // check for errors
+	// check for errors
 	GL_CheckErrors();
 #endif
-
-	// add the swapbuffers command
-	cmd = (emptyCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
-	cmd->commandId = RC_SWAP_BUFFERS;
-
-	// duzenko #4408 - allow background game tic
-	Sys_LeaveCriticalSection(CRITICAL_SECTION_TWO);
-
-	// start the back end up again with the new command list
-	R_IssueRenderCommands();
-
-	// duzenko #4408 - wait/forbid background game tic
-	Sys_EnterCriticalSection(CRITICAL_SECTION_TWO);
 
 	// use the other buffers next frame, because another CPU
 	// may still be rendering into the current buffers
@@ -966,7 +974,7 @@ void idRenderSystemLocal::CaptureRenderToFile( const char *fileName, bool fixAlp
 
 	guiModel->EmitFullScreen();
 	guiModel->Clear();
-	R_IssueRenderCommands();
+	R_IssueRenderCommands( frameData );
 
 	qglReadBuffer( GL_BACK );
 
@@ -1012,9 +1020,10 @@ void idRenderSystemLocal::CaptureRenderToBuffer(unsigned char* buffer)
 
 	guiModel->EmitFullScreen();
 	guiModel->Clear();
-	R_IssueRenderCommands();
+	R_IssueRenderCommands( frameData );
 
-	qglReadBuffer( GL_BACK );
+	// FIXME: do we need to adapt this?
+	//qglReadBuffer( GL_BACK );
 
 // #4395 Duzenko lightem pixel pack buffer optimization
 

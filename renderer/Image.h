@@ -170,6 +170,8 @@ public:
 						textureFilter_t filter, bool allowDownSize, 
 						textureDepth_t depth );
 
+	void		AllocImage( int width, int height, textureFilter_t filter, textureRepeat_t repeat, textureDepth_t depth );
+
 	void		CopyFramebuffer( int x, int y, int width, int height, bool useOversizedBuffer );
 
 	void		CopyDepthbuffer( int x, int y, int width, int height, bool useOversizedBuffer );
@@ -189,8 +191,8 @@ public:
 	// check for changed timestamp on disk and reload if necessary
 	void		Reload( bool checkPrecompressed, bool force );
 
-	void		AddReference()				{ refCount++; };
-
+	void		AddReference()				{ refCount++; }
+	
 //==========================================================
 
 	void		GetDownsize( int &scaled_width, int &scaled_height ) const;

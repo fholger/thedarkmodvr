@@ -18,6 +18,8 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
+#include "../game/DarkModGlobals.h"
+#include <mutex>
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: VertexCache.cpp 5383 2012-04-11 09:46:32Z serpentine $");
@@ -29,6 +31,22 @@ idCVar idVertexCache::r_showVertexCache( "r_showVertexCache", "0", CVAR_INTEGER|
 idCVar idVertexCache::r_vertexBufferMegs( "r_vertexBufferMegs", "32", CVAR_INTEGER|CVAR_RENDERER, "" );
 
 idVertexCache		vertexCache;
+
+
+idFile* cacheLogFile = nullptr;
+std::mutex logMutex;
+
+void CacheLog(const char* fmt, ...) {
+	/*std::unique_lock<std::mutex> lock( logMutex );
+	if (cacheLogFile == nullptr) {
+		cacheLogFile = fileSystem->OpenFileWrite( "vertexcache.txt", "fs_savepath", "" );
+	}
+	va_list args;
+	va_start( args, fmt );
+	cacheLogFile->VPrintf( fmt, args );
+	va_end( args );
+	cacheLogFile->Flush();*/
+}
 
 /*
 ==============
@@ -45,6 +63,7 @@ idVertexCache::ActuallyFree
 ==============
 */
 void idVertexCache::ActuallyFree( vertCache_t *block ) {
+	CacheLog( "Actually freeing vertCache block %d in list %d\r", block, listNum );
 	if (!block) {
 		common->Error( "idVertexCache Free: NULL pointer" );
 		return;
@@ -64,8 +83,8 @@ void idVertexCache::ActuallyFree( vertCache_t *block ) {
 		if ( block->vbo ) {
 #if 0		// this isn't really necessary, it will be reused soon enough
 			// filling with zero length data is the equivalent of freeing
-			qglBindBufferARB(GL_ARRAY_BUFFER_ARB, block->vbo);
-			qglBufferDataARB(GL_ARRAY_BUFFER_ARB, 0, 0, GL_DYNAMIC_DRAW_ARB);
+			glBindBufferARB(GL_ARRAY_BUFFER_ARB, block->vbo);
+			glBufferDataARB(GL_ARRAY_BUFFER_ARB, 0, 0, GL_DYNAMIC_DRAW_ARB);
 #endif
 		} else if ( block->virtMem ) {
 			Mem_Free( block->virtMem );
@@ -80,12 +99,12 @@ void idVertexCache::ActuallyFree( vertCache_t *block ) {
 
 #if 1
 	// stick it on the front of the free list so it will be reused immediately
-	block->next = freeStaticHeaders.next;
-	block->prev = &freeStaticHeaders;
+	block->next = freeStaticHeaders[listNum].next;
+	block->prev = &freeStaticHeaders[listNum];
 #else
 	// stick it on the back of the free list so it won't be reused soon (just for debugging)
-	block->next = &freeStaticHeaders;
-	block->prev = freeStaticHeaders.prev;
+	block->next = &freeStaticHeaders[listNum];
+	block->prev = freeStaticHeaders[listNum].prev;
 #endif
 
 	block->next->prev = block;
@@ -104,8 +123,9 @@ The ARB_vertex_buffer_object will be bound
 ==============
 */
 void *idVertexCache::Position( vertCache_t *buffer ) {
-	if ( !buffer || buffer->tag == TAG_FREE ) {
-		common->FatalError( "idVertexCache::Position: bad vertCache_t" );
+	CacheLog( "Getting position for vertCache block %d, current list %d\r", buffer, listNum );
+	if (!buffer || buffer->tag == TAG_FREE) {
+		common->FatalError( "idVertexCache::Position: bad vertCache_t %d", buffer );
 	}
 
 	// the ARB vertex object just uses an offset
@@ -118,9 +138,9 @@ void *idVertexCache::Position( vertCache_t *buffer ) {
 			}
 		}
 		if ( buffer->indexBuffer ) {
-			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, buffer->vbo );
+			glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, buffer->vbo );
 		} else {
-			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, buffer->vbo );
+			glBindBufferARB( GL_ARRAY_BUFFER_ARB, buffer->vbo );
 		}
 		return (void *)buffer->offset;
 	}
@@ -130,7 +150,7 @@ void *idVertexCache::Position( vertCache_t *buffer ) {
 }
 
 void idVertexCache::UnbindIndex() {
-	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+	glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
 }
 
 
@@ -160,11 +180,14 @@ void idVertexCache::Init() {
 	}
 
 	// initialize the cache memory blocks
-	freeStaticHeaders.next = freeStaticHeaders.prev = &freeStaticHeaders;
-	staticHeaders.next = staticHeaders.prev = &staticHeaders;
-	freeDynamicHeaders.next = freeDynamicHeaders.prev = &freeDynamicHeaders;
-	dynamicHeaders.next = dynamicHeaders.prev = &dynamicHeaders;
-	deferredFreeList.next = deferredFreeList.prev = &deferredFreeList;
+	for (int i = 0; i < NUM_VERTEX_FRAMES; i++) {
+		freeStaticHeaders[i].next = freeStaticHeaders[i].prev = &freeStaticHeaders[i];
+		staticHeaders[i].next = staticHeaders[i].prev = &staticHeaders[i];
+		freeDynamicHeaders[i].next = freeDynamicHeaders[i].prev = &freeDynamicHeaders[i];
+		dynamicHeaders[i].next = dynamicHeaders[i].prev = &dynamicHeaders[i];
+		deferredFreeList[i].next = deferredFreeList[i].prev = &deferredFreeList[i];
+	}
+	listNum = 0;
 
 	// set up the dynamic frame memory
 	staticAllocTotal = 0;
@@ -192,8 +215,10 @@ the cached data isn't valid
 ===========
 */
 void idVertexCache::PurgeAll() {
-	while( staticHeaders.next != &staticHeaders ) {
-		ActuallyFree( staticHeaders.next );
+	for (int i = 0; i < NUM_VERTEX_FRAMES; ++i) {
+		while (staticHeaders[i].next != &staticHeaders[i]) {
+			ActuallyFree( staticHeaders[i].next );
+		}
 	}
 }
 
@@ -224,26 +249,26 @@ void idVertexCache::Alloc( void *data, int size, vertCache_t **buffer, bool inde
 	*buffer = NULL;
 
 	// if we don't have any remaining unused headers, allocate some more
-	if ( freeStaticHeaders.next == &freeStaticHeaders ) {
+	if (freeStaticHeaders[listNum].next == &freeStaticHeaders[listNum]) {
 		for ( int i = 0; i < EXPAND_HEADERS; i++ ) {
 			block = headerAllocator.Alloc();
-			block->next = freeStaticHeaders.next;
-			block->prev = &freeStaticHeaders;
+			block->next = freeStaticHeaders[listNum].next;
+			block->prev = &freeStaticHeaders[listNum];
 			block->next->prev = block;
 			block->prev->next = block;
 
 			if( !virtualMemory ) {
-				qglGenBuffersARB( 1, & block->vbo );
+				glGenBuffersARB( 1, & block->vbo );
 			}
 		}
 	}
 
 	// move it from the freeStaticHeaders list to the staticHeaders list
-	block = freeStaticHeaders.next;
+	block = freeStaticHeaders[listNum].next;
 	block->next->prev = block->prev;
 	block->prev->next = block->next;
-	block->next = staticHeaders.next;
-	block->prev = &staticHeaders;
+	block->next = staticHeaders[listNum].next;
+	block->prev = &staticHeaders[listNum];
 	block->next->prev = block;
 	block->prev->next = block;
 
@@ -257,10 +282,6 @@ void idVertexCache::Alloc( void *data, int size, vertCache_t **buffer, bool inde
 	staticCountTotal++;
 	staticAllocTotal += block->size;
 
-	// this will be set to zero when it is purged
-	block->user = buffer;
-	*buffer = block;
-
 	// allocation doesn't imply used-for-drawing, because at level
 	// load time lots of things may be created, but they aren't
 	// referenced by the GPU yet, and can be purged if needed.
@@ -271,20 +292,25 @@ void idVertexCache::Alloc( void *data, int size, vertCache_t **buffer, bool inde
 	// copy the data
 	if ( block->vbo ) {
 		if ( indexBuffer ) {
-			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, block->vbo );
-			qglBufferDataARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
+			glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, block->vbo );
+			glBufferDataARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
 		} else {
-			qglBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
+			glBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
 			if ( allocatingTempBuffer ) {
-				qglBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STREAM_DRAW_ARB );
+				glBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STREAM_DRAW_ARB );
 			} else {
-				qglBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
+				glBufferDataARB( GL_ARRAY_BUFFER_ARB, (GLsizeiptrARB)size, data, GL_STATIC_DRAW_ARB );
 			}
 		}
 	} else {
 		block->virtMem = Mem_Alloc( size );
 		SIMDProcessor->Memcpy( block->virtMem, data, size );
 	}
+
+	// this will be set to zero when it is purged
+	block->user = buffer;
+	*buffer = block;
+	CacheLog( "Allocated vertCache block %d, current list %d\r", block, listNum );
 }
 
 /*
@@ -293,7 +319,8 @@ idVertexCache::Touch
 ===========
 */
 void idVertexCache::Touch( vertCache_t *block ) {
-	if ( !block ) {
+	CacheLog( "Touching vertCache block %d, current list %d\r", block, listNum );
+	if (!block) {
 		common->Error( "idVertexCache Touch: NULL pointer" );
 		return;
 	}
@@ -310,10 +337,10 @@ void idVertexCache::Touch( vertCache_t *block ) {
 		block->next->prev = block->prev;
 		block->prev->next = block->next;
 
-		block->next = staticHeaders.next;
-		block->prev = &staticHeaders;
-		staticHeaders.next->prev = block;
-		staticHeaders.next = block;
+		block->next = staticHeaders[listNum].next;
+		block->prev = &staticHeaders[listNum];
+		staticHeaders[listNum].next->prev = block;
+		staticHeaders[listNum].next = block;
 	}
 }
 
@@ -323,6 +350,7 @@ idVertexCache::Free
 ===========
 */
 void idVertexCache::Free( vertCache_t *block ) {
+	CacheLog( "Freeing vertCache block %d, current list %d\r", block, listNum );
 	if (!block) {
 		return;
 	}
@@ -341,10 +369,10 @@ void idVertexCache::Free( vertCache_t *block ) {
 	block->next->prev = block->prev;
 	block->prev->next = block->next;
 
-	block->next = deferredFreeList.next;
-	block->prev = &deferredFreeList;
-	deferredFreeList.next->prev = block;
-	deferredFreeList.next = block;
+	block->next = deferredFreeList[listNum].next;
+	block->prev = &deferredFreeList[listNum];
+	deferredFreeList[listNum].next->prev = block;
+	deferredFreeList[listNum].next = block;
 }
 
 /*
@@ -375,23 +403,23 @@ vertCache_t	*idVertexCache::AllocFrameTemp( void *data, int size ) {
 	// this data is just going on the shared dynamic list
 
 	// if we don't have any remaining unused headers, allocate some more
-	if ( freeDynamicHeaders.next == &freeDynamicHeaders ) {
+	if (freeDynamicHeaders[listNum].next == &freeDynamicHeaders[listNum]) {
 
 		for ( int i = 0; i < EXPAND_HEADERS; i++ ) {
 			block = headerAllocator.Alloc();
-			block->next = freeDynamicHeaders.next;
-			block->prev = &freeDynamicHeaders;
+			block->next = freeDynamicHeaders[listNum].next;
+			block->prev = &freeDynamicHeaders[listNum];
 			block->next->prev = block;
 			block->prev->next = block;
 		}
 	}
 
 	// move it from the freeDynamicHeaders list to the dynamicHeaders list
-	block = freeDynamicHeaders.next;
+	block = freeDynamicHeaders[listNum].next;
 	block->next->prev = block->prev;
 	block->prev->next = block->next;
-	block->next = dynamicHeaders.next;
-	block->prev = &dynamicHeaders;
+	block->next = dynamicHeaders[listNum].next;
+	block->prev = &dynamicHeaders[listNum];
 	block->next->prev = block;
 	block->prev->next = block;
 
@@ -409,11 +437,13 @@ vertCache_t	*idVertexCache::AllocFrameTemp( void *data, int size ) {
 	block->vbo = tempBuffers[listNum]->vbo;
 
 	if ( block->vbo ) {
-		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
-		qglBufferSubDataARB( GL_ARRAY_BUFFER_ARB, block->offset, (GLsizeiptrARB)size, data );
+		glBindBufferARB( GL_ARRAY_BUFFER_ARB, block->vbo );
+		glBufferSubDataARB( GL_ARRAY_BUFFER_ARB, block->offset, (GLsizeiptrARB)size, data );
 	} else {
 		SIMDProcessor->Memcpy( (byte *)block->virtMem + block->offset, data, size );
 	}
+
+	CacheLog( "Allocated frame temp vertCache block %d, current list %d\r", block, listNum );
 
 	return block;
 }
@@ -429,8 +459,8 @@ void idVertexCache::EndFrame() {
 		int	staticUseCount = 0;
 		int staticUseSize = 0;
 
-		for ( vertCache_t *block = staticHeaders.next ; block != &staticHeaders ; block = block->next ) {
-			if ( block->frameUsed == currentFrame ) {
+		for (vertCache_t *block = staticHeaders[listNum].next; block != &staticHeaders[listNum]; block = block->next) {
+			if ( block->frameUsed == currentFrame) {
 				staticUseCount++;
 				staticUseSize += block->size;
 			}
@@ -456,13 +486,13 @@ void idVertexCache::EndFrame() {
 	if( !virtualMemory ) {
 		// unbind vertex buffers so normal virtual memory will be used in case
 		// r_useVertexBuffers / r_useIndexBuffers
-		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
-		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+		glBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
+		glBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
 	}
 
 
 	currentFrame = tr.frameCount;
-	listNum = currentFrame % NUM_VERTEX_FRAMES;
+	listNum = (listNum + 1) % NUM_VERTEX_FRAMES;
 	staticAllocThisFrame = 0;
 	staticCountThisFrame = 0;
 	dynamicAllocThisFrame = 0;
@@ -470,19 +500,19 @@ void idVertexCache::EndFrame() {
 	tempOverflow = false;
 
 	// free all the deferred free headers
-	while( deferredFreeList.next != &deferredFreeList ) {
-		ActuallyFree( deferredFreeList.next );
+	while( deferredFreeList[listNum].next != &deferredFreeList[listNum] ) {
+		ActuallyFree( deferredFreeList[listNum].next );
 	}
 
-	// free all the frame temp headers
-	vertCache_t	*block = dynamicHeaders.next;
-	if ( block != &dynamicHeaders ) {
-		block->prev = &freeDynamicHeaders;
-		dynamicHeaders.prev->next = freeDynamicHeaders.next;
-		freeDynamicHeaders.next->prev = dynamicHeaders.prev;
-		freeDynamicHeaders.next = block;
+	// free all the frame temp headers from last frame
+	vertCache_t	*block = dynamicHeaders[listNum].next;
+	if (block != &dynamicHeaders[listNum]) {
+		block->prev = &freeDynamicHeaders[listNum];
+		dynamicHeaders[listNum].prev->next = freeDynamicHeaders[listNum].next;
+		freeDynamicHeaders[listNum].next->prev = dynamicHeaders[listNum].prev;
+		freeDynamicHeaders[listNum].next = block;
 
-		dynamicHeaders.next = dynamicHeaders.prev = &dynamicHeaders;
+		dynamicHeaders[listNum].next = dynamicHeaders[listNum].prev = &dynamicHeaders[listNum];
 	}
 }
 
@@ -499,7 +529,7 @@ void idVertexCache::List( void ) {
 	int	numFreeDynamicHeaders = 0;
 
 	vertCache_t *block;
-	for ( block = staticHeaders.next ; block != &staticHeaders ; block = block->next) {
+	for (block = staticHeaders[listNum].next; block != &staticHeaders[listNum]; block = block->next) {
 		numActive++;
 
 		totalStatic += block->size;
@@ -508,11 +538,11 @@ void idVertexCache::List( void ) {
 		}
 	}
 	
-	for ( block = freeStaticHeaders.next ; block != &freeStaticHeaders ; block = block->next ) {
+	for (block = freeStaticHeaders[listNum].next; block != &freeStaticHeaders[listNum]; block = block->next) {
 		numFreeStaticHeaders++;
 	}
 
-	for ( block = freeDynamicHeaders.next ; block != &freeDynamicHeaders ; block = block->next ) {
+	for (block = freeDynamicHeaders[listNum].next; block != &freeDynamicHeaders[listNum]; block = block->next) {
 		numFreeDynamicHeaders++;
 	}
 

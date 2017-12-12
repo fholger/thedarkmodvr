@@ -50,6 +50,7 @@ static bool versioned = RegisterVersionedFile("$Id: Game_local.cpp 6723 2016-12-
 #include "Http/HttpConnection.h"
 #include "Http/HttpRequest.h"
 #include "StimResponse/StimType.h" // grayman #2721
+#include "../vr/VrSupport.h"
 
 #include "randomizer/randomc.h"
 #include <boost/algorithm/string/trim.hpp>
@@ -81,6 +82,7 @@ idDeclManager *				declManager = NULL;
 idAASFileManager *			AASFileManager = NULL;
 idCollisionModelManager *	collisionModelManager = NULL;
 idCVar *					idCVar::staticVars = NULL;
+VrSupport *					vrSupport = NULL;
 
 idCVar com_forceGenericSIMD( "com_forceGenericSIMD", "0", CVAR_BOOL|CVAR_SYSTEM, "force generic platform independent SIMD" );
 
@@ -163,6 +165,7 @@ extern "C" gameExport_t *GetGameAPI( gameImport_t *import ) {
 		declManager					= import->declManager;
 		AASFileManager				= import->AASFileManager;
 		collisionModelManager		= import->collisionModelManager;
+		vrSupport					= import->vrSupport;
 	}
 	else {
 		// Wrong game version, throw a meaningful error rather than leaving
@@ -3548,6 +3551,11 @@ Calculates the horizontal and vertical field of view based on a horizontal field
 ====================
 */
 void idGameLocal::CalcFov( float base_fov, float &fov_x, float &fov_y ) const {
+	if (vrSupport->IsInitialized()) {
+		vrSupport->GetFov( fov_x, fov_y );
+		return;
+	}
+
 	float	x;
 	float	y;
 	float	ratio_x;
@@ -3647,24 +3655,28 @@ bool idGameLocal::Draw( int clientNum )
 		return false;
 	}
 
-	// Make the rendershot appear on the hud
-	// duzenko #4408 - moved this half from game tic
-	if (cv_lg_hud.GetInteger() == 0)
-	{
-		player->ProcessLightgem(true);
-	}
-
 	// render the scene
 	player->playerView.RenderPlayerView(player->hud);
 
 	// Make the rendershot appear on the hud
-	if (cv_lg_hud.GetInteger() != 0)
+	/*if (cv_lg_hud.GetInteger() != 0)
 	{
 		player->ProcessLightgem(true);
-	}
+	}*/
 
 	m_DoLightgem = true;
 	return true;
+}
+
+void idGameLocal::DrawLightgem( int clientNum ) {
+	idPlayer *player = static_cast<idPlayer *>(entities[clientNum]);
+	if (!player) {
+		return;
+	}
+
+	if (cv_lg_hud.GetInteger() == 0) {
+		player->ProcessLightgem( true );
+	}
 }
 
 /*

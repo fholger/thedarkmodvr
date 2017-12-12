@@ -17,6 +17,8 @@
  
 ******************************************************************************/
 #include "precompiled_engine.h"
+#include "../vr/VrSupport.h"
+#include <mutex>
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: tr_backend.cpp 6656 2016-10-28 19:09:57Z duzenko $");
@@ -24,7 +26,6 @@ static bool versioned = RegisterVersionedFile("$Id: tr_backend.cpp 6656 2016-10-
 #include "tr_local.h"
 
 
-frameData_t		*frameData;
 backEndState_t	backEnd;
 
 
@@ -51,6 +52,8 @@ void RB_SetDefaultGLState( void ) {
 	// make sure our GL state vector is set correctly
 	memset( &backEnd.glState, 0, sizeof( backEnd.glState ) );
 	backEnd.glState.forceGlState = true;
+
+	Framebuffer::BindPrimary();
 
 	qglColorMask( 1, 1, 1, 1 );
 
@@ -573,39 +576,25 @@ const void	RB_CopyRender( const void *data ) {
 
 /*
 ====================
-RB_ExecuteBackEndCommands
+RB_ExecuteBackEndCommandsMono
 
-This function will be called syncronously if running without
-smp extensions, or asyncronously by another thread.
+Called if VR support is disabled.
 ====================
-*/
-void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
-	static int backEndStartTime, backEndFinishTime;
-
-	if ( cmds->commandId == RC_NOP && !cmds->next ) {
-		return;
-	}
-
+ */
+void RB_ExecuteBackEndCommandsMono(const emptyCommand_t* cmds) {
 	// r_debugRenderToTexture
 	int	c_draw3d = 0, c_draw2d = 0, c_setBuffers = 0, c_swapBuffers = 0, c_copyRenders = 0;
 
-	backEndStartTime = Sys_Milliseconds();
-
-	// needed for editor rendering
-	RB_SetDefaultGLState();
-
-	// upload any image loads that have completed
-	globalImages->CompleteBackgroundImageLoads();
-
-	while ( cmds ) {
-		switch ( cmds->commandId ) {
+	while (cmds) {
+		switch (cmds->commandId) {
 		case RC_NOP:
 			break;
 		case RC_DRAW_VIEW:
 			RB_DrawView( cmds );
-			if ( ((const drawSurfsCommand_t *)cmds)->viewDef->viewEntitys ) {
+			if (((const drawSurfsCommand_t *)cmds)->viewDef->viewEntitys) {
 				c_draw3d++;
-			} else {
+			}
+			else {
 				c_draw2d++;
 			}
 			break;
@@ -622,10 +611,47 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 			c_swapBuffers++;
 			break;
 		default:
-			common->Error( "RB_ExecuteBackEndCommands: bad commandId" );
+			common->Error( "RB_ExecuteBackEndCommandsMono: bad commandId" );
 			break;
 		}
 		cmds = (const emptyCommand_t *)cmds->next;
+	}
+
+	if (r_debugRenderToTexture.GetInteger()) {
+		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, SwpBuf: %i, CpyRenders: %i, CpyFrameBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_swapBuffers, c_copyRenders, backEnd.c_copyFrameBuffer );
+		backEnd.c_copyFrameBuffer = 0;
+	}
+}
+
+void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds );
+
+/*
+====================
+RB_ExecuteBackEndCommands
+
+This function will be called syncronously if running without
+smp extensions, or asyncronously by another thread.
+====================
+*/
+void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
+	static int backEndStartTime, backEndFinishTime;
+
+	if ( cmds->commandId == RC_NOP && !cmds->next ) {
+		return;
+	}
+
+	backEndStartTime = Sys_Milliseconds();
+
+	// needed for editor rendering
+	RB_SetDefaultGLState();
+
+	// upload any image loads that have completed
+	globalImages->CompleteBackgroundImageLoads();
+
+	if (vrSupport->IsInitialized()) {
+		RB_ExecuteBackEndCommandsStereo( cmds );
+	} else {
+		RB_ExecuteBackEndCommandsMono( cmds );
 	}
 
 	// go back to the default texture so the editor doesn't mess up a bound image
@@ -636,9 +662,4 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 	backEndFinishTime = Sys_Milliseconds();
 	backEnd.pc.msecLast = backEndFinishTime - backEndStartTime;
 	backEnd.pc.msec += backEnd.pc.msecLast;
-
-	if ( r_debugRenderToTexture.GetInteger() ) {
-		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, SwpBuf: %i, CpyRenders: %i, CpyFrameBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_swapBuffers, c_copyRenders, backEnd.c_copyFrameBuffer );
-		backEnd.c_copyFrameBuffer = 0;
-	}
 }

@@ -22,6 +22,7 @@
 
 static bool versioned = RegisterVersionedFile("$Id: tr_main.cpp 5171 2012-01-07 08:08:06Z greebo $");
 
+#include "../vr/VrSupport.h"
 #include "tr_local.h"
 #ifdef __ppc__
 #include <vecLib/vecLib.h>
@@ -31,7 +32,14 @@ static bool versioned = RegisterVersionedFile("$Id: tr_main.cpp 5171 2012-01-07 
 #endif
 
 //====================================================================
+static const unsigned int NUM_FRAME_DATA = 2;
+static const unsigned int FRAME_ALLOC_ALIGNMENT = 128;
+static const unsigned int MAX_FRAME_MEMORY = 64 * 1024 * 1024;	// larger so that we can noclip on PC for dev purposes
 
+frameData_t		smpFrameData[NUM_FRAME_DATA];
+frameData_t* 	frameData;
+frameData_t*	backendFrameData;
+unsigned int	smpFrame;
 /*
 ======================
 idScreenRect::Clear
@@ -175,29 +183,27 @@ R_ToggleSmpFrame
 ====================
 */
 void R_ToggleSmpFrame( void ) {
-	if ( r_lockSurfaces.GetBool() ) {
-		return;
+	// update the highwater mark
+	if (frameData->frameMemoryAllocated > frameData->memoryHighwater) {
+		frameData->memoryHighwater = frameData->frameMemoryAllocated;
 	}
+
+	// switch to the next frame
+	smpFrame++;
+	backendFrameData = frameData;
+	frameData = &smpFrameData[smpFrame % NUM_FRAME_DATA];
+
+	// reset the memory allocation
 	R_FreeDeferredTriSurfs( frameData );
 
-	// clear frame-temporary data
-	frameData_t		*frame;
-	frameMemoryBlock_t	*block;
+	// RB: 64 bit fixes, changed unsigned int to uintptr_t
+	const uintptr_t bytesNeededForAlignment = FRAME_ALLOC_ALIGNMENT - ((uintptr_t)frameData->frameMemory & (FRAME_ALLOC_ALIGNMENT - 1));
+	// RB end
 
-	// update the highwater mark
-	R_CountFrameData();
+	frameData->frameMemoryAllocated = bytesNeededForAlignment;
+	frameData->frameMemoryUsed = 0;
 
-	frame = frameData;
-
-	// reset the memory allocation to the first block
-	frame->alloc = frame->memory;
-
-	// clear all the blocks
-	for ( block = frame->memory ; block ; block = block->next ) {
-		block->used = 0;
-	}
-
-	R_ClearCommandChain();
+	R_ClearCommandChain( frameData );
 }
 
 
@@ -211,24 +217,12 @@ R_ShutdownFrameData
 =====================
 */
 void R_ShutdownFrameData( void ) {
-	frameData_t *frame;
-	frameMemoryBlock_t *block;
-
-	// free any current data
-	frame = frameData;
-	if ( !frame ) {
-		return;
-	}
-
-	R_FreeDeferredTriSurfs( frame );
-
-	frameMemoryBlock_t *nextBlock;
-	for ( block = frame->memory ; block ; block = nextBlock ) {
-		nextBlock = block->next;
-		Mem_Free( block );
-	}
-	Mem_Free( frame );
+	R_FreeDeferredTriSurfs( frameData );
 	frameData = NULL;
+	for (int i = 0; i < NUM_FRAME_DATA; i++) {
+		Mem_Free16( smpFrameData[i].frameMemory );
+		smpFrameData[i].frameMemory = NULL;
+	}
 }
 
 /*
@@ -237,53 +231,18 @@ R_InitFrameData
 =====================
 */
 void R_InitFrameData( void ) {
-	int size;
-	frameData_t *frame;
-	frameMemoryBlock_t *block;
-
 	R_ShutdownFrameData();
 
-	frameData = (frameData_t *)Mem_ClearedAlloc( sizeof( *frameData ));
-	frame = frameData;
-	size = MEMORY_BLOCK_SIZE;
-	block = (frameMemoryBlock_t *)Mem_Alloc( size + sizeof( *block ) );
-	if ( !block ) {
-		common->FatalError( "R_InitFrameData: Mem_Alloc() failed" );
+	for (int i = 0; i < NUM_FRAME_DATA; i++) {
+		smpFrameData[i].frameMemory = (byte*)Mem_Alloc16( MAX_FRAME_MEMORY );
 	}
-	block->size = size;
-	block->used = 0;
-	block->next = NULL;
-	frame->memory = block;
-	frame->memoryHighwater = 0;
+
+	// must be set before calling R_ToggleSmpFrame()
+	frameData = &smpFrameData[0];
+	backendFrameData = &smpFrameData[1];
 
 	R_ToggleSmpFrame();
-}
-
-/*
-================
-R_CountFrameData
-================
-*/
-int R_CountFrameData( void ) {
-	frameData_t		*frame;
-	frameMemoryBlock_t	*block;
-	int				count;
-
-	count = 0;
-	frame = frameData;
-	for ( block = frame->memory ; block ; block=block->next ) {
-		count += block->used;
-		if ( block == frame->alloc ) {
-			break;
-		}
-	}
-
-	// note if this is a new highwater mark
-	if ( count > frame->memoryHighwater ) {
-		frame->memoryHighwater = count;
-	}
-
-	return count;
+	R_ClearCommandChain( backendFrameData );
 }
 
 /*
@@ -356,50 +315,17 @@ Should part of this be inlined in a macro?
 ================
 */
 void *R_FrameAlloc( int bytes ) {
-	frameData_t		*frame;
-	frameMemoryBlock_t	*block;
-	void			*buf;
-    
-	bytes = (bytes+16)&~15;
-	// see if it can be satisfied in the current block
-	frame = frameData;
-	block = frame->alloc;
+	bytes = (bytes + FRAME_ALLOC_ALIGNMENT - 1) & ~(FRAME_ALLOC_ALIGNMENT - 1);
 
-	if ( block->size - block->used >= bytes ) {
-		buf = block->base + block->used;
-		block->used += bytes;
-		return buf;
+	// thread safe add
+	int	end = frameData->frameMemoryAllocated += bytes;
+	if (end > MAX_FRAME_MEMORY) {
+		idLib::Error( "R_FrameAlloc ran out of memory. bytes = %d, end = %d, highWaterAllocated = %d\n", bytes, end, frameData->memoryHighwater );
 	}
 
-	// advance to the next memory block if available
-	block = block->next;
-	// create a new block if we are at the end of
-	// the chain
-	if ( !block ) {
-		int		size;
+	byte* ptr = frameData->frameMemory + end - bytes;
 
-		size = MEMORY_BLOCK_SIZE;
-		block = (frameMemoryBlock_t *)Mem_Alloc( size + sizeof( *block ) );
-		if ( !block ) {
-			common->FatalError( "R_FrameAlloc: Mem_Alloc() failed" );
-		}
-		block->size = size;
-		block->used = 0;
-		block->next = NULL;
-		frame->alloc->next = block;
-	}
-
-	// we could fix this if we needed to...
-	if ( bytes > block->size ) {
-		common->FatalError( "R_FrameAlloc of %i exceeded MEMORY_BLOCK_SIZE",
-			bytes );
-	}
-
-	frame->alloc = block;
-
-	block->used = bytes;
-
-	return block->base;
+	return ptr;
 }
 
 /*
@@ -886,6 +812,11 @@ This uses the "infinite far z" trick
 ===============
 */
 void R_SetupProjection( void ) {
+	if (vrSupport->IsInitialized() && tr.viewDef->renderView.viewEyeBuffer != 0) {
+		vrSupport->SetupProjectionMatrix( tr.viewDef );
+		return;
+	}
+
 	float	xmin, xmax, ymin, ymax;
 	float	width, height;
 	float	zNear;
@@ -978,10 +909,12 @@ static void R_SetupViewFrustum( void ) {
 	// plane four is the front clipping plane
 	tr.viewDef->frustum[4] = /* vec3_origin - */ tr.viewDef->renderView.viewaxis[0];
 
+	idVec3 headOrg = tr.viewDef->renderView.vieworg; // +tr.viewDef->renderView.viewEyeBuffer * tr.viewDef->renderView.halfEyeDistance * tr.viewDef->renderView.viewaxis[1];
+
 	for ( i = 0; i < 5; i++ ) {
 		// flip direction so positive side faces out (FIXME: globally unify this)
 		tr.viewDef->frustum[i] = -tr.viewDef->frustum[i].Normal();
-		tr.viewDef->frustum[i][3] = -( tr.viewDef->renderView.vieworg * tr.viewDef->frustum[i].Normal() );
+		tr.viewDef->frustum[i][3] = -( headOrg * tr.viewDef->frustum[i].Normal() );
 	}
 
 	// eventually, plane five will be the rear clipping plane for fog
@@ -996,7 +929,7 @@ static void R_SetupViewFrustum( void ) {
 	dFar = MAX_WORLD_SIZE;
 	dLeft = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_x * 0.5f ) );
 	dUp = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_y * 0.5f ) );
-	tr.viewDef->viewFrustum.SetOrigin( tr.viewDef->renderView.vieworg );
+	tr.viewDef->viewFrustum.SetOrigin( headOrg );
 	tr.viewDef->viewFrustum.SetAxis( tr.viewDef->renderView.viewaxis );
 	tr.viewDef->viewFrustum.SetSize( dNear, dFar, dLeft, dUp );
 }
@@ -1141,6 +1074,14 @@ void R_RenderView( viewDef_t *parms ) {
 		if ( r_subviewOnly.GetBool() ) {
 			return;
 		}
+	}
+
+	// copy drawsurf geo state for backend use
+	for (int i = 0; i < parms->numDrawSurfs; ++i) {
+		drawSurf_t* surf = parms->drawSurfs[i];
+		srfTriangles_t* copiedGeo = (srfTriangles_t*)R_FrameAlloc( sizeof( srfTriangles_t ) );
+		memcpy( copiedGeo, surf->frontendGeo, sizeof( srfTriangles_t ) );
+		surf->backendGeo = copiedGeo;
 	}
 
 	// write everything needed to the demo file

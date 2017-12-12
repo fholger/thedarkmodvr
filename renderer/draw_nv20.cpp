@@ -194,7 +194,7 @@ static void RB_NV20_DI_BumpAndLightPass( const drawInteraction_t *din, bool mono
 
 	// draw it
 	qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_NV20_BUMP_AND_LIGHT );
-	RB_DrawElementsWithCounters( din->surf->geo );
+	RB_DrawElementsWithCounters( din->surf->backendGeo );
 }
 
 
@@ -304,7 +304,7 @@ static void RB_NV20_DI_DiffuseColorPass( const drawInteraction_t *din ) {
 
 	// draw it
 	qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_NV20_DIFFUSE_COLOR );
-	RB_DrawElementsWithCounters( din->surf->geo );
+	RB_DrawElementsWithCounters( din->surf->backendGeo );
 }
 
 
@@ -457,7 +457,7 @@ static void RB_NV20_DI_SpecularColorPass( const drawInteraction_t *din ) {
 
 	// draw it
 	qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_NV20_SPECULAR_COLOR );
-	RB_DrawElementsWithCounters( din->surf->geo );
+	RB_DrawElementsWithCounters( din->surf->backendGeo );
 }
 
 
@@ -585,7 +585,7 @@ static void RB_NV20_DI_DiffuseAndSpecularColorPass( const drawInteraction_t *din
 
 	// draw it
 	qglBindProgramARB( GL_VERTEX_PROGRAM_ARB, VPROG_NV20_DIFFUSE_AND_SPECULAR_COLOR );
-	RB_DrawElementsWithCounters( din->surf->geo );
+	RB_DrawElementsWithCounters( din->surf->backendGeo );
 }
 
 
@@ -681,7 +681,7 @@ static void RB_NV20_CreateDrawInteractions( const drawSurf_t *surf ) {
 
 	for ( ; surf ; surf=surf->nextOnLight ) {
 		// set the vertex pointers
-		idDrawVert	*ac = (idDrawVert *)vertexCache.Position( surf->geo->ambientCache );
+		idDrawVert	*ac = (idDrawVert *)vertexCache.Position( surf->backendGeo->ambientCache );
 		qglColorPointer( 4, GL_UNSIGNED_BYTE, sizeof( idDrawVert ), ac->color );
 #ifdef MACOS_X
 		GL_SelectTexture( 0 );

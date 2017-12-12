@@ -148,6 +148,7 @@ private:
 	areaNumRef_t *			frustumAreas;			// numbers of the areas the frustum touches
 
 	int						dynamicModelFrameCount;	// so we can tell if a callback model animated
+	idScreenRect			shadowScissor;
 
 private:
 	// actually create the interaction

@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: Common.cpp 6677 2016-11-18 15:08:57Z duzenko $");
@@ -2661,6 +2662,7 @@ void idCommonLocal::LoadGameDLL( void ) {
 	gameImport.declManager				= ::declManager;
 	gameImport.AASFileManager			= ::AASFileManager;
 	gameImport.collisionModelManager	= ::collisionModelManager;
+	gameImport.vrSupport				= ::vrSupport;
 
 	gameExport							= *GetGameAPI( &gameImport );
 
@@ -2997,6 +2999,8 @@ void idCommonLocal::InitGame( void )
 	// init async network
 	idAsyncNetwork::Init();
 
+	vrSupport->Init();
+
 #ifdef	ID_DEDICATED
 	idAsyncNetwork::server.InitPort();
 	cvarSystem->SetCVarBool( "s_noSound", true );
@@ -3076,6 +3080,8 @@ void idCommonLocal::ShutdownGame( bool reloading ) {
 
 	// shut down the event loop
 	eventLoop->Shutdown();
+
+	vrSupport->Shutdown();
 
 	// shut down the renderSystem
 	renderSystem->Shutdown();

@@ -32,6 +32,7 @@
 ** related functions that are relevant ONLY to win_glimp.c
 */
 #include "precompiled_engine.h"
+#include <boost/thread.hpp>
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: win_glimp.cpp 6632 2016-10-07 04:07:07Z nbohr1more $");
@@ -265,6 +266,7 @@ static void GLW_GetWGLExtensionsWithFakeWindow( void ) {
 		HGLRC gRC = wglCreateContext( hDC );
 		wglMakeCurrent( hDC, gRC );
 		GLW_CheckWGLExtensions( hDC );
+
 		wglDeleteContext( gRC );
 		ReleaseDC( hWnd, hDC );
 
@@ -406,6 +408,25 @@ static bool GLW_InitDriver( glimpParms_t parms ) {
 	}
 	common->Printf( "succeeded\n" );
 
+	// create a secondary context to use for buffer loading by the frontend
+	common->Printf( "...creating secondary shared GL context: " );
+	if ((win32.hSecondaryGLRC = qwglCreateContext( win32.hDC )) == 0) {
+		common->Printf( S_COLOR_YELLOW "failed\n" S_COLOR_DEFAULT );
+		return false;
+	}
+	common->Printf( "succeeded\n" );
+
+	common->Printf( "...sharing contexts: " );
+	if (wglShareLists( win32.hSecondaryGLRC, win32.hGLRC ) == FALSE) {
+		qwglDeleteContext( win32.hSecondaryGLRC );
+		win32.hSecondaryGLRC = NULL;
+		qwglDeleteContext( win32.hGLRC );
+		win32.hGLRC = NULL;
+		common->Printf( S_COLOR_YELLOW "failed\n" S_COLOR_DEFAULT );
+		return false;
+	}
+	common->Printf( "succeeded\n" );
+
 	common->Printf( "...making context current: " );
 	if ( !qwglMakeCurrent( win32.hDC, win32.hGLRC ) ) {
 		qwglDeleteContext( win32.hGLRC );
@@ -414,7 +435,7 @@ static bool GLW_InitDriver( glimpParms_t parms ) {
 		return false;
 	}
 	common->Printf( "succeeded\n" );
-
+	GLimp_InitGlewContext();
 	return true;
 }
 
@@ -890,6 +911,13 @@ void GLimp_Shutdown( void ) {
 		win32.hGLRC = NULL;
 	}
 
+	// delete hSecondaryGLRC
+	if (win32.hSecondaryGLRC) {
+		retVal = qwglDeleteContext( win32.hSecondaryGLRC ) != 0;
+		common->Printf( "...deleting secondary GL context: %s\n", success[retVal] );
+		win32.hSecondaryGLRC = NULL;
+	}
+
 	// release DC
 	if ( win32.hDC ) {
 		retVal = ReleaseDC( win32.hWnd, win32.hDC ) != 0;
@@ -1171,3 +1199,25 @@ GLExtension_t GLimp_ExtensionPointer( const char *name ) {
 	return proc;
 }
 
+void GLimp_ActivateFrontendContext() {
+	if (qwglMakeCurrent( win32.hDC, win32.hSecondaryGLRC ) == FALSE) {
+		common->Warning( "Could not activate secondary context in task thread" );
+	}
+}
+
+void GLimp_DeactivateFrontendContext() {
+	qwglMakeCurrent( NULL, NULL );
+}
+
+boost::thread_specific_ptr<GLEWContext> glewContext;
+GLEWContext* glewGetContext() {
+	return glewContext.get();
+}
+
+void GLimp_InitGlewContext() {
+	glewContext.reset( new GLEWContext );
+	GLenum err = glewInit();
+	if (err != GLEW_OK) {
+		common->FatalError( "GLimp_Init: Could not initialize GLEW extensions - %s", glewGetErrorString( err ) );
+	}
+}

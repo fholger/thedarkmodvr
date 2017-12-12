@@ -982,6 +982,73 @@ void idImage::GenerateCubeImage( const byte *pic[6], int size,
 #endif
 }
 
+/*
+================
+idImage::AllocImage
+Adapted from Doom 3 BFG for VR support.
+Allows to create images with non-power of two sizes
+================
+*/
+void idImage::AllocImage( int width, int height, textureFilter_t filterParm, textureRepeat_t repeatParm, textureDepth_t depthParm ) {
+	PurgeImage();
+
+	bool		preserveBorder;
+
+	PurgeImage();
+
+	filter = filterParm;
+	allowDownSize = false;
+	repeat = repeatParm;
+	depth = depthParm;
+
+	// if we don't have a rendering context, just return after we
+	// have filled in the parms.  We must have the values set, or
+	// an image match from a shader before OpenGL starts would miss
+	// the generated texture
+	if (!glConfig.isInitialized) {
+		return;
+	}
+
+	// don't let mip mapping smear the texture into the clamped border
+	if (repeat == TR_CLAMP_TO_ZERO) {
+		preserveBorder = true;
+	}
+	else {
+		preserveBorder = false;
+	}
+
+	// generate the texture number
+	qglGenTextures( 1, &texnum );
+
+	// fixme: make this depend on parameters?
+	internalFormat = GL_RGBA8;
+
+	int mipmapMode = globalImages->image_mipmapMode.GetInteger(); // duzenko #4401
+	if (preserveBorder || internalFormat == GL_COLOR_INDEX8_EXT)
+		mipmapMode = 0;
+	else
+		if (mipmapMode == 2 && !glGenerateMipmap)
+			mipmapMode = 1;
+
+	uploadHeight = height;
+	uploadWidth = width;
+	type = TT_2D;
+
+	// fixme: not generic
+	qglBindTexture( GL_TEXTURE_2D, texnum );
+
+    // fixme: no mip map generation (currently only used for rendering textures, so not needed)
+	qglTexImage2D( GL_TEXTURE_2D, 0, internalFormat, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL );
+	qglTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0 );
+
+	SetImageFilterAndRepeat();
+
+	// see if we messed anything up
+#ifdef _DEBUG
+	GL_CheckErrors();
+#endif
+}
+
 
 /*
 ================
@@ -1879,7 +1946,8 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight, bo
 	GetDownsize( imageWidth, imageHeight );
 	GetDownsize( potWidth, potHeight );
 
-	qglReadBuffer( GL_BACK );
+	// FIXME: do we need this?
+	//qglReadBuffer( GL_BACK );
 
 	// only resize if the current dimensions can't hold it at all,
 	// otherwise subview renderings could thrash this
@@ -1928,7 +1996,6 @@ void idImage::CopyFramebuffer( int x, int y, int imageWidth, int imageHeight, bo
 
 	backEnd.c_copyFrameBuffer++;
 }
-
 
 /*
 ====================

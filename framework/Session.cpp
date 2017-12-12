@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_engine.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: Session.cpp 6695 2016-11-26 15:34:21Z grayman $");
@@ -359,6 +360,15 @@ idSessionLocal::Shutdown
 */
 void idSessionLocal::Shutdown() {
 	int i;
+
+	if (frontendThread.joinable()) {
+		{  // lock scope
+			std::lock_guard<std::mutex> lock( signalMutex );
+			shutdownFrontend = true;
+			signalFrontendThread.notify_one();
+		}
+		frontendThread.join();
+	}
 
 	if ( aviCaptureMode ) {
 		EndAVICapture();
@@ -2564,15 +2574,16 @@ void idSessionLocal::UpdateScreen( bool outOfSequence ) {
 	
 	renderSystem->BeginFrame( renderSystem->GetScreenWidth(), renderSystem->GetScreenHeight() );
 
-	// draw everything
-	Draw();
-
 	if (com_speeds.GetBool()) {
 		time_backendLast = backEnd.pc.msecLast;
 		time_frontendLast = tr.pc.frontEndMsecLast;
 		renderSystem->EndFrame(&time_frontend, &time_backend);
 	} else {
 		renderSystem->EndFrame( NULL, NULL );
+	}
+
+	if (mapSpawned && !com_skipGameDraw.GetBool() && GetLocalClientNum() >= 0) {
+		game->DrawLightgem( GetLocalClientNum() );
 	}
 
 	insideUpdateScreen = false;
@@ -2627,58 +2638,7 @@ void idSessionLocal::Frame() {
 		renderSystem->TakeScreenshot( com_aviDemoWidth.GetInteger(), com_aviDemoHeight.GetInteger(), name, com_aviDemoSamples.GetInteger(), NULL );
 	}
 
-	// at startup, we may be backwards
-	if ( latchedTicNumber > com_ticNumber ) {
-		latchedTicNumber = com_ticNumber;
-	}
-
-	// see how many tics we should have before continuing
-	int	minTic = latchedTicNumber + 1;
-	if ( com_minTics.GetInteger() > 1 ) {
-		minTic = lastGameTic + com_minTics.GetInteger();
-	}
-
-	if ( readDemo ) {
-		if ( !timeDemo && numDemoFrames != 1 ) {
-			minTic = lastDemoTic + USERCMD_PER_DEMO_FRAME;
-		} else {
-			// timedemos and demoshots will run as fast as they can, other demos
-			// will not run more than 30 hz
-			minTic = latchedTicNumber;
-		}
-	} else if ( writeDemo ) {
-		minTic = lastGameTic + USERCMD_PER_DEMO_FRAME;		// demos are recorded at 30 hz
-	}
-	// duzenko #4408 - don't sleep or it locks up
-	if ( com_asyncTic.GetInteger() ) {
-		minTic = latchedTicNumber;
-	}
-	// fixedTic lets us run a forced number of usercmd each frame without timing
-	if (com_fixedTic.GetInteger()) {
-		minTic = latchedTicNumber;
-	}
-
-	// FIXME: deserves a cleanup and abstraction
-#if defined( _WIN32 )
-	// Spin in place if needed.  The game should yield the cpu if
-	// it is running over 60 hz, because there is fundamentally
-	// nothing useful for it to do.
-	while( 1 ) {
-		latchedTicNumber = com_ticNumber;
-		if ( latchedTicNumber >= minTic ) {
-			break;
-		}
-		Sys_Sleep( 1 );
-	}
-#else
-	while( 1 ) {
-		latchedTicNumber = com_ticNumber;
-		if ( latchedTicNumber >= minTic ) {
-			break;
-		}
-		Sys_WaitForEvent( TRIGGER_EVENT_ONE );
-	}
-#endif
+	latchedTicNumber = com_ticNumber;
 
 	// send frame and mouse events to active guis
 	GuiFrameEvents();
@@ -2690,6 +2650,7 @@ void idSessionLocal::Frame() {
 	}
 
 	//------------ single player game tics --------------
+	gameTicsToRun = 0;
 
 	if ( !mapSpawned || guiActive ) {
 		if ( !com_asyncInput.GetBool() ) {
@@ -2762,32 +2723,9 @@ void idSessionLocal::Frame() {
 		syncNextGameFrame = false;
 	}
 
-	// create client commands, which will be sent directly
-	// to the game
+	gameTicsToRun = latchedTicNumber - lastGameTic;
 	if ( com_showTics.GetBool() ) {
-		common->Printf( "%i ", latchedTicNumber - lastGameTic );
-	}
-
-	// duzenko #4408 - optionally don't run game tics on main thread 
-	int gameTicsToRun = latchedTicNumber - lastGameTic;
-	if (com_asyncTic.GetBool()) { 
-#ifdef WIN32
-		gameTicThreadActivator = true;
-		if (!gameTicThread)
-			gameTicThread = new std::thread(GameTicThreadProc);
-		return;
-#endif 
-	}
-	for (int i = 0 ; i < gameTicsToRun ; i++ ) {
-		RunGameTic();
-		if ( !mapSpawned ) {
-			// exited game play
-			break;
-		}
-		if ( syncNextGameFrame ) {
-			// long game frame, so break out and continue executing as if there was no hitch
-			break;
-		}
+		common->Printf( "%i ", gameTicsToRun );
 	}
 }
 
@@ -2919,6 +2857,115 @@ void idSessionLocal::RunGameTic() {
 
 /*
 ===============
+idSessionLocal::FrontendThreadFunction
+
+Runs game tics and draw call creation in a background thread.
+===============
+*/
+void idSessionLocal::FrontendThreadFunction() {
+	GLimp_ActivateFrontendContext();  // needs its own context to fill buffers
+	GLimp_InitGlewContext();
+
+	idFile* logFile = fileSystem->OpenFileWrite( "frontend_timings.txt", "fs_savepath", "" );
+
+	while (true) {
+		int beginLoop = Sys_Milliseconds();
+		{ // lock scope 
+			// signal render thread that we finished synchronizing resources
+			std::unique_lock<std::mutex> lock(signalMutex);
+			frontendSynced = true;
+			signalMainThread.notify_one();
+
+		    // wait for render thread
+			while (!frontendActive && !shutdownFrontend) {
+				signalFrontendThread.wait( lock );
+			}
+			if (shutdownFrontend) {
+				logFile->Flush();
+				fileSystem->CloseFile( logFile );
+				return;
+			}
+		}
+		frontendSynced = false;
+		int endWaitForRenderThread = Sys_Milliseconds();
+		// run game tics
+		for (int i = 0; i < gameTicsToRun; ++i) {
+			RunGameTic();
+			if (!mapSpawned || syncNextGameFrame) {
+				break;
+			}
+		}
+		int endGameTics = Sys_Milliseconds();
+
+		// render next frame
+		Draw();
+
+		// close any gui drawing
+		tr.guiModel->EmitFullScreen();
+		tr.guiModel->Clear();
+
+		// add the swapbuffers command
+		emptyCommand_t *cmd = (emptyCommand_t *)R_GetCommandBuffer( sizeof( *cmd ) );
+		cmd->commandId = RC_SWAP_BUFFERS;
+
+		int endDraw = Sys_Milliseconds();
+
+		{ // lock scope - signal render thread
+			std::unique_lock<std::mutex> lock( signalMutex );
+			frontendActive = false;
+			signalMainThread.notify_one();
+		}
+		int endSignalRenderThread = Sys_Milliseconds();
+
+		// sync all GL commands so that created buffers will be ready for backend thread in the next frame
+		GLsync glSync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		glClientWaitSync(glSync, GL_SYNC_FLUSH_COMMANDS_BIT, 100000000);
+		int endGlSync = Sys_Milliseconds();
+
+		int timeWaiting = endWaitForRenderThread - beginLoop;
+		int timeGameTics = endGameTics - endWaitForRenderThread;
+		int timeDrawing = endDraw - endGameTics;
+		int timeSignal = endSignalRenderThread - endDraw;
+		int timeSync = endGlSync - endSignalRenderThread;
+
+		logFile->Printf( "Frontend timing: wait %d - gametics %d - drawing %d - signal %d - GLsync %d\n", timeWaiting, timeGameTics, timeDrawing, timeSignal, timeSync );
+	}
+}
+
+/*
+===============
+idSessionLocal::fireGameTics
+
+Called before the rendering backend starts working.
+Runs game tics as a task in the background.
+===============
+*/
+void idSessionLocal::FireGameTics() {
+	std::unique_lock<std::mutex> lock(signalMutex);
+	while (!frontendSynced) {
+		signalMainThread.wait(lock);
+	}
+	frontendActive = true;
+	signalFrontendThread.notify_one();
+}
+
+/*
+===============
+idSessionLocal::waitForGameTicCompletion
+
+Called after the rendering backend finishes.
+Waits for the game tics task to complete.
+===============
+*/
+void idSessionLocal::WaitForGameTicCompletion() {
+	std::unique_lock<std::mutex> lock( signalMutex );
+	while (frontendActive) {
+		signalMainThread.wait( lock );
+	}
+}
+
+/*
+===============
 idSessionLocal::Init
 
 Called in an orderly fashion at system startup,
@@ -2989,6 +3036,9 @@ void idSessionLocal::Init() {
 
 	guiActive = NULL;
 	guiHandle = NULL;
+
+	frontendActive = shutdownFrontend = false;
+	frontendThread = std::thread( &idSessionLocal::FrontendThreadFunction, this );
 
 	common->Printf( "session initialized\n" );
 	common->Printf( "--------------------------------------\n" );

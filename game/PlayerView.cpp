@@ -18,6 +18,7 @@
 ******************************************************************************/
 
 #include "precompiled_game.h"
+#include "../vr/VrSupport.h"
 #pragma hdrstop
 
 static bool versioned = RegisterVersionedFile("$Id: PlayerView.cpp 6674 2016-11-16 13:07:45Z duzenko $");
@@ -431,6 +432,40 @@ idAngles idPlayerView::AngleOffset() const {
 
 /*
 ==================
+idPlayerView::RenderStereoView
+==================
+ */
+void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view, const int eye ) {
+	if (!view)	{
+		return;
+	}
+
+	renderView_t eyeView = *view;
+
+	vrSupport->AdjustViewWithCurrentHeadPose( eyeView, eye );
+
+	if (g_skipViewEffects.GetBool()) {
+		SingleView( hud, &eyeView );
+	}
+	else {
+		// greebo: For underwater effects, use the Doom3 Doubleview
+		if (static_cast<idPhysics_Player*>(player->GetPlayerPhysics())->GetWaterLevel() >= WATERLEVEL_HEAD) {
+			DoubleVision( hud, &eyeView, cv_tdm_underwater_blur.GetInteger() );
+		}
+		else {
+			SingleView( hud, &eyeView, false );
+		}
+
+		// Bloom related - J.C.Denton
+		/* Update  post-process */
+		//this->m_postProcessManager.Update();
+
+		ScreenFade();
+	}
+}
+
+/*
+==================
 idPlayerView::SingleView
 ==================
 */
@@ -804,7 +839,11 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 {
 	const renderView_t *view = player->GetRenderView();
 
-	if(g_skipViewEffects.GetBool())
+	if (vrSupport->IsInitialized()) {
+		StereoView( hud, view, RIGHT_EYE );
+		StereoView( hud, view, LEFT_EYE );
+	}
+	else if(g_skipViewEffects.GetBool())
 	{
 		SingleView( hud, view );
 	} else {

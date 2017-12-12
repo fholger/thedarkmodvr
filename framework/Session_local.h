@@ -19,6 +19,8 @@
 
 #ifndef __SESSIONLOCAL_H__
 #define __SESSIONLOCAL_H__
+#include <thread>
+#include <condition_variable>
 
 /*
 
@@ -106,6 +108,9 @@ public:
 	virtual void		TimeHitch( int msec );
 
 	virtual int			GetSaveGameVersion( void );
+
+	virtual void		FireGameTics();
+	virtual void		WaitForGameTicCompletion();
 
 	virtual const char *GetCurrentMapName();
 
@@ -203,6 +208,7 @@ public:
 	int					latchedTicNumber;	// set to com_ticNumber each frame
 	int					lastGameTic;		// while latchedTicNumber > lastGameTic, run game frames
 	int					lastDemoTic;
+	int					gameTicsToRun;
 	bool				syncNextGameFrame;
 
 
@@ -249,6 +255,16 @@ public:
 #if ID_CONSOLE_LOCK
 	int					emptyDrawCount;				// watchdog to force the main menu to restart
 #endif
+
+	std::thread			frontendThread;
+	std::condition_variable signalFrontendThread;
+	std::condition_variable signalMainThread;
+	std::mutex			signalMutex;
+	volatile bool		frontendActive;
+	volatile bool		frontendSynced;
+	volatile bool		shutdownFrontend;
+
+	void				FrontendThreadFunction();
 
 	//=====================================
 	void				Clear();
