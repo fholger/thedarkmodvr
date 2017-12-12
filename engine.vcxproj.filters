@@ -133,6 +133,9 @@
     <Filter Include="Game\ZipLoader">
       <UniqueIdentifier>{5e4f191a-36a5-42ac-859c-a005eeee7dd8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vr">
+      <UniqueIdentifier>{231b3c06-fc3a-4576-b637-458851b256f8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1221,7 +1224,11 @@
     </ClInclude>
     <ClInclude Include="renderer\BufferObject.h">
       <Filter>Renderer</Filter>
-    </ClInclude>  </ItemGroup>
+    </ClInclude>
+    <ClInclude Include="vr\VrSupport.h">
+      <Filter>Vr</Filter>
+    </ClInclude>
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
       <Filter>CM</Filter>
@@ -2891,6 +2898,12 @@
     </ClCompile>
     <ClCompile Include="renderer\BufferObject.cpp">
       <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="vr\OpenVrSupport.cpp">
+      <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="vr\vr_backend.cpp">
+      <Filter>Vr</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
