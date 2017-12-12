@@ -1,4 +1,9 @@
 #pragma once
+#include "Str.h"
+#include <cstdint>
+#include <gl/GL.h>
+
+class idImage;
 
 class Framebuffer
 {
@@ -15,7 +20,7 @@ public:
 
 	int GetWidth() const { return width; }
 	int GetHeight() const { return height; }
-	idStr GetName() const { return fboName; }
+	class idStr GetName() const { return fboName; }
 
 	// check for OpenGL errors
 	void Check();

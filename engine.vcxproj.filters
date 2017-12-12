@@ -1228,6 +1228,9 @@
     <ClInclude Include="vr\VrSupport.h">
       <Filter>Vr</Filter>
     </ClInclude>
+    <ClInclude Include="vr\Framebuffer.h">
+      <Filter>Vr</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -2903,6 +2906,12 @@
       <Filter>Vr</Filter>
     </ClCompile>
     <ClCompile Include="vr\vr_backend.cpp">
+      <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="vr\vr_frontend.cpp">
+      <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="vr\Framebuffer.cpp">
       <Filter>Vr</Filter>
     </ClCompile>
   </ItemGroup>

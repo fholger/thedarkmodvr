@@ -19,6 +19,7 @@
 
 #include "../renderer/Image.h"
 #include "Game_local.h"
+#include "../vr/VrSupport.h"
 
 static int MakePowerOfTwo( int num ) {
 	int		pot;
@@ -798,6 +799,10 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 {
 	const renderView_t *view = player->GetRenderView();
 
+	if( vrSupport->IsInitialized() ) {
+		StereoView( hud, view, RIGHT_EYE );
+		StereoView( hud, view, LEFT_EYE );
+	} else
 	if(g_skipViewEffects.GetBool())
 	{
 		SingleView( hud, view );

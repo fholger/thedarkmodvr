@@ -108,6 +108,9 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 			case RC_SET_BUFFER:
 				//RB_SetBuffer( cmds );
 				break;
+			case RC_BLOOM:
+				RB_Bloom();
+				break;
 			case RC_COPY_RENDER:
 				RB_CopyRender( cmds );
 				break;

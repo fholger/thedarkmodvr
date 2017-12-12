@@ -51,6 +51,7 @@
 
 #include <chrono>
 #include <iostream>
+#include "../vr/VrSupport.h"
 
 #ifdef max
 #undef max
@@ -3570,6 +3571,11 @@ Calculates the horizontal and vertical field of view based on a horizontal field
 ====================
 */
 void idGameLocal::CalcFov( float base_fov, float &fov_x, float &fov_y ) const {
+	if( vrSupport->IsInitialized() ) {
+		vrSupport->GetFov( fov_x, fov_y );
+		return;
+	}
+
 	float	x;
 	float	y;
 	float	ratio_x;
