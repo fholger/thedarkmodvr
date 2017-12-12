@@ -19,6 +19,7 @@
 #include <atomic>
 #include "Image.h"
 #include "MegaTexture.h"
+#include "../vr/VrFramebuffer.h"
 
 class idRenderWorldLocal;
 
@@ -645,6 +646,8 @@ typedef struct {
 	int			faceCulling;
 	int			glStateBits;
 	bool		forceGlState;		// the next GL_State will ignore glStateBits and set everything
+
+	Framebuffer *currentFramebuffer;
 } glstate_t;
 
 

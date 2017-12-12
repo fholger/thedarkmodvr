@@ -17,6 +17,7 @@
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "../vr/VrSupport.h"
 #ifdef __ppc__
 #include <vecLib/vecLib.h>
 #endif
@@ -849,6 +850,11 @@ This uses the "infinite far z" trick
 ===============
 */
 void R_SetupProjection( void ) {
+	if( vrSupport->IsInitialized() && tr.viewDef->renderView.viewEyeBuffer != 0 ) {
+		vrSupport->SetupProjectionMatrix( tr.viewDef );
+		return;
+	}
+
 	float	xmin, xmax, ymin, ymax;
 	float	width, height;
 	float	zNear;
@@ -941,10 +947,12 @@ static void R_SetupViewFrustum( void ) {
 	// plane four is the front clipping plane
 	tr.viewDef->frustum[4] = /* vec3_origin - */ tr.viewDef->renderView.viewaxis[0];
 
+	idVec3 headOrg = tr.viewDef->renderView.vieworg; // +tr.viewDef->renderView.viewEyeBuffer * tr.viewDef->renderView.halfEyeDistance * tr.viewDef->renderView.viewaxis[1];
+
 	for ( i = 0; i < 5; i++ ) {
 		// flip direction so positive side faces out (FIXME: globally unify this)
 		tr.viewDef->frustum[i] = -tr.viewDef->frustum[i].Normal();
-		tr.viewDef->frustum[i][3] = -( tr.viewDef->renderView.vieworg * tr.viewDef->frustum[i].Normal() );
+		tr.viewDef->frustum[i][3] = -( headOrg * tr.viewDef->frustum[i].Normal() );
 	}
 
 	// eventually, plane five will be the rear clipping plane for fog
@@ -958,7 +966,7 @@ static void R_SetupViewFrustum( void ) {
 	dFar = MAX_WORLD_SIZE;
 	dLeft = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_x * 0.5f ) );
 	dUp = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_y * 0.5f ) );
-	tr.viewDef->viewFrustum.SetOrigin( tr.viewDef->renderView.vieworg );
+	tr.viewDef->viewFrustum.SetOrigin( headOrg );
 	tr.viewDef->viewFrustum.SetAxis( tr.viewDef->renderView.viewaxis );
 	tr.viewDef->viewFrustum.SetSize( dNear, dFar, dLeft, dUp );
 }
