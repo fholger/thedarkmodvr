@@ -1,4 +1,4 @@
-#include "precompiled_engine.h"
+#include "precompiled.h"
 #include "Framebuffer.h"
 #include "../tools/radiant/NewTexWnd.h"
 #include "../sys/win32/win_local.h"
@@ -10,32 +10,32 @@ fboName(name), frameBuffer(0), colorFormat(0), depthBuffer(0), depthFormat(0), s
 stencilFormat(0), width(width), height(height), colorTexnum(0), depthTexnum(0) {
 	memset( colorBuffers, 0, sizeof( colorBuffers ) );
 
-	glGenFramebuffers( 1, &frameBuffer );
+	qglGenFramebuffers( 1, &frameBuffer );
 }
 
 Framebuffer::~Framebuffer() {
 	if (depthBuffer != 0) {
-		glDeleteRenderbuffers( 1, &depthBuffer );
+		qglDeleteRenderbuffers( 1, &depthBuffer );
 	}
 	for (int i = 0; i < 16; ++i) {
 		if (colorBuffers[i] != 0) {
-			glDeleteRenderbuffers( 1, &colorBuffers[i] );
+			qglDeleteRenderbuffers( 1, &colorBuffers[i] );
 		}
 	}
-	glDeleteFramebuffers( 1, &frameBuffer );
+	qglDeleteFramebuffers( 1, &frameBuffer );
 }
 
 void Framebuffer::Bind() {
 	if (backEnd.glState.currentFramebuffer != this) {
-		glBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
+		qglBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
 		backEnd.glState.currentFramebuffer = this;
 		wglSwapIntervalEXT( 0 );
 	}
 }
 
 void Framebuffer::BindPrimary() {
-	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
-	glBindRenderbuffer( GL_RENDERBUFFER, 0 );
+	qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+	qglBindRenderbuffer( GL_RENDERBUFFER, 0 );
 	backEnd.glState.currentFramebuffer = nullptr;
 
 	if (primaryFramebuffer != nullptr) {
@@ -60,17 +60,17 @@ void Framebuffer::AddColorBuffer( GLuint format, int index ) {
 
 	bool notCreatedYet = colorBuffers[index] == 0;
 	if (notCreatedYet) {
-		glGenRenderbuffers( 1, &colorBuffers[index] );
+		qglGenRenderbuffers( 1, &colorBuffers[index] );
 		GL_CheckErrors();
 	}
 
-	glBindRenderbuffer( GL_RENDERBUFFER, colorBuffers[index] );
+	qglBindRenderbuffer( GL_RENDERBUFFER, colorBuffers[index] );
 	GL_CheckErrors();
-	glRenderbufferStorage( GL_RENDERBUFFER, format, width, height );
+	qglRenderbufferStorage( GL_RENDERBUFFER, format, width, height );
 	GL_CheckErrors();
 
 	if (notCreatedYet) {
-		glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_RENDERBUFFER, colorBuffers[index] );
+		qglFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_RENDERBUFFER, colorBuffers[index] );
 		GL_CheckErrors();
 	}
 }
@@ -81,7 +81,7 @@ void Framebuffer::AddColorImage( idImage* colorImage, int index, int mipmapLod )
 		return;
 	}
 
-	glFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_2D, colorImage->texnum, mipmapLod );
+	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_2D, colorImage->texnum, mipmapLod );
 }
 
 void Framebuffer::AddDepthStencilBuffer( GLuint format ) {
@@ -89,21 +89,21 @@ void Framebuffer::AddDepthStencilBuffer( GLuint format ) {
 
 	bool notCreatedYet = depthBuffer == 0;
 	if (notCreatedYet) {
-		glGenRenderbuffers( 1, &depthBuffer );
+		qglGenRenderbuffers( 1, &depthBuffer );
 	}
 
-	glBindRenderbuffer( GL_RENDERBUFFER, depthBuffer );
-	glRenderbufferStorage( GL_RENDERBUFFER, format, width, height );
-	glBindRenderbuffer( GL_RENDERBUFFER, 0 );
+	qglBindRenderbuffer( GL_RENDERBUFFER, depthBuffer );
+	qglRenderbufferStorage( GL_RENDERBUFFER, format, width, height );
+	qglBindRenderbuffer( GL_RENDERBUFFER, 0 );
 
 	if (notCreatedYet) {
-		glBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
-		glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer );
+		qglBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
+		qglFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthBuffer );
 	}
 
 	notCreatedYet = stencilBuffer == 0;
 	if (notCreatedYet) {
-		glFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBuffer );
+		qglFramebufferRenderbuffer( GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depthBuffer );
 		stencilBuffer = depthBuffer;
 		stencilFormat = depthFormat;
 	}
@@ -113,11 +113,11 @@ void Framebuffer::Check() {
 	int prev;
 	glGetIntegerv( GL_FRAMEBUFFER_BINDING, &prev );
 
-	glBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
+	qglBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
 
-	int status = glCheckFramebufferStatus( GL_FRAMEBUFFER );
+	int status = qglCheckFramebufferStatus( GL_FRAMEBUFFER );
 	if (status == GL_FRAMEBUFFER_COMPLETE) {
-		glBindFramebuffer( GL_FRAMEBUFFER, prev );
+		qglBindFramebuffer( GL_FRAMEBUFFER, prev );
 		return;
 	}
 
@@ -156,5 +156,5 @@ void Framebuffer::Check() {
 		break;
 	};
 
-	glBindFramebuffer( GL_FRAMEBUFFER, prev );
+	qglBindFramebuffer( GL_FRAMEBUFFER, prev );
 }

@@ -817,6 +817,7 @@
     <ClInclude Include="ui\UserInterfaceLocal.h" />
     <ClInclude Include="ui\Window.h" />
     <ClInclude Include="ui\Winvar.h" />
+    <ClInclude Include="vr\Framebuffer.h" />
     <ClInclude Include="vr\VrSupport.h" />
   </ItemGroup>
   <ItemGroup>
@@ -1422,8 +1423,10 @@
     <ClCompile Include="ui\UserInterface.cpp" />
     <ClCompile Include="ui\Window.cpp" />
     <ClCompile Include="ui\Winvar.cpp" />
+    <ClCompile Include="vr\Framebuffer.cpp" />
     <ClCompile Include="vr\OpenVrSupport.cpp" />
     <ClCompile Include="vr\vr_backend.cpp" />
+    <ClCompile Include="vr\vr_frontend.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="game\game.def" />

@@ -16,7 +16,7 @@
 #include "precompiled.h"
 #pragma hdrstop
 
-
+#include "../vr/VrSupport.h"
 
 #include "../idlib/RevisionTracker.h"
 #include "../renderer/Image.h"
@@ -2955,6 +2955,8 @@ void idCommonLocal::InitGame( void )
 
 	//PrintLoadingMessage( Translate( "#str_04347" ) );
 
+	vrSupport->Init();
+
 #ifdef	ID_DEDICATED
 	// init async network
 	idAsyncNetwork::Init();
@@ -3044,6 +3046,8 @@ void idCommonLocal::ShutdownGame( bool reloading ) {
 
 	// shut down the event loop
 	eventLoop->Shutdown();
+
+	vrSupport->Shutdown();
 
 	// shut down the renderSystem
 	renderSystem->Shutdown();

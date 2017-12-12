@@ -996,7 +996,7 @@ int Sys_PollMouseInputEvents( void ) {
 	}
 
 	// duzenko #4403 - prevent cursor from leaving the window
-	SetCursorPos(win32.win_xpos.GetInteger() + glConfig.vidWidth / 2, win32.win_ypos.GetInteger() + glConfig.vidHeight / 2);
+	SetCursorPos(win32.win_xpos.GetInteger() + glConfig.windowWidth / 2, win32.win_ypos.GetInteger() + glConfig.windowHeight / 2);
 
 	Sys_QueMouseEvents( dwElements );
 
