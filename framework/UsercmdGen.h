@@ -24,7 +24,7 @@
 ===============================================================================
 */
 
-const int USERCMD_HZ			= 60;			// 60 frames per second
+const int USERCMD_HZ			= 90;			// VR refresh rate is 90 Hz
 const int USERCMD_MSEC			= 1000 / USERCMD_HZ;
 
 // ButtonState inputs; originally from UsercmdGen.cpp, left out of SDK by accident

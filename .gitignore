@@ -4,3 +4,4 @@ TheDarkMod.sdf
 TheDarkMod.v12.suo
 *.vcxproj.user
 ipch
+idlib/svnversion.h

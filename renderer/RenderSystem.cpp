@@ -20,6 +20,7 @@
 #include "tr_local.h"
 #include "FrameBuffer.h"
 #include "glsl.h"
+#include "../vr/VrSupport.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;
@@ -622,6 +623,9 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	try {
 		common->SetErrorIndirection( true );
 		double startLoop = Sys_GetClockTicks();
+		if( vrSupport->IsInitialized() ) {
+			vrSupport->FrameStart();
+		}
 		session->ActivateFrontend();
 		double endSignal = Sys_GetClockTicks();
 		// render lightgem
@@ -964,7 +968,7 @@ void idRenderSystemLocal::CaptureRenderToFile( const char *fileName, bool fixAlp
 	guiModel->Clear();
 	R_IssueRenderCommands( frameData );
 
-	if (!r_useFbo.GetBool()) // duzenko #4425: not applicable, raises gl errors
+	if (!r_useFbo.GetBool() && !vrSupport->IsInitialized()) // duzenko #4425: not applicable, raises gl errors
 		qglReadBuffer(GL_BACK);
 
 	// calculate pitch of buffer that will be returned by qglReadPixels()
