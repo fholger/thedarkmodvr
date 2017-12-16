@@ -21,6 +21,7 @@ $Author$ (Author of last commit)
 #pragma hdrstop
 #include "tr_local.h"
 #include "BufferObject.h"
+#include "apex_memmove.h"
 
 idCVar r_showBuffers( "r_showBuffers", "0", CVAR_INTEGER, "" );
 
@@ -86,11 +87,12 @@ void CopyBuffer( byte * dst, const byte * src, int numBytes ) {
 
 #else
 
-void CopyBuffer( byte * dst, const byte * src, int numBytes ) {
+inline void CopyBuffer( byte * dst, const byte * src, int numBytes ) {
 	assert_16_byte_aligned( dst );
 	assert_16_byte_aligned( src );
 	//memcpy( dst, src, numBytes );
 	SIMDProcessor->Memcpy( dst, src, numBytes );
+	apex::memcpy( dst, src, numBytes );
 }
 
 #endif

@@ -22,6 +22,7 @@ $Author$ (Author of last commit)
 #pragma hdrstop
 
 #include "tr_local.h"
+#include "apex_memmove.h"
 
 idCVar idVertexCache::r_showVertexCache( "r_showVertexCache", "0", CVAR_INTEGER | CVAR_RENDERER, "" );
 
@@ -103,6 +104,7 @@ We ensure this by creating and waiting for a GL fence sync.
 */
 static void LockGeoBufferSet(geoBufferSet_t &gbs) {
 	gbs.syncFence = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
+	GL_CheckErrors();
 }
 
 static void WaitForGeoBufferSet(geoBufferSet_t &gbs) {
@@ -117,6 +119,8 @@ static void WaitForGeoBufferSet(geoBufferSet_t &gbs) {
 			common->Warning( "glClientWaitSync failed" );
 			break;
 		}
+
+		GL_CheckErrors();
 
 		// if first call does not succeed immediately, ensure commands are flushed and wait longer
 		waitFlags = GL_SYNC_FLUSH_COMMANDS_BIT;
@@ -257,11 +261,11 @@ void idVertexCache::EndFrame() {
 			staticCountTotal, staticAllocTotal / 1024 );*/
 	}
 
-	LockGeoBufferSet( frameData[listNum] );
+	LockGeoBufferSet( frameData[backendListNum] );
 
 	currentFrame++;
-	backendListNum = (backendListNum + 1) % VERTCACHE_NUM_FRAMES;
-	listNum = ( backendListNum + 1 ) % VERTCACHE_NUM_FRAMES;
+	backendListNum = listNum;
+	listNum = ( listNum + 1 ) % VERTCACHE_NUM_FRAMES;
 	staticData.indexMapOffset = staticData.indexMemUsed;
 	staticData.vertexMapOffset = staticData.vertexMemUsed;
 	staticAllocThisFrame = 0;
@@ -339,7 +343,8 @@ vertCacheHandle_t idVertexCache::ActuallyAlloc( geoBufferSet_t & vcs, const void
 	// Actually perform the data transfer
 	if( data != NULL ) {
 		MapGeoBufferSet( vcs );
-		CopyBuffer( *base + offset - mapOffset, (byte*)data, bytes );
+		//CopyBuffer( *base + offset - mapOffset, (byte*)data, bytes );
+		apex::memcpy( *base + offset - mapOffset, (byte*)data, bytes );
 	}
 
 	vertCacheHandle_t handle = ( ( uint64 )( currentFrame & VERTCACHE_FRAME_MASK ) << VERTCACHE_FRAME_SHIFT ) |

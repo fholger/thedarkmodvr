@@ -19,6 +19,7 @@
 
 
 #include "tr_local.h"
+#include "apex_memmove.h"
 
 // tr_stencilShadow.c -- creaton of stencil shadow volumes
 
@@ -1341,7 +1342,7 @@ srfTriangles_t *R_CreateShadowVolume( const idRenderEntityLocal *ent,
 	// the shadow verts will go into a main memory buffer as well as a vertex
 	// cache buffer, so they can be copied back if they are purged
 	R_AllocStaticTriSurfShadowVerts( newTri, newTri->numVerts );
-	SIMDProcessor->Memcpy( newTri->shadowVertexes, shadowVerts, newTri->numVerts * sizeof( newTri->shadowVertexes[0] ) );
+	apex::memcpy( newTri->shadowVertexes, shadowVerts, newTri->numVerts * sizeof( newTri->shadowVertexes[0] ) );
 
 	R_AllocStaticTriSurfIndexes( newTri, newTri->numIndexes );
 
@@ -1352,7 +1353,7 @@ srfTriangles_t *R_CreateShadowVolume( const idRenderEntityLocal *ent,
 		newTri->numShadowIndexesNoCaps = 0;
 		for ( i = 0 ; i < indexFrustumNumber ; i++ ) {
 			int	c = indexRef[i].end - indexRef[i].silStart;
-			SIMDProcessor->Memcpy( newTri->indexes+newTri->numShadowIndexesNoCaps, 
+			apex::memcpy( newTri->indexes+newTri->numShadowIndexesNoCaps, 
 									shadowIndexes+indexRef[i].silStart, c * sizeof( newTri->indexes[0] ) );
 			newTri->numShadowIndexesNoCaps += c;
 		}
@@ -1360,7 +1361,7 @@ srfTriangles_t *R_CreateShadowVolume( const idRenderEntityLocal *ent,
 		newTri->numShadowIndexesNoFrontCaps = newTri->numShadowIndexesNoCaps;
 		for ( i = 0 ; i < indexFrustumNumber ; i++ ) {
 			int	c = indexRef[i].silStart - indexRef[i].rearCapStart;
-			SIMDProcessor->Memcpy( newTri->indexes+newTri->numShadowIndexesNoFrontCaps, 
+			apex::memcpy( newTri->indexes+newTri->numShadowIndexesNoFrontCaps, 
 									shadowIndexes+indexRef[i].rearCapStart, c * sizeof( newTri->indexes[0] ) );
 			newTri->numShadowIndexesNoFrontCaps += c;
 		}
@@ -1368,7 +1369,7 @@ srfTriangles_t *R_CreateShadowVolume( const idRenderEntityLocal *ent,
 		newTri->numIndexes = newTri->numShadowIndexesNoFrontCaps;
 		for ( i = 0 ; i < indexFrustumNumber ; i++ ) {
 			int	c = indexRef[i].rearCapStart - indexRef[i].frontCapStart;
-			SIMDProcessor->Memcpy( newTri->indexes+newTri->numIndexes, 
+			apex::memcpy( newTri->indexes+newTri->numIndexes, 
 									shadowIndexes+indexRef[i].frontCapStart, c * sizeof( newTri->indexes[0] ) );
 			newTri->numIndexes += c;
 		}

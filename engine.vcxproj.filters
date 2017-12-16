@@ -1231,6 +1231,9 @@
     <ClInclude Include="vr\Framebuffer.h">
       <Filter>Vr</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\apex_memmove.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -2913,6 +2916,9 @@
     </ClCompile>
     <ClCompile Include="vr\Framebuffer.cpp">
       <Filter>Vr</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\apex_memmove.cpp">
+      <Filter>Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

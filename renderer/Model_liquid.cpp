@@ -20,6 +20,7 @@
 
 #include "tr_local.h"
 #include "Model_local.h"
+#include "apex_memmove.h"
 
 #define LIQUID_MAX_SKIP_FRAMES	5
 #define LIQUID_MAX_TYPES		3
@@ -87,7 +88,7 @@ modelSurface_t idRenderModelLiquid::GenerateSurface( float lerp ) {
 
 	tri->numVerts = deformInfo->numOutputVerts;
 	R_AllocStaticTriSurfVerts( tri, tri->numVerts );
-	SIMDProcessor->Memcpy( tri->verts, verts.Ptr(), deformInfo->numSourceVerts * sizeof(tri->verts[0]) );
+	apex::memcpy( tri->verts, verts.Ptr(), deformInfo->numSourceVerts * sizeof(tri->verts[0]) );
 
 	// replicate the mirror seam vertexes
 	base = deformInfo->numOutputVerts - deformInfo->numMirroredVerts;

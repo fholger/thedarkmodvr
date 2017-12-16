@@ -19,6 +19,7 @@
 
 
 #include "tr_local.h"
+#include "apex_memmove.h"
 
 /*
 ==============================================================================
@@ -2003,7 +2004,7 @@ deformInfo_t *R_BuildDeformInfo( int numVerts, const idDrawVert *verts, int numI
 
 	tri.numVerts = numVerts;
 	R_AllocStaticTriSurfVerts( &tri, tri.numVerts );
-	SIMDProcessor->Memcpy( tri.verts, verts, tri.numVerts * sizeof( tri.verts[0] ) );
+	apex::memcpy( tri.verts, verts, tri.numVerts * sizeof( tri.verts[0] ) );
 
 	tri.numIndexes = numIndexes;
 	R_AllocStaticTriSurfIndexes( &tri, tri.numIndexes );
