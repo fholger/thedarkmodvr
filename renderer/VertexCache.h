@@ -87,6 +87,9 @@ public:
 	// Also prints debugging info when enabled
 	void			EndFrame();
 
+	void			MapFrontendBuffers();
+	void			UnmapFrontendBuffers();
+
 	// listVertexCache calls this
 	void			List();
 

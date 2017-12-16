@@ -3017,20 +3017,29 @@ Runs game tics and draw call creation in a background thread.
 ===============
 */
 void idSessionLocal::FrontendThreadFunction() {
+	GLimp_ActivateFrontendContext();  // needs its own context to fill buffers
+
 	while( true ) {
 		double beginLoop = Sys_GetClockTicks();
 		{ // lock scope
 			std::unique_lock< std::mutex > lock( signalMutex );
+			// signal render thread that we are ready to do work
+			frontendReady = true;
+			signalMainThread.notify_one();
+
 			// wait for render thread
 			while( !frontendActive && !shutdownFrontend ) {
 				signalFrontendThread.wait( lock );
 			}
 			if( shutdownFrontend ) {
+				GLimp_DeactivateFrontendContext();
 				return;
 			}
 		}
 		double endWaitForRenderThread = Sys_GetClockTicks();
 		double endGameTics = 0, endDraw = 0;
+		//vertexCache.MapFrontendBuffers();
+
 		try {
 			RunGameTics();
 			endGameTics = Sys_GetClockTicks();
@@ -3040,7 +3049,9 @@ void idSessionLocal::FrontendThreadFunction() {
 		} catch( std::shared_ptr< ErrorReportedException > e ) {
 			frontendException = e;
 		} 
-		
+
+		vertexCache.UnmapFrontendBuffers();
+
 		{ // lock scope - signal render thread
 			std::unique_lock< std::mutex > lock( signalMutex );
 			frontendActive = false;
@@ -3048,12 +3059,32 @@ void idSessionLocal::FrontendThreadFunction() {
 		}
 		double endSignalRenderThread = Sys_GetClockTicks();
 
+		// sync all GL commands so that created buffers will be ready for backend thread in the next frame
+		if( glConfig.fenceSyncAvailable ) {
+			GLsync glSync = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
+			if( glSync != nullptr ) {
+				GLenum result = qglClientWaitSync( glSync, GL_SYNC_FLUSH_COMMANDS_BIT, 100000000 );
+				if( result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED )
+					common->Warning( "glClientWaitSync did not complete successfully (result code %d).\n", result );
+				qglDeleteSync( glSync );
+			}
+			else {
+				common->Error( "Failed to create GL fence\n" );
+			}
+		}
+		else {
+			// this is going to be expensive...
+			qglFinish();
+		}
+		double endGlSync = Sys_GetClockTicks();
+
 		if( r_logSmpTimings.GetBool() ) {
 			const double TO_MICROS = 1000000 / Sys_ClockTicksPerSecond();
 			frontendTimeWaiting = (endWaitForRenderThread - beginLoop) * TO_MICROS;
 			frontendTimeGameTics = (endGameTics - endWaitForRenderThread) * TO_MICROS;
 			frontendTimeDrawing = (endDraw - endGameTics) * TO_MICROS;
 			frontendTimeSignal = (endSignalRenderThread - endDraw) * TO_MICROS;
+			frontendTimeSync = ( endGlSync - endSignalRenderThread ) * TO_MICROS;
 		}
 	}
 }
@@ -3063,8 +3094,8 @@ bool idSessionLocal::IsFrontend() const {
 }
 
 void idSessionLocal::LogFrontendTimings( idFile &logFile ) const {
-	logFile.Printf( "  Frontend: wait for signal %.2f us - gametics %.2f us - drawing %.2f us - signal backend %.2f us\n", 
-		frontendTimeWaiting, frontendTimeGameTics, frontendTimeDrawing, frontendTimeSignal );
+	logFile.Printf( "  Frontend: wait for signal %.2f us - gametics %.2f us - drawing %.2f us - signal backend %.2f us - GL sync %.2f us\n", 
+		frontendTimeWaiting, frontendTimeGameTics, frontendTimeDrawing, frontendTimeSignal, frontendTimeSync );
 }
 
 /*
@@ -3078,12 +3109,17 @@ Activates game tic and frontend rendering on a separate thread.
 void idSessionLocal::ActivateFrontend() {
 	if( com_smp.GetBool() && !guiActive && !no_smp ) {
 		std::unique_lock<std::mutex> lock( signalMutex );
+		while( !frontendReady ) {
+			signalMainThread.wait( lock );
+		}
 		frontendActive = true;
 		signalFrontendThread.notify_one();
 	} else {
 		// run game tics and frontend drawing serially
+		//vertexCache.MapFrontendBuffers();
 		RunGameTics();
 		DrawFrame();
+		vertexCache.UnmapFrontendBuffers();
 	}
 }
 

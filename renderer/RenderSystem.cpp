@@ -623,6 +623,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	try {
 		common->SetErrorIndirection( true );
 		double startLoop = Sys_GetClockTicks();
+		//vertexCache.UnmapFrontendBuffers();
 		if( vrSupport->IsInitialized() ) {
 			vrSupport->FrameStart();
 		}

@@ -217,13 +217,11 @@ void idVertexCache::EndFrame() {
 			staticCountTotal, staticAllocTotal / 1024 );*/
 	}
 
-	// unmap the current frame so the GPU can read it
-	UnmapGeoBufferSet( frameData[listNum] );
-	UnmapGeoBufferSet( staticData );
-
 	currentFrame++;
-	backendListNum = listNum;
-	listNum = (listNum + 1) % VERTCACHE_NUM_FRAMES;
+	backendListNum = (backendListNum + 1) % VERTCACHE_NUM_FRAMES;
+	listNum = ( backendListNum + 1 ) % VERTCACHE_NUM_FRAMES;
+	staticData.indexMapOffset = staticData.indexMemUsed;
+	staticData.vertexMapOffset = staticData.vertexMemUsed;
 	staticAllocThisFrame = 0;
 	staticCountThisFrame = 0;
 	dynamicAllocThisFrame = 0;
@@ -231,11 +229,7 @@ void idVertexCache::EndFrame() {
 	tempBufferUsed = 0;
 	staticBufferUsed = 0;
 
-	// prepare the next frame for writing to by the CPU
-	MapGeoBufferSet( frameData[listNum] );
-	ClearGeoBufferSet( frameData[listNum] );
-	staticData.indexMapOffset = staticData.indexMemUsed;
-	staticData.vertexMapOffset = staticData.vertexMemUsed;
+	MapFrontendBuffers();
 
 	// unbind vertex buffers so normal virtual memory will be used in case
 	// r_useVertexBuffers / r_useIndexBuffers
@@ -243,6 +237,18 @@ void idVertexCache::EndFrame() {
 	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
 	currentVertexBuffer = 0;
 	currentIndexBuffer = 0;
+}
+
+void idVertexCache::MapFrontendBuffers() {
+	// prepare the next frame for writing to by the CPU
+	MapGeoBufferSet( frameData[listNum] );
+	ClearGeoBufferSet( frameData[listNum] );
+}
+
+void idVertexCache::UnmapFrontendBuffers() {
+	// unmap the current frame so the GPU can read it
+	UnmapGeoBufferSet( frameData[listNum] );
+	UnmapGeoBufferSet( staticData );
 }
 
 /*
