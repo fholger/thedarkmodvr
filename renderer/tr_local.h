@@ -352,11 +352,11 @@ typedef struct viewLight_s {
 	const float	*			shaderRegisters;			// shader registers used by backend
 	idImage *				falloffImage;				// falloff image used by backend
 
-	const struct drawSurf_s	*globalShadows;				// shadow everything
-	const struct drawSurf_s	*localInteractions;			// don't get local shadows
-	const struct drawSurf_s	*localShadows;				// don't shadow local Surfaces
-	const struct drawSurf_s	*globalInteractions;		// get shadows from everything
-	const struct drawSurf_s	*translucentInteractions;	// get shadows from everything
+	std::atomic<const struct drawSurf_s	*> globalShadows;				// shadow everything
+	std::atomic<const struct drawSurf_s	*> localInteractions;			// don't get local shadows
+	std::atomic<const struct drawSurf_s	*> localShadows;				// don't shadow local Surfaces
+	std::atomic<const struct drawSurf_s	*> globalInteractions;			// get shadows from everything
+	std::atomic<const struct drawSurf_s	*> translucentInteractions;		// get shadows from everything
 } viewLight_t;
 
 
@@ -1236,7 +1236,7 @@ viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *def );
 void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const renderEntity_t *renderEntity,
 					const idMaterial *shader, const idScreenRect &scissor, const float soft_particle_radius = -1.0f ); // soft particles in #3878
 
-void R_LinkLightSurf( const drawSurf_t **link, const srfTriangles_t *tri, const viewEntity_t *space, 
+void R_LinkLightSurf( std::atomic<const drawSurf_t *>& link, const srfTriangles_t *tri, const viewEntity_t *space, 
 				   const idRenderLightLocal *light, const idMaterial *shader, const idScreenRect &scissor, bool viewInsideShadow );
 
 bool R_CreateAmbientCache( srfTriangles_t *tri, bool needsLighting );

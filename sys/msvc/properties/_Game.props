@@ -15,7 +15,7 @@
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>.\game\game.def</ModuleDefinitionFile>
-      <AdditionalDependencies>PolarSSL.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tbbmalloc.lib;tbb.lib;PolarSSL.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>

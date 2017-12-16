@@ -135,6 +135,9 @@ public:
 	// calls R_LinkLightSurf() for each one
 	void					AddActiveInteraction( void );
 
+	// cache model before call to AddActiveInteraction
+	idRenderModel *			model;
+
 	// called by GenerateAllInteractions
 	void					CreateStaticInteraction();
 
