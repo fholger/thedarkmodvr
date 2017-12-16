@@ -84,6 +84,7 @@ extern PFNGLMAPBUFFERRANGEPROC glMapBufferRange;
 extern PFNGLFLUSHMAPPEDBUFFERRANGEPROC glFlushMappedBufferRange;
 extern PFNGLUNMAPBUFFERPROC glUnmapBuffer;
 extern PFNGLBUFFERSUBDATAPROC glBufferSubData;
+extern PFNGLBUFFERSTORAGEPROC qglBufferStorage;
 
 // NV_register_combiners
 extern	void ( APIENTRY *qglCombinerParameterfvNV )( GLenum pname, const GLfloat *params );

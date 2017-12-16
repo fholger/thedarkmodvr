@@ -31,11 +31,6 @@ Buffer Objects
 class idIndexBuffer;
 class idDrawVert;
 
-enum bufferMapType_t {
-	BM_READ,			// map for reading
-	BM_WRITE			// map for writing
-};
-
 // Returns all targets to virtual memory use instead of buffer object use.
 // Call this before doing any conventional buffer reads, like screenshots.
 void UnbindBufferObjects();
@@ -52,6 +47,7 @@ public:
 
 	// Allocate or free the buffer.
 	bool				AllocBufferObject( const void * data, int allocSize );
+	bool				AllocPersistentBufferObject( int allocSize );
 	void				FreeBufferObject();
 
 	// Make this buffer a reference to another buffer.
@@ -61,8 +57,8 @@ public:
 	// Copies data to the buffer. 'size' may be less than the originally allocated size.
 	void				Update( const void * data, int updateSize ) const;
 
-	void *				MapBuffer( bufferMapType_t mapType, int mapOffset = 0 ) const;
-	idDrawVert *		MapVertexBuffer( bufferMapType_t mapType ) const { return static_cast< idDrawVert * >( MapBuffer( mapType ) ); }
+	void *				MapBuffer( int mapOffset = 0 ) const;
+	idDrawVert *		MapVertexBuffer() const { return static_cast< idDrawVert * >( MapBuffer() ); }
 	void				FlushBuffer( int offset, int length );
 	void				UnmapBuffer() const;
 	bool				IsMapped() const { return ( size & MAPPED_FLAG ) != 0; }
@@ -76,6 +72,7 @@ private:
 	int					size;					// size in bytes
 	int					offsetInOtherBuffer;	// offset in bytes
 	void *				apiObject;
+	bool				persistent;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG = 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );
@@ -104,6 +101,7 @@ public:
 
 	// Allocate or free the buffer.
 	bool				AllocBufferObject( const void * data, int allocSize );
+	bool				AllocPersistentBufferObject( int allocSize );
 	void				FreeBufferObject();
 
 	// Make this buffer a reference to another buffer.
@@ -113,8 +111,8 @@ public:
 	// Copies data to the buffer. 'size' may be less than the originally allocated size.
 	void				Update( const void * data, int updateSize ) const;
 
-	void *				MapBuffer( bufferMapType_t mapType, int mapOffset = 0 ) const;
-	triIndex_t *		MapIndexBuffer( bufferMapType_t mapType ) const { return static_cast< triIndex_t * >( MapBuffer( mapType ) ); }
+	void *				MapBuffer( int mapOffset = 0 ) const;
+	triIndex_t *		MapIndexBuffer() const { return static_cast< triIndex_t * >( MapBuffer() ); }
 	void				FlushBuffer( int offset, int length );
 	void				UnmapBuffer() const;
 	bool				IsMapped() const { return ( size & MAPPED_FLAG ) != 0; }
@@ -128,6 +126,7 @@ private:
 	int					size;					// size in bytes
 	int					offsetInOtherBuffer;	// offset in bytes
 	void *				apiObject;
+	bool				persistent;
 
 	// sizeof() confuses typeinfo...
 	static const int	MAPPED_FLAG = 1 << ( 4 /* sizeof( int ) */ * 8 - 1 );

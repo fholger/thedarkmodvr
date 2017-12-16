@@ -49,10 +49,10 @@ MapGeoBufferSet
 */
 static void MapGeoBufferSet( geoBufferSet_t &gbs ) {
 	if( gbs.mappedVertexBase == NULL ) {
-		gbs.mappedVertexBase = ( byte * )gbs.vertexBuffer.MapBuffer( BM_WRITE, gbs.vertexMapOffset );
+		gbs.mappedVertexBase = ( byte * )gbs.vertexBuffer.MapBuffer( gbs.vertexMapOffset );
 	}
 	if( gbs.mappedIndexBase == NULL ) {
-		gbs.mappedIndexBase = ( byte * )gbs.indexBuffer.MapBuffer( BM_WRITE, gbs.indexMapOffset );
+		gbs.mappedIndexBase = ( byte * )gbs.indexBuffer.MapBuffer( gbs.indexMapOffset );
 	}
 }
 
@@ -83,6 +83,46 @@ static void AllocGeoBufferSet( geoBufferSet_t &gbs, const int vertexBytes, const
 	gbs.vertexBuffer.AllocBufferObject( NULL, vertexBytes );
 	gbs.indexBuffer.AllocBufferObject( NULL, indexBytes );
 	ClearGeoBufferSet( gbs );
+}
+
+static void AllocPersistentGeoBufferSet(geoBufferSet_t &gbs, const int vertexBytes, const int indexBytes) {
+	gbs.vertexBuffer.AllocPersistentBufferObject( vertexBytes );
+	gbs.indexBuffer.AllocPersistentBufferObject( indexBytes );
+	gbs.syncFence = 0;
+	ClearGeoBufferSet( gbs );
+	MapGeoBufferSet( gbs );
+}
+
+/*
+==============
+LockGeoBufferSet
+
+Persistent buffers must only be written to while no GL command is reading from them.
+We ensure this by creating and waiting for a GL fence sync.
+==============
+*/
+static void LockGeoBufferSet(geoBufferSet_t &gbs) {
+	gbs.syncFence = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
+}
+
+static void WaitForGeoBufferSet(geoBufferSet_t &gbs) {
+	GLbitfield waitFlags = 0;
+	GLuint64 waitDuration = 0;
+	while( true ) {
+		GLenum ret = qglClientWaitSync( gbs.syncFence, waitFlags, waitDuration );
+		if( ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED )
+			break;
+
+		if( ret == GL_WAIT_FAILED ) {
+			common->Warning( "glClientWaitSync failed" );
+			break;
+		}
+
+		// if first call does not succeed immediately, ensure commands are flushed and wait longer
+		waitFlags = GL_SYNC_FLUSH_COMMANDS_BIT;
+		waitDuration = 1000000000;
+	}
+	qglDeleteSync( gbs.syncFence );
 }
 
 idFile* cacheLogFile = nullptr;
@@ -167,7 +207,7 @@ void idVertexCache::Init() {
 
 	// set up the dynamic frame memory
 	for( int i = 0; i < VERTCACHE_NUM_FRAMES; ++i ) {
-		AllocGeoBufferSet( frameData[i], VERTCACHE_VERTEX_MEMORY_PER_FRAME, VERTCACHE_INDEX_MEMORY_PER_FRAME );
+		AllocPersistentGeoBufferSet( frameData[i], VERTCACHE_VERTEX_MEMORY_PER_FRAME, VERTCACHE_INDEX_MEMORY_PER_FRAME );
 	}
 	AllocGeoBufferSet( staticData, STATIC_VERTEX_MEMORY, STATIC_INDEX_MEMORY );
 
@@ -217,6 +257,8 @@ void idVertexCache::EndFrame() {
 			staticCountTotal, staticAllocTotal / 1024 );*/
 	}
 
+	LockGeoBufferSet( frameData[listNum] );
+
 	currentFrame++;
 	backendListNum = (backendListNum + 1) % VERTCACHE_NUM_FRAMES;
 	listNum = ( backendListNum + 1 ) % VERTCACHE_NUM_FRAMES;
@@ -229,7 +271,9 @@ void idVertexCache::EndFrame() {
 	tempBufferUsed = 0;
 	staticBufferUsed = 0;
 
-	MapFrontendBuffers();
+	ClearGeoBufferSet( frameData[listNum] );
+	WaitForGeoBufferSet( frameData[listNum] );
+	UnmapGeoBufferSet( staticData );
 
 	// unbind vertex buffers so normal virtual memory will be used in case
 	// r_useVertexBuffers / r_useIndexBuffers

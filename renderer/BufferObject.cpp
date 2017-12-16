@@ -112,6 +112,7 @@ idVertexBuffer::idVertexBuffer() {
 	size = 0;
 	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
 	apiObject = NULL;
+	persistent = false;
 	SetUnmapped();
 }
 
@@ -173,6 +174,51 @@ bool idVertexBuffer::AllocBufferObject( const void * data, int allocSize ) {
 	if( data != NULL ) {
 		Update( data, allocSize );
 	}
+
+	return !allocationFailed;
+}
+
+bool idVertexBuffer::AllocPersistentBufferObject( int allocSize ) {
+	assert( apiObject == NULL );
+
+	if( allocSize <= 0 ) {
+		idLib::Error( "idVertexBuffer::AllocPersistentBufferObject: allocSize = %i", allocSize );
+	}
+
+	size = allocSize;
+
+	bool allocationFailed = false;
+
+	int numBytes = GetAllocedSize();
+
+
+	// clear out any previous error
+	qglGetError();
+
+	GLuint bufferObject = 0xFFFF;
+	qglGenBuffersARB( 1, &bufferObject );
+	if( bufferObject == 0xFFFF ) {
+		common->FatalError( "idVertexBuffer::AllocPersistentBufferObject: failed" );
+	}
+	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, bufferObject );
+	GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+	qglBufferStorage( GL_ARRAY_BUFFER_ARB, size, nullptr, flags);
+	GL_CheckErrors();
+	
+	apiObject = reinterpret_cast< void * >( bufferObject );
+
+	GLenum err = qglGetError();
+	if( err == GL_OUT_OF_MEMORY ) {
+		common->Warning( "idVertexBuffer::AllocPersistentBufferObject: allocation failed" );
+		allocationFailed = true;
+	}
+
+
+	if( r_showBuffers.GetBool() ) {
+		common->Printf( "vertex buffer alloc %p, api %p (%i bytes)\n", this, GetAPIObject(), GetSize() );
+	}
+
+	persistent = !allocationFailed;
 
 	return !allocationFailed;
 }
@@ -270,7 +316,7 @@ void idVertexBuffer::Update( const void * data, int updateSize ) const {
 idVertexBuffer::MapBuffer
 ========================
 */
-void * idVertexBuffer::MapBuffer( bufferMapType_t mapType, int mapOffset ) const {
+void * idVertexBuffer::MapBuffer( int mapOffset ) const {
 	assert( apiObject != NULL );
 	assert( IsMapped() == false );
 
@@ -278,20 +324,14 @@ void * idVertexBuffer::MapBuffer( bufferMapType_t mapType, int mapOffset ) const
 
 	GLuint bufferObject = reinterpret_cast< GLuint >( apiObject );
 	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, bufferObject );
-	if( mapType == BM_READ ) {
-		buffer = glMapBufferRange( GL_ARRAY_BUFFER_ARB, mapOffset, GetAllocedSize() - mapOffset, GL_MAP_READ_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT );
-		if( buffer != NULL ) {
-			buffer = ( byte * )buffer + GetOffset();
-		}
+	GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
+	if( persistent ) {
+		flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 	}
-	else if( mapType == BM_WRITE ) {
-		buffer = glMapBufferRange( GL_ARRAY_BUFFER_ARB, mapOffset, GetAllocedSize() - mapOffset, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_FLUSH_EXPLICIT_BIT );
-		if( buffer != NULL ) {
-			buffer = ( byte * )buffer + GetOffset();
-		}
-	}
-	else {
-		assert( false );
+	buffer = glMapBufferRange( GL_ARRAY_BUFFER_ARB, mapOffset, GetAllocedSize() - mapOffset, flags );
+	GL_CheckErrors();
+	if( buffer != NULL ) {
+		buffer = ( byte * )buffer + GetOffset();
 	}
 
 	SetMapped();
@@ -362,6 +402,7 @@ idIndexBuffer::idIndexBuffer() {
 	size = 0;
 	offsetInOtherBuffer = OWNS_BUFFER_FLAG;
 	apiObject = NULL;
+	persistent = false;
 	SetUnmapped();
 }
 
@@ -426,6 +467,51 @@ bool idIndexBuffer::AllocBufferObject( const void * data, int allocSize ) {
 	}
 
 	return !allocationFailed;
+}
+
+bool idIndexBuffer::AllocPersistentBufferObject( int allocSize ) {
+	assert( apiObject == NULL );
+
+	if( allocSize <= 0 ) {
+		idLib::Error( "idIndexBuffer::AllocPersistentBufferObject: allocSize = %i", allocSize );
+	}
+
+	size = allocSize;
+
+	bool allocationFailed = false;
+
+	int numBytes = GetAllocedSize();
+
+
+	// clear out any previous error
+	qglGetError();
+
+	GLuint bufferObject = 0xFFFF;
+	qglGenBuffersARB( 1, &bufferObject );
+	if( bufferObject == 0xFFFF ) {
+		common->FatalError( "idIndexBuffer::AllocPersistentBufferObject: failed" );
+	}
+	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, bufferObject );
+	GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+	qglBufferStorage( GL_ELEMENT_ARRAY_BUFFER_ARB, size, nullptr, flags );
+
+	apiObject = reinterpret_cast< void * >( bufferObject );
+
+	GLenum err = qglGetError();
+	if( err == GL_OUT_OF_MEMORY ) {
+		common->Warning( "idIndexBuffer::AllocPersistentBufferObject: allocation failed" );
+		allocationFailed = true;
+	}
+
+
+	if( r_showBuffers.GetBool() ) {
+		common->Printf( "index buffer alloc %p, api %p (%i bytes)\n", this, GetAPIObject(), GetSize() );
+	}
+
+	persistent = !allocationFailed;
+
+	return !allocationFailed;
+
 }
 
 /*
@@ -523,7 +609,7 @@ void idIndexBuffer::Update( const void * data, int updateSize ) const {
 idIndexBuffer::MapBuffer
 ========================
 */
-void * idIndexBuffer::MapBuffer( bufferMapType_t mapType, int mapOffset ) const {
+void * idIndexBuffer::MapBuffer( int mapOffset ) const {
 
 	assert( apiObject != NULL );
 	assert( IsMapped() == false );
@@ -532,20 +618,14 @@ void * idIndexBuffer::MapBuffer( bufferMapType_t mapType, int mapOffset ) const 
 
 	GLuint bufferObject = reinterpret_cast< GLuint >( apiObject );
 	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, bufferObject );
-	if( mapType == BM_READ ) {
-		buffer = glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER_ARB, 0, GetAllocedSize(), GL_MAP_READ_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT );
-		if( buffer != NULL ) {
-			buffer = ( byte * )buffer + GetOffset();
-		}
+
+	GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_FLUSH_EXPLICIT_BIT;
+	if( persistent ) {
+		flags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 	}
-	else if( mapType == BM_WRITE ) {
-		buffer = glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER_ARB, 0, GetAllocedSize(), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_FLUSH_EXPLICIT_BIT );
-		if( buffer != NULL ) {
-			buffer = ( byte * )buffer + GetOffset();
-		}
-	}
-	else {
-		assert( false );
+	buffer = glMapBufferRange( GL_ELEMENT_ARRAY_BUFFER_ARB, 0, GetAllocedSize(), flags );
+	if( buffer != NULL ) {
+		buffer = ( byte * )buffer + GetOffset();
 	}
 
 	SetMapped();

@@ -307,6 +307,7 @@ PFNGLMAPBUFFERRANGEPROC					glMapBufferRange;
 PFNGLUNMAPBUFFERPROC					glUnmapBuffer;
 PFNGLFLUSHMAPPEDBUFFERRANGEPROC			glFlushMappedBufferRange;
 PFNGLBUFFERSUBDATAPROC					glBufferSubData;
+PFNGLBUFFERSTORAGEPROC					qglBufferStorage;
 
 // ARB_vertex_program / ARB_fragment_program
 PFNGLVERTEXATTRIBPOINTERARBPROC			qglVertexAttribPointer;
@@ -514,6 +515,10 @@ static void R_CheckPortableExtensions( void ) {
 	glFlushMappedBufferRange = ( PFNGLFLUSHMAPPEDBUFFERRANGEPROC )GLimp_ExtensionPointer( "glFlushMappedBufferRange" );
 	glUnmapBuffer = ( PFNGLUNMAPBUFFERPROC )GLimp_ExtensionPointer( "glUnmapBuffer" );
 	glBufferSubData = ( PFNGLBUFFERSUBDATAPROC )GLimp_ExtensionPointer( "glBufferSubData" );
+
+	if( !R_CheckExtension( "GL_ARB_buffer_storage" ) )
+		common->Error( "glBufferStorage not supported" );
+	qglBufferStorage = ( PFNGLBUFFERSTORAGEPROC )GLimp_ExtensionPointer( "glBufferStorage" );
 
 	// ARB_vertex_program
 	qglVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERARBPROC)GLimp_ExtensionPointer( "glVertexAttribPointerARB" );

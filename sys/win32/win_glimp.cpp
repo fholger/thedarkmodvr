@@ -404,7 +404,7 @@ static bool GLW_InitDriver( glimpParms_t parms ) {
 	common->Printf( "succeeded\n" );
 
 	// create a secondary context to use for buffer loading by the frontend
-	common->Printf( "...creating secondary shared GL context: " );
+	/*common->Printf( "...creating secondary shared GL context: " );
 	if ( (win32.hSecondaryGLRC = qwglCreateContext( win32.hDC )) == 0 ) {
 		common->Printf( S_COLOR_YELLOW "failed\n" S_COLOR_DEFAULT );
 		return false;
@@ -420,7 +420,7 @@ static bool GLW_InitDriver( glimpParms_t parms ) {
 		common->Printf( S_COLOR_YELLOW "failed\n" S_COLOR_DEFAULT );
 		return false;
 	}
-	common->Printf( "succeeded\n" );
+	common->Printf( "succeeded\n" );*/
 
 	common->Printf( "...making context current: " );
 	if ( !qwglMakeCurrent( win32.hDC, win32.hGLRC ) ) {

@@ -264,14 +264,12 @@ public:
 	std::condition_variable signalMainThread;
 	std::mutex			signalMutex;
 	volatile bool		frontendActive;
-	volatile bool		frontendReady;
 	volatile bool		shutdownFrontend;
 	std::shared_ptr<ErrorReportedException> frontendException;
 	double				frontendTimeWaiting;
 	double				frontendTimeGameTics;
 	double				frontendTimeDrawing;
 	double				frontendTimeSignal;
-	double				frontendTimeSync;
 
 	void				FrontendThreadFunction();
 	bool				IsFrontend() const;
