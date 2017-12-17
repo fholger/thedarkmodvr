@@ -1463,8 +1463,13 @@ void R_AddModelSurfaces( void ) {
 			inter->AddActiveInteraction();
 		}
 	}
+	// relink empty interactions at end of light/entity lists
+	for( idInteraction* inter : interactionsToAdd ) {
+		if( inter->numSurfaces == 0 )
+			inter->MakeEmpty();
+	}
 	double ticksAfter = Sys_GetClockTicks();
-	common->Printf( "Adding %d active interactions took %.2f us.\n", interactionsToAdd.size(), ( ticksAfter - ticksBefore ) * 1000000 / Sys_ClockTicksPerSecond() );
+	//common->Printf( "Adding %d active interactions took %.2f us.\n", interactionsToAdd.size(), ( ticksAfter - ticksBefore ) * 1000000 / Sys_ClockTicksPerSecond() );
 }
 
 /*

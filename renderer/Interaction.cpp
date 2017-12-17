@@ -920,14 +920,14 @@ void idInteraction::CreateInteraction( const idRenderModel *model ) {
 	if (r_useAnonreclaimer.GetBool()) {
 		// if it doesn't contact the light frustum, none of the surfaces will
 		if (R_CullModelBoundsToLight(lightDef, bounds, entityDef->modelRenderMatrix)) {
-			MakeEmpty();
+			numSurfaces = 0;
 			return;
 		}
 	}
 	else {
 		// if it doesn't contact the light frustum, none of the surfaces will
 		if (R_CullLocalBox(bounds, entityDef->modelMatrix, 6, lightDef->frustum)) {
-			MakeEmpty();
+			numSurfaces = 0;
 			return;
 		}
 	}
@@ -1050,7 +1050,7 @@ void idInteraction::CreateInteraction( const idRenderModel *model ) {
 
 	// if none of the surfaces generated anything, don't even bother checking?
 	if ( !interactionGenerated ) {
-		MakeEmpty();
+		numSurfaces = 0;
 	}
 }
 
