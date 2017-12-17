@@ -102,7 +102,6 @@ class idRenderWorldLocal : public idRenderWorld {
 public:
 							idRenderWorldLocal();
 	virtual					~idRenderWorldLocal();
-	void ResizeInteractionTable();
 
 	virtual	qhandle_t		AddEntityDef( const renderEntity_t *re );
 	virtual	void			UpdateEntityDef( qhandle_t entityHandle, const renderEntity_t *re );
@@ -190,9 +189,9 @@ public:
 	// cache access, because the table is accessed by light in idRenderWorldLocal::CreateLightDefInteractions()
 	// Growing this table is time consuming, so we add a pad value to the number
 	// of entityDefs and lightDefs
-	idInteraction **		interactionTable;
-	int						interactionTableWidth;		// entityDefs
-	int						interactionTableHeight;		// lightDefs
+	static const int MAX_INTERACTION_TABLE_LOAD_FACTOR = 75;
+	idDenseHash<int, idInteraction*, InterTableHashFunction> interactionTable;
+
 
 	bool					generateAllInteractionsCalled;
 

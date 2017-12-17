@@ -128,9 +128,7 @@ idRenderWorldLocal::idRenderWorldLocal() {
 	//doublePortals = NULL;
 	//numInterAreaPortals = 0;
 
-	interactionTable = 0;
-	interactionTableWidth = 0;
-	interactionTableHeight = 0;
+	interactionTable.Init(-1, MAX_INTERACTION_TABLE_LOAD_FACTOR);
 }
 
 /*
@@ -150,46 +148,14 @@ idRenderWorldLocal::~idRenderWorldLocal() {
 
 /*
 ===================
-ResizeInteractionTable
-===================
-*/
-void idRenderWorldLocal::ResizeInteractionTable() {
-	// we overflowed the interaction table, so make it larger
-	common->Printf( "idRenderWorldLocal::ResizeInteractionTable: overflowed interactionTable, resizing\n" );
-
-	const int oldInteractionTableWidth = interactionTableWidth;
-	const int oldIinteractionTableHeight = interactionTableHeight;
-	idInteraction ** oldInteractionTable = interactionTable;
-
-	// build the interaction table
-	// this will be dynamically resized if the entity / light counts grow too much
-	interactionTableWidth = entityDefs.Num() + 100;
-	interactionTableHeight = lightDefs.Num() + 100;
-	const int	size = interactionTableWidth * interactionTableHeight * sizeof( *interactionTable );
-	interactionTable = ( idInteraction ** )R_ClearedStaticAlloc( size );
-	for( int l = 0; l < oldIinteractionTableHeight; l++ ) {
-		for( int e = 0; e < oldInteractionTableWidth; e++ ) {
-			interactionTable[l * interactionTableWidth + e] = oldInteractionTable[l * oldInteractionTableWidth + e];
-		}
-	}
-
-	R_StaticFree( oldInteractionTable );
-}
-
-/*
-===================
 AddEntityDef
 ===================
 */
 qhandle_t idRenderWorldLocal::AddEntityDef( const renderEntity_t *re ){
 	// try and reuse a free spot
 	int entityHandle = entityDefs.FindNull();
-	if( entityHandle == -1 ) {
+	if ( entityHandle == -1 ) 
 		entityHandle = entityDefs.Append( NULL );
-		if( interactionTable && entityDefs.Num() > interactionTableWidth ) {
-			ResizeInteractionTable();
-		}
-	}
 
 	UpdateEntityDef( entityHandle, re );
 	
@@ -363,12 +329,8 @@ qhandle_t idRenderWorldLocal::AddLightDef( const renderLight_t *rlight ) {
 	// try and reuse a free spot
 	int lightHandle = lightDefs.FindNull();
 
-	if( lightHandle == -1 ) {
+	if ( lightHandle == -1 ) 
 		lightHandle = lightDefs.Append( NULL );
-		if( interactionTable && lightDefs.Num() > interactionTableHeight ) {
-			ResizeInteractionTable();
-		}
-	}
 	UpdateLightDef( lightHandle, rlight );
 
 	return lightHandle;
@@ -1488,13 +1450,6 @@ void idRenderWorldLocal::GenerateAllInteractions() {
 	// try and do any view specific optimizations
 	tr.viewDef = NULL;
 
-	// build the interaction table
-	// this will be dynamically resized if the entity / light counts grow too much
-	interactionTableWidth = entityDefs.Num() + 100;
-	interactionTableHeight = lightDefs.Num() + 100;
-	const int size = interactionTableWidth * interactionTableHeight * sizeof( interactionTable );
-	interactionTable = ( idInteraction ** )R_ClearedStaticAlloc( size );
-
 	int count = 0;
 
 	for ( int i = 0 ; i < this->lightDefs.Num() ; i++ ) {
@@ -1531,6 +1486,11 @@ void idRenderWorldLocal::GenerateAllInteractions() {
 				// make an interaction for this light / entity pair
 				// and add a pointer to it in the table
 				inter = idInteraction::AllocAndLink( edef, ldef );
+				int key = (ldef->index << 16) + edef->index;
+				auto &cell = interactionTable.Find(key);
+				cell.key = key;
+				cell.value = inter;
+				interactionTable.Added(cell);
 
 				count++;
 
@@ -1539,7 +1499,7 @@ void idRenderWorldLocal::GenerateAllInteractions() {
 			}
 		}
 	}
-	common->Printf( "interactionTable generated of size: %i bytes\n", size );
+	common->Printf( "interactionTable generated of size: %i entries\n", interactionTable.Size() );
 
 #ifdef _DEBUG
 	int end = Sys_Milliseconds();
