@@ -449,10 +449,7 @@ void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) 
 			
 			// if any of the edef's interaction match this light, we don't
 			// need to consider it. 
-			idInteraction *inter;
-			int key = (ldef->index << 16) + edef->index;
-			auto &cell = interactionTable.Find(key);
-			inter = interactionTable.IsEmpty(cell) ? NULL : cell.value;
+			idInteraction *inter = this->interactionTable[( ldef->index * this->interactionTableWidth + edef->index )];
 
 			if ( inter ) {
 				// if this entity wasn't in view already, the scissor rect will be empty,

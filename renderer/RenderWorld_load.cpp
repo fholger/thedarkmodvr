@@ -420,6 +420,11 @@ void idRenderWorldLocal::FreeDefs() {
 
 	generateAllInteractionsCalled = false;
 
+	if( interactionTable ) {
+		R_StaticFree( interactionTable );
+		interactionTable = NULL;
+	}
+
 	// free all lightDefs
 	for ( i = 0 ; i < lightDefs.Num() ; i++ ) {
 		idRenderLightLocal	*light;
@@ -441,9 +446,6 @@ void idRenderWorldLocal::FreeDefs() {
 			entityDefs[i] = NULL;
 		}
 	}
-
-	if (interactionTable.Count() > 0)
-		common->Error("idRenderWorldLocal::FreeDefs: not all interactions removed!");
 }
 
 /*
