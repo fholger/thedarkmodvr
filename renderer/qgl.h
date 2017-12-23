@@ -214,6 +214,9 @@ extern PFNGLFENCESYNCPROC				qglFenceSync;
 extern PFNGLCLIENTWAITSYNCPROC			qglClientWaitSync;
 extern PFNGLDELETESYNCPROC				qglDeleteSync;
 
+// Debug functions
+extern PFNGLPUSHDEBUGGROUPPROC				qglPushDebugGroup;
+extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

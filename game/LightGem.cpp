@@ -336,6 +336,7 @@ void LightGem::Render() {
 	if (m_LightgemBackDraw->cmdHead == nullptr)
 		return;
 
+	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 999, -1, "RenderLightgem" );
 	PROFILE_BLOCK_START(LightGem_Render);
 	DM_LOG(LC_LIGHT, LT_DEBUG)LOGSTRING("Rendering to lightgem render buffer\n");
 	
@@ -351,6 +352,7 @@ void LightGem::Render() {
 	m_LightgemBackDraw->cmdHead = m_LightgemBackDraw->cmdTail = nullptr;
 
 	PROFILE_BLOCK_END(LightGem_Render);
+	qglPopDebugGroup();
 }
 
 void LightGem::EndFrame() {

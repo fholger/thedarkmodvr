@@ -147,6 +147,7 @@ void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf ) {
 	if ( !surf )
 		return;
 
+	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 4, -1, "DrawInteractions" );
 	// perform setup here that will be constant for all interactions
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
 
@@ -208,6 +209,8 @@ void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf ) {
 
 	qglUseProgram( 0 );
 	GL_CheckErrors();
+
+	qglPopDebugGroup();
 }
 
 /*
@@ -331,7 +334,7 @@ void RB_GLSL_DrawInteractions() {
 	GL_SelectTexture( 0 );
 	// for each light, perform adding and shadowing
 	for ( backEnd.vLight = backEnd.viewDef->viewLights; backEnd.vLight; backEnd.vLight = backEnd.vLight->next ) {
-		// do fogging later
+			// do fogging later
 		if ( backEnd.vLight->lightShader->IsFogLight() )
 			continue;
 		if ( backEnd.vLight->lightShader->IsBlendLight() )
@@ -339,17 +342,21 @@ void RB_GLSL_DrawInteractions() {
 		// if there are no interactions, get out!
 		if ( !backEnd.vLight->localInteractions && !backEnd.vLight->globalInteractions && !backEnd.vLight->translucentInteractions )
 			continue;
-		if ( r_shadows.GetInteger() == 2 )
+		qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20000 + backEnd.vLight->lightDef->index, -1, "LightInteractions" );
+		if( r_shadows.GetInteger() == 2 )
 			RB_GLSL_DrawLight_ShadowMap();
 		else
 			RB_GLSL_DrawLight_Stencil();
 		// translucent surfaces never get stencil shadowed
-		if ( r_skipTranslucent.GetBool() )
+		if( r_skipTranslucent.GetBool() ) {
+			qglPopDebugGroup();
 			continue;
+		}
 		qglStencilFunc( GL_ALWAYS, 128, 255 );
 		backEnd.depthFunc = GLS_DEPTHFUNC_LESS;
 		RB_GLSL_CreateDrawInteractions( backEnd.vLight->translucentInteractions );
 		backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
+		qglPopDebugGroup();
 	}
 	// disable stencil shadow test
 	qglStencilFunc( GL_ALWAYS, 128, 255 );

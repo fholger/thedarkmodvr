@@ -392,6 +392,10 @@ PFNGLFENCESYNCPROC						qglFenceSync;
 PFNGLCLIENTWAITSYNCPROC					qglClientWaitSync;
 PFNGLDELETESYNCPROC						qglDeleteSync;
 
+// Debug functions
+PFNGLPUSHDEBUGGROUPPROC						qglPushDebugGroup;
+PFNGLPOPDEBUGGROUPPROC						qglPopDebugGroup;
+
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
 
@@ -633,6 +637,9 @@ static void R_CheckPortableExtensions( void ) {
 		qglDeleteSync = ( PFNGLDELETESYNCPROC )GLimp_ExtensionPointer( "glDeleteSync" );
 		common->Printf( "GL fence sync available\n" );
 	}
+
+	qglPushDebugGroup = ( PFNGLPUSHDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPushDebugGroup" );
+	qglPopDebugGroup = ( PFNGLPOPDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPopDebugGroup" );
 
 	int n;
 	qglGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &n );
