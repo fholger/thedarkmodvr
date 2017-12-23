@@ -231,15 +231,17 @@ void RB_RenderDrawSurfListWithFunction( drawSurf_t **drawSurfs, int numDrawSurfs
 	for ( int i = 0  ; i < numDrawSurfs ; i++ ) {
 		drawSurf = drawSurfs[i];
 
+		qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 10000 + i, -1, "DepthDrawSurf" );
 		// change the matrix if needed
 		// Note (Serp) : this used to be ( drawSurf->space != backEnd.currentSpace) however, since it's always going to be NULL... 
 		// Note (SteveL) : FIXME: It *won't* always be NULL, we're in a loop and it gets set at the end. This change might be wiping out 
 		// all (marginal) benefits from sorting DrawSurfs by material, as it'll cause a blocking change in GL state on every draw. However, 
 		// reverting the change causes all static solid surfaces to become invisible. Don't know why.
-		if ( drawSurf->space ) {
+		if ( drawSurf->space != backEnd.currentSpace ) {
 			qglLoadMatrixf( drawSurf->space->modelViewMatrix );
 		} else {
-			return;
+			/*qglPopDebugGroup();
+			return;*/
 		}
 
 		if ( drawSurf->space->weaponDepthHack ) {
@@ -267,6 +269,7 @@ void RB_RenderDrawSurfListWithFunction( drawSurf_t **drawSurfs, int numDrawSurfs
 		}
 
 		backEnd.currentSpace = drawSurf->space;
+		qglPopDebugGroup();
 	}
 }
 
@@ -654,6 +657,7 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf
 	bool lightDepthBoundsDisabled = false;
 	//anon end
 
+	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 5, -1, "SingleDrawInteraction" );
 	// change the matrix and light projection vectors if needed
 	if ( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;
@@ -840,6 +844,7 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf
 		GL_DepthBoundsTest(vLight->scissorRect.zmin, vLight->scissorRect.zmax);
 	}
 	//anon end
+	qglPopDebugGroup();
 }
 
 /*
@@ -848,6 +853,7 @@ RB_DrawView
 =============
 */
 void RB_DrawView( const void *data ) {
+	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 0, -1, "DrawView" );
 	const drawSurfsCommand_t	*cmd;
 
 	cmd = (const drawSurfsCommand_t *)data;
@@ -888,4 +894,5 @@ void RB_DrawView( const void *data ) {
 		GLimp_ActivateContext();
 		RB_SetDefaultGLState();
 	}
+	qglPopDebugGroup();
 }
