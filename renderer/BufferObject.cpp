@@ -179,7 +179,7 @@ void * BufferObject::MapBuffer( int mapOffset ) {
 	void *buffer = NULL;
 
 	qglBindBufferARB( bufferType, bufferObject );
-	buffer = qglMapBufferRange( bufferType, mapOffset, GetAllocedSize() - mapOffset, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_FLUSH_EXPLICIT_BIT );
+	buffer = qglMapBufferRange( bufferType, mapOffset, GetAllocedSize() - mapOffset, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_FLUSH_EXPLICIT_BIT );
 	if( buffer == NULL ) {
 		common->Error( "BufferObject::MapBuffer: failed" );
 	}
