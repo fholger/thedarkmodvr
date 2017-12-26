@@ -134,8 +134,10 @@ void *idVertexCache::IndexPosition( vertCacheHandle_t handle ) {
 }
 
 void idVertexCache::UnbindIndex() {
-	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
-	currentIndexBuffer = 0;
+	if( currentIndexBuffer != 0 ) {
+		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
+		currentIndexBuffer = 0;
+	}
 }
 
 
@@ -217,8 +219,6 @@ void idVertexCache::EndFrame() {
 	staticData.indexMapOffset = staticData.indexMemUsed;
 	staticData.vertexMapOffset = staticData.vertexMemUsed;
 
-	// unbind vertex buffers so normal virtual memory will be used in case
-	// r_useVertexBuffers / r_useIndexBuffers
 	qglBindBufferARB( GL_ARRAY_BUFFER_ARB, 0 );
 	qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, 0 );
 	currentVertexBuffer = 0;
