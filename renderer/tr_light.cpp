@@ -70,7 +70,7 @@ This is used only for a specific light
 */
 void R_CreatePrivateShadowCache( srfTriangles_t *tri ) {
 
-	if ( !vertexCache.CacheIsCurrent( tri->shadowCache ) ) {
+	if ( vertexCache.CacheIsCurrent( tri->shadowCache ) ) {
 		return;
 	}
 
@@ -839,7 +839,7 @@ void R_AddLightSurfaces( void ) {
 			}
 
 			// if we have been purged, re-upload the shadowVertexes
-			if ( !tri->shadowCache ) {
+			if ( !vertexCache.CacheIsCurrent( tri->shadowCache ) ) {
 				R_CreatePrivateShadowCache( tri );
 				//if ( !tri->shadowCache ) {
 				//	continue;
