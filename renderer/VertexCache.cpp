@@ -227,16 +227,23 @@ void idVertexCache::EndFrame() {
 	// unmap the current frame so the GPU can read it
 	UnmapGeoBufferSet( frameData[listNum] );
 	UnmapGeoBufferSet( staticData );
-	LockGeoBufferSet( frameData[backendListNum] );
 
+	// ensure no GL draws are still active on the next buffer to write to
+	int nextListNum = (listNum + 1) % VERTCACHE_NUM_FRAMES;
+	if (glConfig.fenceSyncAvailable) {
+		LockGeoBufferSet(frameData[backendListNum]);
+		WaitForGeoBufferSet(frameData[nextListNum]);
+	} else {
+		// this is going to stall, but it probably doesn't matter on such old GPUs...
+		qglFinish();
+	}
 	currentFrame++;
 	backendListNum = listNum;
-	listNum = (listNum + 1) % VERTCACHE_NUM_FRAMES;
+	listNum = nextListNum;
 	tempBufferUsed = 0;
 	staticBufferUsed = 0;
 
 	// prepare the next frame for writing to by the CPU
-	WaitForGeoBufferSet( frameData[listNum] );
 	MapGeoBufferSet( frameData[listNum] );
 	ClearGeoBufferSet( frameData[listNum] );
 	staticData.indexMapOffset = staticData.indexMemUsed;
