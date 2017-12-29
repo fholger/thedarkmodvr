@@ -824,7 +824,7 @@ void R_AddLightSurfaces( void ) {
 		// fog lights will need to draw the light frustum triangles, so make sure they
 		// are in the vertex cache
 		if ( lightShader->IsFogLight() ) {
-			if ( !light->frustumTris->ambientCache ) {
+			if ( !vertexCache.CacheIsCurrent(light->frustumTris->ambientCache) ) {
 				R_CreateAmbientCache( light->frustumTris, false );
 			}
 		}
