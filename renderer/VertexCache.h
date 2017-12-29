@@ -24,13 +24,13 @@ $Author$ (Author of last commit)
 
 // vertex cache calls should only be made by the front end
 
-const int VERTCACHE_INDEX_MEMORY_PER_FRAME = 24 * 1024 * 1024;
-const int VERTCACHE_VERTEX_MEMORY_PER_FRAME = 24 * 1024 * 1024;
+const int VERTCACHE_INDEX_MEMORY_PER_FRAME = 20 * 1024 * 1024;
+const int VERTCACHE_VERTEX_MEMORY_PER_FRAME = 20 * 1024 * 1024;
 
 const int STATIC_INDEX_MEMORY = 48 * 1024 * 1024;
 const int STATIC_VERTEX_MEMORY = 48 * 1024 * 1024;	// make sure it fits in VERTCACHE_OFFSET_MASK!
 
-const int VERTCACHE_NUM_FRAMES = 2;
+const int VERTCACHE_NUM_FRAMES = 3;
 
 const int VERTCACHE_STATIC = 1;					// in the static set, not the per-frame set
 const int VERTCACHE_SIZE_SHIFT = 1;
@@ -60,6 +60,7 @@ struct geoBufferSet_t {
 	int					allocations;	// number of index and vertex allocations combined
 	int					vertexMapOffset;
 	int					indexMapOffset;
+	GLsync				bufferLock;
 
 	geoBufferSet_t( GLenum usage = GL_DYNAMIC_DRAW_ARB );
 };

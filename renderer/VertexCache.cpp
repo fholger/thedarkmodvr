@@ -83,7 +83,28 @@ AllocGeoBufferSet
 static void AllocGeoBufferSet( geoBufferSet_t &gbs, const int vertexBytes, const int indexBytes ) {
 	gbs.vertexBuffer.AllocBufferObject( vertexBytes );
 	gbs.indexBuffer.AllocBufferObject( indexBytes );
+	gbs.bufferLock = 0;
 	ClearGeoBufferSet( gbs );
+}
+
+static void LockGeoBufferSet(geoBufferSet_t &gbs) {
+	gbs.bufferLock = qglFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+}
+
+static void WaitForGeoBufferSet(geoBufferSet_t &gbs) {
+	if (gbs.bufferLock == 0)
+		return;
+
+	GLenum result = qglClientWaitSync(gbs.bufferLock, 0, 1);
+	while (result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED) {
+		result = qglClientWaitSync(gbs.bufferLock, GL_SYNC_FLUSH_COMMANDS_BIT, 1000000);
+		if (result == GL_WAIT_FAILED) {
+			common->Warning("glClientWaitSync failed.\n");
+			break;
+		}
+	}
+	qglDeleteSync(gbs.bufferLock);
+	gbs.bufferLock = 0;
 }
 
 /*
@@ -206,6 +227,7 @@ void idVertexCache::EndFrame() {
 	// unmap the current frame so the GPU can read it
 	UnmapGeoBufferSet( frameData[listNum] );
 	UnmapGeoBufferSet( staticData );
+	LockGeoBufferSet( frameData[backendListNum] );
 
 	currentFrame++;
 	backendListNum = listNum;
@@ -214,6 +236,7 @@ void idVertexCache::EndFrame() {
 	staticBufferUsed = 0;
 
 	// prepare the next frame for writing to by the CPU
+	WaitForGeoBufferSet( frameData[listNum] );
 	MapGeoBufferSet( frameData[listNum] );
 	ClearGeoBufferSet( frameData[listNum] );
 	staticData.indexMapOffset = staticData.indexMemUsed;
