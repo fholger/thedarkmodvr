@@ -1070,6 +1070,54 @@ static void R_SortDrawSurfs( void ) {
 //==============================================================================
 
 
+void R_BatchShadowVolumes() {
+	static shadowCache_t* batchedVertices = (shadowCache_t*)Mem_Alloc16( sizeof(shadowCache_t) * 512 * 1024 );
+	static glIndex_t* batchedIndexes = ( glIndex_t* )Mem_Alloc16( sizeof(glIndex_t) * 4 * 512 * 1024 );
+
+	if( r_ignore.GetBool() ) {
+		int numBatched = 0;
+		for( viewLight_t* vLight = tr.viewDef->viewLights; vLight; vLight = vLight->next ) {
+			// create new batched drawsurf
+			drawSurf_t* batchedSurf = ( drawSurf_t* )R_ClearedFrameAlloc( sizeof( drawSurf_t ) );
+			batchedSurf->scissorRect.Clear();
+			batchedSurf->space = &tr.viewDef->worldSpace;
+			batchedSurf->nextOnLight = vLight->globalShadows;
+			srfTriangles_t* tri = ( srfTriangles_t* )R_ClearedFrameAlloc( sizeof( srfTriangles_t ) );
+			batchedSurf->backendGeo = tri;
+			vLight->globalShadows = batchedSurf;
+
+			const drawSurf_t* prev = batchedSurf;
+			const drawSurf_t* cur = batchedSurf->nextOnLight;
+			shadowCache_t* vert = batchedVertices;
+			glIndex_t* index = batchedIndexes;
+			while( cur != nullptr ) {
+				if( cur->frontendGeo->numIndexes <= 128 && cur->frontendGeo->shadowVertexes ) {
+					const_cast< drawSurf_t* >( prev )->nextOnLight = cur->nextOnLight;
+					for( int i = 0; i < cur->frontendGeo->numIndexes; ++i ) {
+						index[i] = cur->frontendGeo->indexes[i] + tri->numVerts;
+					}
+					tri->numIndexes += cur->frontendGeo->numIndexes;
+					index = batchedIndexes + tri->numIndexes;
+					for( int i = 0; i < cur->frontendGeo->numVerts; ++i ) {
+						R_PointTimesMatrix( cur->space->modelMatrix, cur->frontendGeo->shadowVertexes[i].xyz, vert[i].xyz );
+					}
+					tri->numVerts += cur->frontendGeo->numVerts;
+					vert = batchedVertices + tri->numVerts;
+					++numBatched;
+				} else {
+					prev = cur;
+				}
+				cur = cur->nextOnLight;
+			}
+
+			tri->numShadowIndexesNoCaps = tri->numShadowIndexesNoFrontCaps = tri->numIndexes;
+			tri->indexCache = vertexCache.AllocIndex( batchedIndexes, ALIGN( sizeof( glIndex_t ) * tri->numIndexes, INDEX_CACHE_ALIGN ) );
+			tri->shadowCache = vertexCache.AllocVertex( batchedVertices, ALIGN( sizeof( shadowCache_t ) * tri->numVerts, VERTEX_CACHE_ALIGN ) );
+		}
+
+		common->Printf( "Number of batched shadow volumes: %d\n", numBatched );
+	}
+}
 
 /*
 ================
@@ -1138,6 +1186,8 @@ void R_RenderView( viewDef_t &parms ) {
 			return;
 		}
 	}
+
+	R_BatchShadowVolumes();
 
 	// copy drawsurf geo state for backend use
 	for (int i = 0; i < parms.numDrawSurfs; ++i) {

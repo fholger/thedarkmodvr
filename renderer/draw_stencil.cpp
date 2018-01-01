@@ -183,6 +183,8 @@ void RB_StencilShadowPass( const drawSurf_t *drawSurfs ) {
 		return;
 	}
 
+	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20001, -1, "StencilShadowPass" );
+
 	RB_LogComment( "---------- RB_StencilShadowPass ----------\n" );
 
 	globalImages->BindNull();
@@ -232,4 +234,6 @@ void RB_StencilShadowPass( const drawSurf_t *drawSurfs ) {
 	qglStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
 	if ( !r_softShadowsQuality.GetBool() || backEnd.viewDef->renderView.viewID < TR_SCREEN_VIEW_ID )
 		qglStencilFunc( GL_GEQUAL, 128, 255 );
+
+	qglPopDebugGroup();
 }

@@ -651,7 +651,6 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf
 	bool lightDepthBoundsDisabled = false;
 	//anon end
 
-	//qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 5, -1, "SingleDrawInteraction" );
 	// change the matrix and light projection vectors if needed
 	if ( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;

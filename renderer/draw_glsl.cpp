@@ -165,6 +165,7 @@ void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf ) {
 	for ( ; surf; surf = surf->nextOnLight ) {
 		if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY )
 			continue;
+		qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 5, -1, "SingleDrawInteraction" );
 		// set the vertex pointers
 		idDrawVert	*ac = (idDrawVert *)vertexCache.VertexPosition( surf->backendGeo->ambientCache );
 		qglVertexAttribPointer( 3, 4, GL_UNSIGNED_BYTE, true, sizeof( idDrawVert ), &ac->color );
@@ -177,6 +178,7 @@ void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf ) {
 		// this may cause RB_GLSL_DrawInteraction to be executed multiple
 		// times with different colors and images if the surface or light have multiple layers
 		RB_CreateSingleDrawInteractions( surf/*, RB_GLSL_DrawInteraction*/ );
+		qglPopDebugGroup();
 	}
 
 	qglDisableVertexAttribArray( 8 );
@@ -342,7 +344,7 @@ void RB_GLSL_DrawInteractions() {
 		// if there are no interactions, get out!
 		if ( !backEnd.vLight->localInteractions && !backEnd.vLight->globalInteractions && !backEnd.vLight->translucentInteractions )
 			continue;
-		qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20000 + backEnd.vLight->lightDef->index, -1, "LightInteractions" );
+		qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20000, -1, "LightInteractions" );
 		if( r_shadows.GetInteger() == 2 )
 			RB_GLSL_DrawLight_ShadowMap();
 		else
