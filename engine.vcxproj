@@ -1187,6 +1187,7 @@
     <ClCompile Include="renderer\tr_light.cpp" />
     <ClCompile Include="renderer\tr_lightrun.cpp" />
     <ClCompile Include="renderer\tr_main.cpp" />
+    <ClCompile Include="renderer\tr_multidraw.cpp" />
     <ClCompile Include="renderer\tr_orderIndexes.cpp" />
     <ClCompile Include="renderer\tr_polytope.cpp" />
     <ClCompile Include="renderer\tr_render.cpp" />

@@ -62,6 +62,7 @@ typedef struct glconfig_s {
 	bool				framebufferBlitAvailable;
 	bool				multipleRenderTargetsAvailable;		//glDrawBuffers
 	bool				fenceSyncAvailable;
+	bool				multiDrawAvailable;
 
 	int					vidWidth, vidHeight;	// passed to R_BeginFrame
 	int					windowWidth, windowHeight;

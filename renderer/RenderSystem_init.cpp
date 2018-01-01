@@ -244,6 +244,8 @@ idCVar r_fboSharedColor("r_fboSharedColor", "0", CVAR_RENDERER | CVAR_BOOL | CVA
 idCVar r_fboResolution("r_fboResolution", "1", CVAR_RENDERER | CVAR_FLOAT | CVAR_ARCHIVE, "internal rendering resolution factor");
 idCVar r_ambient_testadd( "r_ambient_testadd", "0", CVAR_RENDERER | CVAR_FLOAT, "Added ambient brightness for testing purposes. ", 0, 1 );
 
+idCVar r_useMultiDraw( "r_useMultiDraw", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use OpenGL4 multidraw commands if available" );
+
 // relocate stgatilov ROQ options
 
 idCVar r_cinematic_legacyRoq("r_cinematic_legacyRoq", "0", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE,
@@ -395,6 +397,11 @@ PFNGLDELETESYNCPROC						qglDeleteSync;
 // Debug functions
 PFNGLPUSHDEBUGGROUPPROC						qglPushDebugGroup;
 PFNGLPOPDEBUGGROUPPROC						qglPopDebugGroup;
+
+// Multi draw commands
+PFNGLBUFFERSTORAGEPROC						qglBufferStorage;
+PFNGLMULTIDRAWELEMENTSINDIRECTPROC			qglMultiDrawElementsIndirect;
+PFNGLBINDBUFFERBASEPROC						qglBindBufferBase;
 
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
@@ -640,6 +647,14 @@ static void R_CheckPortableExtensions( void ) {
 
 	qglPushDebugGroup = ( PFNGLPUSHDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPushDebugGroup" );
 	qglPopDebugGroup = ( PFNGLPOPDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPopDebugGroup" );
+
+	glConfig.multiDrawAvailable = R_CheckExtension( "GL_ARB_multi_draw_indirect" ) && R_CheckExtension("GL_ARB_base_instance");
+	if( glConfig.multiDrawAvailable ) {
+		qglBufferStorage = ( PFNGLBUFFERSTORAGEPROC )GLimp_ExtensionPointer( "glBufferStorage" );
+		qglMultiDrawElementsIndirect = ( PFNGLMULTIDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glMultiDrawElementsIndirect" );
+		qglBindBufferBase = ( PFNGLBINDBUFFERBASEPROC )GLimp_ExtensionPointer( "glBindBufferBase" );
+		common->Printf( "GL multi draw available\n" );
+	}
 
 	int n;
 	qglGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &n );

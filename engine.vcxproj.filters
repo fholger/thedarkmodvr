@@ -2914,6 +2914,9 @@
     <ClCompile Include="vr\Framebuffer.cpp">
       <Filter>Vr</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\tr_multidraw.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="sys\win32\rc\res\BEVEL.BMP">

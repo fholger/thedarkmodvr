@@ -90,6 +90,7 @@ shaderProgram_t cubeMapShader;
 oldStageProgram_t oldStageShader;
 depthProgram_t depthShader;
 lightProgram_t stencilShadowShader;
+lightProgram_t stencilShadowShaderMultiDraw;
 shadowMapProgram_t shadowMapShader;
 fogProgram_t fogShader;
 blendProgram_t blendShader;
@@ -242,8 +243,12 @@ void RB_GLSL_DrawLight_Stencil() {
 		// no shadows, so no need to read or write the stencil buffer
 		qglStencilFunc( GL_ALWAYS, 128, 255 );
 
-	stencilShadowShader.Use();
-	RB_StencilShadowPass( backEnd.vLight->globalShadows );
+	if( glConfig.multiDrawAvailable && r_useMultiDraw.GetBool() ) {
+		RB_StencilShadowPass_MultiDraw( backEnd.vLight->globalShadows );
+	} else {
+		stencilShadowShader.Use();
+		RB_StencilShadowPass( backEnd.vLight->globalShadows );
+	}
 
 	const bool NoSelfShadows = true; // otherwise low-poly "round" models cast ugly shadows on themselves
 	if ( NoSelfShadows ) {
@@ -254,8 +259,12 @@ void RB_GLSL_DrawLight_Stencil() {
 			FB_ToggleShadow( true );
 	}
 
-	stencilShadowShader.Use();
-	RB_StencilShadowPass( backEnd.vLight->localShadows );
+	if( glConfig.multiDrawAvailable && r_useMultiDraw.GetBool() ) {
+		RB_StencilShadowPass_MultiDraw( backEnd.vLight->localShadows );
+	} else {
+		stencilShadowShader.Use();
+		RB_StencilShadowPass( backEnd.vLight->localShadows );
+	}
 
 	if ( useShadowFbo )
 		FB_ToggleShadow( false );
@@ -375,6 +384,9 @@ bool R_ReloadGLSLPrograms() {
 	ok &= pointInteractionShader.Load( "interaction" );				// filenames hardcoded here since they're not used elsewhere
 	ok &= ambientInteractionShader.Load( "ambientInteraction" );
 	ok &= stencilShadowShader.Load( "stencilShadow" );
+	if( glConfig.multiDrawAvailable ) {
+		ok &= stencilShadowShaderMultiDraw.Load( "stencilshadow_md" );
+	}
 	ok &= shadowMapShader.Load( "shadowMap" );
 	ok &= oldStageShader.Load( "oldStage" );
 	ok &= depthShader.Load( "depthAlpha" );

@@ -1036,6 +1036,8 @@ extern idCVar r_postprocess_bloomKernelSize;
 extern idCVar r_postprocess_bloomIntensity;
 extern idCVar r_postprocess_desaturation;
 
+extern idCVar r_useMultiDraw;
+
 /*
 ====================================================================
 
@@ -1337,6 +1339,9 @@ void RB_STD_FogAllLights( void );
 void RB_DumpFramebuffer( const char *fileName );
 void RB_DrawFullScreenQuad( void );
 void RB_Bloom( void );
+
+// multidraw
+void RB_StencilShadowPass_MultiDraw( const drawSurf_t *drawSurfs );
 
 /*
 ============================================================

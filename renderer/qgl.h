@@ -217,6 +217,11 @@ extern PFNGLDELETESYNCPROC				qglDeleteSync;
 // Debug functions
 extern PFNGLPUSHDEBUGGROUPPROC				qglPushDebugGroup;
 extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
+
+// Multi draw commands
+extern PFNGLBUFFERSTORAGEPROC				qglBufferStorage;
+extern PFNGLMULTIDRAWELEMENTSINDIRECTPROC	qglMultiDrawElementsIndirect;
+extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

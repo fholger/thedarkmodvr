@@ -74,6 +74,7 @@ extern depthProgram_t depthShader;
 extern fogProgram_t fogShader;
 extern blendProgram_t blendShader;
 extern lightProgram_t stencilShadowShader;
+extern lightProgram_t stencilShadowShaderMultiDraw;
 
 extern idCVar r_ambient_testadd;
 extern idCVar r_useGLSL;
