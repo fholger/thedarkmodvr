@@ -38,17 +38,18 @@ public:
 		Destroy();
 	}
 
-	void Init(GLenum target, GLuint size) {
+	void Init(GLenum target, GLuint size, GLuint alignment = 32) {
 		if( mMapBase ) {
 			Destroy();
 		}
 
 		mTarget = target;
-		mSize = size;
+		mSize = ALIGN( size * sizeof( T ), alignment );
+		mAlign = alignment;
 		qglGenBuffersARB( 1, &mBufferObject );
 		qglBindBufferARB( mTarget, mBufferObject );
-		qglBufferStorage( mTarget, sizeof( T ) * size, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT );
-		mMapBase = reinterpret_cast< T* >( qglMapBufferRange( mTarget, 0, sizeof( T ) * size, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT ) );
+		qglBufferStorage( mTarget, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT );
+		mMapBase = (byte*)qglMapBufferRange( mTarget, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 		mCurrentOffset = 0;
 	}
 
@@ -65,21 +66,23 @@ public:
 	}
 
 	T* Reserve(GLuint count) {
+		GLuint requestedSize = ALIGN( count * sizeof( T ), mAlign );
 		if( count > mSize ) {
 			return nullptr;
 		}
 
-		if( mCurrentOffset + count > mSize ) {
+		if( mCurrentOffset + requestedSize > mSize ) {
 			mCurrentOffset = 0;
 		}
 
-		WaitForLockedRange( mCurrentOffset, count );
-		return mMapBase + mCurrentOffset;
+		WaitForLockedRange( mCurrentOffset, requestedSize );
+		return reinterpret_cast<T*>(mMapBase + mCurrentOffset);
 	}
 
 	void MarkAsUsed(GLuint count) {
-		LockRange( mCurrentOffset, count );
-		//mCurrentOffset += count;
+		GLuint requestedSize = ALIGN( count * sizeof( T ), mAlign );
+		LockRange( mCurrentOffset, requestedSize );
+		mCurrentOffset += requestedSize;
 	}
 
 	void BindBuffer() {
@@ -87,20 +90,22 @@ public:
 	}
 
 	void BindBufferRange(GLuint index, GLuint count) {
-		qglBindBufferRange( mTarget, index, mBufferObject, mCurrentOffset * sizeof( T ), count * sizeof( T ) );
+		GLuint requestedSize = ALIGN( count * sizeof( T ), mAlign );
+		qglBindBufferRange( mTarget, index, mBufferObject, mCurrentOffset, requestedSize );
 	}
 
 	void BindBufferBase(GLuint index) {
 		qglBindBufferBase( mTarget, index, mBufferObject );
 	}
 
-	void* GetOffset() const { return ( void* )( mCurrentOffset * sizeof( T ) ); }
+	void* GetOffset() const { return ( void* )( mCurrentOffset ); }
 
 private:
 	GLuint mBufferObject;
 	GLenum mTarget;
 	GLuint mSize;
-	T * mMapBase;
+	GLuint mAlign;
+	byte * mMapBase;
 	GLuint mCurrentOffset;
 	std::vector<LockedRange> mRangeLocks;
 

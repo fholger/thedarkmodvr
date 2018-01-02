@@ -64,6 +64,8 @@ typedef struct glconfig_s {
 	bool				fenceSyncAvailable;
 	bool				multiDrawAvailable;
 
+	int					uniformOffsetAlignment, ssboOffsetAlignment;
+
 	int					vidWidth, vidHeight;	// passed to R_BeginFrame
 	int					windowWidth, windowHeight;
 	int					displayFrequency;

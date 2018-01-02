@@ -659,9 +659,9 @@ static void R_CheckPortableExtensions( void ) {
 		qglBindBufferRange = ( PFNGLBINDBUFFERRANGEPROC )GLimp_ExtensionPointer( "glBindBufferRange" );
 		qglVertexAttribIPointer = ( PFNGLVERTEXATTRIBIPOINTERPROC )GLimp_ExtensionPointer( "glVertexAttribIPointer" );
 		qglVertexAttribDivisor = ( PFNGLVERTEXATTRIBDIVISORPROC )GLimp_ExtensionPointer( "glVertexAttribDivisor" );
-		int offsetAlignment;
-		qglGetIntegerv( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &offsetAlignment );
-		common->Printf( "GL multi draw available, SSBO alignment: %d\n", offsetAlignment );
+		qglGetIntegerv( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &glConfig.ssboOffsetAlignment );
+		qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &glConfig.uniformOffsetAlignment );
+		common->Printf( "GL multi draw available, uniform alignment: %d, SSBO alignment: %d\n", glConfig.uniformOffsetAlignment, glConfig.ssboOffsetAlignment );
 	}
 
 	int n;

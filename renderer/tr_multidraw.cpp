@@ -19,7 +19,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "PersistentBufferObject.h"
 
 static const int MAX_MULTIDRAW_OBJECTS = 512;
-static const int MULTIDRAW_STORAGE_FACTOR = 4;
+static const int MULTIDRAW_STORAGE_FACTOR = 3;
 
 struct DrawElementsIndirectCommand {
 	uint count;
@@ -32,7 +32,6 @@ struct DrawElementsIndirectCommand {
 struct StencilDrawData {
 	float  modelMatrix[16];
 	idVec4 lightOrigin;
-	//idVec4 padding1;
 };
 
 struct MultiDrawBuffers {
@@ -51,8 +50,8 @@ struct MultiDrawBuffers {
 		qglBindBufferARB( GL_ARRAY_BUFFER, drawIdBuffer );
 		qglBufferDataARB( GL_ARRAY_BUFFER, drawIds.size() * sizeof( uint32_t ), drawIds.data(), GL_STATIC_DRAW );
 
-		commandBuffer.Init( GL_DRAW_INDIRECT_BUFFER, MAX_MULTIDRAW_OBJECTS * MULTIDRAW_STORAGE_FACTOR);
-		stencilDrawDataBuffer.Init( GL_UNIFORM_BUFFER, MAX_MULTIDRAW_OBJECTS * MULTIDRAW_STORAGE_FACTOR);
+		commandBuffer.Init( GL_DRAW_INDIRECT_BUFFER, MAX_MULTIDRAW_OBJECTS * MULTIDRAW_STORAGE_FACTOR );
+		stencilDrawDataBuffer.Init( GL_SHADER_STORAGE_BUFFER, MAX_MULTIDRAW_OBJECTS * MULTIDRAW_STORAGE_FACTOR, glConfig.ssboOffsetAlignment );
 	}
 
 	void Shutdown() {
@@ -74,13 +73,13 @@ struct MultiDrawBuffers {
 
 
 void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
-	//multiDrawBuffers.Init();
+	multiDrawBuffers.Init();
 	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20001, -1, "StencilShadowPassMultiDraw" );
 
-	//StencilDrawData* drawData = multiDrawBuffers.stencilDrawDataBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
-	static StencilDrawData* drawData = ( StencilDrawData* )Mem_Alloc16( sizeof( StencilDrawData ) * MAX_MULTIDRAW_OBJECTS );
-	//DrawElementsIndirectCommand* commands = multiDrawBuffers.commandBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
-	static DrawElementsIndirectCommand* commands = ( DrawElementsIndirectCommand* )Mem_Alloc16( sizeof( DrawElementsIndirectCommand )*MAX_MULTIDRAW_OBJECTS );
+	StencilDrawData* drawData = multiDrawBuffers.stencilDrawDataBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
+	//static StencilDrawData* drawData = ( StencilDrawData* )Mem_Alloc16( sizeof( StencilDrawData ) * MAX_MULTIDRAW_OBJECTS );
+	DrawElementsIndirectCommand* commands = multiDrawBuffers.commandBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
+	//static DrawElementsIndirectCommand* commands = ( DrawElementsIndirectCommand* )Mem_Alloc16( sizeof( DrawElementsIndirectCommand )*MAX_MULTIDRAW_OBJECTS );
 
 	int count = 0;
 	for( const drawSurf_t *drawSurf = drawSurfs; drawSurf; drawSurf = drawSurf->nextOnLight ) {
@@ -127,26 +126,26 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProjectionMatrix );
 	qglUniformMatrix4fv( viewProjMatrixPos, 1, GL_FALSE, viewProjectionMatrix );
 
-	//multiDrawBuffers.stencilDrawDataBuffer.BindBufferRange( 0, MAX_MULTIDRAW_OBJECTS );
+	multiDrawBuffers.stencilDrawDataBuffer.BindBufferRange( 0, count );
 	//multiDrawBuffers.stencilDrawDataBuffer.BindBufferBase( 0 );
-	static GLuint dataBuf = 0;
+	/*static GLuint dataBuf = 0;
 	if( dataBuf == 0 ) {
 		qglGenBuffersARB( 1, &dataBuf );
 	}
-	qglBindBufferARB( GL_UNIFORM_BUFFER, dataBuf );
-	qglBufferDataARB( GL_UNIFORM_BUFFER, MAX_MULTIDRAW_OBJECTS * sizeof( StencilDrawData ), drawData, GL_STATIC_DRAW );
-	qglBindBufferBase( GL_UNIFORM_BUFFER, 0, dataBuf );
+	qglBindBufferARB( GL_SHADER_STORAGE_BUFFER, dataBuf );
+	qglBufferDataARB( GL_SHADER_STORAGE_BUFFER, MAX_MULTIDRAW_OBJECTS * sizeof( StencilDrawData ), drawData, GL_STATIC_DRAW );
+	qglBindBufferBase( GL_SHADER_STORAGE_BUFFER, 0, dataBuf );*/
 
-	//multiDrawBuffers.commandBuffer.BindBuffer();
+	multiDrawBuffers.commandBuffer.BindBuffer();
 	//multiDrawBuffers.BindDrawId( 1 );
 	qglVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( shadowCache_t ), vertexCache.VertexPosition( 2 ) );
 	vertexCache.IndexPosition( 2 );
 
-	qglBindBufferARB( GL_DRAW_INDIRECT_BUFFER, 0 );
-	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands, count, 0 );
+	//qglBindBufferARB( GL_DRAW_INDIRECT_BUFFER, 0 );
+	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, multiDrawBuffers.commandBuffer.GetOffset(), count, 0 );
 
-	//multiDrawBuffers.commandBuffer.MarkAsUsed( count );
-	//multiDrawBuffers.stencilDrawDataBuffer.MarkAsUsed( MAX_MULTIDRAW_OBJECTS );
+	multiDrawBuffers.commandBuffer.MarkAsUsed( count );
+	multiDrawBuffers.stencilDrawDataBuffer.MarkAsUsed( count );
 
 	qglDisableVertexAttribArray( 1 );
 
