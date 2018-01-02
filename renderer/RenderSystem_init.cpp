@@ -402,6 +402,9 @@ PFNGLPOPDEBUGGROUPPROC						qglPopDebugGroup;
 PFNGLBUFFERSTORAGEPROC						qglBufferStorage;
 PFNGLMULTIDRAWELEMENTSINDIRECTPROC			qglMultiDrawElementsIndirect;
 PFNGLBINDBUFFERBASEPROC						qglBindBufferBase;
+PFNGLBINDBUFFERRANGEPROC					qglBindBufferRange;
+PFNGLVERTEXATTRIBIPOINTERPROC				qglVertexAttribIPointer;
+PFNGLVERTEXATTRIBDIVISORPROC				qglVertexAttribDivisor;
 
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
@@ -648,12 +651,17 @@ static void R_CheckPortableExtensions( void ) {
 	qglPushDebugGroup = ( PFNGLPUSHDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPushDebugGroup" );
 	qglPopDebugGroup = ( PFNGLPOPDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPopDebugGroup" );
 
-	glConfig.multiDrawAvailable = R_CheckExtension( "GL_ARB_multi_draw_indirect" ) && R_CheckExtension("GL_ARB_base_instance");
+	glConfig.multiDrawAvailable = R_CheckExtension( "GL_ARB_multi_draw_indirect" ) && R_CheckExtension("GL_ARB_base_instance") && R_CheckExtension("GL_ARB_buffer_storage");
 	if( glConfig.multiDrawAvailable ) {
 		qglBufferStorage = ( PFNGLBUFFERSTORAGEPROC )GLimp_ExtensionPointer( "glBufferStorage" );
 		qglMultiDrawElementsIndirect = ( PFNGLMULTIDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glMultiDrawElementsIndirect" );
 		qglBindBufferBase = ( PFNGLBINDBUFFERBASEPROC )GLimp_ExtensionPointer( "glBindBufferBase" );
-		common->Printf( "GL multi draw available\n" );
+		qglBindBufferRange = ( PFNGLBINDBUFFERRANGEPROC )GLimp_ExtensionPointer( "glBindBufferRange" );
+		qglVertexAttribIPointer = ( PFNGLVERTEXATTRIBIPOINTERPROC )GLimp_ExtensionPointer( "glVertexAttribIPointer" );
+		qglVertexAttribDivisor = ( PFNGLVERTEXATTRIBDIVISORPROC )GLimp_ExtensionPointer( "glVertexAttribDivisor" );
+		int offsetAlignment;
+		qglGetIntegerv( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &offsetAlignment );
+		common->Printf( "GL multi draw available, SSBO alignment: %d\n", offsetAlignment );
 	}
 
 	int n;
@@ -664,6 +672,7 @@ static void R_CheckPortableExtensions( void ) {
 		qglGetProgramivARB( GL_FRAGMENT_PROGRAM_ARB, GL_MAX_PROGRAM_ENV_PARAMETERS_ARB, &n );
 		common->Printf( "Max env parameters: %d\n", n );
 	}
+
 }
 
 /*

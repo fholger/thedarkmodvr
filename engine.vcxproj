@@ -606,6 +606,7 @@
     <ClInclude Include="renderer\ModelDecal.h" />
     <ClInclude Include="renderer\ModelManager.h" />
     <ClInclude Include="renderer\ModelOverlay.h" />
+    <ClInclude Include="renderer\PersistentBufferObject.h" />
     <ClInclude Include="renderer\qgl.h" />
     <ClInclude Include="renderer\qgl_linked.h" />
     <ClInclude Include="renderer\RenderSystem.h" />

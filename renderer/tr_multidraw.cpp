@@ -16,6 +16,10 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "precompiled.h"
 #include "tr_local.h"
 #include "glsl.h"
+#include "PersistentBufferObject.h"
+
+static const int MAX_MULTIDRAW_OBJECTS = 512;
+static const int MULTIDRAW_STORAGE_FACTOR = 4;
 
 struct DrawElementsIndirectCommand {
 	uint count;
@@ -28,15 +32,57 @@ struct DrawElementsIndirectCommand {
 struct StencilDrawData {
 	float  modelMatrix[16];
 	idVec4 lightOrigin;
+	//idVec4 padding1;
 };
 
+struct MultiDrawBuffers {
+	GLuint drawIdBuffer;
+	PersistentBufferObject<DrawElementsIndirectCommand> commandBuffer;
+	PersistentBufferObject<StencilDrawData> stencilDrawDataBuffer;
+
+	void Init() {
+		if( drawIdBuffer != 0 )
+			return;
+		
+		qglGenBuffersARB( 1, &drawIdBuffer );
+		std::vector<uint32_t> drawIds( MAX_MULTIDRAW_OBJECTS );
+		for( uint32_t i = 0; i < MAX_MULTIDRAW_OBJECTS; ++i )
+			drawIds[i] = i;
+		qglBindBufferARB( GL_ARRAY_BUFFER, drawIdBuffer );
+		qglBufferDataARB( GL_ARRAY_BUFFER, drawIds.size() * sizeof( uint32_t ), drawIds.data(), GL_STATIC_DRAW );
+
+		commandBuffer.Init( GL_DRAW_INDIRECT_BUFFER, MAX_MULTIDRAW_OBJECTS * MULTIDRAW_STORAGE_FACTOR);
+		stencilDrawDataBuffer.Init( GL_UNIFORM_BUFFER, MAX_MULTIDRAW_OBJECTS * MULTIDRAW_STORAGE_FACTOR);
+	}
+
+	void Shutdown() {
+		commandBuffer.Destroy();
+		stencilDrawDataBuffer.Destroy();
+		qglDeleteBuffersARB( 1, &drawIdBuffer );
+		drawIdBuffer = 0;
+	}
+
+	void BindDrawId(GLuint index) {
+		qglBindBufferARB( GL_ARRAY_BUFFER, drawIdBuffer );
+		qglVertexAttribIPointer( index, 1, GL_UNSIGNED_INT, sizeof( uint32_t ), 0 );
+		qglVertexAttribDivisor( index, 1 );
+		qglEnableVertexAttribArray( index );
+	}
+
+	MultiDrawBuffers() : drawIdBuffer(0) {}
+} multiDrawBuffers;
+
+
 void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
-	static StencilDrawData* drawData = ( StencilDrawData* )Mem_Alloc16( sizeof( StencilDrawData ) * 1024 );
-	static DrawElementsIndirectCommand* commands = ( DrawElementsIndirectCommand * )Mem_Alloc16( sizeof( DrawElementsIndirectCommand ) * 1024 );
+	multiDrawBuffers.Init();
+	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20001, -1, "StencilShadowPassMultiDraw" );
+
+	StencilDrawData* drawData = multiDrawBuffers.stencilDrawDataBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
+	DrawElementsIndirectCommand* commands = multiDrawBuffers.commandBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
 
 	int count = 0;
 	for( const drawSurf_t *drawSurf = drawSurfs; drawSurf; drawSurf = drawSurf->nextOnLight ) {
-		if( count == 512 )
+		if( count == MAX_MULTIDRAW_OBJECTS )
 			break; // TODO
 		const srfTriangles_t *tri = drawSurf->backendGeo;
 		if( vertexCache.CacheIsStatic( tri->shadowCache ) || vertexCache.CacheIsStatic( tri->indexCache ) )
@@ -44,28 +90,27 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 		memcpy( drawData[count].modelMatrix, drawSurf->space->modelMatrix, sizeof( drawData[0].modelMatrix ) );
 		R_GlobalPointToLocal( drawSurf->space->modelMatrix, backEnd.vLight->globalLightOrigin, drawData[count].lightOrigin.ToVec3() );
 		drawData[count].lightOrigin.w = 0.0f;
+
 		commands[count].count = tri->numIndexes;
 		commands[count].instanceCount = 1;
 		commands[count].firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
 		commands[count].baseVertex = ( ( tri->shadowCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( shadowCache_t );
-		commands[count].baseInstance = 0;
+		commands[count].baseInstance = count;
 		++count;
 	}
-	//common->Printf( "Num commands: %d\n", count );
-	if( count == 0 )
+	if( count == 0 ) {
+		qglPopDebugGroup();
 		return;
+	}
 
 	stencilShadowShaderMultiDraw.Use();
-	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20001, -1, "StencilShadowPassMultiDraw" );
 
 	globalImages->BindNull();
 	GL_State( GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHFUNC_LESS );
-	//GL_State( GLS_DEPTHMASK | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_LESS );
 	if( r_shadowPolygonFactor.GetFloat() || r_shadowPolygonOffset.GetFloat() ) {
 		qglPolygonOffset( r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat() );
 		qglEnable( GL_POLYGON_OFFSET_FILL );
 	}
-	//qglDisable( GL_SCISSOR_TEST );
 
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_FRONT : GL_BACK, GL_KEEP, tr.stencilDecr, GL_KEEP );
@@ -75,30 +120,23 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 	/*if( glConfig.depthBoundsTestAvailable && r_useDepthBoundsTest.GetBool() )
 		qglEnable( GL_DEPTH_BOUNDS_TEST_EXT );*/
 
-	GLint lightOriginPos = qglGetUniformLocation( stencilShadowShaderMultiDraw.program, "lightOrigin" );
-	idVec4 lightOrigin;
-	lightOrigin.ToVec3() = backEnd.vLight->globalLightOrigin;
-	lightOrigin.w = 0;
-	qglUniform4fv( lightOriginPos, 1, lightOrigin.ToFloatPtr() );
-	GLint projMatrixPos = qglGetUniformLocation( stencilShadowShaderMultiDraw.program, "projectionMatrix" );
-	GLint viewMatrixPos = qglGetUniformLocation( stencilShadowShaderMultiDraw.program, "viewMatrix" );
+	GLint viewProjMatrixPos = qglGetUniformLocation( stencilShadowShaderMultiDraw.program, "viewProjectionMatrix" );
 	float viewProjectionMatrix[16];
-	myGlMultMatrix( backEnd.viewDef->projectionMatrix, backEnd.viewDef->worldSpace.modelViewMatrix, viewProjectionMatrix );
-	qglUniformMatrix4fv( projMatrixPos, 1, GL_FALSE, backEnd.viewDef->projectionMatrix );
-	qglUniformMatrix4fv( viewMatrixPos, 1, GL_FALSE, backEnd.viewDef->worldSpace.modelViewMatrix );
+	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProjectionMatrix );
+	qglUniformMatrix4fv( viewProjMatrixPos, 1, GL_FALSE, viewProjectionMatrix );
 
-	static GLuint ubo = 0;
-	if( !ubo ) {
-		qglGenBuffersARB( 1, &ubo );
-	}
-	qglBindBufferARB( GL_UNIFORM_BUFFER, ubo );
-	qglBufferDataARB( GL_UNIFORM_BUFFER, sizeof( StencilDrawData ) * 512, drawData, GL_DYNAMIC_DRAW );
-	qglBindBufferBase( GL_UNIFORM_BUFFER, 0, ubo );
-
+	multiDrawBuffers.stencilDrawDataBuffer.BindBufferRange( 0, MAX_MULTIDRAW_OBJECTS );
+	multiDrawBuffers.commandBuffer.BindBuffer();
+	multiDrawBuffers.BindDrawId( 1 );
 	qglVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( shadowCache_t ), vertexCache.VertexPosition( 2 ) );
 	vertexCache.IndexPosition( 2 );
 
-	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands, count, 0 );
+	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, multiDrawBuffers.commandBuffer.GetOffset(), count, 0 );
+
+	multiDrawBuffers.commandBuffer.MarkAsUsed( count );
+	multiDrawBuffers.stencilDrawDataBuffer.MarkAsUsed( MAX_MULTIDRAW_OBJECTS );
+
+	qglDisableVertexAttribArray( 1 );
 
 	GL_CheckErrors();
 

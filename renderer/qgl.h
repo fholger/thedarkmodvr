@@ -222,6 +222,9 @@ extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
 extern PFNGLBUFFERSTORAGEPROC				qglBufferStorage;
 extern PFNGLMULTIDRAWELEMENTSINDIRECTPROC	qglMultiDrawElementsIndirect;
 extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;
+extern PFNGLBINDBUFFERRANGEPROC				qglBindBufferRange;
+extern PFNGLVERTEXATTRIBIPOINTERPROC		qglVertexAttribIPointer;
+extern PFNGLVERTEXATTRIBDIVISORPROC			qglVertexAttribDivisor;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*
