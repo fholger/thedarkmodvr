@@ -74,7 +74,7 @@ struct MultiDrawBuffers {
 
 
 void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
-	multiDrawBuffers.Init();
+	//multiDrawBuffers.Init();
 	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20001, -1, "StencilShadowPassMultiDraw" );
 
 	//StencilDrawData* drawData = multiDrawBuffers.stencilDrawDataBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
@@ -97,7 +97,7 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 		commands[count].instanceCount = 1;
 		commands[count].firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
 		commands[count].baseVertex = ( ( tri->shadowCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( shadowCache_t );
-		commands[count].baseInstance = count;
+		commands[count].baseInstance = 0; // count;
 		++count;
 	}
 	if( count == 0 ) {
@@ -138,7 +138,7 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 	qglBindBufferBase( GL_UNIFORM_BUFFER, 0, dataBuf );
 
 	//multiDrawBuffers.commandBuffer.BindBuffer();
-	multiDrawBuffers.BindDrawId( 1 );
+	//multiDrawBuffers.BindDrawId( 1 );
 	qglVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( shadowCache_t ), vertexCache.VertexPosition( 2 ) );
 	vertexCache.IndexPosition( 2 );
 
