@@ -405,6 +405,7 @@ PFNGLBINDBUFFERBASEPROC						qglBindBufferBase;
 PFNGLBINDBUFFERRANGEPROC					qglBindBufferRange;
 PFNGLVERTEXATTRIBIPOINTERPROC				qglVertexAttribIPointer;
 PFNGLVERTEXATTRIBDIVISORPROC				qglVertexAttribDivisor;
+PFNGLMEMORYBARRIERPROC						qglMemoryBarrier;
 
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
@@ -659,6 +660,7 @@ static void R_CheckPortableExtensions( void ) {
 		qglBindBufferRange = ( PFNGLBINDBUFFERRANGEPROC )GLimp_ExtensionPointer( "glBindBufferRange" );
 		qglVertexAttribIPointer = ( PFNGLVERTEXATTRIBIPOINTERPROC )GLimp_ExtensionPointer( "glVertexAttribIPointer" );
 		qglVertexAttribDivisor = ( PFNGLVERTEXATTRIBDIVISORPROC )GLimp_ExtensionPointer( "glVertexAttribDivisor" );
+		qglMemoryBarrier = ( PFNGLMEMORYBARRIERPROC )GLimp_ExtensionPointer( "glMemoryBarrier" );
 		qglGetIntegerv( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &glConfig.ssboOffsetAlignment );
 		qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &glConfig.uniformOffsetAlignment );
 		common->Printf( "GL multi draw available, uniform alignment: %d, SSBO alignment: %d\n", glConfig.uniformOffsetAlignment, glConfig.ssboOffsetAlignment );

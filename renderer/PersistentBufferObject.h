@@ -48,8 +48,8 @@ public:
 		mAlign = alignment;
 		qglGenBuffersARB( 1, &mBufferObject );
 		qglBindBufferARB( mTarget, mBufferObject );
-		qglBufferStorage( mTarget, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT );
-		mMapBase = (byte*)qglMapBufferRange( mTarget, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
+		qglBufferStorage( mTarget, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT /*| GL_MAP_COHERENT_BIT | GL_DYNAMIC_STORAGE_BIT*/ );
+		mMapBase = (byte*)qglMapBufferRange( mTarget, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_FLUSH_EXPLICIT_BIT /*| GL_MAP_COHERENT_BIT*/ );
 		mCurrentOffset = 0;
 	}
 
@@ -77,6 +77,12 @@ public:
 
 		WaitForLockedRange( mCurrentOffset, requestedSize );
 		return reinterpret_cast<T*>(mMapBase + mCurrentOffset);
+	}
+
+	void Commit(GLuint count) {
+		GLuint requestedSize = ALIGN( count * sizeof( T ), mAlign );
+		qglBindBufferARB( mTarget, mBufferObject );
+		qglFlushMappedBufferRange( mTarget, mCurrentOffset, requestedSize );
 	}
 
 	void MarkAsUsed(GLuint count) {

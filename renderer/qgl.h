@@ -225,6 +225,7 @@ extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;
 extern PFNGLBINDBUFFERRANGEPROC				qglBindBufferRange;
 extern PFNGLVERTEXATTRIBIPOINTERPROC		qglVertexAttribIPointer;
 extern PFNGLVERTEXATTRIBDIVISORPROC			qglVertexAttribDivisor;
+extern PFNGLMEMORYBARRIERPROC				qglMemoryBarrier;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*
