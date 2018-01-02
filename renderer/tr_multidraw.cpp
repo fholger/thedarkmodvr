@@ -18,7 +18,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "glsl.h"
 #include "PersistentBufferObject.h"
 
-static const int MAX_MULTIDRAW_OBJECTS = 512;
+static const int MAX_MULTIDRAW_OBJECTS = 1024;
 static const int MULTIDRAW_STORAGE_FACTOR = 3;
 
 struct DrawElementsIndirectCommand {
@@ -77,13 +77,8 @@ void GL_MemoryBarrier() {
 }
 
 
-void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
-	multiDrawBuffers.Init();
-	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20001, -1, "StencilShadowPassMultiDraw" );
-
-	//StencilDrawData* drawData = multiDrawBuffers.stencilDrawDataBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
+void RB_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 	static StencilDrawData* drawData = ( StencilDrawData* )Mem_Alloc16( sizeof( StencilDrawData ) * MAX_MULTIDRAW_OBJECTS );
-	//DrawElementsIndirectCommand* commands = multiDrawBuffers.commandBuffer.Reserve( MAX_MULTIDRAW_OBJECTS );
 	static DrawElementsIndirectCommand* commands = ( DrawElementsIndirectCommand* )Mem_Alloc16( sizeof( DrawElementsIndirectCommand )*MAX_MULTIDRAW_OBJECTS );
 
 	int count = 0;
@@ -93,11 +88,47 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 		const srfTriangles_t *tri = drawSurf->backendGeo;
 		if( vertexCache.CacheIsStatic( tri->shadowCache ) || vertexCache.CacheIsStatic( tri->indexCache ) )
 			continue; // TODO
+
+		bool isExt = false;
+		int numIndexes = 0;
+		if( !r_useExternalShadows.GetInteger() ) {
+			numIndexes = tri->numIndexes;
+		}
+		else if( r_useExternalShadows.GetInteger() == 2 ) { // force to no caps for testing
+			numIndexes = tri->numShadowIndexesNoCaps;
+		}
+		else if( !( drawSurf->dsFlags & DSF_VIEW_INSIDE_SHADOW ) ) {
+			// if we aren't inside the shadow projection, no caps are ever needed needed
+			numIndexes = tri->numShadowIndexesNoCaps;
+			isExt = true;
+		}
+		else if( !backEnd.vLight->viewInsideLight && !( drawSurf->backendGeo->shadowCapPlaneBits & SHADOW_CAP_INFINITE ) ) {
+			// if we are inside the shadow projection, but outside the light, and drawing
+			// a non-infinite shadow, we can skip some caps
+			if( backEnd.vLight->viewSeesShadowPlaneBits & drawSurf->backendGeo->shadowCapPlaneBits ) {
+				// we can see through a rear cap, so we need to draw it, but we can skip the
+				// caps on the actual surface
+				numIndexes = tri->numShadowIndexesNoFrontCaps;
+			}
+			else {
+				// we don't need to draw any caps
+				numIndexes = tri->numShadowIndexesNoCaps;
+			}
+			isExt = true;
+		}
+		else {
+			// must draw everything
+			numIndexes = tri->numIndexes;
+		}
+
+		if( isExt != external )
+			continue;
+
 		memcpy( drawData[count].modelMatrix, drawSurf->space->modelMatrix, sizeof( drawData[0].modelMatrix ) );
 		R_GlobalPointToLocal( drawSurf->space->modelMatrix, backEnd.vLight->globalLightOrigin, drawData[count].lightOrigin.ToVec3() );
 		drawData[count].lightOrigin.w = 0.0f;
 
-		commands[count].count = tri->numIndexes;
+		commands[count].count = numIndexes;
 		commands[count].instanceCount = 1;
 		commands[count].firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
 		commands[count].baseVertex = ( ( tri->shadowCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( shadowCache_t );
@@ -105,12 +136,23 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 		++count;
 	}
 	if( count == 0 ) {
-		qglPopDebugGroup();
 		return;
 	}
 
-	/*multiDrawBuffers.commandBuffer.Commit( count );
-	multiDrawBuffers.stencilDrawDataBuffer.Commit( count );*/
+	qglBufferDataARB( GL_SHADER_STORAGE_BUFFER, count * sizeof( StencilDrawData ), drawData, GL_STATIC_DRAW );
+
+	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands, count, 0 );
+
+}
+
+void RB_StencilShadowPass_MultiDraw( const drawSurf_t* drawSurfs ) {
+	static GLuint dataBuf = 0;
+	if( dataBuf == 0 ) {
+		qglGenBuffersARB( 1, &dataBuf );
+	}
+	multiDrawBuffers.Init();
+
+	qglPushDebugGroup( GL_DEBUG_SOURCE_APPLICATION, 20001, -1, "StencilShadowPassMultiDraw" );
 
 	stencilShadowShaderMultiDraw.Use();
 
@@ -122,39 +164,34 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 	}
 
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
-	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_FRONT : GL_BACK, GL_KEEP, tr.stencilDecr, GL_KEEP );
-	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_BACK : GL_FRONT, GL_KEEP, tr.stencilIncr, GL_KEEP );
 	GL_Cull( CT_TWO_SIDED );
 
-	/*if( glConfig.depthBoundsTestAvailable && r_useDepthBoundsTest.GetBool() )
-		qglEnable( GL_DEPTH_BOUNDS_TEST_EXT );*/
+	if( glConfig.depthBoundsTestAvailable && r_useDepthBoundsTest.GetBool() ) {
+		qglEnable( GL_DEPTH_BOUNDS_TEST_EXT );
+		qglDepthBoundsEXT( backEnd.vLight->scissorRect.zmin, backEnd.vLight->scissorRect.zmax );
+	}
 
 	GLint viewProjMatrixPos = qglGetUniformLocation( stencilShadowShaderMultiDraw.program, "viewProjectionMatrix" );
 	float viewProjectionMatrix[16];
 	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProjectionMatrix );
 	qglUniformMatrix4fv( viewProjMatrixPos, 1, GL_FALSE, viewProjectionMatrix );
 
-	//multiDrawBuffers.stencilDrawDataBuffer.BindBufferRange( 0, count );
-	//multiDrawBuffers.stencilDrawDataBuffer.BindBufferBase( 0 );
-	static GLuint dataBuf = 0;
-	if( dataBuf == 0 ) {
-		qglGenBuffersARB( 1, &dataBuf );
-	}
-	qglBindBufferARB( GL_SHADER_STORAGE_BUFFER, dataBuf );
-	qglBufferDataARB( GL_SHADER_STORAGE_BUFFER, count * sizeof( StencilDrawData ), drawData, GL_STATIC_DRAW );
-	qglBindBufferBase( GL_SHADER_STORAGE_BUFFER, 0, dataBuf );
-
-	//multiDrawBuffers.commandBuffer.BindBuffer();
+	qglBindBufferARB( GL_DRAW_INDIRECT_BUFFER, 0 );
 	multiDrawBuffers.BindDrawId( 1 );
 	qglVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( shadowCache_t ), vertexCache.VertexPosition( 2 ) );
 	vertexCache.IndexPosition( 2 );
+	qglBindBufferARB( GL_SHADER_STORAGE_BUFFER, dataBuf );
+	qglBindBufferBase( GL_SHADER_STORAGE_BUFFER, 0, dataBuf );
 
-	qglBindBufferARB( GL_DRAW_INDIRECT_BUFFER, 0 );
-	//GL_MemoryBarrier();
-	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands /*multiDrawBuffers.commandBuffer.GetOffset()*/, count, 0 );
+	// render non-external shadows
+	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_FRONT : GL_BACK, GL_KEEP, tr.stencilDecr, GL_KEEP );
+	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_BACK : GL_FRONT, GL_KEEP, tr.stencilIncr, GL_KEEP );
+	RB_MultiDrawStencil( drawSurfs, false );
 
-	/*multiDrawBuffers.commandBuffer.MarkAsUsed( count );
-	multiDrawBuffers.stencilDrawDataBuffer.MarkAsUsed( count );*/
+	// render external shadows
+	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_FRONT : GL_BACK, GL_KEEP, GL_KEEP, tr.stencilIncr );
+	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_BACK : GL_FRONT, GL_KEEP, GL_KEEP, tr.stencilDecr );
+	RB_MultiDrawStencil( drawSurfs, true );
 
 	qglDisableVertexAttribArray( 1 );
 
@@ -165,8 +202,8 @@ void RB_StencilShadowPass_MultiDraw(const drawSurf_t* drawSurfs) {
 	if( r_shadowPolygonFactor.GetFloat() || r_shadowPolygonOffset.GetFloat() )
 		qglDisable( GL_POLYGON_OFFSET_FILL );
 
-	/*if( glConfig.depthBoundsTestAvailable && r_useDepthBoundsTest.GetBool() )
-		qglDisable( GL_DEPTH_BOUNDS_TEST_EXT );*/
+	if( glConfig.depthBoundsTestAvailable && r_useDepthBoundsTest.GetBool() )
+		qglDisable( GL_DEPTH_BOUNDS_TEST_EXT );
 
 	qglStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
 	if( !r_softShadowsQuality.GetBool() || backEnd.viewDef->renderView.viewID < TR_SCREEN_VIEW_ID )
