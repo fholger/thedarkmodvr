@@ -214,6 +214,16 @@ extern PFNGLFENCESYNCPROC				qglFenceSync;
 extern PFNGLCLIENTWAITSYNCPROC			qglClientWaitSync;
 extern PFNGLDELETESYNCPROC				qglDeleteSync;
 
+// OpenGL 4 backend specific functions
+extern PFNGLPUSHDEBUGGROUPPROC				qglPushDebugGroup;
+extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
+extern PFNGLBUFFERSTORAGEPROC				qglBufferStorage;
+extern PFNGLMULTIDRAWELEMENTSINDIRECTPROC	qglMultiDrawElementsIndirect;
+extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;
+extern PFNGLBINDBUFFERRANGEPROC				qglBindBufferRange;
+extern PFNGLVERTEXATTRIBIPOINTERPROC		qglVertexAttribIPointer;
+extern PFNGLVERTEXATTRIBDIVISORPROC			qglVertexAttribDivisor;
+extern PFNGLMEMORYBARRIERPROC				qglMemoryBarrier;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

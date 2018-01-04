@@ -133,6 +133,9 @@
     <Filter Include="Game\ZipLoader">
       <UniqueIdentifier>{5e4f191a-36a5-42ac-859c-a005eeee7dd8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\GL4">
+      <UniqueIdentifier>{30572817-77d9-40bc-bdec-c50f5b95378d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1221,7 +1224,14 @@
     </ClInclude>
     <ClInclude Include="renderer\BufferObject.h">
       <Filter>Renderer</Filter>
-    </ClInclude>  </ItemGroup>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\GLDebugGroup.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\OpenGL4Renderer.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
       <Filter>CM</Filter>
@@ -2891,6 +2901,9 @@
     </ClCompile>
     <ClCompile Include="renderer\BufferObject.cpp">
       <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\OpenGL4Renderer.cpp">
+      <Filter>Renderer\GL4</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

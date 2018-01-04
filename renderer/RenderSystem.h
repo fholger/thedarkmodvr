@@ -62,6 +62,8 @@ typedef struct glconfig_s {
 	bool				framebufferBlitAvailable;
 	bool				multipleRenderTargetsAvailable;		//glDrawBuffers
 	bool				fenceSyncAvailable;
+	bool				openGL4Available;
+	int					uniformOffsetAlignment, ssboOffsetAlignment;
 
 	int					vidWidth, vidHeight;	// passed to R_BeginFrame
 	int					displayFrequency;
