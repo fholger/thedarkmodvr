@@ -20,6 +20,7 @@
 #include "tr_local.h"
 #include "FrameBuffer.h"
 #include "glsl.h"
+#include "gl4/OpenGL4Renderer.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;
@@ -617,6 +618,15 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 
 	if ( !glConfig.isInitialized ) {
 		return;
+	}
+
+	if( r_useOpenGL4.IsModified() && glConfig.openGL4Available ) {
+		if( r_useOpenGL4.GetBool()) {
+			openGL4Renderer.Init();
+		} else {
+			openGL4Renderer.Shutdown();
+		}
+		r_useOpenGL4.ClearModified();
 	}
 
 	try {

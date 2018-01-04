@@ -21,6 +21,7 @@ $Author$ (Author of last commit)
 #define __VERTEXCACHE_H__
 
 #include "BufferObject.h"
+#include <atomic>
 
 // vertex cache calls should only be made by the front end
 
@@ -34,9 +35,10 @@ const int VERTCACHE_OFFSET_MASK = 0x3ffffff;	// 64 megs
 const int VERTCACHE_FRAME_SHIFT = 50;
 const int VERTCACHE_FRAME_MASK = 0x3fff;		// 14 bits = 16k frames to wrap around
 
-const int VERTEX_CACHE_ALIGN = 32;
+const int VERTEX_CACHE_ALIGN = 240;  // needed for proper alignment in OpenGL4 renderer
 const int INDEX_CACHE_ALIGN = 16;
-#define ALIGN( x, a ) ( ( ( x ) + ((a)-1) ) & ~((a)-1) )
+//#define ALIGN( x, a ) ( ( ( x ) + ((a)-1) ) & ~((a)-1) )
+#define ALIGN( x, a ) ( ( ( x ) + ((a)-1) ) - ( ( (x) + (a) - 1 ) % a ) )
 
 enum cacheType_t {
 	CACHE_VERTEX,

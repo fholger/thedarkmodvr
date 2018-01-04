@@ -19,6 +19,7 @@
 
 #include "tr_local.h"
 #include "FrameBuffer.h"
+#include "gl4/OpenGL4Renderer.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
@@ -1988,6 +1989,10 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	R_ToggleSmpFrame();
 	R_ToggleSmpFrame();
 
+	if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+		openGL4Renderer.Shutdown();
+	}
+
 	// free the vertex caches so they will be regenerated again
 	vertexCache.PurgeAll();
 
@@ -2042,7 +2047,11 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	// start sound playing again
 	soundSystem->SetMute( false );
 
-	if (game != NULL)
+	if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+		openGL4Renderer.Init();
+	}
+
+	if( game != NULL )
 	{
 		game->OnVidRestart();
 	}
@@ -2341,6 +2350,10 @@ void idRenderSystemLocal::InitOpenGL( void ) {
 		if ( err != GL_NO_ERROR ) {
 			common->Printf( "glGetError() = 0x%x\n", err );
 		}
+
+		if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+			openGL4Renderer.Init();
+		}
 	}
 }
 
@@ -2350,6 +2363,9 @@ idRenderSystemLocal::ShutdownOpenGL
 ========================
 */
 void idRenderSystemLocal::ShutdownOpenGL( void ) {
+	if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+		openGL4Renderer.Shutdown();
+	}
 	// free the context and close the window
 	R_ShutdownFrameData();
 	GLimp_Shutdown();

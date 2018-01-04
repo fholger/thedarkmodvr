@@ -1033,8 +1033,6 @@ extern idCVar r_postprocess_bloomKernelSize;
 extern idCVar r_postprocess_bloomIntensity;
 extern idCVar r_postprocess_desaturation;
 
-extern idCVar r_useOpenGL4;
-
 /*
 ====================================================================
 

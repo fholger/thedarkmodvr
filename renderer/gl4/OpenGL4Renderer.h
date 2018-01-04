@@ -15,11 +15,31 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #ifndef __OPENGL4_RENDERER_H__
 #define __OPENGL4_RENDERER_H__
 
+#include <unordered_map>
+#include "PersistentBufferObject.h"
+
 class OpenGL4Renderer
 {
 public:
 	OpenGL4Renderer();
 	~OpenGL4Renderer();
+
+	void Init();
+	void Shutdown();
+
+private:
+	void BindBuffer( GLenum target, GLuint buffer );
+
+	bool initialized;
+	GLuint drawIdBuffer;
+	PersistentBufferObject ssbo;
+
+	std::unordered_map<GLenum, GLuint> boundBuffers;
+
+	friend void GL4_BindBuffer( GLenum target, GLuint buffer );
 };
+
+extern OpenGL4Renderer openGL4Renderer;
+extern idCVar r_useOpenGL4;
 
 #endif
