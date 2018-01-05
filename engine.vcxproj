@@ -201,6 +201,12 @@
       <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy GL4 shaders</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">
     <Link>
@@ -212,6 +218,12 @@
     <ClCompile>
       <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy GL4 shaders</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">
     <Link>
@@ -225,6 +237,12 @@
       <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy GL4 shaders</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">
     <Link>
@@ -236,6 +254,12 @@
     <ClCompile>
       <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy GL4 shaders</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
@@ -250,6 +274,12 @@
       <AdditionalOptions>/arch:SSE2 %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy GL4 shaders</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
@@ -262,6 +292,12 @@
     <ClCompile>
       <PrecompiledHeaderFile>precompiled.h</PrecompiledHeaderFile>
     </ClCompile>
+    <PostBuildEvent>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy GL4 shaders</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
@@ -278,10 +314,8 @@
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent>
-      <Message>
-      </Message>
-      <Command>
-      </Command>
+      <Message>Copy GL4 shaders</Message>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -297,10 +331,8 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <PostBuildEvent>
-      <Command>
-      </Command>
-      <Message>
-      </Message>
+      <Command>xcopy /Y /E /I $(ProjectDir)gl4progs $(ProjectDir)..\darkmod\gl4progs</Command>
+      <Message>Copy GL4 shaders</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -591,6 +623,7 @@
     <ClInclude Include="renderer\CinematicID.h" />
     <ClInclude Include="renderer\FrameBuffer.h" />
     <ClInclude Include="renderer\gl4\GL4Backend.h" />
+    <ClInclude Include="renderer\gl4\GL4Program.h" />
     <ClInclude Include="renderer\gl4\GLDebugGroup.h" />
     <ClInclude Include="renderer\gl4\OpenGL4Renderer.h" />
     <ClInclude Include="renderer\gl4\PersistentBufferObject.h" />
@@ -1155,6 +1188,7 @@
     <ClCompile Include="renderer\framebufer.cpp" />
     <ClCompile Include="renderer\gl4\GL4Backend.cpp" />
     <ClCompile Include="renderer\gl4\GL4Depth.cpp" />
+    <ClCompile Include="renderer\gl4\GL4Program.cpp" />
     <ClCompile Include="renderer\gl4\OpenGL4Renderer.cpp" />
     <ClCompile Include="renderer\gl4\PersistentBufferObject.cpp" />
     <ClCompile Include="renderer\GuiModel.cpp" />

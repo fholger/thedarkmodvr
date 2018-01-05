@@ -12,25 +12,25 @@ or (at your option) any later version. For details, see LICENSE.TXT.
 Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
-#ifndef __GL4_PROGRAM_H__
-#define __GL4_PROGRAM_H__
+#ifndef __GL4_BACKEND_H__
+#define __GL4_BACKEND_H__
 
 #include "../qgl.h"
+#include "../tr_local.h"
 
-class GL4Program {
-public:
-	static GL4Program Load( const char* vertex, const char* fragment );
-	void Destroy();
-	bool Valid() const { return program != 0; }
+extern idCVar r_useOpenGL4;
 
-	void Activate() const;
-	static void Unset();
-
-	GL4Program();
-private:
-	GLuint program;
-
-	explicit GL4Program( GLuint program );
+struct DrawElementsIndirectCommand {
+	uint count;
+	uint instanceCount;
+	uint firstIndex;
+	uint baseVertex;
+	uint baseInstance;
 };
+
+void GL4_BindBuffer( GLenum target, GLuint buffer );
+
+void GL4_DrawView();
+void GL4_FillDepthBuffer( drawSurf_t ** drawSurfs, int numDrawSurfs );
 
 #endif

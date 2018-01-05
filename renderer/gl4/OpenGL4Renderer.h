@@ -38,7 +38,12 @@ public:
 	byte * ReserveSSBO( uint size );
 	void LockSSBO( uint size );
 
-	GL4Program GetShader( ProgramType shaderType );
+	GL4Program GetShader( ProgramType shaderType ) const;
+
+	void BindDrawId( GLuint index );
+
+	void BindSSBO( GLuint index, GLuint size );
+
 
 private:
 	void BindBuffer( GLenum target, GLuint buffer );
@@ -50,7 +55,7 @@ private:
 	GLuint drawIdBuffer;
 	PersistentBufferObject ssbo;
 	DrawElementsIndirectCommand *commandBuffer;
-
+	
 	GL4Program shaders[TOTAL_SHADER_COUNT];
 	std::unordered_map<GLenum, GLuint> boundBuffers;
 

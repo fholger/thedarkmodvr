@@ -117,4 +117,6 @@ void GL4Program::Unset() {
 	qglUseProgram( 0 );
 }
 
+GL4Program::GL4Program() : program(0) {}
+
 GL4Program::GL4Program( GLuint program ) : program(program) {}

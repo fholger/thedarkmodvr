@@ -36,7 +36,7 @@ void OpenGL4Renderer::Init() {
 	if( initialized )
 		return;
 
-	common->Printf( "Initializing OpenGL4 renderer backend ..." );
+	common->Printf( "Initializing OpenGL4 renderer backend ...\n" );
 
 	LoadShaders();
 
@@ -54,7 +54,7 @@ void OpenGL4Renderer::Init() {
 	commandBuffer = ( DrawElementsIndirectCommand * )Mem_Alloc16( sizeof( DrawElementsIndirectCommand ) * MAX_MULTIDRAW_COMMANDS );
 
 	initialized = true;
-	common->Printf( " Done\n" );
+	common->Printf( "OpenGL4 renderer ready\n" );
 }
 
 
@@ -100,9 +100,20 @@ GL4Program OpenGL4Renderer::GetShader( ProgramType shaderType ) const {
 	return shaders[shaderType];
 }
 
+void OpenGL4Renderer::BindDrawId( GLuint index ) {
+	BindBuffer( GL_ARRAY_BUFFER, drawIdBuffer );
+	qglVertexAttribIPointer( index, 1, GL_UNSIGNED_INT, sizeof( uint32_t), 0 );
+	qglVertexAttribDivisor( index, 1 );
+	qglEnableVertexAttribArray( index );
+}
+
+void OpenGL4Renderer::BindSSBO( GLuint index, GLuint size ) {
+	ssbo.BindBufferRange( index, size );
+}
+
 
 void OpenGL4Renderer::BindBuffer( GLenum target, GLuint buffer ) {
-	if( boundBuffers[target] != buffer ) {
+	/*if( boundBuffers[target] != buffer )*/ {
 		qglBindBufferARB( target, buffer );
 		boundBuffers[target] = buffer;
 	}
