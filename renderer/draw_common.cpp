@@ -1262,8 +1262,6 @@ RB_STD_DrawView
 =============
 */
 void	RB_STD_DrawView( void ) {
-	GL_DEBUG_GROUP( DrawView, RENDER );
-
 	drawSurf_t	 **drawSurfs;
 	int			numDrawSurfs, processed;
 
