@@ -1240,6 +1240,9 @@
     <ClInclude Include="renderer\gl4\GL4Program.h">
       <Filter>Renderer\GL4</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\gl4\UniformBufferObject.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -2924,6 +2927,9 @@
       <Filter>Renderer\GL4</Filter>
     </ClCompile>
     <ClCompile Include="renderer\gl4\GL4Program.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\UniformBufferObject.cpp">
       <Filter>Renderer\GL4</Filter>
     </ClCompile>
   </ItemGroup>

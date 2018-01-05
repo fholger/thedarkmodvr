@@ -18,6 +18,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include <unordered_map>
 #include "PersistentBufferObject.h"
 #include "GL4Program.h"
+#include "UniformBufferObject.h"
 
 struct DrawElementsIndirectCommand;
 
@@ -45,6 +46,9 @@ public:
 
 	void BindSSBO( GLuint index, GLuint size );
 
+	void BindUBO( GLuint index );
+	void UpdateUBO( const void *data, GLsizeiptr size );
+
 
 private:
 	void BindBuffer( GLenum target, GLuint buffer );
@@ -55,6 +59,7 @@ private:
 	bool initialized;
 	GLuint drawIdBuffer;
 	PersistentBufferObject ssbo;
+	UniformBufferObject ubo;
 	DrawElementsIndirectCommand *commandBuffer;
 	
 	GL4Program shaders[TOTAL_SHADER_COUNT];

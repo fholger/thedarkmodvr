@@ -398,6 +398,7 @@ PFNGLDELETESYNCPROC						qglDeleteSync;
 PFNGLPUSHDEBUGGROUPPROC						qglPushDebugGroup;
 PFNGLPOPDEBUGGROUPPROC						qglPopDebugGroup;
 PFNGLBUFFERSTORAGEPROC						qglBufferStorage;
+PFNGLDRAWELEMENTSINDIRECTPROC				qglDrawElementsIndirect;
 PFNGLMULTIDRAWELEMENTSINDIRECTPROC			qglMultiDrawElementsIndirect;
 PFNGLBINDBUFFERBASEPROC						qglBindBufferBase;
 PFNGLBINDBUFFERRANGEPROC					qglBindBufferRange;
@@ -423,6 +424,9 @@ PFNGLPROGRAMUNIFORM4IVPROC					qglProgramUniform4iv;
 PFNGLPROGRAMUNIFORMMATRIX2FVPROC			qglProgramUniformMatrix2fv;
 PFNGLPROGRAMUNIFORMMATRIX3FVPROC			qglProgramUniformMatrix3fv;
 PFNGLPROGRAMUNIFORMMATRIX4FVPROC			qglProgramUniformMatrix4fv;
+PFNGLVERTEXATTRIBFORMATPROC					qglVertexAttribFormat;
+PFNGLVERTEXATTRIBBINDINGPROC				qglVertexAttribBinding;
+PFNGLBINDVERTEXBUFFERPROC					qglBindVertexBuffer;
 
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
@@ -669,9 +673,10 @@ static void R_CheckPortableExtensions( void ) {
 	qglPushDebugGroup = ( PFNGLPUSHDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPushDebugGroup" );
 	qglPopDebugGroup = ( PFNGLPOPDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPopDebugGroup" );
 
-	glConfig.openGL4Available = glConfig.glVersion >= 4.2f && R_CheckExtension( "GL_ARB_multi_draw_indirect" ) && R_CheckExtension("GL_ARB_buffer_storage") && R_CheckExtension( "GL_ARB_shader_storage_buffer_object" );
+	glConfig.openGL4Available = glConfig.glVersion > 4.2f && R_CheckExtension( "GL_ARB_multi_draw_indirect" ) && R_CheckExtension( "GL_ARB_buffer_storage" ) && R_CheckExtension( "GL_ARB_shader_storage_buffer_object" );
 	if( glConfig.openGL4Available ) {
 		qglBufferStorage = ( PFNGLBUFFERSTORAGEPROC )GLimp_ExtensionPointer( "glBufferStorage" );
+		qglDrawElementsIndirect = ( PFNGLDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glDrawElementsIndirect" );
 		qglMultiDrawElementsIndirect = ( PFNGLMULTIDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glMultiDrawElementsIndirect" );
 		qglBindBufferBase = ( PFNGLBINDBUFFERBASEPROC )GLimp_ExtensionPointer( "glBindBufferBase" );
 		qglBindBufferRange = ( PFNGLBINDBUFFERRANGEPROC )GLimp_ExtensionPointer( "glBindBufferRange" );
@@ -700,6 +705,9 @@ static void R_CheckPortableExtensions( void ) {
 		qglProgramUniformMatrix2fv = ( PFNGLPROGRAMUNIFORMMATRIX2FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix2fv" );
 		qglProgramUniformMatrix3fv = ( PFNGLPROGRAMUNIFORMMATRIX3FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix3fv" );
 		qglProgramUniformMatrix4fv = ( PFNGLPROGRAMUNIFORMMATRIX4FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix4fv" );
+		qglVertexAttribFormat = ( PFNGLVERTEXATTRIBFORMATPROC )GLimp_ExtensionPointer( "glVertexAttribFormat" );
+		qglVertexAttribBinding = ( PFNGLVERTEXATTRIBBINDINGPROC )GLimp_ExtensionPointer( "glVertexAttribBinding" );
+		qglBindVertexBuffer = ( PFNGLBINDVERTEXBUFFERPROC )GLimp_ExtensionPointer( "glBindVertexBuffer" );
 	}
 
 	int n;

@@ -218,6 +218,7 @@ extern PFNGLDELETESYNCPROC				qglDeleteSync;
 extern PFNGLPUSHDEBUGGROUPPROC				qglPushDebugGroup;
 extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
 extern PFNGLBUFFERSTORAGEPROC				qglBufferStorage;
+extern PFNGLDRAWELEMENTSINDIRECTPROC		qglDrawElementsIndirect;
 extern PFNGLMULTIDRAWELEMENTSINDIRECTPROC	qglMultiDrawElementsIndirect;
 extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;
 extern PFNGLBINDBUFFERRANGEPROC				qglBindBufferRange;
@@ -243,6 +244,9 @@ extern PFNGLPROGRAMUNIFORM4IVPROC			qglProgramUniform4iv;
 extern PFNGLPROGRAMUNIFORMMATRIX2FVPROC		qglProgramUniformMatrix2fv;
 extern PFNGLPROGRAMUNIFORMMATRIX3FVPROC		qglProgramUniformMatrix3fv;
 extern PFNGLPROGRAMUNIFORMMATRIX4FVPROC		qglProgramUniformMatrix4fv;
+extern PFNGLVERTEXATTRIBFORMATPROC			qglVertexAttribFormat;
+extern PFNGLVERTEXATTRIBBINDINGPROC			qglVertexAttribBinding;
+extern PFNGLBINDVERTEXBUFFERPROC			qglBindVertexBuffer;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

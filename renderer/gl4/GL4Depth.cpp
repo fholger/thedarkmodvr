@@ -18,8 +18,16 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GLDebugGroup.h"
 #include "OpenGL4Renderer.h"
 
-struct DepthDrawData {
+struct DepthFastDrawData {
 	float modelViewMatrix[16];
+};
+
+struct DepthGenericDrawData {
+	float modelViewMatrix[16];
+	float textureMatrix[16];
+	idPlane clipPlane;
+	idVec4 color;
+	idVec4 alphaTest;
 };
 
 const int SU_LOC_PROJ_MATRIX = 0;
@@ -38,8 +46,8 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	GL_DEBUG_GROUP( MultiDrawDepth, DEPTH );
 
 	DrawElementsIndirectCommand *commands = openGL4Renderer.ReserveCommandBuffer( numDrawSurfs );
-	GLuint ssboSize = sizeof( DepthDrawData ) * numDrawSurfs;
-	DepthDrawData *drawData = ( DepthDrawData* )openGL4Renderer.ReserveSSBO( ssboSize );
+	GLuint ssboSize = sizeof( DepthFastDrawData ) * numDrawSurfs;
+	DepthFastDrawData *drawData = ( DepthFastDrawData* )openGL4Renderer.ReserveSSBO( ssboSize );
 
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		memcpy( drawData[i].modelViewMatrix, drawSurfs[i]->space->modelViewMatrix, sizeof( drawData[0].modelViewMatrix ) );
@@ -69,52 +77,35 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL4Program depthShader = openGL4Renderer.GetShader( SHADER_DEPTH_GENERIC );
 	depthShader.Activate();
 	depthShader.SetProjectionMatrix( SU_LOC_PROJ_MATRIX );
-	depthShader.SetUniformMatrix4( SU_LOC_TEXTURE_MATRIX, mat4_identity.ToFloatPtr() );
+
+	DepthGenericDrawData drawData;
+	DrawElementsIndirectCommand command;
+	memcpy( drawData.textureMatrix, mat4_identity.ToFloatPtr(), sizeof( drawData.textureMatrix ) );
 
 	// if we have no clip planes, set a noclip plane
 	if( !backEnd.viewDef->numClipPlanes ) {
-		const float noClip[] = { 0, 0, 0, 1 };
-		depthShader.SetUniform4( SU_LOC_CLIPPLANE, noClip );
+		drawData.clipPlane.ToVec4().Set( 0, 0, 0, 1 );
 	}
+
+	qglEnableVertexAttribArray( 1 );
+	qglVertexAttribFormat( 0, 3, GL_FLOAT, false, offsetof( idDrawVert, xyz ) );
+	qglVertexAttribFormat( 1, 2, GL_FLOAT, false, offsetof( idDrawVert, st ) );
+	qglBindVertexBuffer( 0, vertexCache.StaticVertexBuffer(), 0, sizeof( idDrawVert ) );
+	qglBindVertexBuffer( 1, vertexCache.FrameVertexBuffer(), 0, sizeof( idDrawVert ) );
+	qglVertexAttribBinding( 0, 0 );
+	qglVertexAttribBinding( 1, 0 );
+	GLuint boundVertexBuffer = 0;
 
 	// the first texture will be used for alpha tested surfaces
 	GL_SelectTexture( 0 );
-	qglEnableVertexAttribArray( 1 );
+	openGL4Renderer.BindUBO( 0 );
 
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		drawSurf_t *surf = drawSurfs[i];
-		float color[4] = { 0, 0, 0, 1 };  // draw black by default
+		drawData.color.Set( 0, 0, 0, 1 );  // draw black by default
 
 		const srfTriangles_t *tri = surf->backendGeo;
 		const idMaterial *shader = surf->material;
-
-		if( !shader->IsDrawn() || shader->Coverage() == MC_TRANSLUCENT || !tri->numIndexes) {
-			continue;
-		}
-
-		if( surf->material->GetSort() == SS_PORTAL_SKY && g_enablePortalSky.GetInteger() == 2 )
-			continue;
-
-		if( !tri->ambientCache ) {
-			common->Printf( "GL4_GenericDepth: !tri->ambientCache\n" );
-			continue;
-		}
-
-		// get the expressions for conditionals / color / texcoords
-		const float *regs = surf->shaderRegisters;
-
-		// if all stages of a material have been conditioned off, don't do anything
-		int stage;
-		for( stage = 0; stage < shader->GetNumStages(); stage++ ) {
-			const shaderStage_t *pStage = shader->GetStage( stage );
-			// check the stage enable condition
-			if( regs[pStage->conditionRegister] != 0 ) {
-				break;
-			}
-		}
-		if( stage == shader->GetNumStages() ) {
-			continue;
-		}
 
 		// change the scissor if needed
 		if( r_useScissor.GetBool() && !backEnd.currentScissor.Equals( surf->scissorRect ) ) {
@@ -127,14 +118,12 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 		// update the clip plane if needed
 		if( backEnd.viewDef->numClipPlanes && surf->space != backEnd.currentSpace ) {
-			idPlane	plane;
-			R_GlobalPlaneToLocal( surf->space->modelMatrix, backEnd.viewDef->clipPlanes[0], plane );
-			depthShader.SetUniform4( SU_LOC_CLIPPLANE, plane.ToFloatPtr() );
+			R_GlobalPlaneToLocal( surf->space->modelMatrix, backEnd.viewDef->clipPlanes[0], drawData.clipPlane );
 		}
 
 		if( surf->space != backEnd.currentSpace ) {
 			backEnd.currentSpace = surf->space;
-			depthShader.SetUniformMatrix4( SU_LOC_MODELVIEW_MATRIX, surf->space->modelViewMatrix );
+			memcpy( drawData.modelViewMatrix, surf->space->modelViewMatrix, sizeof( drawData.modelViewMatrix ) );
 		}
 
 		// set polygon offset if necessary
@@ -146,12 +135,20 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		// subviews will just down-modulate the color buffer by overbright
 		if( shader->GetSort() == SS_SUBVIEW ) {
 			GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
-			color[0] = color[1] = color[2] = ( 1.0 / backEnd.overBright );
+			drawData.color[0] = drawData.color[1] = drawData.color[2] = ( 1.0 / backEnd.overBright );
 		}
 
-		idDrawVert *ac = ( idDrawVert * )vertexCache.VertexPosition( tri->ambientCache );
-		qglVertexAttribPointer( 0, 3, GL_FLOAT, false, sizeof( idDrawVert ), &ac->xyz );
-		qglVertexAttribPointer( 1, 2, GL_FLOAT, false, sizeof( idDrawVert ), ac->st.ToFloatPtr() );
+		vertexCache.IndexPosition( tri->indexCache );
+		if( vertexCache.CacheIsStatic(tri->ambientCache) != boundVertexBuffer ) {
+			boundVertexBuffer ^= 1;
+			qglVertexAttribBinding( 0, boundVertexBuffer );
+			qglVertexAttribBinding( 1, boundVertexBuffer );
+		}
+		command.count = tri->numIndexes;
+		command.instanceCount = 1;
+		command.baseInstance = 0;
+		command.baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+		command.firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
 
 		bool drawSolid = false;
 
@@ -166,7 +163,8 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 			bool didDraw = false;
 
 			// perforated surfaces may have multiple alpha tested stages
-			for( stage = 0; stage < shader->GetNumStages(); stage++ ) {
+			const float *regs = surf->shaderRegisters;
+			for( int stage = 0; stage < shader->GetNumStages(); stage++ ) {
 				const shaderStage_t *pStage = shader->GetStage( stage );
 
 				if( !pStage->hasAlphaTest ) {
@@ -183,14 +181,13 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 				didDraw = true;
 
 				// set the alpha modulate
-				color[3] = regs[pStage->color.registers[3]];
+				drawData.color[3] = regs[pStage->color.registers[3]];
 
 				// skip the entire stage if alpha would be black
-				if( color[3] <= 0 ) {
+				if( drawData.color[3] <= 0 ) {
 					continue;
 				}
-				depthShader.SetUniform4( SU_LOC_COLOR, color );
-				depthShader.SetUniform1(SU_LOC_ALPHATEST, regs[pStage->alphaTestRegister] );
+				drawData.alphaTest.x = regs[pStage->alphaTestRegister];
 
 				// bind the texture
 				pStage->texture.image->Bind();
@@ -205,11 +202,13 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 				if( pStage->texture.hasMatrix ) {
 					float matrix[16];
 					RB_GetShaderTextureMatrix( surf->shaderRegisters, &pStage->texture, matrix );
-					depthShader.SetUniformMatrix4( SU_LOC_TEXTURE_MATRIX, matrix );
+					memcpy( drawData.textureMatrix, matrix, sizeof( drawData.textureMatrix ) );
 				}
 
 				// draw it
-				RB_DrawElementsWithCounters( tri );
+				openGL4Renderer.UpdateUBO( &drawData, sizeof( DepthGenericDrawData ) );
+				qglDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, &command );
+				//RB_DrawElementsWithCounters( tri );
 
 				// unset privatePolygonOffset if necessary
 				if( pStage->privatePolygonOffset && !surf->material->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
@@ -217,7 +216,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 				}
 
 				if( pStage->texture.hasMatrix ) {
-					depthShader.SetUniformMatrix4( SU_LOC_TEXTURE_MATRIX, mat4_identity.ToFloatPtr() );
+					memcpy( drawData.textureMatrix, mat4_identity.ToFloatPtr(), sizeof( drawData.textureMatrix ) );
 				}
 			}
 
@@ -228,11 +227,12 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 		// draw the entire surface solid
 		if( drawSolid ) {
-			depthShader.SetUniform4( SU_LOC_COLOR, color );
-			depthShader.SetUniform1( SU_LOC_ALPHATEST, -1 ); // hint the glsl to skip texturing
+			drawData.alphaTest.x = -1;
 
 			// draw it
-			RB_DrawElementsWithCounters( tri );
+			openGL4Renderer.UpdateUBO( &drawData, sizeof( DepthGenericDrawData ) );
+			qglDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, &command );
+			//RB_DrawElementsWithCounters( tri );
 		}
 
 		// reset polygon offset
@@ -264,26 +264,13 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	qglEnable( GL_STENCIL_TEST );
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 
-	// draw all subview surfaces, which should be at the start of the sorted list, with the general purpose path
-	int numSubviewSurfaces = 0;
-	for( int i = 0; i < numDrawSurfs; ++i ) {
-		if( drawSurfs[i]->material->GetSort() != SS_SUBVIEW ) {
-			break;
-		}
-		++numSubviewSurfaces;
-	}
-	if( numSubviewSurfaces > 0 ) {
-		GL4_GenericDepth( drawSurfs, numSubviewSurfaces );
-	}
-
-	// divide list of draw surfs based on whether they are solid or perforated
-	// and whether they use static or frame temp buffers.
-	std::vector<drawSurf_t*> perforatedSurfaces;
+	// divide list of draw surfs into the separate batches
+	std::vector<drawSurf_t*> subViewSurfaces;
 	std::vector<drawSurf_t*> staticVertexStaticIndex;
 	std::vector<drawSurf_t*> staticVertexFrameIndex;
 	std::vector<drawSurf_t*> frameVertexFrameIndex;
-	int numOffset = 0, numWeaponDepthHack = 0, numModelDepthHack = 0;
-	for( int i = numSubviewSurfaces; i < numDrawSurfs; ++i ) {
+	std::vector<drawSurf_t*> remainingSurfaces;
+	for( int i = 0; i < numDrawSurfs; ++i ) {
 		drawSurf_t *surf = drawSurfs[i];
 		const srfTriangles_t *tri = surf->backendGeo;
 		const idMaterial *material = surf->material;
@@ -325,18 +312,18 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 			continue;
 		}
 
-		if( material->Coverage() == MC_PERFORATED || !tri->indexCache ) {
-			// save for later drawing with the general purpose path
-			perforatedSurfaces.push_back( surf );
+		if( material->GetSort() == SS_SUBVIEW ) {
+			// subview surfaces need to be rendered first in a generic pass (due to mirror plane clipping).
+			subViewSurfaces.push_back( surf );
 			continue;
 		}
 
-		if( material->TestMaterialFlag( MF_POLYGONOFFSET ) )
-			++numOffset;
-		if( surf->space->weaponDepthHack )
-			++numWeaponDepthHack;
-		if( surf->space->modelDepthHack != 0 )
-			++numModelDepthHack;
+		if( material->Coverage() == MC_PERFORATED || material->TestMaterialFlag( MF_POLYGONOFFSET ) || surf->space->weaponDepthHack || surf->space->modelDepthHack != 0) {
+			// these are objects that can't be handled by the fast depth pass. 
+			// they will be postponed and rendered in a generic pass.
+			remainingSurfaces.push_back( surf );
+			continue;
+		}
 
 		if( !vertexCache.CacheIsStatic( tri->ambientCache ) ) {
 			frameVertexFrameIndex.push_back( surf );
@@ -351,8 +338,18 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		}
 	}
 
-	if( numOffset != 0 || numWeaponDepthHack != 0 || numModelDepthHack != 0 )
-		common->Printf( "Problematic surfaces: offset %d - weapon %d - model %d\n", numOffset, numWeaponDepthHack, numModelDepthHack );
+	if( !subViewSurfaces.empty() ) {
+		GL4_GenericDepth( subViewSurfaces.data(), subViewSurfaces.size() );
+	}
+
+
+	// sort static objects by view distance to profit more from early Z
+	std::sort( staticVertexStaticIndex.begin(), staticVertexStaticIndex.end(), []( const drawSurf_t* a, const drawSurf_t* b ) -> bool {
+		float distA = ( a->space->entityDef->parms.origin - backEnd.viewDef->renderView.vieworg ).LengthSqr();
+		float distB = ( b->space->entityDef->parms.origin - backEnd.viewDef->renderView.vieworg ).LengthSqr();
+		return distA < distB;
+	} );
+
 
 	GL4Program depthShaderMD = openGL4Renderer.GetShader( SHADER_DEPTH_FAST_MD );
 	depthShaderMD.Activate();
@@ -363,12 +360,12 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL4_MultiDrawDepth( &staticVertexFrameIndex[0], staticVertexFrameIndex.size(), true, false );
 	GL4_MultiDrawDepth( &frameVertexFrameIndex[0], frameVertexFrameIndex.size(), false, false );
 
-	GL_CheckErrors();
-
-	// draw all perforated surfaces with the general code path
-	if( !perforatedSurfaces.empty() ) {
-		GL4_GenericDepth( &perforatedSurfaces[0], perforatedSurfaces.size() );
+	// draw all remaining surfaces with the general code path
+	if( !remainingSurfaces.empty() ) {
+		GL4_GenericDepth( &remainingSurfaces[0], remainingSurfaces.size() );
 	}
+
+	GL_CheckErrors();
 
 	GL4Program::Unset();
 }

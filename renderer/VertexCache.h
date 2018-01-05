@@ -126,6 +126,14 @@ public:
 		return ( handle & VERTCACHE_STATIC ) != 0;
 	}
 
+	GLuint StaticVertexBuffer() {
+		return staticData.vertexBuffer.GetAPIObject();
+	}
+
+	GLuint FrameVertexBuffer() {
+		return frameData[backendListNum].vertexBuffer.GetAPIObject();
+	}
+
 
 private:
 	static idCVar	r_showVertexCache;

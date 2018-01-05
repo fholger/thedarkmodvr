@@ -22,6 +22,7 @@ OpenGL4Renderer openGL4Renderer;
 const int MAX_MULTIDRAW_COMMANDS = 8192;
 const int MAX_ELEMENT_SIZE = 256;
 const int BUFFER_FACTOR = 3;
+const int UBO_BUFFER_SIZE = 64 * 1024;
 
 
 OpenGL4Renderer::OpenGL4Renderer() : initialized( false ), drawIdBuffer( 0 ), commandBuffer( nullptr ) {}
@@ -50,6 +51,7 @@ void OpenGL4Renderer::Init() {
 	qglBufferStorage( GL_ARRAY_BUFFER, drawIds.size() * sizeof( uint32_t ), drawIds.data(), 0 );
 
 	ssbo.Init( GL_SHADER_STORAGE_BUFFER, MAX_MULTIDRAW_COMMANDS * MAX_ELEMENT_SIZE * BUFFER_FACTOR, glConfig.ssboOffsetAlignment );
+	ubo.Init( UBO_BUFFER_SIZE );
 
 	commandBuffer = ( DrawElementsIndirectCommand * )Mem_Alloc16( sizeof( DrawElementsIndirectCommand ) * MAX_MULTIDRAW_COMMANDS );
 
@@ -65,6 +67,7 @@ void OpenGL4Renderer::Shutdown() {
 
 	qglDeleteBuffersARB( 1, &drawIdBuffer );
 	ssbo.Destroy();
+	ubo.Destroy();
 
 	Mem_Free16( commandBuffer );
 
@@ -109,6 +112,14 @@ void OpenGL4Renderer::BindDrawId( GLuint index ) {
 
 void OpenGL4Renderer::BindSSBO( GLuint index, GLuint size ) {
 	ssbo.BindBufferRange( index, size );
+}
+
+void OpenGL4Renderer::BindUBO( GLuint index ) {
+	ubo.Bind( index );
+}
+
+void OpenGL4Renderer::UpdateUBO( const void *data, GLsizeiptr size ) {
+	ubo.Update( data, size );
 }
 
 
