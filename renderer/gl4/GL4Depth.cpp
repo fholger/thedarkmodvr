@@ -90,11 +90,11 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	qglEnableVertexAttribArray( 1 );
 	qglVertexAttribFormat( 0, 3, GL_FLOAT, false, offsetof( idDrawVert, xyz ) );
 	qglVertexAttribFormat( 1, 2, GL_FLOAT, false, offsetof( idDrawVert, st ) );
-	qglBindVertexBuffer( 0, vertexCache.StaticVertexBuffer(), 0, sizeof( idDrawVert ) );
-	qglBindVertexBuffer( 1, vertexCache.FrameVertexBuffer(), 0, sizeof( idDrawVert ) );
-	qglVertexAttribBinding( 0, 0 );
-	qglVertexAttribBinding( 1, 0 );
-	GLuint boundVertexBuffer = 0;
+	qglBindVertexBuffer( 1, vertexCache.StaticVertexBuffer(), 0, sizeof( idDrawVert ) );
+	qglBindVertexBuffer( 0, vertexCache.FrameVertexBuffer(), 0, sizeof( idDrawVert ) );
+	qglVertexAttribBinding( 0, 1 );
+	qglVertexAttribBinding( 1, 1 );
+	GLuint boundVertexBuffer = 1;
 
 	// the first texture will be used for alpha tested surfaces
 	GL_SelectTexture( 0 );
@@ -354,11 +354,13 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL4Program depthShaderMD = openGL4Renderer.GetShader( SHADER_DEPTH_FAST_MD );
 	depthShaderMD.Activate();
 	depthShaderMD.SetProjectionMatrix( SU_LOC_PROJ_MATRIX );
-	openGL4Renderer.BindDrawId( 1 );
+	openGL4Renderer.BindDrawId();
 
 	GL4_MultiDrawDepth( &staticVertexStaticIndex[0], staticVertexStaticIndex.size(), true, true );
 	GL4_MultiDrawDepth( &staticVertexFrameIndex[0], staticVertexFrameIndex.size(), true, false );
 	GL4_MultiDrawDepth( &frameVertexFrameIndex[0], frameVertexFrameIndex.size(), false, false );
+
+	openGL4Renderer.UnbindDrawId();
 
 	// draw all remaining surfaces with the general code path
 	if( !remainingSurfaces.empty() ) {

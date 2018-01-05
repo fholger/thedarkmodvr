@@ -19,6 +19,8 @@
 #include "glsl.h"
 #include "FrameBuffer.h"
 #include "gl4/GLDebugGroup.h"
+#include "gl4/OpenGL4Renderer.h"
+#include "gl4/GL4Backend.h"
 
 /*
 ================
@@ -1260,6 +1262,8 @@ RB_STD_DrawView
 =============
 */
 void	RB_STD_DrawView( void ) {
+	GL_DEBUG_GROUP( DrawView, RENDER );
+
 	drawSurf_t	 **drawSurfs;
 	int			numDrawSurfs, processed;
 
@@ -1279,9 +1283,12 @@ void	RB_STD_DrawView( void ) {
 	backEnd.overBright = 1.0f;
 
 	// fill the depth buffer and clear color buffer to black except on subviews
-	RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
+	if( openGL4Renderer.IsInitialized() )
+		GL4_FillDepthBuffer( drawSurfs, numDrawSurfs );
+	else
+		RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
 
-	if ( r_useGLSL.GetBool() )
+	if ( r_useGLSL.GetBool() || openGL4Renderer.IsInitialized() )
 		RB_GLSL_DrawInteractions();
 	else
 		RB_ARB2_DrawInteractions();

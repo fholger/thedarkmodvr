@@ -33,6 +33,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "glsl.h"
 #include "FrameBuffer.h"
 #include "gl4/GLDebugGroup.h"
+#include "gl4/OpenGL4Renderer.h"
+#include "gl4/GL4Backend.h"
 
 struct shadowMapProgram_t : lightProgram_t {
 	virtual void Use();
@@ -346,8 +348,12 @@ void RB_GLSL_DrawInteractions() {
 			continue;
 		if ( r_shadows.GetInteger() == 2 )
 			RB_GLSL_DrawLight_ShadowMap();
-		else
-			RB_GLSL_DrawLight_Stencil();
+		else {
+			if( openGL4Renderer.IsInitialized() )
+				GL4_DrawLight_Stencil();
+			else
+				RB_GLSL_DrawLight_Stencil();
+		}
 		// translucent surfaces never get stencil shadowed
 		if ( r_skipTranslucent.GetBool() )
 			continue;

@@ -3,7 +3,7 @@
 #extension GL_ARB_explicit_uniform_location : enable
 
 layout (location = 0) in vec4 position;
-layout (location = 1) in int drawId;
+layout (location = 15) in int drawId;
 
 layout (std140, binding = 0) buffer CB0
 {

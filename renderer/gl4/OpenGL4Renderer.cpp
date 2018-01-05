@@ -49,6 +49,8 @@ void OpenGL4Renderer::Init() {
 	}
 	BindBuffer( GL_ARRAY_BUFFER, drawIdBuffer );
 	qglBufferStorage( GL_ARRAY_BUFFER, drawIds.size() * sizeof( uint32_t ), drawIds.data(), 0 );
+	qglVertexAttribIPointer( DRAWID_BINDING, 1, GL_UNSIGNED_INT, sizeof( uint32_t ), 0 );
+	qglVertexAttribDivisor( DRAWID_BINDING, 1 );
 
 	ssbo.Init( GL_SHADER_STORAGE_BUFFER, MAX_MULTIDRAW_COMMANDS * MAX_ELEMENT_SIZE * BUFFER_FACTOR, glConfig.ssboOffsetAlignment );
 	ubo.Init( UBO_BUFFER_SIZE );
@@ -103,11 +105,12 @@ GL4Program OpenGL4Renderer::GetShader( ProgramType shaderType ) const {
 	return shaders[shaderType];
 }
 
-void OpenGL4Renderer::BindDrawId( GLuint index ) {
-	BindBuffer( GL_ARRAY_BUFFER, drawIdBuffer );
-	qglVertexAttribIPointer( index, 1, GL_UNSIGNED_INT, sizeof( uint32_t), 0 );
-	qglVertexAttribDivisor( index, 1 );
-	qglEnableVertexAttribArray( index );
+void OpenGL4Renderer::BindDrawId() {
+	qglEnableVertexAttribArray( DRAWID_BINDING );
+}
+
+void OpenGL4Renderer::UnbindDrawId() {
+	qglDisableVertexAttribArray( DRAWID_BINDING );
 }
 
 void OpenGL4Renderer::BindSSBO( GLuint index, GLuint size ) {
@@ -133,6 +136,7 @@ void OpenGL4Renderer::BindBuffer( GLenum target, GLuint buffer ) {
 void OpenGL4Renderer::LoadShaders() {
 	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vs", "black.fs" );
 	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vs", "depth_generic.fs" );
+	shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md.vs", "black.fs" );
 
 	// validate all shaders
 	for( int i = 0; i < TOTAL_SHADER_COUNT; ++i ) {

@@ -22,9 +22,12 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 struct DrawElementsIndirectCommand;
 
+static const int DRAWID_BINDING = 15;
+
 enum ProgramType {
 	SHADER_DEPTH_FAST_MD = 0,
 	SHADER_DEPTH_GENERIC,
+	SHADER_STENCIL_MD,
 	TOTAL_SHADER_COUNT
 };
 
@@ -35,6 +38,7 @@ public:
 
 	void Init();
 	void Shutdown();
+	bool IsInitialized() const { return initialized; }
 
 	DrawElementsIndirectCommand * ReserveCommandBuffer( uint count );
 	byte * ReserveSSBO( uint size );
@@ -42,7 +46,8 @@ public:
 
 	GL4Program GetShader( ProgramType shaderType ) const;
 
-	void BindDrawId( GLuint index );
+	void BindDrawId();
+	void UnbindDrawId();
 
 	void BindSSBO( GLuint index, GLuint size );
 
