@@ -21,6 +21,7 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "gl4/OpenGL4Renderer.h"
+#include "gl4/GL4Backend.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;

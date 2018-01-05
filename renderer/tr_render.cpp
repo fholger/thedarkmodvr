@@ -20,6 +20,7 @@
 
 #include "tr_local.h"
 #include "glsl.h"
+#include "gl4/GL4Backend.h"
 
 /*
 
@@ -875,7 +876,11 @@ void RB_DrawView( const void *data ) {
 	RB_ShowOverdraw();
 
 	// render the scene, jumping to the hardware specific interaction renderers
-	RB_STD_DrawView();
+	if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+		GL4_DrawView();
+	} else {
+		RB_STD_DrawView();
+	}
 
 	// restore the context for 2D drawing if we were stubbing it out
 	if ( r_skipRenderContext.GetBool() && backEnd.viewDef->viewEntitys ) {

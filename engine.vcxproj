@@ -590,6 +590,7 @@
     <ClInclude Include="renderer\CinematicFFMpeg.h" />
     <ClInclude Include="renderer\CinematicID.h" />
     <ClInclude Include="renderer\FrameBuffer.h" />
+    <ClInclude Include="renderer\gl4\GL4Backend.h" />
     <ClInclude Include="renderer\gl4\GLDebugGroup.h" />
     <ClInclude Include="renderer\gl4\OpenGL4Renderer.h" />
     <ClInclude Include="renderer\gl4\PersistentBufferObject.h" />
@@ -1152,6 +1153,8 @@
     <ClCompile Include="renderer\draw_glsl.cpp" />
     <ClCompile Include="renderer\draw_stencil.cpp" />
     <ClCompile Include="renderer\framebufer.cpp" />
+    <ClCompile Include="renderer\gl4\GL4Backend.cpp" />
+    <ClCompile Include="renderer\gl4\GL4Depth.cpp" />
     <ClCompile Include="renderer\gl4\OpenGL4Renderer.cpp" />
     <ClCompile Include="renderer\gl4\PersistentBufferObject.cpp" />
     <ClCompile Include="renderer\GuiModel.cpp" />

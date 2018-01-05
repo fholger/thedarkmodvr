@@ -18,8 +18,9 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include <unordered_map>
 #include "PersistentBufferObject.h"
 
-class OpenGL4Renderer
-{
+struct DrawElementsIndirectCommand;
+
+class OpenGL4Renderer {
 public:
 	OpenGL4Renderer();
 	~OpenGL4Renderer();
@@ -27,12 +28,17 @@ public:
 	void Init();
 	void Shutdown();
 
+	DrawElementsIndirectCommand * ReserveCommandBuffer( uint count );
+	byte * ReserveSSBO( uint size );
+	void LockSSBO( uint size );
+
 private:
 	void BindBuffer( GLenum target, GLuint buffer );
 
 	bool initialized;
 	GLuint drawIdBuffer;
 	PersistentBufferObject ssbo;
+	DrawElementsIndirectCommand *commandBuffer;
 
 	std::unordered_map<GLenum, GLuint> boundBuffers;
 
@@ -40,6 +46,5 @@ private:
 };
 
 extern OpenGL4Renderer openGL4Renderer;
-extern idCVar r_useOpenGL4;
 
 #endif

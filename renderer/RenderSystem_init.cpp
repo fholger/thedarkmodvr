@@ -20,6 +20,7 @@
 #include "tr_local.h"
 #include "FrameBuffer.h"
 #include "gl4/OpenGL4Renderer.h"
+#include "gl4/GL4Backend.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32

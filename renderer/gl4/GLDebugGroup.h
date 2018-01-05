@@ -18,7 +18,8 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "../qgl.h"
 
 enum DebugGroupId {
-	DEPTH = 0,
+	RENDER,
+	DEPTH,
 	STENCIL,
 	INTERACTION,
 };
@@ -34,6 +35,7 @@ public:
 	}
 };
 
+// place debug markers on entry and exit which can be used by OpenGL debuggers and profilers
 #define GL_DEBUG_GROUP(msg, id) GL_DebugGroup glDebugGroup_##msg (#msg, id)
 
 #endif

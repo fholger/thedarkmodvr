@@ -14,7 +14,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 ******************************************************************************/
 #include "precompiled.h"
 #include "PersistentBufferObject.h"
-#include "OpenGL4Renderer.h"
+#include "GL4Backend.h"
 
 PersistentBufferObject::PersistentBufferObject(): mBufferObject( 0 ), mTarget( 0 ), mSize( 0 ), mAlign( 0 ), mMapBase( nullptr ), mCurrentOffset( 0 ) {}
 
