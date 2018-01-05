@@ -38,6 +38,8 @@ void OpenGL4Renderer::Init() {
 
 	common->Printf( "Initializing OpenGL4 renderer backend ..." );
 
+	LoadShaders();
+
 	// generate draw id buffer, needed to pass a draw id to the vertex shader in multi-draw calls
 	qglGenBuffersARB( 1, &drawIdBuffer );
 	std::vector<uint32_t> drawIds( MAX_MULTIDRAW_COMMANDS );
@@ -58,6 +60,8 @@ void OpenGL4Renderer::Init() {
 
 void OpenGL4Renderer::Shutdown() {
 	common->Printf( "Shutting down OpenGL4 renderer backend.\n" );
+
+	DestroyShaders();
 
 	qglDeleteBuffersARB( 1, &drawIdBuffer );
 	ssbo.Destroy();
@@ -92,10 +96,33 @@ void OpenGL4Renderer::LockSSBO( uint size ) {
 	ssbo.MarkAsUsed( size );
 }
 
+GL4Program OpenGL4Renderer::GetShader( ProgramType shaderType ) const {
+	return shaders[shaderType];
+}
+
 
 void OpenGL4Renderer::BindBuffer( GLenum target, GLuint buffer ) {
 	if( boundBuffers[target] != buffer ) {
 		qglBindBufferARB( target, buffer );
 		boundBuffers[target] = buffer;
+	}
+}
+
+void OpenGL4Renderer::LoadShaders() {
+	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vs", "black.fs" );
+
+	// validate all shaders
+	for( int i = 0; i < TOTAL_SHADER_COUNT; ++i ) {
+		if( !shaders[i].Valid() ) {
+			common->Warning( "Not all shaders were successfully loaded, disabling GL4 renderer\n" );
+			glConfig.openGL4Available = false;
+			return;
+		}
+	}
+}
+
+void OpenGL4Renderer::DestroyShaders() {
+	for( int i = 0; i < TOTAL_SHADER_COUNT; ++i ) {
+		shaders[i].Destroy();
 	}
 }

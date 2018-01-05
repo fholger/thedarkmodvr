@@ -17,8 +17,14 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 #include <unordered_map>
 #include "PersistentBufferObject.h"
+#include "GL4Program.h"
 
 struct DrawElementsIndirectCommand;
+
+enum ProgramType {
+	SHADER_DEPTH_FAST_MD = 0,
+	TOTAL_SHADER_COUNT
+};
 
 class OpenGL4Renderer {
 public:
@@ -32,14 +38,20 @@ public:
 	byte * ReserveSSBO( uint size );
 	void LockSSBO( uint size );
 
+	GL4Program GetShader( ProgramType shaderType );
+
 private:
 	void BindBuffer( GLenum target, GLuint buffer );
+
+	void LoadShaders();
+	void DestroyShaders();
 
 	bool initialized;
 	GLuint drawIdBuffer;
 	PersistentBufferObject ssbo;
 	DrawElementsIndirectCommand *commandBuffer;
 
+	GL4Program shaders[TOTAL_SHADER_COUNT];
 	std::unordered_map<GLenum, GLuint> boundBuffers;
 
 	friend void GL4_BindBuffer( GLenum target, GLuint buffer );
