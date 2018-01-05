@@ -26,6 +26,12 @@ public:
 	void Activate() const;
 	static void Unset();
 
+	void SetUniform1( GLint location, GLfloat value );
+	void SetUniform4( GLint location, const GLfloat *values );
+	void SetUniformMatrix4( GLint location, const GLfloat *matrix );
+	void SetProjectionMatrix( GLint location );
+	void SetViewMatrix( GLint location );
+
 	GL4Program();
 private:
 	GLuint program;

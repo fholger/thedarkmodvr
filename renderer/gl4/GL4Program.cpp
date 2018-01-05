@@ -14,6 +14,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 ******************************************************************************/
 #include "precompiled.h"
 #include "GL4Program.h"
+#include "../../tools/radiant/NewTexWnd.h"
 
 GLuint CompileShader( GLint type, const char *fileName ) {
 	// get shader source
@@ -115,6 +116,26 @@ void GL4Program::Activate() const {
 
 void GL4Program::Unset() {
 	qglUseProgram( 0 );
+}
+
+void GL4Program::SetUniform1( GLint location, GLfloat value ) {
+	qglProgramUniform1f( program, location, value );
+}
+
+void GL4Program::SetUniform4( GLint location, const GLfloat *values ) {
+	qglProgramUniform4fv( program, location, 1, values );
+}
+
+void GL4Program::SetUniformMatrix4( GLint location, const GLfloat *matrix ) {
+	qglProgramUniformMatrix4fv( program, location, 1, GL_FALSE, matrix );
+}
+
+void GL4Program::SetProjectionMatrix( GLint location ) {
+	SetUniformMatrix4( location, backEnd.viewDef->projectionMatrix );
+}
+
+void GL4Program::SetViewMatrix( GLint location ) {
+	SetUniformMatrix4( location, backEnd.viewDef->worldSpace.modelViewMatrix );
 }
 
 GL4Program::GL4Program() : program(0) {}

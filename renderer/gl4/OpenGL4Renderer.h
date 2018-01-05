@@ -23,6 +23,7 @@ struct DrawElementsIndirectCommand;
 
 enum ProgramType {
 	SHADER_DEPTH_FAST_MD = 0,
+	SHADER_DEPTH_GENERIC,
 	TOTAL_SHADER_COUNT
 };
 

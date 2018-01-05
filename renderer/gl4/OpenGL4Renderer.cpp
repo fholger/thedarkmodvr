@@ -121,6 +121,7 @@ void OpenGL4Renderer::BindBuffer( GLenum target, GLuint buffer ) {
 
 void OpenGL4Renderer::LoadShaders() {
 	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vs", "black.fs" );
+	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vs", "depth_generic.fs" );
 
 	// validate all shaders
 	for( int i = 0; i < TOTAL_SHADER_COUNT; ++i ) {

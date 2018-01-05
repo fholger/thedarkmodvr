@@ -404,6 +404,25 @@ PFNGLBINDBUFFERRANGEPROC					qglBindBufferRange;
 PFNGLVERTEXATTRIBIPOINTERPROC				qglVertexAttribIPointer;
 PFNGLVERTEXATTRIBDIVISORPROC				qglVertexAttribDivisor;
 PFNGLMEMORYBARRIERPROC						qglMemoryBarrier;
+PFNGLPROGRAMUNIFORM1FPROC					qglProgramUniform1f;
+PFNGLPROGRAMUNIFORM2FPROC					qglProgramUniform2f;
+PFNGLPROGRAMUNIFORM3FPROC					qglProgramUniform3f;
+PFNGLPROGRAMUNIFORM4FPROC					qglProgramUniform4f;
+PFNGLPROGRAMUNIFORM1IPROC					qglProgramUniform1i;
+PFNGLPROGRAMUNIFORM2IPROC					qglProgramUniform2i;
+PFNGLPROGRAMUNIFORM3IPROC					qglProgramUniform3i;
+PFNGLPROGRAMUNIFORM4IPROC					qglProgramUniform4i;
+PFNGLPROGRAMUNIFORM1FVPROC					qglProgramUniform1fv;
+PFNGLPROGRAMUNIFORM2FVPROC					qglProgramUniform2fv;
+PFNGLPROGRAMUNIFORM3FVPROC					qglProgramUniform3fv;
+PFNGLPROGRAMUNIFORM4FVPROC					qglProgramUniform4fv;
+PFNGLPROGRAMUNIFORM1IVPROC					qglProgramUniform1iv;
+PFNGLPROGRAMUNIFORM2IVPROC					qglProgramUniform2iv;
+PFNGLPROGRAMUNIFORM3IVPROC					qglProgramUniform3iv;
+PFNGLPROGRAMUNIFORM4IVPROC					qglProgramUniform4iv;
+PFNGLPROGRAMUNIFORMMATRIX2FVPROC			qglProgramUniformMatrix2fv;
+PFNGLPROGRAMUNIFORMMATRIX3FVPROC			qglProgramUniformMatrix3fv;
+PFNGLPROGRAMUNIFORMMATRIX4FVPROC			qglProgramUniformMatrix4fv;
 
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
@@ -662,6 +681,25 @@ static void R_CheckPortableExtensions( void ) {
 		qglGetIntegerv( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &glConfig.ssboOffsetAlignment );
 		qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &glConfig.uniformOffsetAlignment );
 		common->Printf( "OpenGL4 renderer available, uniform alignment: %d, SSBO alignment: %d\n", glConfig.uniformOffsetAlignment, glConfig.ssboOffsetAlignment );
+		qglProgramUniform1f = ( PFNGLPROGRAMUNIFORM1FPROC )GLimp_ExtensionPointer( "glProgramUniform1f" );
+		qglProgramUniform2f = ( PFNGLPROGRAMUNIFORM2FPROC )GLimp_ExtensionPointer( "glProgramUniform2f" );
+		qglProgramUniform3f = ( PFNGLPROGRAMUNIFORM3FPROC )GLimp_ExtensionPointer( "glProgramUniform3f" );
+		qglProgramUniform4f = ( PFNGLPROGRAMUNIFORM4FPROC )GLimp_ExtensionPointer( "glProgramUniform4f" );
+		qglProgramUniform1i = ( PFNGLPROGRAMUNIFORM1IPROC )GLimp_ExtensionPointer( "glProgramUniform1i" );
+		qglProgramUniform2i = ( PFNGLPROGRAMUNIFORM2IPROC )GLimp_ExtensionPointer( "glProgramUniform2i" );
+		qglProgramUniform3i = ( PFNGLPROGRAMUNIFORM3IPROC )GLimp_ExtensionPointer( "glProgramUniform3i" );
+		qglProgramUniform4i = ( PFNGLPROGRAMUNIFORM4IPROC )GLimp_ExtensionPointer( "glProgramUniform4i" );
+		qglProgramUniform1fv = ( PFNGLPROGRAMUNIFORM1FVPROC )GLimp_ExtensionPointer( "glProgramUniform1fv" );
+		qglProgramUniform2fv = ( PFNGLPROGRAMUNIFORM2FVPROC )GLimp_ExtensionPointer( "glProgramUniform2fv" );
+		qglProgramUniform3fv = ( PFNGLPROGRAMUNIFORM3FVPROC )GLimp_ExtensionPointer( "glProgramUniform3fv" );
+		qglProgramUniform4fv = ( PFNGLPROGRAMUNIFORM4FVPROC )GLimp_ExtensionPointer( "glProgramUniform4fv" );
+		qglProgramUniform1iv = ( PFNGLPROGRAMUNIFORM1IVPROC )GLimp_ExtensionPointer( "glProgramUniform1iv" );
+		qglProgramUniform2iv = ( PFNGLPROGRAMUNIFORM2IVPROC )GLimp_ExtensionPointer( "glProgramUniform2iv" );
+		qglProgramUniform3iv = ( PFNGLPROGRAMUNIFORM3IVPROC )GLimp_ExtensionPointer( "glProgramUniform3iv" );
+		qglProgramUniform4iv = ( PFNGLPROGRAMUNIFORM4IVPROC )GLimp_ExtensionPointer( "glProgramUniform4iv" );
+		qglProgramUniformMatrix2fv = ( PFNGLPROGRAMUNIFORMMATRIX2FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix2fv" );
+		qglProgramUniformMatrix3fv = ( PFNGLPROGRAMUNIFORMMATRIX3FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix3fv" );
+		qglProgramUniformMatrix4fv = ( PFNGLPROGRAMUNIFORMMATRIX4FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix4fv" );
 	}
 
 	int n;
