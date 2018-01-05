@@ -32,6 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "tr_local.h"
 #include "glsl.h"
 #include "FrameBuffer.h"
+#include "gl4/GLDebugGroup.h"
 
 struct shadowMapProgram_t : lightProgram_t {
 	virtual void Use();
@@ -147,6 +148,8 @@ void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf ) {
 	if ( !surf )
 		return;
 
+	GL_DEBUG_GROUP( DrawInteractions_GLSL, INTERACTION );
+
 	// perform setup here that will be constant for all interactions
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
 
@@ -217,6 +220,7 @@ RB_GLSL_DrawLight_Stencil
 ==================
 */
 void RB_GLSL_DrawLight_Stencil() {
+	GL_DEBUG_GROUP( DrawStencil_GLSL, STENCIL );
 	bool useShadowFbo = r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem();
 	pointInteractionShader.Use();
 	qglUniform1f( pointInteractionShader.shadows, 1 );
@@ -328,6 +332,7 @@ RB_GLSL_DrawInteractions
 ==================
 */
 void RB_GLSL_DrawInteractions() {
+	GL_DEBUG_GROUP( DrawInteractions_GLSL, INTERACTION );
 	GL_SelectTexture( 0 );
 	// for each light, perform adding and shadowing
 	for ( backEnd.vLight = backEnd.viewDef->viewLights; backEnd.vLight; backEnd.vLight = backEnd.vLight->next ) {

@@ -18,6 +18,7 @@
 #include "tr_local.h"
 #include "glsl.h"
 #include "FrameBuffer.h"
+#include "gl4/GLDebugGroup.h"
 
 /*
 ================
@@ -320,6 +321,8 @@ void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	if ( !backEnd.viewDef->viewEntitys ) {
 		return;
 	}
+
+	GL_DEBUG_GROUP( FillDepthBuffer_STD, DEPTH );
 
 	GL_CheckErrors();
 	RB_LogComment( "---------- RB_STD_FillDepthBuffer ----------\n" );
@@ -911,6 +914,7 @@ Draw non-light dependent passes
 int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	int				i;
 
+	GL_DEBUG_GROUP( DrawShaderPasses_STD, SHADER_PASS );
 	// only obey skipAmbient if we are rendering a view
 	if ( backEnd.viewDef->viewEntitys && r_skipAmbient.GetInteger() == 1 )
 		return numDrawSurfs;
@@ -1265,6 +1269,8 @@ void	RB_STD_DrawView( void ) {
 
 	drawSurfs = (drawSurf_t **)&backEnd.viewDef->drawSurfs[0];
 	numDrawSurfs = backEnd.viewDef->numDrawSurfs;
+
+	GL_DEBUG_GROUP( DrawView_STD, RENDER );
 
 	// clear the z buffer, set the projection matrix, etc
 	RB_BeginDrawingView();

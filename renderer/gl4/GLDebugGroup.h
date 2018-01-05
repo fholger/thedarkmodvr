@@ -22,6 +22,8 @@ enum DebugGroupId {
 	DEPTH,
 	STENCIL,
 	INTERACTION,
+	SHADER_PASS,
+	FOG,
 };
 
 class GL_DebugGroup {

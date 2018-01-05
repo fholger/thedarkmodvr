@@ -255,7 +255,7 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		return;
 	}
 
-	GL_DEBUG_GROUP( FillDepthBuffer_MD, DEPTH );
+	GL_DEBUG_GROUP( FillDepthBuffer_GL4, DEPTH );
 
 	GL_State( GLS_DEPTHFUNC_LESS & GLS_COLORMASK & GLS_ALPHAMASK );
 	// Enable stencil test if we are going to be using it for shadows.
