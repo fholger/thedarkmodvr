@@ -22,13 +22,22 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 struct DrawElementsIndirectCommand;
 
-static const int DRAWID_BINDING = 15;
-
 enum ProgramType {
 	SHADER_DEPTH_FAST_MD = 0,
 	SHADER_DEPTH_GENERIC,
 	SHADER_STENCIL_MD,
 	TOTAL_SHADER_COUNT
+};
+
+enum VertexAttribs {
+	VA_POSITION		= 0,
+	VA_TEXCOORD		= 1,
+	VA_NORMAL		= 2,
+	VA_TANGENT		= 3,
+	VA_BITANGENT	= 4,
+	VA_COLOR		= 5,
+	VA_SHADOWPOS	= 6,
+	VA_DRAWID		= 15
 };
 
 class OpenGL4Renderer {
@@ -46,17 +55,18 @@ public:
 
 	GL4Program GetShader( ProgramType shaderType ) const;
 
-	void BindDrawId();
-	void UnbindDrawId();
-
 	void BindSSBO( GLuint index, GLuint size );
 
 	void BindUBO( GLuint index );
 	void UpdateUBO( const void *data, GLsizeiptr size );
 
+	// prepares vertex attrib formats and disables them all initially. static buffers are bound
+	void PrepareVertexAttribs();
+
+	void EnableVertexAttribs( std::initializer_list<VertexAttribs> attribs );
+	void BindVertexBuffer( bool staticBuffer );
 
 private:
-	void BindBuffer( GLenum target, GLuint buffer );
 
 	void LoadShaders();
 	void DestroyShaders();
@@ -66,11 +76,12 @@ private:
 	PersistentBufferObject ssbo;
 	UniformBufferObject ubo;
 	DrawElementsIndirectCommand *commandBuffer;
+
+	uint32_t enabledVertexAttribs;
+	bool boundStaticVertexBuffer;
 	
 	GL4Program shaders[TOTAL_SHADER_COUNT];
 	std::unordered_map<GLenum, GLuint> boundBuffers;
-
-	friend void GL4_BindBuffer( GLenum target, GLuint buffer );
 };
 
 extern OpenGL4Renderer openGL4Renderer;

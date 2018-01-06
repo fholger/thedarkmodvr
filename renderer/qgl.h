@@ -218,6 +218,7 @@ extern PFNGLDELETESYNCPROC				qglDeleteSync;
 extern PFNGLPUSHDEBUGGROUPPROC				qglPushDebugGroup;
 extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
 extern PFNGLBUFFERSTORAGEPROC				qglBufferStorage;
+extern PFNGLDRAWELEMENTSBASEVERTEXPROC		qglDrawElementsBaseVertex;
 extern PFNGLDRAWELEMENTSINDIRECTPROC		qglDrawElementsIndirect;
 extern PFNGLMULTIDRAWELEMENTSINDIRECTPROC	qglMultiDrawElementsIndirect;
 extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;

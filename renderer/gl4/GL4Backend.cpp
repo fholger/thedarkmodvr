@@ -24,8 +24,3 @@ idCVar r_useOpenGL4( "r_useOpenGL4", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHI
 extern bool afterFog;
 int RB_STD_DrawShaderPasses( drawSurf_t ** drawSurfs, int numDrawSurfs );
 // ----------------------------------------
-
-
-void GL4_BindBuffer( GLenum target, GLuint buffer ) {
-	openGL4Renderer.BindBuffer( target, buffer );
-}

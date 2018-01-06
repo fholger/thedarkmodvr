@@ -31,7 +31,7 @@ void PersistentBufferObject::Init( GLenum target, GLuint size, GLuint alignment 
 	mSize = ALIGN( size, alignment );
 	mAlign = alignment;
 	qglGenBuffersARB( 1, &mBufferObject );
-	GL4_BindBuffer( mTarget, mBufferObject );
+	qglBindBufferARB( mTarget, mBufferObject );
 	qglBufferStorage( mTarget, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 	mMapBase = ( byte* )qglMapBufferRange( mTarget, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 	mCurrentOffset = 0;
@@ -42,7 +42,7 @@ void PersistentBufferObject::Destroy() {
 		return;
 	}
 
-	GL4_BindBuffer( mTarget, mBufferObject );
+	qglBindBufferARB( mTarget, mBufferObject );
 	qglUnmapBuffer( mTarget );
 	qglDeleteBuffersARB( 1, &mBufferObject );
 	mBufferObject = 0;
@@ -70,7 +70,7 @@ void PersistentBufferObject::MarkAsUsed( GLuint size ) {
 }
 
 void PersistentBufferObject::BindBuffer() {
-	GL4_BindBuffer( mTarget, mBufferObject );
+	qglBindBufferARB( mTarget, mBufferObject );
 }
 
 void PersistentBufferObject::BindBufferRange( GLuint index, GLuint size ) {

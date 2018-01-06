@@ -98,6 +98,9 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {
 	GL_DEBUG_GROUP( GL4_StencilShadowPass, STENCIL );
 
+	// TODO: only needed while mixing with legacy rendering
+	openGL4Renderer.PrepareVertexAttribs();
+
 	GL4Program stencilShader = openGL4Renderer.GetShader( SHADER_STENCIL_MD );
 	stencilShader.Activate();
 
@@ -119,9 +122,9 @@ void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {
 	float viewProjectionMatrix[16];
 	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProjectionMatrix );
 	stencilShader.SetUniformMatrix4( 0, viewProjectionMatrix );
-	openGL4Renderer.BindDrawId();
+
 	// currently shadows are all in frame temporary buffers
-	qglVertexAttribPointer( 0, 4, GL_FLOAT, GL_FALSE, sizeof( shadowCache_t ), vertexCache.VertexPosition( 2 ) );
+	openGL4Renderer.EnableVertexAttribs( { VA_SHADOWPOS, VA_DRAWID } );
 	vertexCache.IndexPosition( 2 );
 
 	// render non-external shadows
@@ -134,7 +137,8 @@ void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {
 	qglStencilOpSeparate( backEnd.viewDef->isMirror ? GL_BACK : GL_FRONT, GL_KEEP, GL_KEEP, tr.stencilDecr );
 	GL4_MultiDrawStencil( drawSurfs, true );
 
-	openGL4Renderer.UnbindDrawId();
+	// TODO: not necessary once full renderer is ported
+	openGL4Renderer.EnableVertexAttribs( {VA_POSITION} );
 
 	GL_CheckErrors();
 

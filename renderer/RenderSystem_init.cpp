@@ -398,6 +398,7 @@ PFNGLDELETESYNCPROC						qglDeleteSync;
 PFNGLPUSHDEBUGGROUPPROC						qglPushDebugGroup;
 PFNGLPOPDEBUGGROUPPROC						qglPopDebugGroup;
 PFNGLBUFFERSTORAGEPROC						qglBufferStorage;
+PFNGLDRAWELEMENTSBASEVERTEXPROC				qglDrawElementsBaseVertex;
 PFNGLDRAWELEMENTSINDIRECTPROC				qglDrawElementsIndirect;
 PFNGLMULTIDRAWELEMENTSINDIRECTPROC			qglMultiDrawElementsIndirect;
 PFNGLBINDBUFFERBASEPROC						qglBindBufferBase;
@@ -676,6 +677,7 @@ static void R_CheckPortableExtensions( void ) {
 	glConfig.openGL4Available = glConfig.glVersion > 4.2f && R_CheckExtension( "GL_ARB_multi_draw_indirect" ) && R_CheckExtension( "GL_ARB_buffer_storage" ) && R_CheckExtension( "GL_ARB_shader_storage_buffer_object" );
 	if( glConfig.openGL4Available ) {
 		qglBufferStorage = ( PFNGLBUFFERSTORAGEPROC )GLimp_ExtensionPointer( "glBufferStorage" );
+		qglDrawElementsBaseVertex = ( PFNGLDRAWELEMENTSBASEVERTEXPROC )GLimp_ExtensionPointer( "glDrawElementsBaseVertex" );
 		qglDrawElementsIndirect = ( PFNGLDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glDrawElementsIndirect" );
 		qglMultiDrawElementsIndirect = ( PFNGLMULTIDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glMultiDrawElementsIndirect" );
 		qglBindBufferBase = ( PFNGLBINDBUFFERBASEPROC )GLimp_ExtensionPointer( "glBindBufferBase" );

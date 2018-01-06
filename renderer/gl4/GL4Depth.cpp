@@ -62,8 +62,8 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 		commands[i].baseInstance = i;
 	}
 
-	idDrawVert *ac = ( idDrawVert * )vertexCache.VertexPosition( staticVertex ? 1 : 2 );
-	qglVertexAttribPointer( 0, 3, GL_FLOAT, false, sizeof( idDrawVert ), &ac->xyz );
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_DRAWID } );
+	openGL4Renderer.BindVertexBuffer( staticVertex );
 	vertexCache.IndexPosition( staticIndex ? 1 : 2 );
 	openGL4Renderer.BindSSBO( 0, ssboSize );
 
@@ -79,7 +79,6 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	depthShader.SetProjectionMatrix( SU_LOC_PROJ_MATRIX );
 
 	DepthGenericDrawData drawData;
-	DrawElementsIndirectCommand command;
 	memcpy( drawData.textureMatrix, mat4_identity.ToFloatPtr(), sizeof( drawData.textureMatrix ) );
 
 	// if we have no clip planes, set a noclip plane
@@ -87,14 +86,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		drawData.clipPlane.ToVec4().Set( 0, 0, 0, 1 );
 	}
 
-	qglEnableVertexAttribArray( 1 );
-	qglVertexAttribFormat( 0, 3, GL_FLOAT, false, offsetof( idDrawVert, xyz ) );
-	qglVertexAttribFormat( 1, 2, GL_FLOAT, false, offsetof( idDrawVert, st ) );
-	qglBindVertexBuffer( 1, vertexCache.StaticVertexBuffer(), 0, sizeof( idDrawVert ) );
-	qglBindVertexBuffer( 0, vertexCache.FrameVertexBuffer(), 0, sizeof( idDrawVert ) );
-	qglVertexAttribBinding( 0, 1 );
-	qglVertexAttribBinding( 1, 1 );
-	GLuint boundVertexBuffer = 1;
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD } );
 
 	// the first texture will be used for alpha tested surfaces
 	GL_SelectTexture( 0 );
@@ -138,17 +130,8 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 			drawData.color[0] = drawData.color[1] = drawData.color[2] = ( 1.0 / backEnd.overBright );
 		}
 
-		vertexCache.IndexPosition( tri->indexCache );
-		if( vertexCache.CacheIsStatic(tri->ambientCache) != boundVertexBuffer ) {
-			boundVertexBuffer ^= 1;
-			qglVertexAttribBinding( 0, boundVertexBuffer );
-			qglVertexAttribBinding( 1, boundVertexBuffer );
-		}
-		command.count = tri->numIndexes;
-		command.instanceCount = 1;
-		command.baseInstance = 0;
-		command.baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
-		command.firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
+		openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
+		GLuint baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
 
 		bool drawSolid = false;
 
@@ -207,8 +190,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 				// draw it
 				openGL4Renderer.UpdateUBO( &drawData, sizeof( DepthGenericDrawData ) );
-				qglDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, &command );
-				//RB_DrawElementsWithCounters( tri );
+				qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
 
 				// unset privatePolygonOffset if necessary
 				if( pStage->privatePolygonOffset && !surf->material->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
@@ -231,8 +213,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 			// draw it
 			openGL4Renderer.UpdateUBO( &drawData, sizeof( DepthGenericDrawData ) );
-			qglDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, &command );
-			//RB_DrawElementsWithCounters( tri );
+			qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
 		}
 
 		// reset polygon offset
@@ -245,8 +226,6 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 			GL_State( GLS_DEPTHFUNC_LESS );
 		}
 	}
-
-	qglDisableVertexAttribArray( 1 );
 }
 
 void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
@@ -256,6 +235,9 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	}
 
 	GL_DEBUG_GROUP( FillDepthBuffer_GL4, DEPTH );
+
+	// TODO: only needed while mixing with legacy rendering
+	openGL4Renderer.PrepareVertexAttribs();
 
 	GL_State( GLS_DEPTHFUNC_LESS & GLS_COLORMASK & GLS_ALPHAMASK );
 	// Enable stencil test if we are going to be using it for shadows.
@@ -354,18 +336,18 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL4Program depthShaderMD = openGL4Renderer.GetShader( SHADER_DEPTH_FAST_MD );
 	depthShaderMD.Activate();
 	depthShaderMD.SetProjectionMatrix( SU_LOC_PROJ_MATRIX );
-	openGL4Renderer.BindDrawId();
 
 	GL4_MultiDrawDepth( &staticVertexStaticIndex[0], staticVertexStaticIndex.size(), true, true );
 	GL4_MultiDrawDepth( &staticVertexFrameIndex[0], staticVertexFrameIndex.size(), true, false );
 	GL4_MultiDrawDepth( &frameVertexFrameIndex[0], frameVertexFrameIndex.size(), false, false );
-
-	openGL4Renderer.UnbindDrawId();
-
+	
 	// draw all remaining surfaces with the general code path
 	if( !remainingSurfaces.empty() ) {
 		GL4_GenericDepth( &remainingSurfaces[0], remainingSurfaces.size() );
 	}
+
+	// TODO: should not be needed once full backend is ported
+	openGL4Renderer.EnableVertexAttribs( {VA_POSITION} );
 
 	GL_CheckErrors();
 

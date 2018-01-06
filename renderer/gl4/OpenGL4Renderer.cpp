@@ -25,7 +25,7 @@ const int BUFFER_FACTOR = 3;
 const int UBO_BUFFER_SIZE = 64 * 1024;
 
 
-OpenGL4Renderer::OpenGL4Renderer() : initialized( false ), drawIdBuffer( 0 ), commandBuffer( nullptr ) {}
+OpenGL4Renderer::OpenGL4Renderer() : initialized( false ), drawIdBuffer( 0 ), commandBuffer( nullptr ), enabledVertexAttribs( 0 ) {}
 
 
 OpenGL4Renderer::~OpenGL4Renderer()
@@ -37,6 +37,7 @@ void OpenGL4Renderer::Init() {
 	if( initialized )
 		return;
 
+	initialized = true;
 	common->Printf( "Initializing OpenGL4 renderer backend ...\n" );
 
 	LoadShaders();
@@ -47,17 +48,14 @@ void OpenGL4Renderer::Init() {
 	for( uint32_t i = 0; i < MAX_MULTIDRAW_COMMANDS; ++i ) {
 		drawIds[i] = i;
 	}
-	BindBuffer( GL_ARRAY_BUFFER, drawIdBuffer );
+	qglBindBufferARB( GL_ARRAY_BUFFER, drawIdBuffer );
 	qglBufferStorage( GL_ARRAY_BUFFER, drawIds.size() * sizeof( uint32_t ), drawIds.data(), 0 );
-	qglVertexAttribIPointer( DRAWID_BINDING, 1, GL_UNSIGNED_INT, sizeof( uint32_t ), 0 );
-	qglVertexAttribDivisor( DRAWID_BINDING, 1 );
 
 	ssbo.Init( GL_SHADER_STORAGE_BUFFER, MAX_MULTIDRAW_COMMANDS * MAX_ELEMENT_SIZE * BUFFER_FACTOR, glConfig.ssboOffsetAlignment );
 	ubo.Init( UBO_BUFFER_SIZE );
 
 	commandBuffer = ( DrawElementsIndirectCommand * )Mem_Alloc16( sizeof( DrawElementsIndirectCommand ) * MAX_MULTIDRAW_COMMANDS );
 
-	initialized = true;
 	common->Printf( "OpenGL4 renderer ready\n" );
 }
 
@@ -105,14 +103,6 @@ GL4Program OpenGL4Renderer::GetShader( ProgramType shaderType ) const {
 	return shaders[shaderType];
 }
 
-void OpenGL4Renderer::BindDrawId() {
-	qglEnableVertexAttribArray( DRAWID_BINDING );
-}
-
-void OpenGL4Renderer::UnbindDrawId() {
-	qglDisableVertexAttribArray( DRAWID_BINDING );
-}
-
 void OpenGL4Renderer::BindSSBO( GLuint index, GLuint size ) {
 	ssbo.BindBufferRange( index, size );
 }
@@ -125,12 +115,70 @@ void OpenGL4Renderer::UpdateUBO( const void *data, GLsizeiptr size ) {
 	ubo.Update( data, size );
 }
 
+void OpenGL4Renderer::PrepareVertexAttribs() {
+	qglVertexAttribFormat( VA_POSITION, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, xyz ) );
+	qglVertexAttribFormat( VA_TEXCOORD, 2, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, st ) );
+	qglVertexAttribFormat( VA_NORMAL, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, normal ) );
+	qglVertexAttribFormat( VA_TANGENT, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, tangents[0] ) );
+	qglVertexAttribFormat( VA_BITANGENT, 3, GL_FLOAT, GL_FALSE, offsetof( idDrawVert, tangents[1] ) );
+	qglVertexAttribFormat( VA_COLOR, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof( idDrawVert, color ) );
+	// used in stencil rendering
+	qglVertexAttribFormat( VA_SHADOWPOS, 4, GL_FLOAT, GL_FALSE, offsetof( shadowCache_t, xyz ) );
+	// used for multidraw commands
+	qglBindBufferARB( GL_ARRAY_BUFFER, drawIdBuffer );
+	qglVertexAttribIPointer( VA_DRAWID, 1, GL_UNSIGNED_INT, sizeof( uint32_t ), 0 );
+	qglVertexAttribDivisor( VA_DRAWID, 1 );  // one element per instance, not per vertex
 
-void OpenGL4Renderer::BindBuffer( GLenum target, GLuint buffer ) {
-	/*if( boundBuffers[target] != buffer )*/ {
-		qglBindBufferARB( target, buffer );
-		boundBuffers[target] = buffer;
+	// bind static and frame buffers to binding points
+	qglBindVertexBuffer( 0, vertexCache.StaticVertexBuffer(), 0, sizeof( idDrawVert ) );
+	qglBindVertexBuffer( 1, vertexCache.FrameVertexBuffer(), 0, sizeof( idDrawVert ) );
+	// stencil shadow caches have a different stride
+	qglBindVertexBuffer( 2, vertexCache.FrameVertexBuffer(), 0, sizeof( shadowCache_t ) );
+	// buffer for draw ids
+	//qglBindVertexBuffer( 3, drawIdBuffer, 0, sizeof( uint32_t ) );
+
+	// initially bind static vertex buffer for all attributes except shadow and drawid
+	qglVertexAttribBinding( VA_SHADOWPOS, 2 );
+	//qglVertexAttribBinding( VA_DRAWID, 3 );
+	boundStaticVertexBuffer = false;
+	BindVertexBuffer( true );
+
+	// initially disable all attributes
+	enabledVertexAttribs = ~0;
+	EnableVertexAttribs({});
+}
+
+void OpenGL4Renderer::EnableVertexAttribs( std::initializer_list<VertexAttribs> attribs ) {
+	uint32_t enableAttribs = 0;
+	for( auto attrib : attribs ) {
+		enableAttribs |= ( 1 << attrib );
 	}
+	uint32_t diff = enabledVertexAttribs ^ enableAttribs;
+
+	for( auto attrib : { VA_POSITION, VA_TEXCOORD, VA_NORMAL, VA_TANGENT, VA_BITANGENT, VA_COLOR, VA_SHADOWPOS, VA_DRAWID } ) {
+		if( diff & ( 1 << attrib ) ) {
+			if( enableAttribs & ( 1 << attrib ) ) {
+				qglEnableVertexAttribArray( attrib );
+			} else {
+				qglDisableVertexAttribArray( attrib );
+			}
+		}
+	}
+
+	enabledVertexAttribs = enableAttribs;
+}
+
+void OpenGL4Renderer::BindVertexBuffer( bool staticBuffer ) {
+	if( staticBuffer == boundStaticVertexBuffer )
+		return;
+	boundStaticVertexBuffer = staticBuffer;
+	GLuint bufferIndex = staticBuffer ? 0 : 1;
+	qglVertexAttribBinding( VA_POSITION, bufferIndex );
+	qglVertexAttribBinding( VA_TEXCOORD, bufferIndex );
+	qglVertexAttribBinding( VA_NORMAL, bufferIndex );
+	qglVertexAttribBinding( VA_TANGENT, bufferIndex );
+	qglVertexAttribBinding( VA_BITANGENT, bufferIndex );
+	qglVertexAttribBinding( VA_COLOR, bufferIndex );
 }
 
 void OpenGL4Renderer::LoadShaders() {
@@ -143,6 +191,7 @@ void OpenGL4Renderer::LoadShaders() {
 		if( !shaders[i].Valid() ) {
 			common->Warning( "Not all shaders were successfully loaded, disabling GL4 renderer\n" );
 			glConfig.openGL4Available = false;
+			initialized = false;
 			return;
 		}
 	}
