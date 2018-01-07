@@ -1281,12 +1281,9 @@ void	RB_STD_DrawView( void ) {
 	backEnd.overBright = 1.0f;
 
 	// fill the depth buffer and clear color buffer to black except on subviews
-	if( openGL4Renderer.IsInitialized() )
-		GL4_FillDepthBuffer( drawSurfs, numDrawSurfs );
-	else
-		RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
+	RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
 
-	if ( r_useGLSL.GetBool() || openGL4Renderer.IsInitialized() )
+	if ( r_useGLSL.GetBool() )
 		RB_GLSL_DrawInteractions();
 	else
 		RB_ARB2_DrawInteractions();

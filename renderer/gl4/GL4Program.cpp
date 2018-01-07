@@ -138,6 +138,12 @@ void GL4Program::SetViewMatrix( GLint location ) {
 	SetUniformMatrix4( location, backEnd.viewDef->worldSpace.modelViewMatrix );
 }
 
+void GL4Program::SetViewProjectionMatrix( GLint location ) {
+	float viewProjectionMatrix[16];
+	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProjectionMatrix );
+	SetUniformMatrix4( location, viewProjectionMatrix );
+}
+
 GL4Program::GL4Program() : program(0) {}
 
 GL4Program::GL4Program( GLuint program ) : program(program) {}

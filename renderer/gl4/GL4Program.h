@@ -31,6 +31,7 @@ public:
 	void SetUniformMatrix4( GLint location, const GLfloat *matrix );
 	void SetProjectionMatrix( GLint location );
 	void SetViewMatrix( GLint location );
+	void SetViewProjectionMatrix( GLint location );
 
 	GL4Program();
 private:

@@ -17,11 +17,38 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GLDebugGroup.h"
 #include "OpenGL4Renderer.h"
 
+idCVar r_skipInteractionFastPath( "r_skipInteractionFastPath", "0", CVAR_RENDERER | CVAR_BOOL, "" );
+
 void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf );
+void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix );
+
+enum InteractionTextures {
+	TEX_NORMAL = 0,
+	TEX_LIGHT_FALLOFF = 1,
+	TEX_LIGHT_PROJECTION = 2,
+	CUBE_LIGHT_PROJECTION = 3,
+	TEX_DIFFUSE = 4,
+	TEX_SPECULAR = 5
+};
 
 struct StencilDrawData {
 	float  modelMatrix[16];
 	idVec4 lightOrigin;
+};
+
+struct InteractionDrawData {
+	float modelMatrix[16];
+	idVec4 bumpMatrix[2];
+	idVec4 diffuseMatrix[2];
+	idVec4 specularMatrix[2];
+	idPlane lightProjection[4];
+	idVec4 colorModulate;
+	idVec4 colorAdd;
+	idVec4 lightOrigin;
+	idVec4 viewOrigin;
+	idVec4 diffuseColor;
+	idVec4 specularColor;
+	idVec4 cubic;  // technically just a bool, but expanded for alignment
 };
 
 
@@ -155,6 +182,375 @@ void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {
 		qglStencilFunc( GL_GEQUAL, 128, 255 );
 }
 
+static void GL4_DrawSingleInteraction( InteractionDrawData &drawData, drawInteraction_t * din ) {
+	if( din->bumpImage == NULL ) {
+		// stage wasn't actually an interaction
+		return;
+	}
+
+	if( din->diffuseImage == NULL || r_skipDiffuse.GetBool() ) {
+		// this isn't a YCoCg black, but it doesn't matter, because
+		// the diffuseColor will also be 0
+		din->diffuseImage = globalImages->blackImage;
+	}
+	if( din->specularImage == NULL || r_skipSpecular.GetBool() || din->ambientLight ) {
+		din->specularImage = globalImages->blackImage;
+	}
+	if( r_skipBump.GetBool() ) {
+		din->bumpImage = globalImages->flatNormalMap;
+	}
+
+	// if we wouldn't draw anything, don't call the Draw function
+	const bool diffuseIsBlack = ( din->diffuseImage == globalImages->blackImage )
+		|| ( ( drawData.diffuseColor[0] <= 0 ) && ( drawData.diffuseColor[1] <= 0 ) && ( drawData.diffuseColor[2] <= 0 ) );
+	const bool specularIsBlack = ( din->specularImage == globalImages->blackImage )
+		|| ( ( drawData.specularColor[0] <= 0 ) && ( drawData.specularColor[1] <= 0 ) && ( drawData.specularColor[2] <= 0 ) );
+	if( diffuseIsBlack && specularIsBlack ) {
+		return;
+	}
+
+	static const idVec4 zero( 0, 0, 0, 0 );
+	static const idVec4 one( 1, 1, 1, 1 );
+	static const idVec4 negOne( -1, -1, -1, 1 );
+	switch( din->vertexColor ) {
+	case SVC_IGNORE:
+		drawData.colorModulate = zero;
+		drawData.colorAdd = one;
+		break;
+	case SVC_MODULATE:
+		drawData.colorModulate = one;
+		drawData.colorAdd = zero;
+		break;
+	case SVC_INVERSE_MODULATE:
+		drawData.colorModulate = negOne;
+		drawData.colorAdd = one;
+		break;
+	}
+
+	// texture 0 will be the per-surface bump map
+	GL_SelectTexture( TEX_NORMAL );
+	din->bumpImage->Bind();
+
+	// texture 3 is the per-surface diffuse map
+	GL_SelectTexture( TEX_DIFFUSE );
+	din->diffuseImage->Bind();
+
+	// texture 4 is the per-surface specular map
+	GL_SelectTexture( TEX_SPECULAR );
+	din->specularImage->Bind();
+
+	const srfTriangles_t *tri = din->surf->backendGeo;
+	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+	openGL4Renderer.UpdateUBO( &drawData, sizeof( drawData ) );
+	qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
+}
+
+void GL4_SetDrawInteraction( const shaderStage_t *surfaceStage, const float *surfaceRegs,
+	idImage **image, idVec4 matrix[2], float color[4] ) {
+	*image = surfaceStage->texture.image;
+
+	if( surfaceStage->texture.hasMatrix ) {
+		matrix[0][0] = surfaceRegs[surfaceStage->texture.matrix[0][0]];
+		matrix[0][1] = surfaceRegs[surfaceStage->texture.matrix[0][1]];
+		matrix[0][2] = 0;
+		matrix[0][3] = surfaceRegs[surfaceStage->texture.matrix[0][2]];
+
+		matrix[1][0] = surfaceRegs[surfaceStage->texture.matrix[1][0]];
+		matrix[1][1] = surfaceRegs[surfaceStage->texture.matrix[1][1]];
+		matrix[1][2] = 0;
+		matrix[1][3] = surfaceRegs[surfaceStage->texture.matrix[1][2]];
+
+		// we attempt to keep scrolls from generating incredibly large texture values, but
+		// center rotations and center scales can still generate offsets that need to be > 1
+		if( matrix[0][3] < -40.0f || matrix[0][3] > 40.0f ) {
+			matrix[0][3] -= ( int )matrix[0][3];
+		}
+		if( matrix[1][3] < -40.0f || matrix[1][3] > 40.0f ) {
+			matrix[1][3] -= ( int )matrix[1][3];
+		}
+	}
+	else {
+		matrix[0][0] = 1;
+		matrix[0][1] = 0;
+		matrix[0][2] = 0;
+		matrix[0][3] = 0;
+
+		matrix[1][0] = 0;
+		matrix[1][1] = 1;
+		matrix[1][2] = 0;
+		matrix[1][3] = 0;
+	}
+
+	if( color ) {
+		color[0] = surfaceRegs[surfaceStage->color.registers[0]];
+		color[1] = surfaceRegs[surfaceStage->color.registers[1]];
+		color[2] = surfaceRegs[surfaceStage->color.registers[2]];
+		color[3] = surfaceRegs[surfaceStage->color.registers[3]];
+	}
+}
+
+void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData& drawData, const shaderStage_t * lightStage, const idVec4& lightColor) {
+	GL_DEBUG_GROUP( SurfaceInteractions_GL4, INTERACTION );
+
+	const viewLight_t *vLight = backEnd.vLight;
+	const idMaterial* lightShader = vLight->lightShader;
+	const idMaterial * surfaceShader = surf->material;
+	const float * surfaceRegs = surf->shaderRegisters;
+	const srfTriangles_t *tri = surf->backendGeo;
+	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+
+	if( surf->space != backEnd.currentSpace ) {
+		backEnd.currentSpace = surf->space;
+		// tranform the light/view origin into model local space
+		R_GlobalPointToLocal( surf->space->modelMatrix, vLight->globalLightOrigin, drawData.lightOrigin.ToVec3() );
+		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, drawData.viewOrigin.ToVec3() );
+		drawData.lightOrigin[3] = 0;
+		drawData.viewOrigin[3] = 1;
+
+		// transform the light project into model local space
+		for( int i = 0; i < 4; i++ ) {
+			R_GlobalPlaneToLocal( surf->space->modelMatrix, vLight->lightProject[i], drawData.lightProjection[i] );
+		}
+
+		// optionally multiply the local light projection by the light texture matrix
+		if( lightStage->texture.hasMatrix ) {
+			RB_BakeTextureMatrixIntoTexgen( drawData.lightProjection, backEnd.lightTextureMatrix );
+		}
+
+		// copy model matrix
+		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
+	}
+
+	// check for the fast path
+	if( surfaceShader->GetFastPathBumpImage() && !r_skipInteractionFastPath.GetBool() ) {
+		GL_SelectTexture( TEX_NORMAL );
+		surfaceShader->GetFastPathBumpImage()->Bind();
+
+		// texture 3 is the per-surface diffuse map
+		GL_SelectTexture( TEX_DIFFUSE );
+		surfaceShader->GetFastPathDiffuseImage()->Bind();
+
+		// texture 4 is the per-surface specular map
+		GL_SelectTexture( TEX_SPECULAR );
+		surfaceShader->GetFastPathSpecularImage()->Bind();
+
+		openGL4Renderer.UpdateUBO( &drawData, sizeof( drawData ) );
+		qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
+
+		return;
+	}
+
+	drawInteraction_t inter;
+	inter.surf = surf;
+	inter.bumpImage = NULL;
+	inter.specularImage = NULL;
+	inter.diffuseImage = NULL;
+	drawData.diffuseColor[0] = drawData.diffuseColor[1] = drawData.diffuseColor[2] = drawData.diffuseColor[3] = 0;
+	drawData.specularColor[0] = drawData.specularColor[1] = drawData.specularColor[2] = drawData.specularColor[3] = 0;
+
+	// go through the individual stages
+	//
+	// This is somewhat arcane because of the old support for video cards that had to render
+	// interactions in multiple passes.
+	for( int surfaceStageNum = 0; surfaceStageNum < surfaceShader->GetNumStages(); surfaceStageNum++ ) {
+		const shaderStage_t	*surfaceStage = surfaceShader->GetStage( surfaceStageNum );
+
+		switch( surfaceStage->lighting ) {
+		case SL_AMBIENT: {
+			// ignore ambient stages while drawing interactions
+			break;
+		}
+		case SL_BUMP: {
+			// ignore stage that fails the condition
+			if( !surfaceRegs[surfaceStage->conditionRegister] ) {
+				break;
+			}
+			// draw any previous interaction
+			if( inter.bumpImage ) {
+				GL4_DrawSingleInteraction( drawData, &inter );
+			}
+			inter.diffuseImage = NULL;
+			inter.specularImage = NULL;
+			GL4_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.bumpImage, inter.bumpMatrix, NULL );
+			break;
+		}
+		case SL_DIFFUSE: {
+			// ignore stage that fails the condition
+			if( !surfaceRegs[surfaceStage->conditionRegister] ) {
+				break;
+			}
+			// draw any previous interaction
+			if( inter.diffuseImage ) {
+				GL4_DrawSingleInteraction( drawData, &inter );
+			}
+			GL4_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.diffuseImage,
+				drawData.diffuseMatrix, drawData.diffuseColor.ToFloatPtr() );
+			drawData.diffuseColor[0] *= lightColor[0];
+			drawData.diffuseColor[1] *= lightColor[1];
+			drawData.diffuseColor[2] *= lightColor[2];
+			drawData.diffuseColor[3] *= lightColor[3];
+			inter.vertexColor = surfaceStage->vertexColor;
+			break;
+		}
+		case SL_SPECULAR: {
+			// ignore stage that fails the condition
+			if( !surfaceRegs[surfaceStage->conditionRegister] ) {
+				break;
+			}
+			// nbohr1more: #4292 nospecular and nodiffuse fix
+			if( vLight->lightDef->parms.noSpecular ) {
+				break;
+			}
+			// draw any previous interaction
+			if( inter.specularImage ) {
+				GL4_DrawSingleInteraction( drawData, &inter );
+			}
+			GL4_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.specularImage,
+				drawData.specularMatrix, drawData.specularColor.ToFloatPtr() );
+			drawData.specularColor[0] *= lightColor[0];
+			drawData.specularColor[1] *= lightColor[1];
+			drawData.specularColor[2] *= lightColor[2];
+			drawData.specularColor[3] *= lightColor[3];
+			inter.vertexColor = surfaceStage->vertexColor;
+			break;
+		}
+		}
+	}
+	// render the final interaction
+	GL4_DrawSingleInteraction( drawData, &inter );
+}
+
+void GL4_RenderInteractions( const drawSurf_t *surfList ) {
+	if( !surfList )
+		return;
+
+	viewLight_t *vLight = backEnd.vLight;
+	const idMaterial * lightShader = vLight->lightShader;
+	const float * lightRegs = vLight->shaderRegisters;
+
+	if( lightShader->IsAmbientLight() && r_skipAmbient.GetInteger() == 2 ) {
+		return;
+	}
+
+	GL_DEBUG_GROUP( RenderInteractions_GL4, INTERACTION );
+
+	// perform setup here that will be constant for all interactions
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_NORMAL, VA_TANGENT, VA_BITANGENT, VA_COLOR } );
+	GL4Program interactionShader = openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE );
+	interactionShader.Activate();
+	interactionShader.SetViewProjectionMatrix( 0 );
+	openGL4Renderer.BindUBO( 0 );
+
+	InteractionDrawData drawData;
+
+	// sort simple surfaces first: they will be able to use the fast path
+	std::vector<const drawSurf_t*> allSurfaces;
+	std::vector<const drawSurf_t*> complexSurfaces;
+	for( const drawSurf_t * walk = surfList; walk != NULL; walk = walk->nextOnLight ) {
+		if( walk->material->GetFastPathBumpImage() ) {
+			allSurfaces.push_back( walk );
+		} else {
+			complexSurfaces.push_back( walk );
+		}
+	}
+	allSurfaces.insert( allSurfaces.end(), complexSurfaces.begin(), complexSurfaces.end() );
+
+	bool lightDepthBoundsDisabled = false;
+
+	for( int lightStageNum = 0; lightStageNum < lightShader->GetNumStages(); ++lightStageNum ) {
+		const shaderStage_t *lightStage = lightShader->GetStage( lightStageNum );
+
+		// ignore stages that fail the condition
+		if( !lightRegs[lightStage->conditionRegister] ) {
+			continue;
+		}
+
+		// backEnd.lightScale is calculated so that lightColor[] will never exceed tr.backEndRendererMaxLight
+		const idVec4 lightColor (
+			backEnd.lightScale * lightRegs[lightStage->color.registers[0]],
+			backEnd.lightScale * lightRegs[lightStage->color.registers[1]],
+			backEnd.lightScale * lightRegs[lightStage->color.registers[2]],
+			lightRegs[lightStage->color.registers[3]] );
+
+		if( lightStage->texture.hasMatrix ) {
+			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
+		}
+
+		GL_SelectTexture( TEX_LIGHT_FALLOFF );
+		vLight->falloffImage->Bind();
+		GL_SelectTexture( TEX_LIGHT_PROJECTION );
+		lightStage->texture.image->Bind();
+		GL_SelectTexture( CUBE_LIGHT_PROJECTION );
+		lightStage->texture.image->Bind();
+
+		// setup for the fast path first
+		drawData.diffuseColor = lightColor;
+		drawData.specularColor = lightColor * 2;
+		drawData.bumpMatrix[0] = drawData.diffuseMatrix[0] = drawData.specularMatrix[0] = idVec4( 1, 0, 0, 0 );
+		drawData.bumpMatrix[1] = drawData.diffuseMatrix[1] = drawData.specularMatrix[1] = idVec4( 0, 1, 0, 0 );
+		drawData.colorAdd = idVec4( 1, 1, 1, 1 );
+		drawData.colorModulate = idVec4( 0, 0, 0, 0 );
+		drawData.cubic.x = lightShader->IsCubicLight();
+
+		// even if the space does not change between light stages, each light stage may need a different lightTextureMatrix baked in
+		backEnd.currentSpace = NULL;
+
+		for( const drawSurf_t *surf : allSurfaces ) {
+			if( surf->dsFlags & DSF_SHADOW_MAP_ONLY )
+				continue;
+			// set the vertex pointers
+			openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( surf->backendGeo->ambientCache ) );
+
+			// turn off the light depth bounds test if this model is rendered with a depth hack
+			if( surf->space != backEnd.currentSpace && r_useDepthBoundsTest.GetBool() ) {
+				if( !surf->space->weaponDepthHack && surf->space->modelDepthHack == 0.0f ) {
+					if( lightDepthBoundsDisabled ) {
+						GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
+						lightDepthBoundsDisabled = false;
+					}
+				}
+				else {
+					if( !lightDepthBoundsDisabled ) {
+						GL_DepthBoundsTest( 0.0f, 0.0f );
+						lightDepthBoundsDisabled = true;
+					}
+				}
+			}
+
+			GL4_RenderSurfaceInteractions( surf, drawData, lightStage, lightColor );
+		}
+	}
+
+
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION } );
+
+	// disable features
+	if( r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem() || r_shadows.GetInteger() == 2 ) {
+		GL_SelectTexture( 6 );
+		globalImages->BindNull();
+		GL_SelectTexture( 7 );
+		globalImages->BindNull();
+	}
+
+	GL_SelectTexture( 4 );
+	globalImages->BindNull();
+
+	GL_SelectTexture( 3 );
+	globalImages->BindNull();
+
+	GL_SelectTexture( 2 );
+	globalImages->BindNull();
+
+	GL_SelectTexture( 1 );
+	globalImages->BindNull();
+
+	GL_SelectTexture( 0 );
+
+	qglUseProgram( 0 );
+	GL_CheckErrors();
+}
+
 void GL4_DrawLight_Stencil() {
 	GL_DEBUG_GROUP( GL4_DrawLight_Stencil, INTERACTION );
 
@@ -175,8 +571,44 @@ void GL4_DrawLight_Stencil() {
 	}
 
 	GL4_StencilShadowPass( backEnd.vLight->globalShadows );
-	RB_GLSL_CreateDrawInteractions( backEnd.vLight->localInteractions );
-
+	GL4_RenderInteractions( backEnd.vLight->localInteractions );
 	GL4_StencilShadowPass( backEnd.vLight->localShadows );
-	RB_GLSL_CreateDrawInteractions( backEnd.vLight->globalInteractions );
+	GL4_RenderInteractions( backEnd.vLight->globalInteractions );
+}
+
+void GL4_DrawInteractions() {
+	if( r_skipInteractions.GetBool() ) {
+		return;
+	}
+
+	GL_DEBUG_GROUP( DrawInteractions_GL4, INTERACTION );
+	GL_SelectTexture( 0 );
+	
+	// for each light, perform adding and shadowing
+	for( backEnd.vLight = backEnd.viewDef->viewLights; backEnd.vLight; backEnd.vLight = backEnd.vLight->next ) {
+		// do fogging later
+		if( backEnd.vLight->lightShader->IsFogLight() || backEnd.vLight->lightShader->IsBlendLight() )
+			continue;
+		// if there are no interactions, get out!
+		if( !backEnd.vLight->localInteractions && !backEnd.vLight->globalInteractions && !backEnd.vLight->translucentInteractions )
+			continue;
+
+		if( r_useDepthBoundsTest.GetBool() ) {
+			GL_DepthBoundsTest( backEnd.vLight->scissorRect.zmin, backEnd.vLight->scissorRect.zmax );
+		}
+
+		GL4_DrawLight_Stencil();
+
+		// translucent surfaces never get stencil shadowed
+		if( r_skipTranslucent.GetBool() )
+			continue;
+		qglStencilFunc( GL_ALWAYS, 128, 255 );
+		backEnd.depthFunc = GLS_DEPTHFUNC_LESS;
+		GL4_RenderInteractions( backEnd.vLight->translucentInteractions );
+		backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
+	}
+	// disable stencil shadow test
+	qglStencilFunc( GL_ALWAYS, 128, 255 );
+	GL_SelectTexture( 0 );
+
 }

@@ -24,3 +24,43 @@ idCVar r_useOpenGL4( "r_useOpenGL4", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHI
 extern bool afterFog;
 int RB_STD_DrawShaderPasses( drawSurf_t ** drawSurfs, int numDrawSurfs );
 // ----------------------------------------
+
+void GL4_DrawView( void ) {
+	drawSurf_t	 **drawSurfs;
+	int			numDrawSurfs, processed;
+
+	RB_LogComment( "---------- RB_STD_DrawView ----------\n" );
+
+	backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
+
+	drawSurfs = ( drawSurf_t ** )&backEnd.viewDef->drawSurfs[0];
+	numDrawSurfs = backEnd.viewDef->numDrawSurfs;
+
+	GL_DEBUG_GROUP( DrawView_GL4, RENDER );
+
+	// clear the z buffer, set the projection matrix, etc
+	RB_BeginDrawingView();
+
+	backEnd.lightScale = r_lightScale.GetFloat();
+	backEnd.overBright = 1.0f;
+
+	// fill the depth buffer and clear color buffer to black except on subviews
+	GL4_FillDepthBuffer( drawSurfs, numDrawSurfs );
+
+	GL4_DrawInteractions();
+
+	afterFog = false;
+	// now draw any non-light dependent shading passes
+	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
+
+	// fog and blend lights
+	RB_STD_FogAllLights();
+	afterFog = true;
+
+	// now draw any post-processing effects using _currentRender
+	if( processed < numDrawSurfs ) {
+		RB_STD_DrawShaderPasses( drawSurfs + processed, numDrawSurfs - processed );
+	}
+
+	RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+}

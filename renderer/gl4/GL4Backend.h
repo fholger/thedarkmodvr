@@ -30,5 +30,7 @@ struct DrawElementsIndirectCommand {
 
 void GL4_FillDepthBuffer( drawSurf_t ** drawSurfs, int numDrawSurfs );
 void GL4_DrawLight_Stencil();
+void GL4_DrawInteractions();
+void GL4_DrawView();
 
 #endif
