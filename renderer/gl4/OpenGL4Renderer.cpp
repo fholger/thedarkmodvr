@@ -69,7 +69,7 @@ void APIENTRY DebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum
 		sprintf( fileName, "opengl_messages_%.20llu.txt", currentTime );
 		file = fileSystem->OpenFileWrite( fileName, "fs_savepath", "" );
 	}
-	file->Printf( "CURRENT BOUND BUFFERS:\n" );
+	/*file->Printf( "CURRENT BOUND BUFFERS:\n" );
 	for( auto pair : boundBuffers ) {
 		file->Printf( "  %d - %d\n", pair.first, pair.second );
 	}
@@ -80,8 +80,8 @@ void APIENTRY DebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum
 	file->Printf( "\nCURRENT VERTEX ATTRIB BINDINGS: " );
 	for( auto pair : vertexAttribs ) {
 		file->Printf( "- %d: %d -", pair.first, pair.second );
-	}
-	file->Printf( "\n%s\n", message );
+	}*/
+	file->Printf( "%s\n", message );
 }
 
 
@@ -99,6 +99,32 @@ void OpenGL4Renderer::Init() {
 
 	initialized = true;
 	common->Printf( "Initializing OpenGL4 renderer backend ...\n" );
+#if 0 //OPENGL_DEBUG_CONTEXT == 1
+	qglEnable( GL_DEBUG_OUTPUT );
+	qglEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+	qglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_FALSE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageCallback( DebugMessageCallback, 0 );
+	/*originalBindBuffer = qglBindBufferARB;
+	originalBindVertexBuffer = qglBindVertexBuffer;
+	originalMapBuffer = qglMapBufferARB;
+	originalUnmapBuffer = qglUnmapBuffer;
+	originalMapBufferRange = qglMapBufferRange;
+	qglBindBufferARB = customBindBuffer;
+	qglBindVertexBuffer = customBindVertexBuffer;
+	qglMapBufferRange = customMapBufferRange;
+	qglMapBufferARB = customMapBuffer;
+	qglUnmapBuffer = customUnmapBuffer;
+	qglUnmapBufferARB = customUnmapBuffer;*/
+#endif
 
 	LoadShaders();
 
@@ -118,29 +144,6 @@ void OpenGL4Renderer::Init() {
 
 	common->Printf( "OpenGL4 renderer ready\n" );
 
-#if OPENGL_DEBUG_CONTEXT == 1
-	qglEnable( GL_DEBUG_OUTPUT );
-	qglEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
-	qglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_FALSE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
-	qglDebugMessageCallback( DebugMessageCallback, 0 );
-	/*originalBindBuffer = qglBindBufferARB;
-	originalBindVertexBuffer = qglBindVertexBuffer;
-	originalMapBuffer = qglMapBufferARB;
-	originalUnmapBuffer = qglUnmapBuffer;
-	originalMapBufferRange = qglMapBufferRange;
-	qglBindBufferARB = customBindBuffer;
-	qglBindVertexBuffer = customBindVertexBuffer;
-	qglMapBufferRange = customMapBufferRange;
-	qglMapBufferARB = customMapBuffer;
-	qglUnmapBuffer = customUnmapBuffer;
-	qglUnmapBufferARB = customUnmapBuffer;*/
-#endif
 }
 
 

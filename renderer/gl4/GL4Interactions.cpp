@@ -302,7 +302,10 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 	const float * surfaceRegs = surf->shaderRegisters;
 	const srfTriangles_t *tri = surf->backendGeo;
 	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+	//openGL4Renderer.PrepareVertexAttribs();
 	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
+	vertexCache.VertexPosition( tri->ambientCache );
+	qglVertexAttribPointer( VA_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof( idDrawVert ), ( void* )offsetof( idDrawVert, tangents ) );
 
 	if( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;
@@ -464,7 +467,7 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
 	openGL4Renderer.PrepareVertexAttribs();
 	openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_NORMAL, VA_TANGENT, VA_BITANGENT, VA_COLOR } );
-
+	
 	InteractionDrawData drawData;
 
 	// sort simple surfaces first: they will be able to use the fast path
