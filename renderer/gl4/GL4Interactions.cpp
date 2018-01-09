@@ -442,10 +442,6 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	if( lightShader->IsAmbientLight() )
 		return;
 
-	// TODO: not supported yet
-	if( lightShader->IsCubicLight() )
-		return;
-
 	if( lightShader->IsAmbientLight() && r_skipAmbient.GetInteger() == 2 ) {
 		return;
 	}

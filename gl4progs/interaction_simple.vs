@@ -3,7 +3,7 @@
 layout (location = 0) in vec4 Position;
 layout (location = 1) in vec4 TexCoord;   
 layout (location = 2) in vec3 Normal;   
-layout (location = 3) in vec3 Tangent2;
+layout (location = 3) in vec3 Tangent;
 layout (location = 4) in vec3 Bitangent;   
 layout (location = 5) in vec4 Color;
 
@@ -68,8 +68,7 @@ void main( void ) {
 	out_uvLight.w = dot( lightProjectionQ, Position );   
 	
 	// construct tangent-bitangent-normal 3x3 matrix   
-    vec3 Tangent = cross(Bitangent, Normal);
-	out_tangentSpace = mat3( clamp(Tangent2,-1,1), clamp(Bitangent,-1,1), clamp(Normal,-1,1) );
+	out_tangentSpace = mat3( clamp(Tangent,-1,1), clamp(Bitangent,-1,1), clamp(Normal,-1,1) );
  
 	// primary color  
 	out_color = (Color * colorModulate) + colorAdd;
