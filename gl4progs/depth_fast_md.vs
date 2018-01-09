@@ -7,11 +7,9 @@ layout (location = 15) in int drawId;
 
 layout (std140, binding = 0) buffer CB0
 {
-    mat4 modelViewMatrix[];
+    mat4 mvpMatrix[];
 };
 
-layout (location = 0) uniform mat4 projectionMatrix;
-
 void main() {
-	gl_Position = projectionMatrix * modelViewMatrix[drawId] * position;
+	gl_Position = mvpMatrix[drawId] * position;
 }

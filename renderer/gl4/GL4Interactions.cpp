@@ -32,7 +32,7 @@ enum InteractionTextures {
 };
 
 struct StencilDrawData {
-	float  modelMatrix[16];
+	float  mvpMatrix[16];
 	idVec4 lightOrigin;
 };
 
@@ -102,7 +102,7 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 		if( isExt != external )
 			continue;
 
-		memcpy( drawData[count].modelMatrix, drawSurf->space->modelMatrix, sizeof( drawData[0].modelMatrix ) );
+		myGlMultMatrix( drawSurf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData[count].mvpMatrix );
 		R_GlobalPointToLocal( drawSurf->space->modelMatrix, backEnd.vLight->globalLightOrigin, drawData[count].lightOrigin.ToVec3() );
 		drawData[count].lightOrigin.w = 0.0f;
 
@@ -146,9 +146,10 @@ void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {
 		qglDepthBoundsEXT( backEnd.vLight->scissorRect.zmin, backEnd.vLight->scissorRect.zmax );
 	}
 
-	float viewProjectionMatrix[16];
+	/*float viewProjectionMatrix[16];
 	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProjectionMatrix );
-	stencilShader.SetUniformMatrix4( 0, viewProjectionMatrix );
+	stencilShader.SetUniformMatrix4( 0, viewProjectionMatrix );*/
+	//stencilShader.SetViewProjectionMatrix( 0 );
 
 	// currently shadows are all in frame temporary buffers
 	openGL4Renderer.EnableVertexAttribs( { VA_SHADOWPOS, VA_DRAWID } );
@@ -323,6 +324,8 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 
 		// copy model matrix
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
+		//memcpy( drawData.modelMatrix, surf->space->modelViewMatrix, sizeof( drawData.modelMatrix ) );
+		openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE ).SetModelViewProjectionMatrix( 0, surf->space );
 	}
 
 	// check for the fast path
@@ -445,6 +448,7 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	}
 
 	GL_SelectTexture( 0 );
+	qglBindTexture( GL_TEXTURE_CUBE_MAP, 0 );
 	globalImages->BindNull();
 	qglDisable( GL_TEXTURE_CUBE_MAP );
 
@@ -453,7 +457,9 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	// perform setup here that will be constant for all interactions
 	GL4Program interactionShader = openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE );
 	interactionShader.Activate();
-	interactionShader.SetViewProjectionMatrix( 0 );
+	//interactionShader.SetViewProjectionMatrix( 0 );
+	//interactionShader.SetProjectionMatrix( 0 );
+	//interactionShader.SetViewMatrix( 1 );
 	openGL4Renderer.BindUBO( 0 );
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
 	openGL4Renderer.PrepareVertexAttribs();

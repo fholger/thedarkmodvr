@@ -19,11 +19,11 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "OpenGL4Renderer.h"
 
 struct DepthFastDrawData {
-	float modelViewMatrix[16];
+	float mvpMatrix[16];
 };
 
 struct DepthGenericDrawData {
-	float modelViewMatrix[16];
+	float mvpMatrix[16];
 	float textureMatrix[16];
 	idPlane clipPlane;
 	idVec4 color;
@@ -50,7 +50,7 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	DepthFastDrawData *drawData = ( DepthFastDrawData* )openGL4Renderer.ReserveSSBO( ssboSize );
 
 	for( int i = 0; i < numDrawSurfs; ++i ) {
-		memcpy( drawData[i].modelViewMatrix, drawSurfs[i]->space->modelViewMatrix, sizeof( drawData[0].modelViewMatrix ) );
+		myGlMultMatrix( drawSurfs[i]->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData[i].mvpMatrix );
 		const srfTriangles_t *tri = drawSurfs[i]->backendGeo;
 		commands[i].count = tri->numIndexes;
 		commands[i].instanceCount = 1;
@@ -76,7 +76,6 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 	GL4Program depthShader = openGL4Renderer.GetShader( SHADER_DEPTH_GENERIC );
 	depthShader.Activate();
-	depthShader.SetProjectionMatrix( SU_LOC_PROJ_MATRIX );
 
 	DepthGenericDrawData drawData;
 	memcpy( drawData.textureMatrix, mat4_identity.ToFloatPtr(), sizeof( drawData.textureMatrix ) );
@@ -115,7 +114,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 		if( surf->space != backEnd.currentSpace ) {
 			backEnd.currentSpace = surf->space;
-			memcpy( drawData.modelViewMatrix, surf->space->modelViewMatrix, sizeof( drawData.modelViewMatrix ) );
+			myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
 		}
 
 		// set polygon offset if necessary

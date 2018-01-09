@@ -16,6 +16,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #define __GL4_PROGRAM_H__
 
 #include "../qgl.h"
+#include "../tr_local.h"
 
 class GL4Program {
 public:
@@ -31,7 +32,7 @@ public:
 	void SetUniformMatrix4( GLint location, const GLfloat *matrix );
 	void SetProjectionMatrix( GLint location );
 	void SetViewMatrix( GLint location );
-	void SetViewProjectionMatrix( GLint location );
+	void SetModelViewProjectionMatrix( GLint location, const viewEntity_t *entity );
 
 	GL4Program();
 private:

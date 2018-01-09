@@ -129,7 +129,7 @@ void OpenGL4Renderer::Init() {
 	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
 	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
 	qglDebugMessageCallback( DebugMessageCallback, 0 );
-	originalBindBuffer = qglBindBufferARB;
+	/*originalBindBuffer = qglBindBufferARB;
 	originalBindVertexBuffer = qglBindVertexBuffer;
 	originalMapBuffer = qglMapBufferARB;
 	originalUnmapBuffer = qglUnmapBuffer;
@@ -139,7 +139,7 @@ void OpenGL4Renderer::Init() {
 	qglMapBufferRange = customMapBufferRange;
 	qglMapBufferARB = customMapBuffer;
 	qglUnmapBuffer = customUnmapBuffer;
-	qglUnmapBufferARB = customUnmapBuffer;
+	qglUnmapBufferARB = customUnmapBuffer;*/
 #endif
 }
 
