@@ -63,6 +63,8 @@ PFNWGLBINDTEXIMAGEARBPROC		wglBindTexImageARB;
 PFNWGLRELEASETEXIMAGEARBPROC	wglReleaseTexImageARB;
 PFNWGLSETPBUFFERATTRIBARBPROC	wglSetPbufferAttribARB;
 
+PFNWGLCREATECONTEXTATTRIBSARBPROC wglCreateContextAttribsARB;
+
 
 //
 // function declaration
@@ -237,6 +239,8 @@ void GLW_CheckWGLExtensions( HDC hDC ) {
 	wglReleaseTexImageARB = (PFNWGLRELEASETEXIMAGEARBPROC)GLimp_ExtensionPointer("wglReleaseTexImageARB");
 	wglSetPbufferAttribARB = (PFNWGLSETPBUFFERATTRIBARBPROC)GLimp_ExtensionPointer("wglSetPbufferAttribARB");
 
+	wglCreateContextAttribsARB = ( PFNWGLCREATECONTEXTATTRIBSARBPROC )GLimp_ExtensionPointer( "wglCreateContextAttribsARB" );
+
 	qglGetIntegerv( GL_MAX_SAMPLES, (GLint *)&glConfig.maxSamples );
 }
 
@@ -396,13 +400,22 @@ static bool GLW_InitDriver( glimpParms_t parms ) {
 	}
 
 	// startup the OpenGL subsystem by creating a context and making it current
-	common->Printf( "...creating GL context: " );
-	if ( ( win32.hGLRC = qwglCreateContext( win32.hDC ) ) == 0 ) {
+#if OPENGL_DEBUG_CONTEXT == 1
+	common->Printf( "...creating GL debug context: " );
+	int attribs[] = { WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB, 0 };
+	if ( ( win32.hGLRC = wglCreateContextAttribsARB( win32.hDC, 0, attribs ) ) == 0 ) {
 		common->Printf( S_COLOR_YELLOW "failed\n" S_COLOR_DEFAULT );
 		return false;
 	}
 	common->Printf( "succeeded\n" );
-
+#else
+	common->Printf( "...creating GL context: " );
+	if( ( win32.hGLRC = qwglCreateContext( win32.hDC ) ) == 0 ) {
+		common->Printf( S_COLOR_YELLOW "failed\n" S_COLOR_DEFAULT );
+		return false;
+	}
+	common->Printf( "succeeded\n" );
+#endif
 	common->Printf( "...making context current: " );
 	if ( !qwglMakeCurrent( win32.hDC, win32.hGLRC ) ) {
 		qwglDeleteContext( win32.hGLRC );

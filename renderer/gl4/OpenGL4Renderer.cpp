@@ -24,6 +24,66 @@ const int MAX_ELEMENT_SIZE = 256;
 const int BUFFER_FACTOR = 3;
 const int UBO_BUFFER_SIZE = 64 * 1024;
 
+std::map<GLenum, GLuint> boundBuffers;
+std::map<GLuint, GLuint> vertexAttribs;
+std::set<GLuint> mappedBuffers;
+
+PFNGLMAPBUFFERARBPROC originalMapBuffer;
+PFNGLMAPBUFFERRANGEPROC originalMapBufferRange;
+PFNGLBINDBUFFERARBPROC originalBindBuffer;
+PFNGLUNMAPBUFFERARBPROC originalUnmapBuffer;
+PFNGLBINDVERTEXBUFFERPROC originalBindVertexBuffer;
+
+static void APIENTRY customBindBuffer(GLenum target, GLuint buffer)
+{
+	boundBuffers[target] = buffer;
+	originalBindBuffer( target, buffer );
+}
+
+static void * APIENTRY customMapBuffer(GLenum target, GLenum access) {
+	mappedBuffers.insert( boundBuffers[target] );
+	return originalMapBuffer( target, access );
+}
+
+static void * APIENTRY customMapBufferRange(GLenum target, GLintptr offset, GLsizeiptr length, GLbitfield access) {
+	mappedBuffers.insert( boundBuffers[target] );
+	return originalMapBufferRange( target, offset, length, access );
+}
+
+static GLboolean APIENTRY customUnmapBuffer(GLenum target) {
+	mappedBuffers.erase( boundBuffers[target] );
+	return originalUnmapBuffer( target );
+}
+
+static void APIENTRY customBindVertexBuffer( GLuint bindingindex, GLuint buffer, GLintptr offset, GLintptr stride ) {
+	vertexAttribs[bindingindex] = buffer;
+	originalBindVertexBuffer( bindingindex, buffer, offset, stride );
+}
+
+void APIENTRY DebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) {
+	//common->Printf( "OpenGL message: %s\n", message );
+	static idFile *file = nullptr;
+	if( !file ) {
+		idStr fileName;
+		uint64_t currentTime = Sys_GetTimeMicroseconds();
+		sprintf( fileName, "opengl_messages_%.20llu.txt", currentTime );
+		file = fileSystem->OpenFileWrite( fileName, "fs_savepath", "" );
+	}
+	file->Printf( "CURRENT BOUND BUFFERS:\n" );
+	for( auto pair : boundBuffers ) {
+		file->Printf( "  %d - %d\n", pair.first, pair.second );
+	}
+	file->Printf( "CURRENT MAPPED BUFFERS: " );
+	for( auto val : mappedBuffers ) {
+		file->Printf( "%d ", val );
+	}
+	file->Printf( "\nCURRENT VERTEX ATTRIB BINDINGS: " );
+	for( auto pair : vertexAttribs ) {
+		file->Printf( "- %d: %d -", pair.first, pair.second );
+	}
+	file->Printf( "\n%s\n", message );
+}
+
 
 OpenGL4Renderer::OpenGL4Renderer() : initialized( false ), drawIdBuffer( 0 ), commandBuffer( nullptr ), enabledVertexAttribs( 0 ) {}
 
@@ -57,11 +117,40 @@ void OpenGL4Renderer::Init() {
 	commandBuffer = ( DrawElementsIndirectCommand * )Mem_Alloc16( sizeof( DrawElementsIndirectCommand ) * MAX_MULTIDRAW_COMMANDS );
 
 	common->Printf( "OpenGL4 renderer ready\n" );
+
+#if OPENGL_DEBUG_CONTEXT == 1
+	qglEnable( GL_DEBUG_OUTPUT );
+	qglEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+	qglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_FALSE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageCallback( DebugMessageCallback, 0 );
+	originalBindBuffer = qglBindBufferARB;
+	originalBindVertexBuffer = qglBindVertexBuffer;
+	originalMapBuffer = qglMapBufferARB;
+	originalUnmapBuffer = qglUnmapBuffer;
+	originalMapBufferRange = qglMapBufferRange;
+	qglBindBufferARB = customBindBuffer;
+	qglBindVertexBuffer = customBindVertexBuffer;
+	qglMapBufferRange = customMapBufferRange;
+	qglMapBufferARB = customMapBuffer;
+	qglUnmapBuffer = customUnmapBuffer;
+	qglUnmapBufferARB = customUnmapBuffer;
+#endif
 }
 
 
 void OpenGL4Renderer::Shutdown() {
 	common->Printf( "Shutting down OpenGL4 renderer backend.\n" );
+
+#if OPENGL_DEBUG_CONTEXT == 1
+	qglDisable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
+	qglDisable( GL_DEBUG_OUTPUT );
+#endif
 
 	DestroyShaders();
 

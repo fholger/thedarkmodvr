@@ -241,6 +241,9 @@ static void GL4_DrawSingleInteraction( InteractionDrawData &drawData, drawIntera
 
 	const srfTriangles_t *tri = din->surf->backendGeo;
 	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
+	openGL4Renderer.BindUBO( 0 );
+	openGL4Renderer.BindSSBO( 1, 128 );
 	openGL4Renderer.UpdateUBO( &drawData, sizeof( drawData ) );
 	qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
 }
@@ -298,6 +301,7 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 	const float * surfaceRegs = surf->shaderRegisters;
 	const srfTriangles_t *tri = surf->backendGeo;
 	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
 
 	if( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;
@@ -428,19 +432,32 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	const idMaterial * lightShader = vLight->lightShader;
 	const float * lightRegs = vLight->shaderRegisters;
 
+	// TODO: ambient interactions not implemented in shader yet
+	if( lightShader->IsAmbientLight() )
+		return;
+
+	// TODO: not supported yet
+	if( lightShader->IsCubicLight() )
+		return;
+
 	if( lightShader->IsAmbientLight() && r_skipAmbient.GetInteger() == 2 ) {
 		return;
 	}
 
+	GL_SelectTexture( 0 );
+	globalImages->BindNull();
+	qglDisable( GL_TEXTURE_CUBE_MAP );
+
 	GL_DEBUG_GROUP( RenderInteractions_GL4, INTERACTION );
 
 	// perform setup here that will be constant for all interactions
-	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
-	openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_NORMAL, VA_TANGENT, VA_BITANGENT, VA_COLOR } );
 	GL4Program interactionShader = openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE );
 	interactionShader.Activate();
 	interactionShader.SetViewProjectionMatrix( 0 );
 	openGL4Renderer.BindUBO( 0 );
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
+	openGL4Renderer.PrepareVertexAttribs();
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_NORMAL, VA_TANGENT, VA_BITANGENT, VA_COLOR } );
 
 	InteractionDrawData drawData;
 
@@ -476,13 +493,18 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 		if( lightStage->texture.hasMatrix ) {
 			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
 		}
-
-		GL_SelectTexture( TEX_LIGHT_FALLOFF );
-		vLight->falloffImage->Bind();
-		GL_SelectTexture( TEX_LIGHT_PROJECTION );
-		lightStage->texture.image->Bind();
-		GL_SelectTexture( CUBE_LIGHT_PROJECTION );
-		lightStage->texture.image->Bind();
+		
+		if( vLight->lightShader->IsCubicLight() ) {
+			GL_SelectTexture( TEX_LIGHT_FALLOFF );
+			globalImages->BindNull();
+			GL_SelectTexture( CUBE_LIGHT_PROJECTION );
+			lightStage->texture.image->Bind();
+		} else {
+			GL_SelectTexture( TEX_LIGHT_FALLOFF );
+			vLight->falloffImage->Bind();
+			GL_SelectTexture( TEX_LIGHT_PROJECTION );
+			lightStage->texture.image->Bind();
+		}
 
 		// setup for the fast path first
 		drawData.diffuseColor = lightColor;
@@ -546,6 +568,7 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	globalImages->BindNull();
 
 	GL_SelectTexture( 0 );
+	globalImages->BindNull();
 
 	qglUseProgram( 0 );
 	GL_CheckErrors();
@@ -583,6 +606,7 @@ void GL4_DrawInteractions() {
 
 	GL_DEBUG_GROUP( DrawInteractions_GL4, INTERACTION );
 	GL_SelectTexture( 0 );
+	globalImages->BindNull();
 	
 	// for each light, perform adding and shadowing
 	for( backEnd.vLight = backEnd.viewDef->viewLights; backEnd.vLight; backEnd.vLight = backEnd.vLight->next ) {
@@ -607,8 +631,19 @@ void GL4_DrawInteractions() {
 		GL4_RenderInteractions( backEnd.vLight->translucentInteractions );
 		backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
 	}
+	if( r_useDepthBoundsTest.GetBool() ) {
+		GL_DepthBoundsTest( 0, 0 );
+	}
 	// disable stencil shadow test
 	qglStencilFunc( GL_ALWAYS, 128, 255 );
+	for( int i = 0; i < 7; ++i ) {
+		GL_SelectTexture( i );
+		globalImages->BindNull();
+	}
 	GL_SelectTexture( 0 );
+	qglDisable( GL_VERTEX_PROGRAM_ARB );
+	qglDisable( GL_FRAGMENT_PROGRAM_ARB );
 
+	for( int i = 0; i < 16; ++i )
+		qglDisableVertexAttribArray( i );
 }

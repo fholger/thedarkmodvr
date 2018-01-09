@@ -49,18 +49,19 @@ void GL4_DrawView( void ) {
 
 	GL4_DrawInteractions();
 
-	afterFog = false;
 	// now draw any non-light dependent shading passes
-	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
+	//processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
 
+	/*
 	// fog and blend lights
 	RB_STD_FogAllLights();
 	afterFog = true;
 
 	// now draw any post-processing effects using _currentRender
 	if( processed < numDrawSurfs ) {
-		RB_STD_DrawShaderPasses( drawSurfs + processed, numDrawSurfs - processed );
+		GL4_DrawShaderPasses( drawSurfs + processed, numDrawSurfs - processed, true );
 	}
 
 	RB_RenderDebugTools( drawSurfs, numDrawSurfs );
+	*/
 }

@@ -31,6 +31,8 @@ Global
 		Debug|x64 = Debug|x64
 		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
+		RelWithDeb|Win32 = RelWithDeb|Win32
+		RelWithDeb|x64 = RelWithDeb|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{49BEC5C6-B964-417A-851E-808886B57400}.Debug with inlines and memory log|Win32.ActiveCfg = Debug with inlines and memory log|Win32
@@ -49,6 +51,10 @@ Global
 		{49BEC5C6-B964-417A-851E-808886B57400}.Release|Win32.Build.0 = Release|Win32
 		{49BEC5C6-B964-417A-851E-808886B57400}.Release|x64.ActiveCfg = Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57400}.Release|x64.Build.0 = Release|x64
+		{49BEC5C6-B964-417A-851E-808886B57400}.RelWithDeb|Win32.ActiveCfg = RelWithDeb|Win32
+		{49BEC5C6-B964-417A-851E-808886B57400}.RelWithDeb|Win32.Build.0 = RelWithDeb|Win32
+		{49BEC5C6-B964-417A-851E-808886B57400}.RelWithDeb|x64.ActiveCfg = RelWithDeb|x64
+		{49BEC5C6-B964-417A-851E-808886B57400}.RelWithDeb|x64.Build.0 = RelWithDeb|x64
 		{6EA6406F-3E65-47D9-8246-D6660A81606F}.Debug with inlines and memory log|Win32.ActiveCfg = Debug|Win32
 		{6EA6406F-3E65-47D9-8246-D6660A81606F}.Debug with inlines and memory log|x64.ActiveCfg = Debug|x64
 		{6EA6406F-3E65-47D9-8246-D6660A81606F}.Debug with inlines|Win32.ActiveCfg = Debug|Win32
@@ -63,6 +69,10 @@ Global
 		{6EA6406F-3E65-47D9-8246-D6660A81606F}.Release|Win32.Build.0 = Release|Win32
 		{6EA6406F-3E65-47D9-8246-D6660A81606F}.Release|x64.ActiveCfg = Release|x64
 		{6EA6406F-3E65-47D9-8246-D6660A81606F}.Release|x64.Build.0 = Release|x64
+		{6EA6406F-3E65-47D9-8246-D6660A81606F}.RelWithDeb|Win32.ActiveCfg = RelWithDeb|Win32
+		{6EA6406F-3E65-47D9-8246-D6660A81606F}.RelWithDeb|Win32.Build.0 = RelWithDeb|Win32
+		{6EA6406F-3E65-47D9-8246-D6660A81606F}.RelWithDeb|x64.ActiveCfg = RelWithDeb|x64
+		{6EA6406F-3E65-47D9-8246-D6660A81606F}.RelWithDeb|x64.Build.0 = RelWithDeb|x64
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Debug with inlines and memory log|Win32.ActiveCfg = Debug|Win32
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Debug with inlines and memory log|Win32.Build.0 = Debug|Win32
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Debug with inlines and memory log|x64.ActiveCfg = Debug|x64
@@ -75,6 +85,10 @@ Global
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Release|Win32.ActiveCfg = Release|Win32
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Release|Win32.Build.0 = Release|Win32
 		{49BEC5C6-B964-417A-851E-808886B574F1}.Release|x64.ActiveCfg = Release|x64
+		{49BEC5C6-B964-417A-851E-808886B574F1}.RelWithDeb|Win32.ActiveCfg = RelWithDeb|Win32
+		{49BEC5C6-B964-417A-851E-808886B574F1}.RelWithDeb|Win32.Build.0 = RelWithDeb|Win32
+		{49BEC5C6-B964-417A-851E-808886B574F1}.RelWithDeb|x64.ActiveCfg = RelWithDeb|x64
+		{49BEC5C6-B964-417A-851E-808886B574F1}.RelWithDeb|x64.Build.0 = RelWithDeb|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Debug with inlines and memory log|Win32.ActiveCfg = Debug with inlines and memory log|Win32
 		{49BEC5C6-B964-417A-851E-808886B57420}.Debug with inlines and memory log|Win32.Build.0 = Debug with inlines and memory log|Win32
 		{49BEC5C6-B964-417A-851E-808886B57420}.Debug with inlines and memory log|x64.ActiveCfg = Debug with inlines and memory log|x64
@@ -91,6 +105,10 @@ Global
 		{49BEC5C6-B964-417A-851E-808886B57420}.Release|Win32.Build.0 = Release|Win32
 		{49BEC5C6-B964-417A-851E-808886B57420}.Release|x64.ActiveCfg = Release|x64
 		{49BEC5C6-B964-417A-851E-808886B57420}.Release|x64.Build.0 = Release|x64
+		{49BEC5C6-B964-417A-851E-808886B57420}.RelWithDeb|Win32.ActiveCfg = RelWithDeb|Win32
+		{49BEC5C6-B964-417A-851E-808886B57420}.RelWithDeb|Win32.Build.0 = RelWithDeb|Win32
+		{49BEC5C6-B964-417A-851E-808886B57420}.RelWithDeb|x64.ActiveCfg = RelWithDeb|x64
+		{49BEC5C6-B964-417A-851E-808886B57420}.RelWithDeb|x64.Build.0 = RelWithDeb|x64
 		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.Debug with inlines and memory log|Win32.ActiveCfg = Debug|Win32
 		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.Debug with inlines and memory log|Win32.Build.0 = Debug|Win32
 		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.Debug with inlines and memory log|x64.ActiveCfg = Debug|x64
@@ -107,6 +125,10 @@ Global
 		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.Release|Win32.Build.0 = Release|Win32
 		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.Release|x64.ActiveCfg = Release|x64
 		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.Release|x64.Build.0 = Release|x64
+		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.RelWithDeb|Win32.ActiveCfg = RelWithDeb|Win32
+		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.RelWithDeb|Win32.Build.0 = RelWithDeb|Win32
+		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.RelWithDeb|x64.ActiveCfg = RelWithDeb|x64
+		{5F1A77C3-F94D-4C5F-B14B-03202CDFC317}.RelWithDeb|x64.Build.0 = RelWithDeb|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

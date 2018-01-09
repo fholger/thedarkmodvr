@@ -428,6 +428,9 @@ PFNGLPROGRAMUNIFORMMATRIX4FVPROC			qglProgramUniformMatrix4fv;
 PFNGLVERTEXATTRIBFORMATPROC					qglVertexAttribFormat;
 PFNGLVERTEXATTRIBBINDINGPROC				qglVertexAttribBinding;
 PFNGLBINDVERTEXBUFFERPROC					qglBindVertexBuffer;
+PFNGLDEBUGMESSAGECALLBACKPROC				qglDebugMessageCallback;
+PFNGLDEBUGMESSAGECONTROLPROC				qglDebugMessageControl;
+PFNGLOBJECTLABELPROC						qglObjectLabel;
 
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
@@ -710,6 +713,9 @@ static void R_CheckPortableExtensions( void ) {
 		qglVertexAttribFormat = ( PFNGLVERTEXATTRIBFORMATPROC )GLimp_ExtensionPointer( "glVertexAttribFormat" );
 		qglVertexAttribBinding = ( PFNGLVERTEXATTRIBBINDINGPROC )GLimp_ExtensionPointer( "glVertexAttribBinding" );
 		qglBindVertexBuffer = ( PFNGLBINDVERTEXBUFFERPROC )GLimp_ExtensionPointer( "glBindVertexBuffer" );
+		qglDebugMessageCallback = ( PFNGLDEBUGMESSAGECALLBACKPROC )GLimp_ExtensionPointer( "glDebugMessageCallback" );
+		qglDebugMessageControl = ( PFNGLDEBUGMESSAGECONTROLPROC )GLimp_ExtensionPointer( "glDebugMessageControl" );
+		qglObjectLabel = ( PFNGLOBJECTLABELPROC )GLimp_ExtensionPointer( "glObjectLabel" );
 	}
 
 	int n;

@@ -337,9 +337,9 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	depthShaderMD.Activate();
 	depthShaderMD.SetProjectionMatrix( SU_LOC_PROJ_MATRIX );
 
-	GL4_MultiDrawDepth( &staticVertexStaticIndex[0], staticVertexStaticIndex.size(), true, true );
-	GL4_MultiDrawDepth( &staticVertexFrameIndex[0], staticVertexFrameIndex.size(), true, false );
-	GL4_MultiDrawDepth( &frameVertexFrameIndex[0], frameVertexFrameIndex.size(), false, false );
+	GL4_MultiDrawDepth( staticVertexStaticIndex.data(), staticVertexStaticIndex.size(), true, true );
+	GL4_MultiDrawDepth( staticVertexFrameIndex.data(), staticVertexFrameIndex.size(), true, false );
+	GL4_MultiDrawDepth( frameVertexFrameIndex.data(), frameVertexFrameIndex.size(), false, false );
 	
 	// draw all remaining surfaces with the general code path
 	if( !remainingSurfaces.empty() ) {

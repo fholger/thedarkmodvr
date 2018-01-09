@@ -248,6 +248,9 @@ extern PFNGLPROGRAMUNIFORMMATRIX4FVPROC		qglProgramUniformMatrix4fv;
 extern PFNGLVERTEXATTRIBFORMATPROC			qglVertexAttribFormat;
 extern PFNGLVERTEXATTRIBBINDINGPROC			qglVertexAttribBinding;
 extern PFNGLBINDVERTEXBUFFERPROC			qglBindVertexBuffer;
+extern PFNGLDEBUGMESSAGECALLBACKPROC		qglDebugMessageCallback;
+extern PFNGLDEBUGMESSAGECONTROLPROC			qglDebugMessageControl;
+extern PFNGLOBJECTLABELPROC					qglObjectLabel;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

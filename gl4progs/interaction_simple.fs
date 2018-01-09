@@ -18,7 +18,7 @@ layout (location = 13) in float cubic;
 layout (binding = 0) uniform sampler2D texNormal;
 layout (binding = 1) uniform sampler2D texLightFalloff;         
 layout (binding = 2) uniform sampler2D texLightProjection;         
-layout (binding = 3) uniform samplerCube cubeTexLightProjection;
+//layout (binding = 3) uniform samplerCube cubeTexLightProjection;
 layout (binding = 4) uniform sampler2D texDiffuse;         
 layout (binding = 5) uniform sampler2D texSpecular;        
          
@@ -27,12 +27,12 @@ layout (location = 0) out vec4 fragColor;
 vec3 lightColor() {
 	// compute light projection and falloff 
 	vec3 lightColor;
-	if (cubic == 1.0) {
+	/*if (cubic == 1.0) {
 		vec3 cubeTC = uvLight.xyz * 2.0 - 1.0;
 		lightColor = texture(cubeTexLightProjection, cubeTC).rgb;
 		float att = clamp(1.0-length(cubeTC), 0.0, 1.0);
 		lightColor *= att*att;
-	} else {
+	} else*/ {
 		vec3 lightProjection = texture2DProj( texLightProjection, uvLight.xyw ).rgb; 
 		vec3 lightFalloff = texture2D( texLightFalloff, vec2( uvLight.z, 0.5 ) ).rgb;
 		lightColor = lightProjection * lightFalloff;

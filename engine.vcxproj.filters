@@ -2935,6 +2935,9 @@
     <ClCompile Include="renderer\gl4\GL4Interactions.cpp">
       <Filter>Renderer\GL4</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4ShaderPasses.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="sys\win32\rc\res\BEVEL.BMP">
