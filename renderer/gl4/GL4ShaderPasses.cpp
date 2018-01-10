@@ -17,10 +17,211 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GLDebugGroup.h"
 #include "OpenGL4Renderer.h"
 #include "../FrameBuffer.h"
+#include "../glsl.h"
+
+struct ShaderPassDrawData {
+	float modelMatrix[16];
+	float mvpMatrix[16];
+	idVec4 localEyePos;
+	idVec4 colorAdd;
+	idVec4 colorMul;
+};
+
+void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * surf, ShaderPassDrawData &drawData) {
+	// set the color
+	idVec4 color;
+	const float	*regs = surf->shaderRegisters;
+	color[0] = regs[pStage->color.registers[0]];
+	color[1] = regs[pStage->color.registers[1]];
+	color[2] = regs[pStage->color.registers[2]];
+	color[3] = regs[pStage->color.registers[3]];
+
+	// skip the entire stage if an add would be black
+	if( ( pStage->drawStateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE )
+		&& color[0] <= 0 && color[1] <= 0 && color[2] <= 0 ) {
+		return;
+	}
+
+	// skip the entire stage if a blend would be completely transparent
+	if( ( pStage->drawStateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA )
+		&& color[3] <= 0 ) {
+		return;
+	}
+
+	const idVec4 zero ( r_ambient_testadd.GetFloat(), r_ambient_testadd.GetFloat(), r_ambient_testadd.GetFloat(), 0 );
+	const idVec4 one ( 1, 1, 1, 1 );
+	const idVec4 negOne ( -color[0], -color[1], -color[2], -1 );
+
+	switch( pStage->texture.texgen ) {
+	case TG_SKYBOX_CUBE: case TG_WOBBLESKY_CUBE:
+		// TODO: not implemented
+		/*qglEnableVertexAttribArray( 8 );
+		qglVertexAttribPointer( 8, 3, GL_FLOAT, false, 0, vertexCache.VertexPosition( surf->dynamicTexCoords ) );
+		cubeMapShader.Use();*/
+		break;
+	case TG_REFLECT_CUBE:
+		//qglColor4fv(color);
+		break;
+	case TG_SCREEN:
+		//qglColor4fv( color );
+	default:
+		openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD } );
+		oldStageShader.Use();
+		switch( pStage->vertexColor ) {
+		case SVC_IGNORE:
+			drawData.colorMul = zero;
+			drawData.colorAdd = color;
+			break;
+		case SVC_MODULATE:
+			// select the vertex color source
+			openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_COLOR } );
+			drawData.colorMul = color;
+			drawData.colorAdd = zero;
+			break;
+		case SVC_INVERSE_MODULATE:
+			// select the vertex color source
+			openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_COLOR } );
+			drawData.colorMul = negOne;
+			drawData.colorAdd = color;
+			break;
+		}
+	}
+
+	RB_PrepareStageTexturing( pStage, surf, ac );
+
+	// bind the texture
+	RB_BindVariableStageImage( &pStage->texture, regs );
+
+	// set the state
+	GL_State( pStage->drawStateBits );
+
+	const srfTriangles_t	*tri = surf->backendGeo;
+	// draw it
+	RB_DrawElementsWithCounters( tri );
+
+	RB_FinishStageTexturing( pStage, surf, ac );
+
+	switch( pStage->texture.texgen ) {
+	case TG_REFLECT_CUBE:
+		break;
+	case TG_SKYBOX_CUBE: case TG_WOBBLESKY_CUBE:
+	case TG_SCREEN:
+	default:
+		qglDisableVertexAttribArray( 8 );
+		qglUseProgram( 0 );
+		switch( pStage->vertexColor ) {
+		case SVC_MODULATE:
+		case SVC_INVERSE_MODULATE:
+			qglDisableVertexAttribArray( 3 );
+		}
+	}
+
+}
+
+void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
+
+	const srfTriangles_t *tri = surf->backendGeo;
+	const idMaterial *shader = surf->material;
+
+	if( !shader->HasAmbient() )
+		return;
+
+	if( shader->IsPortalSky() )  // NB TDM portal sky does not use this flag or whatever mechanism 
+		return;					   // it used to support. Our portalSky is drawn in this procedure using
+	// the skybox image captured in _currentRender. -- SteveL working on #4182
+
+	if( surf->material->GetSort() == SS_PORTAL_SKY && g_enablePortalSky.GetInteger() == 2 )
+		return;
+
+	GL_DEBUG_GROUP( RenderShaderPasses_GL4, SHADER_PASS );
+
+	// calculate MVP matrix
+	if( surf->space != backEnd.currentSpace ) {
+		backEnd.currentSpace = surf->space;
+		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
+		myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
+		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, drawData.localEyePos.ToVec3() );
+		drawData.localEyePos.w = 1;
+	}
+
+	// change the scissor if needed
+	if( r_useScissor.GetBool() && !backEnd.currentScissor.Equals( surf->scissorRect ) ) {
+		backEnd.currentScissor = surf->scissorRect;
+		qglScissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
+			backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
+			backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
+			backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
+	}
+
+	// check whether we're drawing a soft particle surface #3878
+	const bool soft_particle = ( surf->dsFlags & DSF_SOFT_PARTICLE ) != 0;
+
+	// get the expressions for conditionals / color / texcoords
+	const float *regs = surf->shaderRegisters;
+
+	// set face culling appropriately
+	GL_Cull( shader->GetCullType() );
+
+	// set polygon offset if necessary
+	if( shader->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
+		qglEnable( GL_POLYGON_OFFSET_FILL );
+		qglPolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * shader->GetPolygonOffset() );
+	}
+
+	if( surf->space->weaponDepthHack ) {
+		RB_EnterWeaponDepthHack();
+	}
+
+	if( surf->space->modelDepthHack != 0.0f && !soft_particle ) // #3878 soft particles don't want modelDepthHack, which is 
+	{                                                            // an older way to slightly "soften" particles
+		RB_EnterModelDepthHack( surf->space->modelDepthHack );
+	}
+
+	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
+	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+
+	for( int stage = 0; stage < shader->GetNumStages(); stage++ ) {
+		const shaderStage_t *pStage = shader->GetStage( stage );
+
+		// check the enable condition
+		if( regs[pStage->conditionRegister] == 0 )
+			continue;
+
+		// skip the stages involved in lighting
+		if( pStage->lighting != SL_AMBIENT )
+			continue;
+
+		// skip if the stage is ( GL_ZERO, GL_ONE ), which is used for some alpha masks
+		if( ( pStage->drawStateBits & ( GLS_SRCBLEND_BITS | GLS_DSTBLEND_BITS ) ) == ( GLS_SRCBLEND_ZERO | GLS_DSTBLEND_ONE ) )
+			continue;
+
+		// see if we are a new-style stage
+		newShaderStage_t *newStage = pStage->newStage;
+		if( newStage ) {
+			// TODO: not implemented
+			//RB_STD_T_RenderShaderPasses_NewStage( ac, pStage, surf );
+			continue;
+		}
+		if( soft_particle && surf->particle_radius > 0.0f ) {
+			// TODO: not implemented
+			//RB_STD_T_RenderShaderPasses_SoftParticle( ac, pStage, surf );
+			continue;
+		}
+		GL4_RenderShaderPasses_OldStage( pStage, surf, drawData );
+	}
+
+	// reset polygon offset
+	if( shader->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
+		qglDisable( GL_POLYGON_OFFSET_FILL );
+	}
+	if( surf->space->weaponDepthHack || ( !soft_particle && surf->space->modelDepthHack != 0.0f ) ) {
+		RB_LeaveDepthHack();
+	}
+}
 
 int GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFog ) {
 
-	GL_DEBUG_GROUP( DrawShaderPasses_STD, SHADER_PASS );
+	GL_DEBUG_GROUP( DrawShaderPasses_GL4, SHADER_PASS );
 	// only obey skipAmbient if we are rendering a view
 	if( backEnd.viewDef->viewEntitys && r_skipAmbient.GetInteger() == 1 )
 		return numDrawSurfs;
@@ -43,6 +244,11 @@ int GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFo
 	globalImages->BindNull();
 
 	GL_SelectTexture( 0 );
+
+	ShaderPassDrawData drawData;
+
+	openGL4Renderer.PrepareVertexAttribs();
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION } );
 
 	backEnd.currentSpace = nullptr;
 	int	i;
@@ -92,7 +298,16 @@ int GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFo
 		if( drawSurfs[i]->material->GetSort() == SS_AFTER_FOG && !afterFog )
 			break;
 
-		//RB_STD_T_RenderShaderPasses( drawSurfs[i] );
+		if( !drawSurfs[i]->backendGeo->indexCache ) {
+			common->Printf( "GL4_DrawShaderPasses: !tri->indexCache" );
+			continue;
+		}
+		if( !drawSurfs[i]->backendGeo->ambientCache ) {
+			common->Printf( "GL4_DrawShaderPasses: !tri->ambientCache" );
+			continue;
+		}
+
+		GL4_RenderShaderPasses( drawSurfs[i], drawData );
 	}
 
 	GL_Cull( CT_FRONT_SIDED );
