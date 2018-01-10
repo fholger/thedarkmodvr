@@ -289,6 +289,15 @@ void GL4_SetDrawInteraction( const shaderStage_t *surfaceStage, const float *sur
 void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData& drawData, const shaderStage_t * lightStage, const idVec4& lightColor) {
 	GL_DEBUG_GROUP( SurfaceInteractions_GL4, INTERACTION );
 
+	if( !surf->backendGeo->indexCache ) {
+		common->Printf( "GL4_RenderSurfaceInteractions: !tri->indexCache\n" );
+		return;
+	}
+	if( !surf->backendGeo->ambientCache ) {
+		common->Printf( "GL4_RenderSurfaceInteractions: !tri->ambientCache\n" );
+		return;
+	}
+
 	const viewLight_t *vLight = backEnd.vLight;
 	const idMaterial* lightShader = vLight->lightShader;
 	const idMaterial * surfaceShader = surf->material;
@@ -440,6 +449,11 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 
 	GL_DEBUG_GROUP( RenderInteractions_GL4, INTERACTION );
 
+	GL_SelectTexture( 0 );
+	qglActiveTexture( GL_TEXTURE0 );
+	qglBindTexture( GL_TEXTURE_2D, 0 );
+	qglBindTexture( GL_TEXTURE_CUBE_MAP, 0 );
+	qglDisable( GL_TEXTURE_CUBE_MAP );
 	// perform setup here that will be constant for all interactions
 	GL4Program interactionShader = openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE );
 	interactionShader.Activate();

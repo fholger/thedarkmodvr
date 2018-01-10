@@ -25,7 +25,7 @@
 									   // non-visible renders: light gem (TDM), Sikk's depth render (Doom3) etc. The player's view 
 									   // is 1 for single player mode, multiplayer uses 2+. 0 is for subviews: cameras, reflections etc.
 
-#define OPENGL_DEBUG_CONTEXT		1
+#define OPENGL_DEBUG_CONTEXT		0
 
 class idRenderWorldLocal;
 
