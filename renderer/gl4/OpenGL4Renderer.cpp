@@ -82,6 +82,7 @@ void APIENTRY DebugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum
 		file->Printf( "- %d: %d -", pair.first, pair.second );
 	}*/
 	file->Printf( "%s\n", message );
+	file->Flush();
 }
 
 
@@ -99,11 +100,12 @@ void OpenGL4Renderer::Init() {
 
 	initialized = true;
 	common->Printf( "Initializing OpenGL4 renderer backend ...\n" );
-#if 0 //OPENGL_DEBUG_CONTEXT == 1
+#if OPENGL_DEBUG_CONTEXT == 1
 	qglEnable( GL_DEBUG_OUTPUT );
 	qglEnable( GL_DEBUG_OUTPUT_SYNCHRONOUS );
-	qglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_FALSE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION, 0, 0, GL_FALSE );
+	/*qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
 	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
 	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_ERROR, GL_DONT_CARE, 0, 0, GL_TRUE );
 	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
@@ -111,7 +113,7 @@ void OpenGL4Renderer::Init() {
 	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR, GL_DONT_CARE, 0, 0, GL_TRUE );
 	qglDebugMessageControl( GL_DEBUG_SOURCE_API, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );
 	qglDebugMessageControl( GL_DEBUG_SOURCE_SHADER_COMPILER, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );
-	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );
+	qglDebugMessageControl( GL_DEBUG_SOURCE_WINDOW_SYSTEM, GL_DONT_CARE, GL_DONT_CARE, 0, 0, GL_TRUE );*/
 	qglDebugMessageCallback( DebugMessageCallback, 0 );
 	/*originalBindBuffer = qglBindBufferARB;
 	originalBindVertexBuffer = qglBindVertexBuffer;

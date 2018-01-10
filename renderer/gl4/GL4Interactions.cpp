@@ -146,11 +146,6 @@ void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {
 		qglDepthBoundsEXT( backEnd.vLight->scissorRect.zmin, backEnd.vLight->scissorRect.zmax );
 	}
 
-	/*float viewProjectionMatrix[16];
-	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProjectionMatrix );
-	stencilShader.SetUniformMatrix4( 0, viewProjectionMatrix );*/
-	//stencilShader.SetViewProjectionMatrix( 0 );
-
 	// currently shadows are all in frame temporary buffers
 	openGL4Renderer.EnableVertexAttribs( { VA_SHADOWPOS, VA_DRAWID } );
 	vertexCache.IndexPosition( 2 );
@@ -242,9 +237,7 @@ static void GL4_DrawSingleInteraction( InteractionDrawData &drawData, drawIntera
 
 	const srfTriangles_t *tri = din->surf->backendGeo;
 	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
-	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
-	openGL4Renderer.BindUBO( 0 );
-	openGL4Renderer.BindSSBO( 1, 128 );
+	//openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
 	openGL4Renderer.UpdateUBO( &drawData, sizeof( drawData ) );
 	qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
 }
@@ -302,9 +295,9 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 	const float * surfaceRegs = surf->shaderRegisters;
 	const srfTriangles_t *tri = surf->backendGeo;
 	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
-	//openGL4Renderer.PrepareVertexAttribs();
 	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
 	vertexCache.VertexPosition( tri->ambientCache );
+	// TODO: this is a hack because without it for some reason access to the tangent attribute is reported as "buffer is mapped"
 	qglVertexAttribPointer( VA_TANGENT, 3, GL_FLOAT, GL_FALSE, sizeof( idDrawVert ), ( void* )offsetof( idDrawVert, tangents ) );
 
 	if( surf->space != backEnd.currentSpace ) {
@@ -327,7 +320,6 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 
 		// copy model matrix
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
-		//memcpy( drawData.modelMatrix, surf->space->modelViewMatrix, sizeof( drawData.modelMatrix ) );
 		openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE ).SetModelViewProjectionMatrix( 0, surf->space );
 	}
 
@@ -446,19 +438,11 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 		return;
 	}
 
-	GL_SelectTexture( 0 );
-	qglBindTexture( GL_TEXTURE_CUBE_MAP, 0 );
-	globalImages->BindNull();
-	qglDisable( GL_TEXTURE_CUBE_MAP );
-
 	GL_DEBUG_GROUP( RenderInteractions_GL4, INTERACTION );
 
 	// perform setup here that will be constant for all interactions
 	GL4Program interactionShader = openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE );
 	interactionShader.Activate();
-	//interactionShader.SetViewProjectionMatrix( 0 );
-	//interactionShader.SetProjectionMatrix( 0 );
-	//interactionShader.SetViewMatrix( 1 );
 	openGL4Renderer.BindUBO( 0 );
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
 	openGL4Renderer.PrepareVertexAttribs();
@@ -499,17 +483,12 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
 		}
 		
-		if( vLight->lightShader->IsCubicLight() ) {
-			GL_SelectTexture( TEX_LIGHT_FALLOFF );
-			globalImages->BindNull();
-			GL_SelectTexture( CUBE_LIGHT_PROJECTION );
-			lightStage->texture.image->Bind();
-		} else {
-			GL_SelectTexture( TEX_LIGHT_FALLOFF );
-			vLight->falloffImage->Bind();
-			GL_SelectTexture( TEX_LIGHT_PROJECTION );
-			lightStage->texture.image->Bind();
-		}
+		GL_SelectTexture( TEX_LIGHT_FALLOFF );
+		vLight->falloffImage->Bind();
+		GL_SelectTexture( TEX_LIGHT_PROJECTION );
+		lightStage->texture.image->Bind();
+		GL_SelectTexture( CUBE_LIGHT_PROJECTION );
+		lightStage->texture.image->Bind();
 
 		// setup for the fast path first
 		drawData.diffuseColor = lightColor;
@@ -610,8 +589,6 @@ void GL4_DrawInteractions() {
 	}
 
 	GL_DEBUG_GROUP( DrawInteractions_GL4, INTERACTION );
-	GL_SelectTexture( 0 );
-	globalImages->BindNull();
 	
 	// for each light, perform adding and shadowing
 	for( backEnd.vLight = backEnd.viewDef->viewLights; backEnd.vLight; backEnd.vLight = backEnd.vLight->next ) {
@@ -641,14 +618,9 @@ void GL4_DrawInteractions() {
 	}
 	// disable stencil shadow test
 	qglStencilFunc( GL_ALWAYS, 128, 255 );
-	for( int i = 0; i < 7; ++i ) {
-		GL_SelectTexture( i );
-		globalImages->BindNull();
-	}
 	GL_SelectTexture( 0 );
-	qglDisable( GL_VERTEX_PROGRAM_ARB );
-	qglDisable( GL_FRAGMENT_PROGRAM_ARB );
 
-	for( int i = 0; i < 16; ++i )
-		qglDisableVertexAttribArray( i );
+	/*for( int i = 0; i < 16; ++i )
+		qglDisableVertexAttribArray( i );*/
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION } );
 }
