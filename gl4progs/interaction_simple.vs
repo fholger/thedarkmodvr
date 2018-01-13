@@ -7,7 +7,7 @@ layout (location = 3) in vec3 Tangent;
 layout (location = 4) in vec3 Bitangent;   
 layout (location = 5) in vec4 Color;
 
-layout (binding = 0) uniform UBO {
+layout (std140, binding = 0) uniform UBO {
     mat4 modelMatrix;
     vec4 bumpMatrixS;   
     vec4 bumpMatrixT;   

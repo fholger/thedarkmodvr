@@ -22,12 +22,18 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 struct ShaderPassDrawData {
 	float modelMatrix[16];
 	float mvpMatrix[16];
+	float textureMatrix[16];
 	idVec4 localEyePos;
 	idVec4 colorAdd;
 	idVec4 colorMul;
+	idVec4 vertexColor;
+	idVec4 screenTex;
 };
 
 void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * surf, ShaderPassDrawData &drawData) {
+	drawData.vertexColor = idVec4( 0, 0, 0, 0 );
+	drawData.screenTex = idVec4( 0, 0, 0, 0 );
+	memcpy( drawData.textureMatrix, mat4_identity.ToFloatPtr(), sizeof( drawData.textureMatrix ) );
 	// set the color
 	idVec4 color;
 	const float	*regs = surf->shaderRegisters;
@@ -57,16 +63,20 @@ void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * 
 		// TODO: not implemented
 		/*qglEnableVertexAttribArray( 8 );
 		qglVertexAttribPointer( 8, 3, GL_FLOAT, false, 0, vertexCache.VertexPosition( surf->dynamicTexCoords ) );
-		cubeMapShader.Use();*/
-		break;
+		cubeMapShader.Use();
+		break;*/
+		return;
 	case TG_REFLECT_CUBE:
-		//qglColor4fv(color);
-		break;
+		drawData.vertexColor = color;
+		//break;
+		// TODO: not implemented
+		return;
 	case TG_SCREEN:
-		//qglColor4fv( color );
+		drawData.vertexColor = color;
+		drawData.screenTex.x = 1;
 	default:
-		openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD } );
-		oldStageShader.Use();
+		openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_COLOR } );
+		openGL4Renderer.GetShader( SHADER_OLDSTAGE ).Activate();
 		switch( pStage->vertexColor ) {
 		case SVC_IGNORE:
 			drawData.colorMul = zero;
@@ -74,48 +84,63 @@ void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * 
 			break;
 		case SVC_MODULATE:
 			// select the vertex color source
-			openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_COLOR } );
 			drawData.colorMul = color;
 			drawData.colorAdd = zero;
 			break;
 		case SVC_INVERSE_MODULATE:
 			// select the vertex color source
-			openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_COLOR } );
 			drawData.colorMul = negOne;
 			drawData.colorAdd = color;
 			break;
 		}
 	}
 
-	RB_PrepareStageTexturing( pStage, surf, ac );
+	// TODO: Reflect Cube RB_PrepareStageTexturing( pStage, surf, ac );
+	// set privatePolygonOffset if necessary
+	if( pStage->privatePolygonOffset ) {
+		qglEnable( GL_POLYGON_OFFSET_FILL );
+		qglPolygonOffset( r_offsetFactor.GetFloat(), r_offsetUnits.GetFloat() * pStage->privatePolygonOffset );
+	}
+
+	// set the texture matrix if needed
+	if( pStage->texture.hasMatrix ) {
+		RB_GetShaderTextureMatrix( surf->shaderRegisters, &pStage->texture, drawData.textureMatrix );
+	}
 
 	// bind the texture
-	RB_BindVariableStageImage( &pStage->texture, regs );
+	GL_SelectTexture( 0 );
+	if( pStage->texture.cinematic ) {
+		globalImages->blackImage->Bind();
+	} else if( pStage->texture.image ) {
+		pStage->texture.image->Bind();
+	}
 
 	// set the state
 	GL_State( pStage->drawStateBits );
 
-	const srfTriangles_t	*tri = surf->backendGeo;
 	// draw it
-	RB_DrawElementsWithCounters( tri );
-
-	RB_FinishStageTexturing( pStage, surf, ac );
-
-	switch( pStage->texture.texgen ) {
-	case TG_REFLECT_CUBE:
-		break;
-	case TG_SKYBOX_CUBE: case TG_WOBBLESKY_CUBE:
-	case TG_SCREEN:
-	default:
-		qglDisableVertexAttribArray( 8 );
-		qglUseProgram( 0 );
-		switch( pStage->vertexColor ) {
-		case SVC_MODULATE:
-		case SVC_INVERSE_MODULATE:
-			qglDisableVertexAttribArray( 3 );
-		}
+	const srfTriangles_t	*tri = surf->backendGeo;
+	openGL4Renderer.UpdateUBO( &drawData, sizeof( ShaderPassDrawData ) );
+	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
+	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+	const void* indexes = tri->indexes;
+	if( tri->indexCache ) {
+		indexes = vertexCache.IndexPosition( tri->indexCache );
+	} else {
+		vertexCache.UnbindIndex();
 	}
+	qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, indexes, baseVertex );
 
+	// unset privatePolygonOffset if necessary
+	if( pStage->privatePolygonOffset && !surf->material->TestMaterialFlag( MF_POLYGONOFFSET ) ) {
+		qglDisable( GL_POLYGON_OFFSET_FILL );
+	}
+	GL_SelectTexture( 1 );
+	globalImages->BindNull();
+	GL_SelectTexture( 0 );
+
+	openGL4Renderer.EnableVertexAttribs( { VA_POSITION } );
+	qglUseProgram( 0 );
 }
 
 void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
@@ -178,7 +203,6 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 	}
 
 	openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
-	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
 
 	for( int stage = 0; stage < shader->GetNumStages(); stage++ ) {
 		const shaderStage_t *pStage = shader->GetStage( stage );
@@ -298,12 +322,12 @@ int GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFo
 		if( drawSurfs[i]->material->GetSort() == SS_AFTER_FOG && !afterFog )
 			break;
 
-		if( !drawSurfs[i]->backendGeo->indexCache ) {
-			common->Printf( "GL4_DrawShaderPasses: !tri->indexCache" );
+		/*if( !drawSurfs[i]->backendGeo->indexCache ) {
+			common->Printf( "GL4_DrawShaderPasses: !tri->indexCache\n" );
 			continue;
-		}
+		}*/
 		if( !drawSurfs[i]->backendGeo->ambientCache ) {
-			common->Printf( "GL4_DrawShaderPasses: !tri->ambientCache" );
+			common->Printf( "GL4_DrawShaderPasses: !tri->ambientCache\n" );
 			continue;
 		}
 
