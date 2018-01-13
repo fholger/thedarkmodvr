@@ -1243,6 +1243,9 @@
     <ClInclude Include="renderer\gl4\UniformBufferObject.h">
       <Filter>Renderer\GL4</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\gl4\OcclusionSystem.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -2936,6 +2939,12 @@
       <Filter>Renderer\GL4</Filter>
     </ClCompile>
     <ClCompile Include="renderer\gl4\GL4ShaderPasses.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4OcclusionCulling.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\OcclusionSystem.cpp">
       <Filter>Renderer\GL4</Filter>
     </ClCompile>
   </ItemGroup>

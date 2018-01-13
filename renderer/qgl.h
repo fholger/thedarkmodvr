@@ -251,6 +251,8 @@ extern PFNGLBINDVERTEXBUFFERPROC			qglBindVertexBuffer;
 extern PFNGLDEBUGMESSAGECALLBACKPROC		qglDebugMessageCallback;
 extern PFNGLDEBUGMESSAGECONTROLPROC			qglDebugMessageControl;
 extern PFNGLOBJECTLABELPROC					qglObjectLabel;
+extern PFNGLCLEARBUFFERDATAPROC				qglClearBufferData;
+extern PFNGLCOPYBUFFERSUBDATAPROC			qglCopyBufferSubData;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

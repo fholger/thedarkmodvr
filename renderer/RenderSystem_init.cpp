@@ -431,6 +431,8 @@ PFNGLBINDVERTEXBUFFERPROC					qglBindVertexBuffer;
 PFNGLDEBUGMESSAGECALLBACKPROC				qglDebugMessageCallback;
 PFNGLDEBUGMESSAGECONTROLPROC				qglDebugMessageControl;
 PFNGLOBJECTLABELPROC						qglObjectLabel;
+PFNGLCLEARBUFFERDATAPROC					qglClearBufferData;
+PFNGLCOPYBUFFERSUBDATAPROC					qglCopyBufferSubData;
 
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
@@ -716,6 +718,8 @@ static void R_CheckPortableExtensions( void ) {
 		qglDebugMessageCallback = ( PFNGLDEBUGMESSAGECALLBACKPROC )GLimp_ExtensionPointer( "glDebugMessageCallback" );
 		qglDebugMessageControl = ( PFNGLDEBUGMESSAGECONTROLPROC )GLimp_ExtensionPointer( "glDebugMessageControl" );
 		qglObjectLabel = ( PFNGLOBJECTLABELPROC )GLimp_ExtensionPointer( "glObjectLabel" );
+		qglClearBufferData = ( PFNGLCLEARBUFFERDATAPROC )GLimp_ExtensionPointer( "glClearBufferData" );
+		qglCopyBufferSubData = ( PFNGLCOPYBUFFERSUBDATAPROC )GLimp_ExtensionPointer( "glCopyBufferSubData" );
 	}
 
 	int n;

@@ -16,6 +16,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "OpenGL4Renderer.h"
 #include "GL4Backend.h"
 #include "../tr_local.h"
+#include "OcclusionSystem.h"
 
 OpenGL4Renderer openGL4Renderer;
 
@@ -166,6 +167,8 @@ void OpenGL4Renderer::Shutdown() {
 	Mem_Free16( commandBuffer );
 
 	boundBuffers.clear();
+
+	occlusionSystem.Shutdown();
 
 	drawIdBuffer = 0;
 	commandBuffer = nullptr;

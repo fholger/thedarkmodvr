@@ -12,28 +12,36 @@ or (at your option) any later version. For details, see LICENSE.TXT.
 Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
-#ifndef __GL4_BACKEND_H__
-#define __GL4_BACKEND_H__
-
-#include "../qgl.h"
+#ifndef __OCCLUSION_CULLING_H__
+#define __OCCLUSION_CULLING_H__
+#include "PersistentBufferObject.h"
 #include "../tr_local.h"
+#include <vector>
 
-extern idCVar r_useOpenGL4;
-extern idCVar r_useOcclusionCulling;
-
-struct DrawElementsIndirectCommand {
-	uint count;
-	uint instanceCount;
-	uint firstIndex;
-	uint baseVertex;
-	uint baseInstance;
+struct Occluder {
+	idVec4 bboxMin;
+	idVec4 bboxMax;
 };
 
-void GL4_FillDepthBuffer( drawSurf_t ** drawSurfs, int numDrawSurfs );
-void GL4_DrawLight_Stencil();
-void GL4_DrawInteractions();
-int  GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFog );
-void GL4_DrawView();
-void GL4_CheckBoundingBoxOcclusion();
+class OcclusionSystem {
+public:
+	OcclusionSystem();
+
+	void Init();
+	void Shutdown();
+
+	Occluder * OcclusionSystem::ReserveOccluders( uint count );
+
+	void PrepareVisibilityBuffer();
+	void BindOccluders();
+	void Finish( uint count );
+
+private:
+	bool initialized;
+	PersistentBufferObject bboxBuffer;
+	GLuint visibilityBuffer;
+};
+
+extern OcclusionSystem occlusionSystem;
 
 #endif

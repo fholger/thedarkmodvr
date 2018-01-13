@@ -386,6 +386,9 @@ typedef struct viewEntity_s {
 
 	float				modelMatrix[16];		// local coords to global coords
 	float				modelViewMatrix[16];	// local coords to eye coords
+	float				mvpMatrix[16];			// local coords to clip space
+
+	idBounds			boundingBox;
 } viewEntity_t;
 
 

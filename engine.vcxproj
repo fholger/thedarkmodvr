@@ -709,6 +709,7 @@
     <ClInclude Include="renderer\gl4\GL4Backend.h" />
     <ClInclude Include="renderer\gl4\GL4Program.h" />
     <ClInclude Include="renderer\gl4\GLDebugGroup.h" />
+    <ClInclude Include="renderer\gl4\OcclusionSystem.h" />
     <ClInclude Include="renderer\gl4\OpenGL4Renderer.h" />
     <ClInclude Include="renderer\gl4\PersistentBufferObject.h" />
     <ClInclude Include="renderer\gl4\UniformBufferObject.h" />
@@ -1284,8 +1285,10 @@
     <ClCompile Include="renderer\gl4\GL4Backend.cpp" />
     <ClCompile Include="renderer\gl4\GL4Depth.cpp" />
     <ClCompile Include="renderer\gl4\GL4Interactions.cpp" />
+    <ClCompile Include="renderer\gl4\GL4OcclusionCulling.cpp" />
     <ClCompile Include="renderer\gl4\GL4Program.cpp" />
     <ClCompile Include="renderer\gl4\GL4ShaderPasses.cpp" />
+    <ClCompile Include="renderer\gl4\OcclusionSystem.cpp" />
     <ClCompile Include="renderer\gl4\OpenGL4Renderer.cpp" />
     <ClCompile Include="renderer\gl4\PersistentBufferObject.cpp" />
     <ClCompile Include="renderer\gl4\UniformBufferObject.cpp" />

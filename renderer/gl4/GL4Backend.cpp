@@ -18,6 +18,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GLDebugGroup.h"
 
 idCVar r_useOpenGL4( "r_useOpenGL4", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use experimental OpenGL4 rendering backend" );
+idCVar r_useOcclusionCulling( "r_useOcclusionCulling", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use GPU occlusion culling to reduce number of objects needing to be rendered" );
 
 // TODO: remove when full renderer complete
 #include "../glsl.h"
@@ -46,6 +47,10 @@ void GL4_DrawView( void ) {
 
 	// fill the depth buffer and clear color buffer to black except on subviews
 	GL4_FillDepthBuffer( drawSurfs, numDrawSurfs );
+
+	if( r_useOcclusionCulling.GetBool() ) {
+		GL4_CheckBoundingBoxOcclusion();
+	}
 
 	GL4_DrawInteractions();
 
