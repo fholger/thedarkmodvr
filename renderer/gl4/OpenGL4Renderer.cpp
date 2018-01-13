@@ -279,11 +279,11 @@ void OpenGL4Renderer::BindVertexBuffer( bool staticBuffer ) {
 }
 
 void OpenGL4Renderer::LoadShaders() {
-	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vs", "black.fs" );
-	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vs", "depth_generic.fs" );
-	shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md.vs", "black.fs" );
-	shaders[SHADER_INTERACTION_SIMPLE] = GL4Program::Load( "interaction_simple.vs", "interaction_simple.fs" );
-	shaders[SHADER_OLDSTAGE] = GL4Program::Load( "oldstage.vs", "oldstage.fs" );
+	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vert.glsl", "black.frag.glsl" );
+	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vert.glsl", "depth_generic.frag.glsl" );
+	shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md.vert.glsl", "black.frag.glsl" );
+	shaders[SHADER_INTERACTION_SIMPLE] = GL4Program::Load( "interaction_simple.vert.glsl", "interaction_simple.frag.glsl" );
+	shaders[SHADER_OLDSTAGE] = GL4Program::Load( "oldstage.vert.glsl", "oldstage.frag.glsl" );
 
 	// validate all shaders
 	for( int i = 0; i < TOTAL_SHADER_COUNT; ++i ) {
