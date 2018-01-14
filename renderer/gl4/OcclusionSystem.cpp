@@ -15,6 +15,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "precompiled.h"
 #include "OcclusionSystem.h"
 #include "OpenGL4Renderer.h"
+#include "GLDebugGroup.h"
 
 OcclusionSystem occlusionSystem;
 
@@ -76,17 +77,17 @@ void OcclusionSystem::BeginFrame() {
 void OcclusionSystem::EndFrame() {
 	memset( lastFrameCulled, 0, BIT_BUFFER_SIZE );
 	for( int i = 0; i < MAX_ENTITIES / ENTITIES_PER_INT; ++i ) {
-		lastFrameCulled[i] = testedEntities[i] & (~visibilityResults[i]);
+		lastFrameCulled[i] = testedEntities[i] & ( ~visibilityResults[i] );
 	}
 
-	int culledCount = 0;
+	/*int culledCount = 0;
 	for( int i = 0; i < MAX_ENTITIES; ++i ) {
 		int idx = i / ENTITIES_PER_INT;
-		int bit = i % ENTITIES_PER_INT;
-		if( lastFrameCulled[idx] & ( 1 << bit ) )
+		int bit = 1 << (i % ENTITIES_PER_INT);
+		if( lastFrameCulled[idx] & bit )
 			++culledCount;
 	}
-	common->Printf( "Number of entities culled: %d\n", culledCount );
+	common->Printf( "Number of entities culled: %d\n", culledCount );*/
 }
 
 void OcclusionSystem::PrepareVisibilityBuffer() {
@@ -107,7 +108,7 @@ void OcclusionSystem::CompressOutput() {
 	qglBindBufferARB( GL_ARRAY_BUFFER, visibilityBuffer );
 	openGL4Renderer.EnableVertexAttribs( {} );
 	for( int i = 7; i < 15; i++ ) {
-		qglVertexAttribIPointer( i, 4, GL_UNSIGNED_INT, sizeof( int ) * 32, ( const void* )( i*sizeof( int ) * 4 ) );
+		qglVertexAttribIPointer( i, 4, GL_UNSIGNED_INT, sizeof( int ) * 32, ( const void* )( (i-7)*sizeof( int ) * 4 ) );
 		qglVertexAttribDivisor( i, 0 );
 		qglEnableVertexAttribArray( i );
 	}
@@ -135,6 +136,7 @@ void OcclusionSystem::Finish( uint count ) {
 }
 
 void OcclusionSystem::TransferResults() {
+	GL_DEBUG_GROUP( TransferOcclusionResults, OCCLUSION );
 	// read back results
 	qglBindBufferARB( GL_COPY_READ_BUFFER, visibilityCompressBuffer );
 	qglBindBufferARB( GL_COPY_WRITE_BUFFER, visibilityCopyBuffer );

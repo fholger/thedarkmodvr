@@ -9,7 +9,7 @@ struct DrawData {
 	vec4 localViewPos;
 };
 
-layout( std140, binding = 1 ) buffer CB0{
+layout( std140, binding = 1 ) readonly buffer CB0{
 	DrawData drawData[];
 };
 
