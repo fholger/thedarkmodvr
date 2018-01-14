@@ -31,7 +31,11 @@ void GL4_CheckBoundingBoxOcclusion() {
 	occlusionSystem.Init();
 
 	std::vector<viewEntity_t*> entities;
-	for( viewEntity_t *entity = backEnd.viewDef->viewEntitys; entity; entity = entity->next ) {
+	int i = 0;
+	for( viewEntity_t *entity = backEnd.viewDef->viewEntitys; entity; entity = entity->next, ++i ) {
+		if( i % 20 != 0 ) {
+			continue;
+		}
 		if( entity->entityDef && !entity->scissorRect.IsEmpty() )
 			entities.push_back( entity );
 	}
@@ -41,8 +45,10 @@ void GL4_CheckBoundingBoxOcclusion() {
 	for( size_t i = 0; i < entities.size(); ++i ) {
 		memcpy( drawData[i].modelMatrix.ToFloatPtr(), entities[i]->modelMatrix, sizeof( drawData[i].modelMatrix ) );
 		R_GlobalPointToLocal( entities[i]->modelMatrix, backEnd.viewDef->renderView.vieworg, drawData[i].localViewPos.ToVec3() );
-		occluders[i].bboxMin.ToVec3() = entities[i]->boundingBox[0];
-		occluders[i].bboxMax.ToVec3() = entities[i]->boundingBox[1];
+		occluders[i].bboxMin = entities[i]->boundingBox[0];
+		occluders[i].bboxMax = entities[i]->boundingBox[1];
+		occluders[i].entityId = entities[i]->entityIndex;
+		occlusionSystem.SetEntityIdTested( entities[i]->entityIndex );
 	}
 
 	GL4Program occlusionShader = openGL4Renderer.GetShader( SHADER_OCCLUSION );
@@ -66,16 +72,4 @@ void GL4_CheckBoundingBoxOcclusion() {
 
 	openGL4Renderer.LockSSBO( entities.size() * sizeof( OcclusionDrawData ) );
 	occlusionSystem.Finish( entities.size() );
-
-	const int *results = occlusionSystem.GetVisibilityResults();
-	int numVisible = 0;
-	for( int i = 0; i < entities.size(); ++i ) {
-		if( results[i] != 0 ) {
-			++numVisible;
-			//occlusionSystem.SetEntityIdVisible( entities[i]->entityDef->GetIndex() );
-		} else {
-			occlusionSystem.SetEntityIdVisible( entities[i]->entityIndex );
-		}
-	}
-	common->Printf( "Occlusion check results: %d of %d entities potentially visible\n", numVisible, entities.size() );
 }

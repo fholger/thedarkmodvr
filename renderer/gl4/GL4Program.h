@@ -20,7 +20,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 class GL4Program {
 public:
-	static GL4Program Load( const char* vertex, const char* fragment, const char* geometry = nullptr );
+	static GL4Program Load( const char* vertex, const char* fragment = nullptr, const char* geometry = nullptr );
 	void Destroy();
 	bool Valid() const { return program != 0; }
 

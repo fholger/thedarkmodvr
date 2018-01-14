@@ -17,16 +17,17 @@ layout( std140, binding = 1 ) buffer CB0{
 in VertexOut{
 	vec3 bboxCenter;
 	vec3 bboxDimensions;
-	flat int id;
+	flat int vertexId;
+	flat int entityId;
 } IN[1];
 
-flat out int id;
+flat out int entityId;
 
 layout( location = 0 ) uniform vec3 viewPos;
 layout( location = 1 ) uniform mat4 viewProjMatrix;
 
 void main() {
-	mat4 modelMatrix = drawData[IN[0].id].modelMatrix;
+	mat4 modelMatrix = drawData[IN[0].vertexId].modelMatrix;
 
 	vec3 faceNormal = vec3( 0 );
 	vec3 edgeBasis0 = vec3( 0 );
@@ -56,7 +57,7 @@ void main() {
 	edgeBasis0 = mat3( modelMatrix ) * edgeBasis0;
 	edgeBasis1 = mat3( modelMatrix ) * edgeBasis1 * proj;
 
-	id = IN[0].id;
+	entityId = IN[0].entityId;
 
 	/*gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal - edgeBasis0 - edgeBasis1 ), 1 );
 	EmitVertex();

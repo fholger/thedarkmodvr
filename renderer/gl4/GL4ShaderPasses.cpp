@@ -316,7 +316,7 @@ int GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFo
 			}
 		}
 
-		if( r_useOcclusionCulling.GetBool() && drawSurfs[i]->space && occlusionSystem.IsEntityIdVisible(drawSurfs[i]->space->entityIndex) ) {
+		if( r_useOcclusionCulling.GetBool() && drawSurfs[i]->space && occlusionSystem.WasEntityCulledLastFrame(drawSurfs[i]->space->entityIndex) ) {
 			continue;
 		}
 

@@ -469,7 +469,7 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	std::vector<const drawSurf_t*> allSurfaces;
 	std::vector<const drawSurf_t*> complexSurfaces;
 	for( const drawSurf_t * walk = surfList; walk != NULL; walk = walk->nextOnLight ) {
-		if( r_useOcclusionCulling.GetBool() && walk->space && occlusionSystem.IsEntityIdVisible( walk->space->entityIndex ) ) {
+		if( r_useOcclusionCulling.GetBool() && walk->space && occlusionSystem.WasEntityCulledLastFrame( walk->space->entityIndex ) ) {
 			continue;
 		}
 		if( walk->material->GetFastPathBumpImage() ) {

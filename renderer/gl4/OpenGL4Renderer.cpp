@@ -278,10 +278,24 @@ void OpenGL4Renderer::BindVertexBuffer( bool staticBuffer ) {
 	qglVertexAttribBinding( VA_COLOR, bufferIndex );
 }
 
+void OpenGL4Renderer::BeginFrame() {
+	if( r_useOcclusionCulling.GetBool() ) {
+		occlusionSystem.Init();
+		occlusionSystem.BeginFrame();
+	}
+}
+
+void OpenGL4Renderer::EndFrame() {
+	if( r_useOcclusionCulling.GetBool() ) {
+		occlusionSystem.EndFrame();
+	}
+}
+
 void OpenGL4Renderer::LoadShaders() {
 	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vert.glsl", "black.frag.glsl" );
 	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vert.glsl", "depth_generic.frag.glsl" );
 	shaders[SHADER_OCCLUSION] = GL4Program::Load( "occlusion.vert.glsl", "occlusion.frag.glsl", "occlusion.geom.glsl" );
+	shaders[SHADER_OCCLUSION_BITPACK] = GL4Program::Load( "occlusion_bitpack.vert.glsl" );
 	shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md.vert.glsl", "black.frag.glsl" );
 	shaders[SHADER_INTERACTION_SIMPLE] = GL4Program::Load( "interaction_simple.vert.glsl", "interaction_simple.frag.glsl" );
 	shaders[SHADER_OLDSTAGE] = GL4Program::Load( "oldstage.vert.glsl", "oldstage.frag.glsl" );

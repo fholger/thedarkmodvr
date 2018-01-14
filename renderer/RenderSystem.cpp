@@ -22,6 +22,7 @@
 #include "glsl.h"
 #include "gl4/OpenGL4Renderer.h"
 #include "gl4/GL4Backend.h"
+#include "gl4/OcclusionSystem.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;
@@ -642,7 +643,14 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		gameLocal.RenderLightgem();
 		double endLightgem = Sys_GetClockTicks();
 		// start the back end up again with the new command list
+		if( openGL4Renderer.IsInitialized() ) {
+			openGL4Renderer.BeginFrame();
+		}
 		R_IssueRenderCommands( backendFrameData );
+		if( openGL4Renderer.IsInitialized() && r_useOcclusionCulling.GetBool() ) {
+			occlusionSystem.TransferResults();
+		}
+
 		double endRender = Sys_GetClockTicks();
 		session->WaitForFrontendCompletion();
 		double endWait = Sys_GetClockTicks();
@@ -685,6 +693,10 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
     // check for errors
 	GL_CheckErrors();
 #endif
+
+	if( openGL4Renderer.IsInitialized() ) {
+		openGL4Renderer.EndFrame();
+	}
 
 	// use the other buffers next frame, because another CPU
 	// may still be rendering into the current buffers

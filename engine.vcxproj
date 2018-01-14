@@ -1576,6 +1576,7 @@
     <None Include="gl4progs\occlusion.frag.glsl" />
     <None Include="gl4progs\occlusion.geom.glsl" />
     <None Include="gl4progs\occlusion.vert.glsl" />
+    <None Include="gl4progs\occlusion_bitpack.vert.glsl" />
     <None Include="gl4progs\oldstage.frag.glsl" />
     <None Include="gl4progs\oldstage.vert.glsl" />
     <None Include="gl4progs\stencil_md.vert.glsl" />

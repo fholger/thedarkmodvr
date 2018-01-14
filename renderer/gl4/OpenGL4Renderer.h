@@ -26,6 +26,7 @@ enum ProgramType {
 	SHADER_DEPTH_FAST_MD = 0,
 	SHADER_DEPTH_GENERIC,
 	SHADER_OCCLUSION,
+	SHADER_OCCLUSION_BITPACK,
 	SHADER_STENCIL_MD,
 	SHADER_INTERACTION_SIMPLE,
 	SHADER_OLDSTAGE,
@@ -68,6 +69,9 @@ public:
 
 	void EnableVertexAttribs( std::initializer_list<VertexAttribs> attribs );
 	void BindVertexBuffer( bool staticBuffer );
+
+	void BeginFrame();
+	void EndFrame();
 
 private:
 

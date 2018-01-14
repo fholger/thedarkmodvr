@@ -20,8 +20,10 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include <unordered_set>
 
 struct Occluder {
-	idVec4 bboxMin;
-	idVec4 bboxMax;
+	idVec3 bboxMin;
+	idVec3 bboxMax;
+	uint32_t entityId;
+	uint32_t padding;
 };
 
 class OcclusionSystem {
@@ -33,22 +35,29 @@ public:
 
 	Occluder * OcclusionSystem::ReserveOccluders( uint count );
 
+	void BeginFrame();
+	void EndFrame();  // run after frontend and backend are finished!
+
 	void PrepareVisibilityBuffer();
 	void BindOccluders();
+	void CompressOutput();
 	void Finish( uint count );
 
-	const int * GetVisibilityResults() const { return visibility; }
+	void TransferResults();
 
-	void SetEntityIdVisible( int entityId );
-	bool IsEntityIdVisible( int entityId ) const;
+	bool WasEntityCulledLastFrame( int entityId ) const;
+
+	void SetEntityIdTested( int entityId );
 
 private:
 	bool initialized;
 	PersistentBufferObject bboxBuffer;
 	GLuint visibilityBuffer;
+	GLuint visibilityCompressBuffer;
 	GLuint visibilityCopyBuffer;
-	int *visibility;
-	std::unordered_set<int> visibleEntities;
+	uint32_t *visibilityResults;
+	uint32_t *testedEntities;
+	uint32_t *lastFrameCulled;
 };
 
 extern OcclusionSystem occlusionSystem;

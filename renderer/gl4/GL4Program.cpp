@@ -65,10 +65,12 @@ GL4Program GL4Program::Load( const char *vertex, const char *fragment, const cha
 	GLuint program = qglCreateProgram();
 	idStr baseDir( "gl4progs/" );
 	LoadAndAttachShader( program, GL_VERTEX_SHADER, baseDir + vertex );
-	LoadAndAttachShader( program, GL_FRAGMENT_SHADER, baseDir + fragment );
+	if( fragment != 0 ) {
+		LoadAndAttachShader( program, GL_FRAGMENT_SHADER, baseDir + fragment );
+	}
 	if( geometry != nullptr )
 		LoadAndAttachShader( program, GL_GEOMETRY_SHADER, baseDir + geometry );
-	common->Printf( "Compiled GLSL program: vertex %s - fragment %s\n", vertex, fragment );
+	common->Printf( "Compiled GLSL program: vertex %s - fragment %s - geometry %s\n", vertex, fragment, geometry );
 
 	qglLinkProgram( program );
 	GLint result;
