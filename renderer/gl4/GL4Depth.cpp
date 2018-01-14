@@ -17,6 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GL4Backend.h"
 #include "GLDebugGroup.h"
 #include "OpenGL4Renderer.h"
+#include "OcclusionSystem.h"
 
 struct DepthFastDrawData {
 	float mvpMatrix[16];
@@ -50,7 +51,11 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	DepthFastDrawData *drawData = ( DepthFastDrawData* )openGL4Renderer.ReserveSSBO( ssboSize );
 
 	for( int i = 0; i < numDrawSurfs; ++i ) {
-		myGlMultMatrix( drawSurfs[i]->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData[i].mvpMatrix );
+		if( r_useOcclusionCulling.GetBool() && occlusionSystem.WasEntityCulledLastFrame(drawSurfs[i]->space->entityIndex) ) {
+			continue;
+		}
+		//myGlMultMatrix( drawSurfs[i]->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData[i].mvpMatrix );
+		memcpy( drawData[i].mvpMatrix, drawSurfs[i]->space->mvpMatrix, sizeof( drawData[i].mvpMatrix ) );
 		const srfTriangles_t *tri = drawSurfs[i]->backendGeo;
 		commands[i].count = tri->numIndexes;
 		commands[i].instanceCount = 1;
@@ -93,6 +98,9 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		drawSurf_t *surf = drawSurfs[i];
+		if( r_useOcclusionCulling.GetBool() && occlusionSystem.WasEntityCulledLastFrame( surf->space->entityIndex ) ) {
+			continue;
+		}
 		drawData.color.Set( 0, 0, 0, 1 );  // draw black by default
 
 		const srfTriangles_t *tri = surf->backendGeo;
@@ -238,7 +246,7 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	// TODO: only needed while mixing with legacy rendering
 	openGL4Renderer.PrepareVertexAttribs();
 
-	GL_State( GLS_DEPTHFUNC_LESS & GLS_COLORMASK & GLS_ALPHAMASK );
+	GL_State( GLS_DEPTHFUNC_LESS /*| GLS_COLORMASK | GLS_ALPHAMASK*/ );  // may need to reset color to black on later views
 	// Enable stencil test if we are going to be using it for shadows.
 	// If we didn't do this, it would be legal behavior to get z fighting
 	// from the ambient pass and the light passes.

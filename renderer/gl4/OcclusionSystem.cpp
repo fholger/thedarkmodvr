@@ -143,7 +143,8 @@ void OcclusionSystem::TransferResults() {
 }
 
 bool OcclusionSystem::WasEntityCulledLastFrame( int entityId ) const {
-	if( !initialized )
+	//return false;
+	if( !initialized || entityId < 0 || entityId >= MAX_ENTITIES )
 		return false;
 	int arrayIndex = entityId / 32;
 	int bitPosition = entityId % 32;

@@ -48,16 +48,16 @@ void GL4_DrawView( void ) {
 	// fill the depth buffer and clear color buffer to black except on subviews
 	GL4_FillDepthBuffer( drawSurfs, numDrawSurfs );
 
-	if( r_useOcclusionCulling.GetBool() ) {
-		GL4_CheckBoundingBoxOcclusion();
-	}
-
 	GL4_DrawInteractions();
 
 	// now draw any non-light dependent shading passes
 	processed = GL4_DrawShaderPasses( drawSurfs, numDrawSurfs, false );
 
 	
+	if( r_useOcclusionCulling.GetBool() ) {
+		GL4_CheckBoundingBoxOcclusion();
+	}
+
 	// fog and blend lights
 	/*RB_STD_FogAllLights();
 	afterFog = true;

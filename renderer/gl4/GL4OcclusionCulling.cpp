@@ -61,7 +61,7 @@ void GL4_CheckBoundingBoxOcclusion() {
 	openGL4Renderer.BindSSBO( 1, entities.size() * sizeof( OcclusionDrawData ) );
 
 	GL_State( GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK );
-	qglDepthFunc( GL_ALWAYS );
+	//qglDepthFunc( GL_ALWAYS );
 	qglDisable( GL_STENCIL_TEST );
 	qglEnable( GL_POLYGON_OFFSET_FILL );
 	qglPolygonOffset( -5, -5 );
