@@ -61,11 +61,13 @@ void LoadAndAttachShader( GLuint program, GLint type, const char *fileName ) {
 	}
 }
 
-GL4Program GL4Program::Load( const char *vertex, const char *fragment ) {
+GL4Program GL4Program::Load( const char *vertex, const char *fragment, const char *geometry ) {
 	GLuint program = qglCreateProgram();
 	idStr baseDir( "gl4progs/" );
 	LoadAndAttachShader( program, GL_VERTEX_SHADER, baseDir + vertex );
 	LoadAndAttachShader( program, GL_FRAGMENT_SHADER, baseDir + fragment );
+	if( geometry != nullptr )
+		LoadAndAttachShader( program, GL_GEOMETRY_SHADER, baseDir + geometry );
 	common->Printf( "Compiled GLSL program: vertex %s - fragment %s\n", vertex, fragment );
 
 	qglLinkProgram( program );
@@ -122,6 +124,10 @@ void GL4Program::SetUniform1( GLint location, GLfloat value ) {
 	qglProgramUniform1f( program, location, value );
 }
 
+void GL4Program::SetUniform3( GLint location, const GLfloat *values ) {
+	qglProgramUniform3fv( program, location, 1, values );
+}
+
 void GL4Program::SetUniform4( GLint location, const GLfloat *values ) {
 	qglProgramUniform4fv( program, location, 1, values );
 }
@@ -136,6 +142,12 @@ void GL4Program::SetProjectionMatrix( GLint location ) {
 
 void GL4Program::SetViewMatrix( GLint location ) {
 	SetUniformMatrix4( location, backEnd.viewDef->worldSpace.modelViewMatrix );
+}
+
+void GL4Program::SetViewProjectionMatrix( GLint location ) {
+	float matrix[16];
+	myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, matrix );
+	SetUniformMatrix4( location, matrix );
 }
 
 void GL4Program::SetModelViewProjectionMatrix( GLint location, const viewEntity_t *entity ) {

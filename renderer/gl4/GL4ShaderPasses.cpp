@@ -18,6 +18,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "OpenGL4Renderer.h"
 #include "../FrameBuffer.h"
 #include "../glsl.h"
+#include "OcclusionSystem.h"
 
 struct ShaderPassDrawData {
 	float modelMatrix[16];
@@ -313,6 +314,10 @@ int GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFo
 			if( drawSurfs[i]->space->entityDef->parms.xrayIndex != 2 ) {
 				continue;
 			}
+		}
+
+		if( r_useOcclusionCulling.GetBool() && drawSurfs[i]->space && occlusionSystem.IsEntityIdVisible(drawSurfs[i]->space->entityIndex) ) {
+			continue;
 		}
 
 		// we need to draw the post process shaders after we have drawn the fog lights

@@ -389,6 +389,7 @@ typedef struct viewEntity_s {
 	float				mvpMatrix[16];			// local coords to clip space
 
 	idBounds			boundingBox;
+	int					entityIndex;
 } viewEntity_t;
 
 

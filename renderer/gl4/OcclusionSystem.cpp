@@ -27,6 +27,10 @@ void OcclusionSystem::Init() {
 	qglGenBuffersARB( 1, &visibilityBuffer );
 	qglBindBufferARB( GL_SHADER_STORAGE_BUFFER, visibilityBuffer );
 	qglBufferStorage( GL_SHADER_STORAGE_BUFFER, 65536 * sizeof( int ), nullptr, 0 );
+	qglGenBuffersARB( 1, &visibilityCopyBuffer );
+	qglBindBufferARB( GL_SHADER_STORAGE_BUFFER, visibilityCopyBuffer );
+	qglBufferStorage( GL_SHADER_STORAGE_BUFFER, 65536 * sizeof( int ), nullptr, 0 );
+	visibility = ( int* )Mem_Alloc16( sizeof( int ) * 65536 );
 
 	initialized = true;
 }
@@ -37,6 +41,8 @@ void OcclusionSystem::Shutdown() {
 
 	bboxBuffer.Destroy();
 	qglDeleteBuffersARB( 1, &visibilityBuffer );
+	qglDeleteBuffersARB( 1, &visibilityCopyBuffer );
+	Mem_Free16( visibility );
 }
 
 Occluder * OcclusionSystem::ReserveOccluders( uint count ) {
@@ -55,8 +61,8 @@ void OcclusionSystem::PrepareVisibilityBuffer() {
 
 void OcclusionSystem::BindOccluders() {
 	bboxBuffer.BindBuffer();
-	qglVertexAttribPointer( 13, 4, GL_FLOAT, GL_FALSE, sizeof( Occluder ), bboxBuffer.GetOffset() + offsetof( Occluder, bboxMin ) );
-	qglVertexAttribPointer( 14, 4, GL_FLOAT, GL_FALSE, sizeof( Occluder ), bboxBuffer.GetOffset() + offsetof( Occluder, bboxMax ) );
+	qglVertexAttribPointer( 13, 4, GL_FLOAT, GL_FALSE, sizeof( Occluder ), (byte*)bboxBuffer.GetOffset() + offsetof( Occluder, bboxMin ) );
+	qglVertexAttribPointer( 14, 4, GL_FLOAT, GL_FALSE, sizeof( Occluder ), (byte*)bboxBuffer.GetOffset() + offsetof( Occluder, bboxMax ) );
 	qglEnableVertexAttribArray( 13 );
 	qglEnableVertexAttribArray( 14 );
 }
@@ -65,4 +71,19 @@ void OcclusionSystem::Finish( uint count ) {
 	qglDisableVertexAttribArray( 13 );
 	qglDisableVertexAttribArray( 14 );
 	bboxBuffer.MarkAsUsed( count * sizeof( Occluder ) );
+
+	// read back results; TODO might want to do this later to avoid stalls
+	qglBindBufferARB( GL_COPY_READ_BUFFER, visibilityBuffer );
+	qglBindBufferARB( GL_COPY_WRITE_BUFFER, visibilityCopyBuffer );
+	qglCopyBufferSubData( GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, 0, 0, sizeof( int ) * count );
+	qglGetBufferSubDataARB( GL_COPY_WRITE_BUFFER, 0, sizeof( int ) * count, visibility );
+	visibleEntities.clear();
+}
+
+void OcclusionSystem::SetEntityIdVisible( int entityId ) {
+	visibleEntities.insert( entityId );
+}
+
+bool OcclusionSystem::IsEntityIdVisible( int entityId ) const {
+	return visibleEntities.find( entityId ) != visibleEntities.end();
 }

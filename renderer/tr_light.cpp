@@ -241,6 +241,8 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 	// set the model and modelview matricies
 	vModel = (viewEntity_t *)R_ClearedFrameAlloc( sizeof( *vModel ) );
 	vModel->entityDef = def;
+	vModel->entityIndex = def->GetIndex();
+	vModel->boundingBox = def->referenceBounds;
 
 	// the scissorRect will be expanded as the model bounds is accepted into visible portal chains
 	vModel->scissorRect.Clear();
@@ -255,7 +257,6 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 	if ( tr.viewDef ) {
 		myGlMultMatrix( vModel->modelMatrix, tr.viewDef->worldSpace.modelViewMatrix, vModel->modelViewMatrix );
 		myGlMultMatrix( vModel->modelViewMatrix, tr.viewDef->projectionMatrix, vModel->mvpMatrix );
-		vModel->boundingBox = def->referenceBounds;
 
 		vModel->next = tr.viewDef->viewEntitys;
 		tr.viewDef->viewEntitys = vModel;

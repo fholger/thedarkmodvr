@@ -136,6 +136,9 @@
     <Filter Include="Renderer\GL4">
       <UniqueIdentifier>{30572817-77d9-40bc-bdec-c50f5b95378d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\GL4\Shaders">
+      <UniqueIdentifier>{2168d78a-ad7b-4f84-a198-6ae11016c281}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -3140,6 +3143,42 @@
     </None>
     <None Include="game\game.def">
       <Filter>Game</Filter>
+    </None>
+    <None Include="gl4progs\black.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\depth_fast_md.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\depth_generic.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\depth_generic.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\interaction_simple.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\interaction_simple.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\oldstage.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\oldstage.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\stencil_md.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion.geom.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

@@ -20,6 +20,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 enum DebugGroupId {
 	RENDER,
 	DEPTH,
+	OCCLUSION,
 	STENCIL,
 	INTERACTION,
 	SHADER_PASS,

@@ -15,6 +15,8 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "precompiled.h"
 #include "OcclusionSystem.h"
 #include "OpenGL4Renderer.h"
+#include "GLDebugGroup.h"
+#include "../qgl_linked.h"
 
 struct OcclusionDrawData {
 	idMat4 modelMatrix;
@@ -22,11 +24,16 @@ struct OcclusionDrawData {
 };
 
 void GL4_CheckBoundingBoxOcclusion() {
+	if( !backEnd.viewDef->viewEntitys )
+		return;
+
+	GL_DEBUG_GROUP( CheckBoundingBoxOcclusion_GL4, OCCLUSION );
 	occlusionSystem.Init();
 
 	std::vector<viewEntity_t*> entities;
 	for( viewEntity_t *entity = backEnd.viewDef->viewEntitys; entity; entity = entity->next ) {
-		entities.push_back( entity );
+		if( entity->entityDef )
+			entities.push_back( entity );
 	}
 
 	OcclusionDrawData *drawData = ( OcclusionDrawData* )openGL4Renderer.ReserveSSBO( entities.size() * sizeof( OcclusionDrawData ) );
@@ -38,12 +45,39 @@ void GL4_CheckBoundingBoxOcclusion() {
 		occluders[i].bboxMax.ToVec3() = entities[i]->boundingBox[1];
 	}
 
+	GL4Program occlusionShader = openGL4Renderer.GetShader( SHADER_OCCLUSION );
+	occlusionShader.Activate();
+	occlusionShader.SetUniform3( 0, backEnd.viewDef->renderView.vieworg.ToFloatPtr() );
+	occlusionShader.SetViewProjectionMatrix( 1 );
+	openGL4Renderer.EnableVertexAttribs( {} );
 	occlusionSystem.PrepareVisibilityBuffer();
 	occlusionSystem.BindOccluders();
 	openGL4Renderer.BindSSBO( 1, entities.size() * sizeof( OcclusionDrawData ) );
-	GL_State( GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK );
+
+	GL_State( GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK /*| GLS_COLORMASK | GLS_ALPHAMASK*/ );
+	qglDepthFunc( GL_ALWAYS );
 	qglDisable( GL_STENCIL_TEST );
+	qglEnable( GL_POLYGON_OFFSET_FILL );
+	qglEnable( GL_POLYGON_OFFSET_POINT );
+	qglPolygonOffset( -50, -50 );
 	qglDrawArrays( GL_POINTS, 0, entities.size() );
+	qglPolygonOffset( 0, 0 );
+	qglDisable( GL_POLYGON_OFFSET_FILL );
+	qglDisable( GL_POLYGON_OFFSET_POINT );
+	qglMemoryBarrier( GL_SHADER_STORAGE_BARRIER_BIT );
+
 	openGL4Renderer.LockSSBO( entities.size() * sizeof( OcclusionDrawData ) );
 	occlusionSystem.Finish( entities.size() );
+
+	const int *results = occlusionSystem.GetVisibilityResults();
+	int numVisible = 0;
+	for( int i = 0; i < entities.size(); ++i ) {
+		if( results[i] != 0 ) {
+			++numVisible;
+			//occlusionSystem.SetEntityIdVisible( entities[i]->entityDef->GetIndex() );
+		} else {
+			occlusionSystem.SetEntityIdVisible( entities[i]->entityIndex );
+		}
+	}
+	common->Printf( "Occlusion check results: %d of %d entities potentially visible\n", numVisible, entities.size() );
 }

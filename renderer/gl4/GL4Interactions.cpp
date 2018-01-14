@@ -16,6 +16,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GL4Backend.h"
 #include "GLDebugGroup.h"
 #include "OpenGL4Renderer.h"
+#include "OcclusionSystem.h"
 
 idCVar r_skipInteractionFastPath( "r_skipInteractionFastPath", "0", CVAR_RENDERER | CVAR_BOOL, "" );
 
@@ -468,6 +469,9 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	std::vector<const drawSurf_t*> allSurfaces;
 	std::vector<const drawSurf_t*> complexSurfaces;
 	for( const drawSurf_t * walk = surfList; walk != NULL; walk = walk->nextOnLight ) {
+		if( r_useOcclusionCulling.GetBool() && walk->space && occlusionSystem.IsEntityIdVisible( walk->space->entityIndex ) ) {
+			continue;
+		}
 		if( walk->material->GetFastPathBumpImage() ) {
 			allSurfaces.push_back( walk );
 		} else {

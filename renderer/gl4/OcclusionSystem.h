@@ -17,6 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "PersistentBufferObject.h"
 #include "../tr_local.h"
 #include <vector>
+#include <unordered_set>
 
 struct Occluder {
 	idVec4 bboxMin;
@@ -36,10 +37,18 @@ public:
 	void BindOccluders();
 	void Finish( uint count );
 
+	const int * GetVisibilityResults() const { return visibility; }
+
+	void SetEntityIdVisible( int entityId );
+	bool IsEntityIdVisible( int entityId ) const;
+
 private:
 	bool initialized;
 	PersistentBufferObject bboxBuffer;
 	GLuint visibilityBuffer;
+	GLuint visibilityCopyBuffer;
+	int *visibility;
+	std::unordered_set<int> visibleEntities;
 };
 
 extern OcclusionSystem occlusionSystem;

@@ -20,7 +20,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 class GL4Program {
 public:
-	static GL4Program Load( const char* vertex, const char* fragment );
+	static GL4Program Load( const char* vertex, const char* fragment, const char* geometry = nullptr );
 	void Destroy();
 	bool Valid() const { return program != 0; }
 
@@ -28,10 +28,12 @@ public:
 	static void Unset();
 
 	void SetUniform1( GLint location, GLfloat value );
+	void SetUniform3( GLint location, const GLfloat *values );
 	void SetUniform4( GLint location, const GLfloat *values );
 	void SetUniformMatrix4( GLint location, const GLfloat *matrix );
 	void SetProjectionMatrix( GLint location );
 	void SetViewMatrix( GLint location );
+	void SetViewProjectionMatrix( GLint location );
 	void SetModelViewProjectionMatrix( GLint location, const viewEntity_t *entity );
 
 	GL4Program();
