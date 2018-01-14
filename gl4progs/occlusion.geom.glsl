@@ -58,11 +58,20 @@ void main() {
 
 	id = IN[0].id;
 
-	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal - edgeBasis0 - edgeBasis1 ), 1 );
+	/*gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal - edgeBasis0 - edgeBasis1 ), 1 );
 	EmitVertex();
 	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal + edgeBasis0 - edgeBasis1 ), 1 );
 	EmitVertex();
 	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal - edgeBasis0 + edgeBasis1 ), 1 );
+	EmitVertex();
+	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal + edgeBasis0 + edgeBasis1 ), 1 );
+	EmitVertex();*/
+
+	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal - edgeBasis0 - edgeBasis1 ), 1 );
+	EmitVertex();
+	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal - edgeBasis0 + edgeBasis1 ), 1 );
+	EmitVertex();
+	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal + edgeBasis0 - edgeBasis1 ), 1 );
 	EmitVertex();
 	gl_Position = viewProjMatrix * vec4( worldCenter + ( faceNormal + edgeBasis0 + edgeBasis1 ), 1 );
 	EmitVertex();
