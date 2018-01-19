@@ -50,21 +50,23 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	GLuint ssboSize = sizeof( DepthFastDrawData ) * numDrawSurfs;
 	DepthFastDrawData *drawData = ( DepthFastDrawData* )openGL4Renderer.ReserveSSBO( ssboSize );
 
+	int cmdIdx = 0;
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		if( r_useOcclusionCulling.GetBool() && occlusionSystem.WasEntityCulledLastFrame(drawSurfs[i]->space->entityIndex) ) {
 			continue;
 		}
 		//myGlMultMatrix( drawSurfs[i]->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData[i].mvpMatrix );
-		memcpy( drawData[i].mvpMatrix, drawSurfs[i]->space->mvpMatrix, sizeof( drawData[i].mvpMatrix ) );
+		memcpy( drawData[cmdIdx].mvpMatrix, drawSurfs[i]->space->mvpMatrix, sizeof( drawData[cmdIdx].mvpMatrix ) );
 		const srfTriangles_t *tri = drawSurfs[i]->backendGeo;
-		commands[i].count = tri->numIndexes;
-		commands[i].instanceCount = 1;
+		commands[cmdIdx].count = tri->numIndexes;
+		commands[cmdIdx].instanceCount = 1;
 		if( !tri->indexCache ) {
 			common->Warning( "GL4_MultiDrawDepth: Missing indexCache" );
 		}
-		commands[i].firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
-		commands[i].baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
-		commands[i].baseInstance = i;
+		commands[cmdIdx].firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
+		commands[cmdIdx].baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
+		commands[cmdIdx].baseInstance = cmdIdx;
+		++cmdIdx;
 	}
 
 	openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_DRAWID } );
@@ -72,7 +74,7 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	vertexCache.IndexPosition( staticIndex ? 1 : 2 );
 	openGL4Renderer.BindSSBO( 0, ssboSize );
 
-	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands, numDrawSurfs, 0 );
+	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands, cmdIdx, 0 );
 	openGL4Renderer.LockSSBO( ssboSize );
 }
 

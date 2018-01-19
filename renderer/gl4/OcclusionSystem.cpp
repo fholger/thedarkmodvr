@@ -80,14 +80,22 @@ void OcclusionSystem::EndFrame() {
 		lastFrameCulled[i] = testedEntities[i] & ( ~visibilityResults[i] );
 	}
 
-	/*int culledCount = 0;
+	common->Printf( "Tested:" );
+	for( int i = 0; i < MAX_ENTITIES; ++i ) {
+		int idx = i / ENTITIES_PER_INT;
+		int bit = 1 << ( i % ENTITIES_PER_INT );
+		if( testedEntities[idx] & bit ) {
+			common->Printf( " %d", i );
+		}
+	}
+	common->Printf( "\nCulled:" );
 	for( int i = 0; i < MAX_ENTITIES; ++i ) {
 		int idx = i / ENTITIES_PER_INT;
 		int bit = 1 << (i % ENTITIES_PER_INT);
 		if( lastFrameCulled[idx] & bit )
-			++culledCount;
+			common->Printf( " %d", i );
 	}
-	common->Printf( "Number of entities culled: %d\n", culledCount );*/
+	common->Printf( "\n" );
 }
 
 void OcclusionSystem::PrepareVisibilityBuffer() {
