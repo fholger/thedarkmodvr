@@ -296,6 +296,7 @@ void OpenGL4Renderer::LoadShaders() {
 	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vert.glsl", "depth_generic.frag.glsl" );
 	shaders[SHADER_OCCLUSION] = GL4Program::Load( "occlusion.vert.glsl", "occlusion.frag.glsl", "occlusion.geom.glsl" );
 	shaders[SHADER_OCCLUSION_BITPACK] = GL4Program::Load( "occlusion_bitpack.vert.glsl" );
+	shaders[SHADER_OCCLUSION_DEBUG] = GL4Program::Load( "occlusion_debug.vert.glsl", "occlusion_debug.frag.glsl", "occlusion_debug.geom.glsl" );
 	shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md.vert.glsl", "black.frag.glsl" );
 	shaders[SHADER_INTERACTION_SIMPLE] = GL4Program::Load( "interaction_simple.vert.glsl", "interaction_simple.frag.glsl" );
 	shaders[SHADER_OLDSTAGE] = GL4Program::Load( "oldstage.vert.glsl", "oldstage.frag.glsl" );

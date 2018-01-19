@@ -3183,6 +3183,15 @@
     <None Include="gl4progs\occlusion_bitpack.vert.glsl">
       <Filter>Renderer\GL4\Shaders</Filter>
     </None>
+    <None Include="gl4progs\occlusion_debug.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion_debug.geom.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion_debug.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="sys\win32\rc\AFEditor.rc">

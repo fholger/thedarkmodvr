@@ -34,7 +34,7 @@ void GL4_CheckBoundingBoxOcclusion() {
 	int i = 0;
 	for( viewEntity_t *entity = backEnd.viewDef->viewEntitys; entity; entity = entity->next, ++i ) {
 		if( i % 20 != 0 ) {
-			continue;
+			//continue;
 		}
 		if( entity->entityDef && !entity->scissorRect.IsEmpty() )
 			entities.push_back( entity );
@@ -63,12 +63,20 @@ void GL4_CheckBoundingBoxOcclusion() {
 	GL_State( GLS_DEPTHFUNC_LESS | GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK );
 	//qglDepthFunc( GL_ALWAYS );
 	qglDisable( GL_STENCIL_TEST );
+	qglDisable( GL_SCISSOR_TEST );
 	qglEnable( GL_POLYGON_OFFSET_FILL );
-	qglPolygonOffset( -5, -5 );
+	qglPolygonOffset( -1, -1 );
 	qglDrawArrays( GL_POINTS, 0, entities.size() );
 	qglPolygonOffset( 0, 0 );
 	qglDisable( GL_POLYGON_OFFSET_FILL );
 	qglMemoryBarrier( GL_SHADER_STORAGE_BARRIER_BIT );
+
+	/*GL4Program debugShader = openGL4Renderer.GetShader( SHADER_OCCLUSION_DEBUG );
+	debugShader.Activate();
+	debugShader.SetUniform3( 0, backEnd.viewDef->renderView.vieworg.ToFloatPtr() );
+	debugShader.SetViewProjectionMatrix( 1 );
+	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK );
+	qglDrawArrays( GL_POINTS, 0, entities.size() );*/
 
 	openGL4Renderer.LockSSBO( entities.size() * sizeof( OcclusionDrawData ) );
 	occlusionSystem.Finish( entities.size() );
