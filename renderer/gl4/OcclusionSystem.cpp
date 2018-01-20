@@ -75,6 +75,7 @@ void OcclusionSystem::BeginFrame() {
 }
 
 void OcclusionSystem::EndFrame() {
+	bboxBuffer.Lock();
 	memset( lastFrameCulled, 0, BIT_BUFFER_SIZE );
 	for( int i = 0; i < MAX_ENTITIES / ENTITIES_PER_INT; ++i ) {
 		lastFrameCulled[i] = testedEntities[i] & ( ~visibilityResults[i] );

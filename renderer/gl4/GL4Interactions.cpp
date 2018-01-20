@@ -120,7 +120,7 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 
 	openGL4Renderer.BindSSBO( 0, drawDataSize );
 	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands, count, 0 );
-	openGL4Renderer.LockSSBO( drawDataSize );
+	openGL4Renderer.MarkUsedSSBO( drawDataSize );
 }
 
 void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {

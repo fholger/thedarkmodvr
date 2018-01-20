@@ -16,7 +16,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "PersistentBufferObject.h"
 #include "GL4Backend.h"
 
-PersistentBufferObject::PersistentBufferObject(): mBufferObject( 0 ), mTarget( 0 ), mSize( 0 ), mAlign( 0 ), mMapBase( nullptr ), mCurrentOffset( 0 ) {}
+PersistentBufferObject::PersistentBufferObject(): mBufferObject( 0 ), mTarget( 0 ), mSize( 0 ), mAlign( 0 ), mMapBase( nullptr ), mCurrentOffset( 0 ), mLastLocked( 0 ) {}
 
 PersistentBufferObject::~PersistentBufferObject() {
 	Destroy();
@@ -35,6 +35,7 @@ void PersistentBufferObject::Init( GLenum target, GLuint size, GLuint alignment 
 	qglBufferStorage( mTarget, mSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 	mMapBase = ( byte* )qglMapBufferRange( mTarget, 0, mSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 	mCurrentOffset = 0;
+	mLastLocked = 0;
 }
 
 void PersistentBufferObject::Destroy() {
@@ -56,7 +57,11 @@ byte *PersistentBufferObject::Reserve( GLuint size ) {
 	}
 
 	if( mCurrentOffset + requestedSize > mSize ) {
+		if( mCurrentOffset != mLastLocked ) {
+			LockRange( mLastLocked, mCurrentOffset - mLastLocked );
+		}
 		mCurrentOffset = 0;
+		mLastLocked = 0;
 	}
 
 	WaitForLockedRange( mCurrentOffset, requestedSize );
@@ -65,8 +70,13 @@ byte *PersistentBufferObject::Reserve( GLuint size ) {
 
 void PersistentBufferObject::MarkAsUsed( GLuint size ) {
 	GLuint requestedSize = ALIGN( size, mAlign );
-	LockRange( mCurrentOffset, requestedSize );
+	//LockRange( mCurrentOffset, requestedSize );
 	mCurrentOffset += requestedSize;
+}
+
+void PersistentBufferObject::Lock() {
+	LockRange( mLastLocked, mCurrentOffset - mLastLocked );
+	mLastLocked = mCurrentOffset;
 }
 
 void PersistentBufferObject::BindBuffer() {

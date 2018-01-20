@@ -75,7 +75,7 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	openGL4Renderer.BindSSBO( 0, ssboSize );
 
 	qglMultiDrawElementsIndirect( GL_TRIANGLES, GL_INDEX_TYPE, commands, cmdIdx, 0 );
-	openGL4Renderer.LockSSBO( ssboSize );
+	openGL4Renderer.MarkUsedSSBO( ssboSize );
 }
 
 void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {

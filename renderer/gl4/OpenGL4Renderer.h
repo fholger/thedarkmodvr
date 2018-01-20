@@ -56,7 +56,7 @@ public:
 
 	DrawElementsIndirectCommand * ReserveCommandBuffer( uint count );
 	byte * ReserveSSBO( uint size );
-	void LockSSBO( uint size );
+	void MarkUsedSSBO( uint size );
 
 	GL4Program GetShader( ProgramType shaderType ) const;
 

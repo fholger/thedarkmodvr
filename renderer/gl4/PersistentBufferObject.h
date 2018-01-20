@@ -41,6 +41,7 @@ public:
 
 	byte *Reserve( GLuint size );
 	void MarkAsUsed( GLuint size );
+	void Lock();
 
 	void BindBuffer();
 
@@ -56,6 +57,7 @@ private:
 	GLuint mAlign;
 	byte * mMapBase;
 	GLuint mCurrentOffset;
+	GLuint mLastLocked;
 	std::vector<LockedRange> mRangeLocks;
 
 	void LockRange( GLuint offset, GLuint count );

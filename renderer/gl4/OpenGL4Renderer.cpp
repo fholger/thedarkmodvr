@@ -192,7 +192,7 @@ byte * OpenGL4Renderer::ReserveSSBO( uint size ) {
 	return alloc;
 }
 
-void OpenGL4Renderer::LockSSBO( uint size ) {
+void OpenGL4Renderer::MarkUsedSSBO( uint size ) {
 	ssbo.MarkAsUsed( size );
 }
 
@@ -289,6 +289,7 @@ void OpenGL4Renderer::EndFrame() {
 	if( r_useOcclusionCulling.GetBool() ) {
 		occlusionSystem.EndFrame();
 	}
+	ssbo.Lock();
 }
 
 void OpenGL4Renderer::LoadShaders() {

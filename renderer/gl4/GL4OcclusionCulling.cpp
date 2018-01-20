@@ -78,6 +78,6 @@ void GL4_CheckBoundingBoxOcclusion() {
 	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK );
 	qglDrawArrays( GL_POINTS, 0, entities.size() );*/
 
-	openGL4Renderer.LockSSBO( entities.size() * sizeof( OcclusionDrawData ) );
+	openGL4Renderer.MarkUsedSSBO( entities.size() * sizeof( OcclusionDrawData ) );
 	occlusionSystem.Finish( entities.size() );
 }
