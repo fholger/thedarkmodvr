@@ -82,7 +82,8 @@ private:
 	bool initialized;
 	GLuint drawIdBuffer;
 	PersistentBufferObject ssbo;
-	UniformBufferObject ubo;
+	PersistentBufferObject ubo;
+	GLuint uboBindIndex;
 	DrawElementsIndirectCommand *commandBuffer;
 
 	uint32_t enabledVertexAttribs;

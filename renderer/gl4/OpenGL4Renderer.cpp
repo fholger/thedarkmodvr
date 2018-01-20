@@ -20,7 +20,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 OpenGL4Renderer openGL4Renderer;
 
-const int MAX_MULTIDRAW_COMMANDS = 8192;
+const int MAX_DRAW_COMMANDS = 8192;
 const int MAX_ELEMENT_SIZE = 256;
 const int BUFFER_FACTOR = 3;
 const int UBO_BUFFER_SIZE = 64 * 1024;
@@ -133,17 +133,17 @@ void OpenGL4Renderer::Init() {
 
 	// generate draw id buffer, needed to pass a draw id to the vertex shader in multi-draw calls
 	qglGenBuffersARB( 1, &drawIdBuffer );
-	std::vector<uint32_t> drawIds( MAX_MULTIDRAW_COMMANDS );
-	for( uint32_t i = 0; i < MAX_MULTIDRAW_COMMANDS; ++i ) {
+	std::vector<uint32_t> drawIds( MAX_DRAW_COMMANDS );
+	for( uint32_t i = 0; i < MAX_DRAW_COMMANDS; ++i ) {
 		drawIds[i] = i;
 	}
 	qglBindBufferARB( GL_ARRAY_BUFFER, drawIdBuffer );
 	qglBufferStorage( GL_ARRAY_BUFFER, drawIds.size() * sizeof( uint32_t ), drawIds.data(), 0 );
 
-	ssbo.Init( GL_SHADER_STORAGE_BUFFER, MAX_MULTIDRAW_COMMANDS * MAX_ELEMENT_SIZE * BUFFER_FACTOR, glConfig.ssboOffsetAlignment );
-	ubo.Init( UBO_BUFFER_SIZE );
+	ssbo.Init( GL_SHADER_STORAGE_BUFFER, MAX_DRAW_COMMANDS * MAX_ELEMENT_SIZE * BUFFER_FACTOR, glConfig.ssboOffsetAlignment );
+	ubo.Init( GL_UNIFORM_BUFFER, MAX_DRAW_COMMANDS * MAX_ELEMENT_SIZE * BUFFER_FACTOR, glConfig.uniformOffsetAlignment );
 
-	commandBuffer = ( DrawElementsIndirectCommand * )Mem_Alloc16( sizeof( DrawElementsIndirectCommand ) * MAX_MULTIDRAW_COMMANDS );
+	commandBuffer = ( DrawElementsIndirectCommand * )Mem_Alloc16( sizeof( DrawElementsIndirectCommand ) * MAX_DRAW_COMMANDS );
 
 	common->Printf( "OpenGL4 renderer ready\n" );
 
@@ -176,7 +176,7 @@ void OpenGL4Renderer::Shutdown() {
 }
 
 DrawElementsIndirectCommand * OpenGL4Renderer::ReserveCommandBuffer( uint count ) {
-	if( count > MAX_MULTIDRAW_COMMANDS ) {
+	if( count > MAX_DRAW_COMMANDS ) {
 		common->FatalError( "Requested count %d exceeded maximum command buffer size for multi-draw calls", count );
 	}
 
@@ -205,11 +205,14 @@ void OpenGL4Renderer::BindSSBO( GLuint index, GLuint size ) {
 }
 
 void OpenGL4Renderer::BindUBO( GLuint index ) {
-	ubo.Bind( index );
+	uboBindIndex = index;
 }
 
 void OpenGL4Renderer::UpdateUBO( const void *data, GLsizeiptr size ) {
-	ubo.Update( data, size );
+	void *dest = ubo.Reserve( size );
+	memcpy( dest, data, size );
+	ubo.BindBufferRange( uboBindIndex, size );
+	ubo.MarkAsUsed( size );
 }
 
 void OpenGL4Renderer::PrepareVertexAttribs() {
@@ -290,6 +293,7 @@ void OpenGL4Renderer::EndFrame() {
 		occlusionSystem.EndFrame();
 	}
 	ssbo.Lock();
+	ubo.Lock();
 }
 
 void OpenGL4Renderer::LoadShaders() {
