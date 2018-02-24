@@ -1152,6 +1152,10 @@ void R_RenderView( viewDef_t &parms ) {
 		static_cast<idRenderWorldLocal *>(parms.renderWorld)->WriteVisibleDefs( tr.viewDef );
 	}
 
+	for( viewEntity_t *entity = parms.viewEntitys; entity; entity = entity->next ) {
+		entity->boundingBox = entity->entityDef->referenceBounds;
+	}
+
 	// add the rendering commands for this viewDef
 	R_AddDrawViewCmd( parms );
 

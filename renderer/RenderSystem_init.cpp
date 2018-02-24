@@ -19,6 +19,8 @@
 
 #include "tr_local.h"
 #include "FrameBuffer.h"
+#include "gl4/OpenGL4Renderer.h"
+#include "gl4/GL4Backend.h"
 
 // Vista OpenGL wrapper check
 #ifdef _WIN32
@@ -392,6 +394,46 @@ PFNGLFENCESYNCPROC						qglFenceSync;
 PFNGLCLIENTWAITSYNCPROC					qglClientWaitSync;
 PFNGLDELETESYNCPROC						qglDeleteSync;
 
+// OpenGL 4 backend specific functions
+PFNGLPUSHDEBUGGROUPPROC						qglPushDebugGroup;
+PFNGLPOPDEBUGGROUPPROC						qglPopDebugGroup;
+PFNGLBUFFERSTORAGEPROC						qglBufferStorage;
+PFNGLDRAWELEMENTSBASEVERTEXPROC				qglDrawElementsBaseVertex;
+PFNGLDRAWELEMENTSINDIRECTPROC				qglDrawElementsIndirect;
+PFNGLMULTIDRAWELEMENTSINDIRECTPROC			qglMultiDrawElementsIndirect;
+PFNGLBINDBUFFERBASEPROC						qglBindBufferBase;
+PFNGLBINDBUFFERRANGEPROC					qglBindBufferRange;
+PFNGLVERTEXATTRIBIPOINTERPROC				qglVertexAttribIPointer;
+PFNGLVERTEXATTRIBDIVISORPROC				qglVertexAttribDivisor;
+PFNGLMEMORYBARRIERPROC						qglMemoryBarrier;
+PFNGLPROGRAMUNIFORM1FPROC					qglProgramUniform1f;
+PFNGLPROGRAMUNIFORM2FPROC					qglProgramUniform2f;
+PFNGLPROGRAMUNIFORM3FPROC					qglProgramUniform3f;
+PFNGLPROGRAMUNIFORM4FPROC					qglProgramUniform4f;
+PFNGLPROGRAMUNIFORM1IPROC					qglProgramUniform1i;
+PFNGLPROGRAMUNIFORM2IPROC					qglProgramUniform2i;
+PFNGLPROGRAMUNIFORM3IPROC					qglProgramUniform3i;
+PFNGLPROGRAMUNIFORM4IPROC					qglProgramUniform4i;
+PFNGLPROGRAMUNIFORM1FVPROC					qglProgramUniform1fv;
+PFNGLPROGRAMUNIFORM2FVPROC					qglProgramUniform2fv;
+PFNGLPROGRAMUNIFORM3FVPROC					qglProgramUniform3fv;
+PFNGLPROGRAMUNIFORM4FVPROC					qglProgramUniform4fv;
+PFNGLPROGRAMUNIFORM1IVPROC					qglProgramUniform1iv;
+PFNGLPROGRAMUNIFORM2IVPROC					qglProgramUniform2iv;
+PFNGLPROGRAMUNIFORM3IVPROC					qglProgramUniform3iv;
+PFNGLPROGRAMUNIFORM4IVPROC					qglProgramUniform4iv;
+PFNGLPROGRAMUNIFORMMATRIX2FVPROC			qglProgramUniformMatrix2fv;
+PFNGLPROGRAMUNIFORMMATRIX3FVPROC			qglProgramUniformMatrix3fv;
+PFNGLPROGRAMUNIFORMMATRIX4FVPROC			qglProgramUniformMatrix4fv;
+PFNGLVERTEXATTRIBFORMATPROC					qglVertexAttribFormat;
+PFNGLVERTEXATTRIBBINDINGPROC				qglVertexAttribBinding;
+PFNGLBINDVERTEXBUFFERPROC					qglBindVertexBuffer;
+PFNGLDEBUGMESSAGECALLBACKPROC				qglDebugMessageCallback;
+PFNGLDEBUGMESSAGECONTROLPROC				qglDebugMessageControl;
+PFNGLOBJECTLABELPROC						qglObjectLabel;
+PFNGLCLEARBUFFERDATAPROC					qglClearBufferData;
+PFNGLCOPYBUFFERSUBDATAPROC					qglCopyBufferSubData;
+
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
 
@@ -634,6 +676,52 @@ static void R_CheckPortableExtensions( void ) {
 		common->Printf( "GL fence sync available\n" );
 	}
 
+	qglPushDebugGroup = ( PFNGLPUSHDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPushDebugGroup" );
+	qglPopDebugGroup = ( PFNGLPOPDEBUGGROUPPROC )GLimp_ExtensionPointer( "glPopDebugGroup" );
+
+	glConfig.openGL4Available = glConfig.glVersion > 4.2f && R_CheckExtension( "GL_ARB_multi_draw_indirect" ) && R_CheckExtension( "GL_ARB_buffer_storage" ) && R_CheckExtension( "GL_ARB_shader_storage_buffer_object" );
+	if( glConfig.openGL4Available ) {
+		qglBufferStorage = ( PFNGLBUFFERSTORAGEPROC )GLimp_ExtensionPointer( "glBufferStorage" );
+		qglDrawElementsBaseVertex = ( PFNGLDRAWELEMENTSBASEVERTEXPROC )GLimp_ExtensionPointer( "glDrawElementsBaseVertex" );
+		qglDrawElementsIndirect = ( PFNGLDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glDrawElementsIndirect" );
+		qglMultiDrawElementsIndirect = ( PFNGLMULTIDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glMultiDrawElementsIndirect" );
+		qglBindBufferBase = ( PFNGLBINDBUFFERBASEPROC )GLimp_ExtensionPointer( "glBindBufferBase" );
+		qglBindBufferRange = ( PFNGLBINDBUFFERRANGEPROC )GLimp_ExtensionPointer( "glBindBufferRange" );
+		qglVertexAttribIPointer = ( PFNGLVERTEXATTRIBIPOINTERPROC )GLimp_ExtensionPointer( "glVertexAttribIPointer" );
+		qglVertexAttribDivisor = ( PFNGLVERTEXATTRIBDIVISORPROC )GLimp_ExtensionPointer( "glVertexAttribDivisor" );
+		qglMemoryBarrier = ( PFNGLMEMORYBARRIERPROC )GLimp_ExtensionPointer( "glMemoryBarrier" );
+		qglGetIntegerv( GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &glConfig.ssboOffsetAlignment );
+		qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &glConfig.uniformOffsetAlignment );
+		common->Printf( "OpenGL4 renderer available, uniform alignment: %d, SSBO alignment: %d\n", glConfig.uniformOffsetAlignment, glConfig.ssboOffsetAlignment );
+		qglProgramUniform1f = ( PFNGLPROGRAMUNIFORM1FPROC )GLimp_ExtensionPointer( "glProgramUniform1f" );
+		qglProgramUniform2f = ( PFNGLPROGRAMUNIFORM2FPROC )GLimp_ExtensionPointer( "glProgramUniform2f" );
+		qglProgramUniform3f = ( PFNGLPROGRAMUNIFORM3FPROC )GLimp_ExtensionPointer( "glProgramUniform3f" );
+		qglProgramUniform4f = ( PFNGLPROGRAMUNIFORM4FPROC )GLimp_ExtensionPointer( "glProgramUniform4f" );
+		qglProgramUniform1i = ( PFNGLPROGRAMUNIFORM1IPROC )GLimp_ExtensionPointer( "glProgramUniform1i" );
+		qglProgramUniform2i = ( PFNGLPROGRAMUNIFORM2IPROC )GLimp_ExtensionPointer( "glProgramUniform2i" );
+		qglProgramUniform3i = ( PFNGLPROGRAMUNIFORM3IPROC )GLimp_ExtensionPointer( "glProgramUniform3i" );
+		qglProgramUniform4i = ( PFNGLPROGRAMUNIFORM4IPROC )GLimp_ExtensionPointer( "glProgramUniform4i" );
+		qglProgramUniform1fv = ( PFNGLPROGRAMUNIFORM1FVPROC )GLimp_ExtensionPointer( "glProgramUniform1fv" );
+		qglProgramUniform2fv = ( PFNGLPROGRAMUNIFORM2FVPROC )GLimp_ExtensionPointer( "glProgramUniform2fv" );
+		qglProgramUniform3fv = ( PFNGLPROGRAMUNIFORM3FVPROC )GLimp_ExtensionPointer( "glProgramUniform3fv" );
+		qglProgramUniform4fv = ( PFNGLPROGRAMUNIFORM4FVPROC )GLimp_ExtensionPointer( "glProgramUniform4fv" );
+		qglProgramUniform1iv = ( PFNGLPROGRAMUNIFORM1IVPROC )GLimp_ExtensionPointer( "glProgramUniform1iv" );
+		qglProgramUniform2iv = ( PFNGLPROGRAMUNIFORM2IVPROC )GLimp_ExtensionPointer( "glProgramUniform2iv" );
+		qglProgramUniform3iv = ( PFNGLPROGRAMUNIFORM3IVPROC )GLimp_ExtensionPointer( "glProgramUniform3iv" );
+		qglProgramUniform4iv = ( PFNGLPROGRAMUNIFORM4IVPROC )GLimp_ExtensionPointer( "glProgramUniform4iv" );
+		qglProgramUniformMatrix2fv = ( PFNGLPROGRAMUNIFORMMATRIX2FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix2fv" );
+		qglProgramUniformMatrix3fv = ( PFNGLPROGRAMUNIFORMMATRIX3FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix3fv" );
+		qglProgramUniformMatrix4fv = ( PFNGLPROGRAMUNIFORMMATRIX4FVPROC )GLimp_ExtensionPointer( "glProgramUniformMatrix4fv" );
+		qglVertexAttribFormat = ( PFNGLVERTEXATTRIBFORMATPROC )GLimp_ExtensionPointer( "glVertexAttribFormat" );
+		qglVertexAttribBinding = ( PFNGLVERTEXATTRIBBINDINGPROC )GLimp_ExtensionPointer( "glVertexAttribBinding" );
+		qglBindVertexBuffer = ( PFNGLBINDVERTEXBUFFERPROC )GLimp_ExtensionPointer( "glBindVertexBuffer" );
+		qglDebugMessageCallback = ( PFNGLDEBUGMESSAGECALLBACKPROC )GLimp_ExtensionPointer( "glDebugMessageCallback" );
+		qglDebugMessageControl = ( PFNGLDEBUGMESSAGECONTROLPROC )GLimp_ExtensionPointer( "glDebugMessageControl" );
+		qglObjectLabel = ( PFNGLOBJECTLABELPROC )GLimp_ExtensionPointer( "glObjectLabel" );
+		qglClearBufferData = ( PFNGLCLEARBUFFERDATAPROC )GLimp_ExtensionPointer( "glClearBufferData" );
+		qglCopyBufferSubData = ( PFNGLCOPYBUFFERSUBDATAPROC )GLimp_ExtensionPointer( "glCopyBufferSubData" );
+	}
+
 	int n;
 	qglGetIntegerv( GL_MAX_VERTEX_ATTRIBS, &n );
 	common->Printf( "Max vertex attribs: %d\n", n );
@@ -642,6 +730,7 @@ static void R_CheckPortableExtensions( void ) {
 		qglGetProgramivARB( GL_FRAGMENT_PROGRAM_ARB, GL_MAX_PROGRAM_ENV_PARAMETERS_ARB, &n );
 		common->Printf( "Max env parameters: %d\n", n );
 	}
+
 }
 
 /*
@@ -768,7 +857,7 @@ void R_InitOpenGL( void ) {
 	}
 	glConfig.vidWidth = glConfig.windowWidth;
 	glConfig.vidHeight = glConfig.windowHeight;
-
+	
 	// input and sound systems need to be tied to the new window
 	Sys_InitInput();
 	soundSystem->InitHW();
@@ -1961,6 +2050,10 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	R_ToggleSmpFrame();
 	R_ToggleSmpFrame();
 
+	if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+		openGL4Renderer.Shutdown();
+	}
+
 	// free the vertex caches so they will be regenerated again
 	vertexCache.PurgeAll();
 
@@ -2015,7 +2108,11 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 	// start sound playing again
 	soundSystem->SetMute( false );
 
-	if (game != NULL)
+	if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+		openGL4Renderer.Init();
+	}
+
+	if( game != NULL )
 	{
 		game->OnVidRestart();
 	}
@@ -2314,6 +2411,10 @@ void idRenderSystemLocal::InitOpenGL( void ) {
 		if ( err != GL_NO_ERROR ) {
 			common->Printf( "glGetError() = 0x%x\n", err );
 		}
+
+		if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+			openGL4Renderer.Init();
+		}
 	}
 }
 
@@ -2323,6 +2424,9 @@ idRenderSystemLocal::ShutdownOpenGL
 ========================
 */
 void idRenderSystemLocal::ShutdownOpenGL( void ) {
+	if( r_useOpenGL4.GetBool() && glConfig.openGL4Available ) {
+		openGL4Renderer.Shutdown();
+	}
 	// free the context and close the window
 	R_ShutdownFrameData();
 	GLimp_Shutdown();

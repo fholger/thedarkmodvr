@@ -136,6 +136,12 @@
     <Filter Include="Vr">
       <UniqueIdentifier>{231b3c06-fc3a-4576-b637-458851b256f8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\GL4">
+      <UniqueIdentifier>{30572817-77d9-40bc-bdec-c50f5b95378d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\GL4\Shaders">
+      <UniqueIdentifier>{2168d78a-ad7b-4f84-a198-6ae11016c281}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1230,6 +1236,27 @@
     </ClInclude>
     <ClInclude Include="vr\Framebuffer.h">
       <Filter>Vr</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\GLDebugGroup.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\OpenGL4Renderer.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\PersistentBufferObject.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\GL4Backend.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\GL4Program.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\UniformBufferObject.h">
+      <Filter>Renderer\GL4</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\gl4\OcclusionSystem.h">
+      <Filter>Renderer\GL4</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2914,6 +2941,36 @@
     <ClCompile Include="vr\Framebuffer.cpp">
       <Filter>Vr</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\gl4\OpenGL4Renderer.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\PersistentBufferObject.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4Backend.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4Depth.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4Program.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\UniformBufferObject.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4Interactions.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4ShaderPasses.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\GL4OcclusionCulling.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\gl4\OcclusionSystem.cpp">
+      <Filter>Renderer\GL4</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="sys\win32\rc\res\BEVEL.BMP">
@@ -3107,6 +3164,54 @@
     </None>
     <None Include="game\game.def">
       <Filter>Game</Filter>
+    </None>
+    <None Include="gl4progs\black.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\depth_fast_md.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\depth_generic.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\depth_generic.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\interaction_simple.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\interaction_simple.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\oldstage.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\oldstage.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\stencil_md.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion.geom.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion_bitpack.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion_debug.vert.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion_debug.geom.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
+    </None>
+    <None Include="gl4progs\occlusion_debug.frag.glsl">
+      <Filter>Renderer\GL4\Shaders</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

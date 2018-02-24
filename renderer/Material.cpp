@@ -2351,6 +2351,9 @@ bool idMaterial::Parse( const char *text, const int textLength ) {
 	// per-surface
 	CheckForConstantRegisters();
 
+	// See if the material is trivial for the fast path
+	SetFastPathImages();
+
 	pd = NULL;	// the pointer will be invalid after exiting this function
 
 	// finish things up
@@ -2782,4 +2785,87 @@ void idMaterial::ReloadImages( bool force ) const {
 			stages[i].texture.image->Reload( false, force );
 		}
 	}
+}
+
+/*
+=============
+idMaterial::SetFastPathImages
+
+See if the material is trivial for the fast path
+=============
+*/
+void idMaterial::SetFastPathImages() {
+	fastPathBumpImage = NULL;
+	fastPathDiffuseImage = NULL;
+	fastPathSpecularImage = NULL;
+
+	if( constantRegisters == NULL ) {
+		return;
+	}
+
+	// go through the individual surface stages
+	//
+	// We also have the very rare case of some materials that have conditional interactions
+	// for the "hell writing" that can be shined on them.
+
+	for( int surfaceStageNum = 0; surfaceStageNum < GetNumStages(); surfaceStageNum++ ) {
+		const shaderStage_t	*surfaceStage = GetStage( surfaceStageNum );
+
+		if( surfaceStage->texture.hasMatrix ) {
+			goto fail;
+		}
+
+		// check for vertex coloring
+		if( surfaceStage->vertexColor != SVC_IGNORE ) {
+			goto fail;
+		}
+
+		// check for non-identity colors
+		for( int i = 0; i < 4; i++ ) {
+			if( idMath::Fabs( constantRegisters[surfaceStage->color.registers[i]] - 1.0f ) > 0.1f ) {
+				goto fail;
+			}
+		}
+
+		switch( surfaceStage->lighting ) {
+		case SL_AMBIENT:
+			break;
+		case SL_BUMP: {
+			if( fastPathBumpImage ) {
+				goto fail;
+			}
+			fastPathBumpImage = surfaceStage->texture.image;
+			break;
+		}
+		case SL_DIFFUSE: {
+			if( fastPathDiffuseImage ) {
+				goto fail;
+			}
+			fastPathDiffuseImage = surfaceStage->texture.image;
+			break;
+		}
+		case SL_SPECULAR: {
+			if( fastPathSpecularImage ) {
+				goto fail;
+			}
+			fastPathSpecularImage = surfaceStage->texture.image;
+		}
+		}
+	}
+	// need a bump image, but specular can default
+	// we also need a diffuse image, because we can't get a pure black with our YCoCg conversion
+	// from 565 DXT.  The general-path code also sets the diffuse color to 0 in the default case,
+	// but the fast path can't.
+	if( fastPathBumpImage == NULL || fastPathDiffuseImage == NULL ) {
+		goto fail;
+	}
+	if( fastPathSpecularImage == NULL ) {
+		fastPathSpecularImage = globalImages->blackImage;
+	}
+	return;
+
+fail:
+	fastPathBumpImage = NULL;
+	fastPathDiffuseImage = NULL;
+	fastPathSpecularImage = NULL;
 }

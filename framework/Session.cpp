@@ -2713,9 +2713,9 @@ void idSessionLocal::Frame() {
 		renderSystem->TakeScreenshot( com_aviDemoWidth.GetInteger(), com_aviDemoHeight.GetInteger(), name, com_aviDemoSamples.GetInteger(), NULL );
 	}
 
-	/*if ( com_smp.GetBool() && com_fixedTic.GetInteger() > 0 ) {
+	if ( com_smp.GetBool() && com_fixedTic.GetInteger() > 0 ) {
 		latchedTicNumber = com_ticNumber;
-	} else */{ 
+	} else { 
 		// at startup, we may be backwards
 		if (latchedTicNumber > com_ticNumber) {
 			latchedTicNumber = com_ticNumber;

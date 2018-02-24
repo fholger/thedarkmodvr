@@ -352,10 +352,17 @@ public:
 
 	void				ReloadImages( bool force ) const;
 
-						// returns number of stages this material contains
+	// returns number of stages this material contains
 	const int			GetNumStages( void ) const { return numStages; }
 
-						// get a specific stage
+	// if the material is simple, all that needs to be known are
+	// the images for drawing.
+	// These will either all return valid images, or all return NULL
+	idImage *			GetFastPathBumpImage() const { return fastPathBumpImage; };
+	idImage *			GetFastPathDiffuseImage() const { return fastPathDiffuseImage; };
+	idImage *			GetFastPathSpecularImage() const { return fastPathSpecularImage; };
+
+	// get a specific stage
 	const shaderStage_t *GetStage( const int index ) const { assert(index >= 0 && index < numStages); return &stages[index]; }
 
 						// get the first bump map stage, or NULL if not present.
@@ -625,12 +632,17 @@ private:
 	void				SortInteractionStages();
 	void				AddImplicitStages( const textureRepeat_t trpDefault = TR_REPEAT );
 	void				CheckForConstantRegisters();
+	void				SetFastPathImages();
 
 private:
 	idStr				desc;				// description
 	idStr				renderBump;			// renderbump command options, without the "renderbump" at the start
 
-	idImage	*			lightFalloffImage;
+	idImage	*			lightFalloffImage;  // only for light shaders
+
+	idImage *			fastPathBumpImage;	// if any of these are set, they all will be
+	idImage *			fastPathDiffuseImage;
+	idImage *			fastPathSpecularImage;
 
 	int					entityGui;			// draw a gui with the idUserInterface from the renderEntity_t
 											// non zero will draw gui, gui2, or gui3 from renderEnitty_t

@@ -127,7 +127,7 @@ void *idVertexCache::VertexPosition( vertCacheHandle_t handle ) {
 		++tempBufferUsed;
 		vbo = frameData[backendListNum].vertexBuffer.GetAPIObject();
 	}
-	if( vbo != currentVertexBuffer ) {
+	/*if( vbo != currentVertexBuffer )*/ {
 		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, vbo );
 		currentVertexBuffer = vbo;
 	}
@@ -151,7 +151,7 @@ void *idVertexCache::IndexPosition( vertCacheHandle_t handle ) {
 		++tempBufferUsed;
 		vbo = frameData[backendListNum].indexBuffer.GetAPIObject();
 	}
-	if( vbo != currentIndexBuffer ) {
+	/*if( vbo != currentIndexBuffer )*/ {
 		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, vbo );
 		currentIndexBuffer = vbo;
 	}

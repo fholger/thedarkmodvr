@@ -223,7 +223,6 @@ void FB_BindShadowTexture() {
 		GL_SelectTexture( 7 );
 		if ( glConfig.vendor != glvIntel ) {
 			globalImages->shadowDepthFbo->Bind();
-			const GLenum GL_DEPTH_STENCIL_TEXTURE_MODE = 0x90EA;
 			qglTexParameteri( GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX );
 		} else
 			globalImages->currentStencilFbo->Bind();

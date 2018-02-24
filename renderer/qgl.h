@@ -214,6 +214,45 @@ extern PFNGLFENCESYNCPROC				qglFenceSync;
 extern PFNGLCLIENTWAITSYNCPROC			qglClientWaitSync;
 extern PFNGLDELETESYNCPROC				qglDeleteSync;
 
+// OpenGL 4 backend specific functions
+extern PFNGLPUSHDEBUGGROUPPROC				qglPushDebugGroup;
+extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
+extern PFNGLBUFFERSTORAGEPROC				qglBufferStorage;
+extern PFNGLDRAWELEMENTSBASEVERTEXPROC		qglDrawElementsBaseVertex;
+extern PFNGLDRAWELEMENTSINDIRECTPROC		qglDrawElementsIndirect;
+extern PFNGLMULTIDRAWELEMENTSINDIRECTPROC	qglMultiDrawElementsIndirect;
+extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;
+extern PFNGLBINDBUFFERRANGEPROC				qglBindBufferRange;
+extern PFNGLVERTEXATTRIBIPOINTERPROC		qglVertexAttribIPointer;
+extern PFNGLVERTEXATTRIBDIVISORPROC			qglVertexAttribDivisor;
+extern PFNGLMEMORYBARRIERPROC				qglMemoryBarrier;
+extern PFNGLPROGRAMUNIFORM1FPROC			qglProgramUniform1f;
+extern PFNGLPROGRAMUNIFORM2FPROC			qglProgramUniform2f;
+extern PFNGLPROGRAMUNIFORM3FPROC			qglProgramUniform3f;
+extern PFNGLPROGRAMUNIFORM4FPROC			qglProgramUniform4f;
+extern PFNGLPROGRAMUNIFORM1IPROC			qglProgramUniform1i;
+extern PFNGLPROGRAMUNIFORM2IPROC			qglProgramUniform2i;
+extern PFNGLPROGRAMUNIFORM3IPROC			qglProgramUniform3i;
+extern PFNGLPROGRAMUNIFORM4IPROC			qglProgramUniform4i;
+extern PFNGLPROGRAMUNIFORM1FVPROC			qglProgramUniform1fv;
+extern PFNGLPROGRAMUNIFORM2FVPROC			qglProgramUniform2fv;
+extern PFNGLPROGRAMUNIFORM3FVPROC			qglProgramUniform3fv;
+extern PFNGLPROGRAMUNIFORM4FVPROC			qglProgramUniform4fv;
+extern PFNGLPROGRAMUNIFORM1IVPROC			qglProgramUniform1iv;
+extern PFNGLPROGRAMUNIFORM2IVPROC			qglProgramUniform2iv;
+extern PFNGLPROGRAMUNIFORM3IVPROC			qglProgramUniform3iv;
+extern PFNGLPROGRAMUNIFORM4IVPROC			qglProgramUniform4iv;
+extern PFNGLPROGRAMUNIFORMMATRIX2FVPROC		qglProgramUniformMatrix2fv;
+extern PFNGLPROGRAMUNIFORMMATRIX3FVPROC		qglProgramUniformMatrix3fv;
+extern PFNGLPROGRAMUNIFORMMATRIX4FVPROC		qglProgramUniformMatrix4fv;
+extern PFNGLVERTEXATTRIBFORMATPROC			qglVertexAttribFormat;
+extern PFNGLVERTEXATTRIBBINDINGPROC			qglVertexAttribBinding;
+extern PFNGLBINDVERTEXBUFFERPROC			qglBindVertexBuffer;
+extern PFNGLDEBUGMESSAGECALLBACKPROC		qglDebugMessageCallback;
+extern PFNGLDEBUGMESSAGECONTROLPROC			qglDebugMessageControl;
+extern PFNGLOBJECTLABELPROC					qglObjectLabel;
+extern PFNGLCLEARBUFFERDATAPROC				qglClearBufferData;
+extern PFNGLCOPYBUFFERSUBDATAPROC			qglCopyBufferSubData;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*

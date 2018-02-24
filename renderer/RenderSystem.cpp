@@ -21,6 +21,9 @@
 #include "FrameBuffer.h"
 #include "glsl.h"
 #include "../vr/VrSupport.h"
+#include "gl4/OpenGL4Renderer.h"
+#include "gl4/GL4Backend.h"
+#include "gl4/OcclusionSystem.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;
@@ -248,6 +251,9 @@ void R_LockSurfaceScene( viewDef_t &parms ) {
 		myGlMultMatrix( vModel->modelMatrix, 
 			tr.lockSurfacesCmd.viewDef->worldSpace.modelViewMatrix,
 			vModel->modelViewMatrix );
+		myGlMultMatrix( vModel->modelViewMatrix,
+			tr.lockSurfacesCmd.viewDef->projectionMatrix,
+			vModel->mvpMatrix );
 	}
 
 	// add the stored off surface commands again
@@ -620,6 +626,15 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		return;
 	}
 
+	if( r_useOpenGL4.IsModified() && glConfig.openGL4Available ) {
+		if( r_useOpenGL4.GetBool()) {
+			openGL4Renderer.Init();
+		} else {
+			openGL4Renderer.Shutdown();
+		}
+		r_useOpenGL4.ClearModified();
+	}
+
 	try {
 		common->SetErrorIndirection( true );
 		double startLoop = Sys_GetClockTicks();
@@ -632,7 +647,14 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		gameLocal.RenderLightgem();
 		double endLightgem = Sys_GetClockTicks();
 		// start the back end up again with the new command list
+		if( openGL4Renderer.IsInitialized() ) {
+			openGL4Renderer.BeginFrame();
+		}
 		R_IssueRenderCommands( backendFrameData );
+		if( openGL4Renderer.IsInitialized() && r_useOcclusionCulling.GetBool() ) {
+			occlusionSystem.TransferResults();
+		}
+
 		double endRender = Sys_GetClockTicks();
 		session->WaitForFrontendCompletion();
 		double endWait = Sys_GetClockTicks();
@@ -675,6 +697,10 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
     // check for errors
 	GL_CheckErrors();
 #endif
+
+	if( openGL4Renderer.IsInitialized() ) {
+		openGL4Renderer.EndFrame();
+	}
 
 	// use the other buffers next frame, because another CPU
 	// may still be rendering into the current buffers

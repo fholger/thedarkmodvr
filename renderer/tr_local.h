@@ -26,6 +26,8 @@
 									   // non-visible renders: light gem (TDM), Sikk's depth render (Doom3) etc. The player's view 
 									   // is 1 for single player mode, multiplayer uses 2+. 0 is for subviews: cameras, reflections etc.
 
+#define OPENGL_DEBUG_CONTEXT		0
+
 class idRenderWorldLocal;
 
 // everything that is needed by the backend needs
@@ -385,6 +387,10 @@ typedef struct viewEntity_s {
 
 	float				modelMatrix[16];		// local coords to global coords
 	float				modelViewMatrix[16];	// local coords to eye coords
+	float				mvpMatrix[16];			// local coords to clip space
+
+	idBounds			boundingBox;
+	int					entityIndex;
 } viewEntity_t;
 
 
