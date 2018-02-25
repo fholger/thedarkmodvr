@@ -2,6 +2,7 @@
 #include "VrSupport.h"
 #include "Framebuffer.h"
 #include "../renderer/tr_local.h"
+#include "../renderer/gl4/OpenGL4Renderer.h"
 #pragma hdrstop
 
 Framebuffer * stereoRenderFBOs[2]; 
@@ -31,37 +32,6 @@ void RB_CreateStereoRenderFBO( int eye, Framebuffer*& framebuffer, idImage*& ren
 	framebuffer->AddColorImage( renderImage, 0 );
 	framebuffer->AddDepthStencilBuffer( GL_DEPTH24_STENCIL8 );
 	framebuffer->Check();
-}
-
-void RB_DisplayEyeView( idImage* image ) {
-	primaryFramebuffer = nullptr;
-	//RB_SetDefaultGLState();
-	Framebuffer::BindPrimary();
-	qglViewport( 0, 0, glConfig.windowWidth, glConfig.windowHeight );
-	qglScissor( 0, 0, glConfig.windowWidth, glConfig.windowHeight );
-
-	qglMatrixMode( GL_PROJECTION );
-	qglLoadIdentity();
-	qglOrtho( 0, 1, 0, 1, -1, 1 );
-	qglMatrixMode( GL_MODELVIEW );
-	qglLoadIdentity();
-
-	qglClear( GL_COLOR_BUFFER_BIT );
-	image->Bind();
-	qglEnable( GL_TEXTURE_2D );
-
-	// Draw a textured quad
-	// FIXME: something about the view / transformation is not quite right
-	qglBegin( GL_QUADS );
-	qglTexCoord2f( 0, 0 ); qglVertex2f( 0, 0 );
-	qglTexCoord2f( 0, 1 ); qglVertex2f( 0, 1 );
-	qglTexCoord2f( 1, 1 ); qglVertex2f( 1, 1 );
-	qglTexCoord2f( 1, 0 ); qglVertex2f( 1, 0 );
-	qglEnd();
-
-	qglDisable( GL_TEXTURE_2D );
-	qglBindTexture( GL_TEXTURE_2D, 0 );
-	qglFlush();
 }
 
 /*
@@ -124,7 +94,8 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 	}
 
 	// mirror one of the eyes to the screen
-	RB_DisplayEyeView( stereoRenderImages[1] );
+	qglBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
+	qglBlitFramebuffer( 0, 0, glConfig.vidWidth, glConfig.vidHeight, 0, 0, glConfig.windowWidth, glConfig.windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	GLimp_SwapBuffers();
 
 	vrSupport->FrameEnd( stereoRenderImages[0], stereoRenderImages[1] );
