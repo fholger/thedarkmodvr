@@ -96,10 +96,8 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 				const drawSurfsCommand_t* const dsc = (const drawSurfsCommand_t*)cmds;
 				viewDef_t& eyeViewDef = *dsc->viewDef;
 
-				if (eyeViewDef.renderView.viewEyeBuffer && eyeViewDef.renderView.viewEyeBuffer != stereoEye) {
-					// this is the render view for the other eye
-					//vrSupport->AdjustViewWithActualHeadPose( &eyeViewDef );
-					break;
+				if (eyeViewDef.renderView.viewEyeBuffer != 0) {
+					vrSupport->AdjustViewWithActualHeadPose( &eyeViewDef, stereoEye );
 				}
 
 				RB_DrawView( cmds );

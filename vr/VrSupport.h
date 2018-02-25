@@ -25,8 +25,8 @@ public:
 	virtual void DetermineRenderTargetSize( uint32_t* width, uint32_t* height ) const = 0;
 	virtual void FrameStart() = 0;
 	virtual void GetFov( float& fovX, float& fovY ) = 0;
-	virtual void AdjustViewWithCurrentHeadPose( renderView_t& eyeView, const int eye ) = 0;
-	virtual void AdjustViewWithActualHeadPose( viewDef_s* viewDef ) = 0;
+	virtual void AdjustViewWithCurrentHeadPose( renderView_t& eyeView ) = 0;
+	virtual void AdjustViewWithActualHeadPose( viewDef_s* viewDef, int eye ) = 0;
 	virtual void SetupProjectionMatrix( viewDef_s* viewDef ) = 0;
 	virtual void FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) = 0;
 	virtual void EnableMenuOverlay( idImage* menuImage ) = 0;

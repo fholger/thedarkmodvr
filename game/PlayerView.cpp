@@ -800,8 +800,7 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 	const renderView_t *view = player->GetRenderView();
 
 	if( vrSupport->IsInitialized() ) {
-		StereoView( hud, view, RIGHT_EYE );
-		StereoView( hud, view, LEFT_EYE );
+		StereoView( hud, view );
 	} else
 	if(g_skipViewEffects.GetBool())
 	{

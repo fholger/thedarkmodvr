@@ -7,14 +7,14 @@
 idPlayerView::StereoView
 ==================
 */
-void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view, const int eye ) {
+void idPlayerView::StereoView( idUserInterface *hud, const renderView_t *view ) {
 	if( !view ) {
 		return;
 	}
 
 	renderView_t eyeView = *view;
 
-	vrSupport->AdjustViewWithCurrentHeadPose( eyeView, eye );
+	vrSupport->AdjustViewWithCurrentHeadPose( eyeView );
 
 	if( g_skipViewEffects.GetBool() ) {
 		SingleView( hud, &eyeView );

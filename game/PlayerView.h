@@ -73,7 +73,7 @@ public:
 
 private:
 	// VR support: render one view per eye
-	void				StereoView( idUserInterface *hud, const renderView_t *view, const int eye );
+	void				StereoView( idUserInterface *hud, const renderView_t *view );
 
 	void				SingleView( idUserInterface *hud, const renderView_t *view, bool drawHUD = true);
 	void				DoubleVision( idUserInterface *hud, const renderView_t *view, int offset );

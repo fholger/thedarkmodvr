@@ -18,8 +18,8 @@ public:
 	void DetermineRenderTargetSize( uint32_t *width, uint32_t *height ) const override;
 	void FrameStart() override;
 	void GetFov( float& fovX, float& fovY ) override;
-	void AdjustViewWithCurrentHeadPose( renderView_t& eyeView, const int eye ) override;
-	void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) override;
+	void AdjustViewWithCurrentHeadPose( renderView_t& eyeView ) override;
+	void AdjustViewWithActualHeadPose( viewDef_t* viewDef, int eye ) override;
 	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
 	void FrameEnd( idImage *leftEyeImage, idImage *rightEyeImage ) override;
 	void EnableMenuOverlay( idImage* menuImage ) override;
@@ -194,37 +194,39 @@ void OpenVrSupport::GetFov( float& fovX, float& fovY ) {
 	fovY = this->fovY;
 }
 
-void OpenVrSupport::AdjustViewWithCurrentHeadPose( renderView_t& eyeView, const int eye ) {
+void OpenVrSupport::AdjustViewWithCurrentHeadPose( renderView_t& eyeView ) {
 	eyeView.vieworg += hmdOrigin * eyeView.viewaxis;
 	eyeView.viewaxis = hmdAxis * eyeView.viewaxis;
 
 	float halfEyeSeparationCentimeters = 0.5f * GetInterPupillaryDistance();
 	float halfEyeSeparationWorldUnits = halfEyeSeparationCentimeters / 2.309f;  // 1.1 world units are 1 inch
-	eyeView.vieworg -= eye * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
-	eyeView.viewEyeBuffer = eye;
+	eyeView.viewEyeBuffer = 1;
 	eyeView.halfEyeDistance = halfEyeSeparationWorldUnits;
 	eyeView.hmdOrigin = hmdOrigin;
 	eyeView.hmdAxis = hmdAxis;
 }
 
-void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef ) {
+void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef, int eye ) {
 	// revert the predicted HMD pose and redo calculations with actual pose
 	renderView_t& eyeView = viewDef->renderView;
-	int eye = eyeView.viewEyeBuffer;
-	eyeView.vieworg += eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
+	if( eye != RIGHT_EYE )
+		eyeView.vieworg -= eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
 	eyeView.viewaxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
 	eyeView.vieworg -= eyeView.hmdOrigin * eyeView.viewaxis;
 
-	eye = eyeView.viewEyeBuffer = -eye;
+	eyeView.viewEyeBuffer = eye;
 	eyeView.vieworg += hmdOrigin * eyeView.viewaxis;
 	eyeView.viewaxis = hmdAxis * eyeView.viewaxis;
 	eyeView.vieworg -= eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
+	eyeView.hmdAxis = hmdAxis;
+	eyeView.hmdOrigin = hmdOrigin;
 
 	// we need to also adapt the model view matrix of all objects to be rendered
 	SetupProjectionMatrix( viewDef );
 	R_SetViewMatrix( *viewDef );
 	for (viewEntity_t * vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next) {
 		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
+		myGlMultMatrix( vEntity->modelViewMatrix, viewDef->projectionMatrix, vEntity->mvpMatrix );
 	}
 }
 
