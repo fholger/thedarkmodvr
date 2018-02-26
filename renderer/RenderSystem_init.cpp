@@ -434,6 +434,9 @@ PFNGLOBJECTLABELPROC						qglObjectLabel;
 PFNGLCLEARBUFFERDATAPROC					qglClearBufferData;
 PFNGLCOPYBUFFERSUBDATAPROC					qglCopyBufferSubData;
 
+PFNGLTEXSTORAGE3DPROC						qglTexStorage3D;
+PFNGLTEXSTORAGE3DMULTISAMPLEPROC			qglTexStorage3DMultisample;
+
 // State management
 //PFNGLBLENDEQUATIONPROC						qglBlendEquation;
 
@@ -720,6 +723,8 @@ static void R_CheckPortableExtensions( void ) {
 		qglObjectLabel = ( PFNGLOBJECTLABELPROC )GLimp_ExtensionPointer( "glObjectLabel" );
 		qglClearBufferData = ( PFNGLCLEARBUFFERDATAPROC )GLimp_ExtensionPointer( "glClearBufferData" );
 		qglCopyBufferSubData = ( PFNGLCOPYBUFFERSUBDATAPROC )GLimp_ExtensionPointer( "glCopyBufferSubData" );
+		qglTexStorage3D = ( PFNGLTEXSTORAGE3DPROC )GLimp_ExtensionPointer( "glTexStorage3D" );
+		qglTexStorage3DMultisample = ( PFNGLTEXSTORAGE3DMULTISAMPLEPROC )GLimp_ExtensionPointer( "glTexStorage3DMultisample" );
 	}
 
 	int n;

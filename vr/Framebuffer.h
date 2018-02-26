@@ -18,6 +18,9 @@ public:
 	void AddColorImage( idImage* colorImage, int index, int mipmapLod = 0 );
 	void AddDepthStencilBuffer( GLuint format );
 
+	void AddStereoColorArray(int numSamples);
+	void AddStereoDepthStencilArray(int numSamples);
+
 	int GetWidth() const { return width; }
 	int GetHeight() const { return height; }
 	class idStr GetName() const { return fboName; }
@@ -38,6 +41,9 @@ private:
 
 	uint32_t stencilBuffer;
 	int stencilFormat;
+
+	uint32_t stereoColorArray;
+	uint32_t stereoDepthStencilArray;
 
 	int width;
 	int height;

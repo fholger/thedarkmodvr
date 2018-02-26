@@ -5,9 +5,9 @@
 
 Framebuffer* primaryFramebuffer = nullptr;
 
-Framebuffer::Framebuffer( const char* name, int width, int height ): 
-fboName(name), frameBuffer(0), colorFormat(0), depthBuffer(0), depthFormat(0), stencilBuffer(0), 
-stencilFormat(0), width(width), height(height), colorTexnum(0), depthTexnum(0) {
+Framebuffer::Framebuffer( const char* name, int width, int height ):
+	fboName( name ), frameBuffer( 0 ), colorFormat( 0 ), depthBuffer( 0 ), depthFormat( 0 ), stencilBuffer( 0 ),
+	stencilFormat( 0 ), stereoColorArray( 0 ), stereoDepthStencilArray( 0 ), width( width ), height( height ), colorTexnum( 0 ), depthTexnum( 0 ) {
 	memset( colorBuffers, 0, sizeof( colorBuffers ) );
 
 	qglGenFramebuffers( 1, &frameBuffer );
@@ -108,6 +108,40 @@ void Framebuffer::AddDepthStencilBuffer( GLuint format ) {
 		stencilFormat = depthFormat;
 	}
 }
+
+void Framebuffer::AddStereoColorArray(int numSamples) {
+	if( stereoColorArray == 0 ) {
+		qglGenTextures( 1, &stereoColorArray );
+	}
+	if( numSamples > 1 ) {
+		qglBindTexture( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, stereoColorArray );
+		qglTexStorage3DMultisample( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, numSamples, GL_RGBA8, width, height, 2, GL_FALSE );
+	}
+	else {
+		qglBindTexture( GL_TEXTURE_2D_ARRAY, stereoColorArray );
+		qglTexStorage3D( GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, width, height, 2 );
+	}
+	qglBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
+	qglFramebufferTexture( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereoColorArray, 0 );
+}
+
+void Framebuffer::AddStereoDepthStencilArray(int numSamples) {
+	if( stereoDepthStencilArray == 0 ) {
+		qglGenTextures( 1, &stereoDepthStencilArray );
+	}
+	if( numSamples > 1 ) {
+		qglBindTexture( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, stereoDepthStencilArray );
+		qglTexStorage3DMultisample( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, numSamples, GL_DEPTH24_STENCIL8, width, height, 2, GL_FALSE );
+	}
+	else {
+		qglBindTexture( GL_TEXTURE_2D_ARRAY, stereoDepthStencilArray );
+		qglTexStorage3D( GL_TEXTURE_2D_ARRAY, 1, GL_DEPTH24_STENCIL8, width, height, 2 );
+	}
+	qglBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
+	qglFramebufferTexture( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, stereoDepthStencilArray, 0 );
+}
+
+
 
 void Framebuffer::Check() {
 	int prev;

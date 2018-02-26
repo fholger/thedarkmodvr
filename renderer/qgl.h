@@ -253,6 +253,9 @@ extern PFNGLDEBUGMESSAGECONTROLPROC			qglDebugMessageControl;
 extern PFNGLOBJECTLABELPROC					qglObjectLabel;
 extern PFNGLCLEARBUFFERDATAPROC				qglClearBufferData;
 extern PFNGLCOPYBUFFERSUBDATAPROC			qglCopyBufferSubData;
+
+extern PFNGLTEXSTORAGE3DPROC				qglTexStorage3D;
+extern PFNGLTEXSTORAGE3DMULTISAMPLEPROC		qglTexStorage3DMultisample;
 //===========================================================================
 
 // non-windows systems will just redefine qgl* to gl*
