@@ -49,7 +49,7 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 		}
 	}
 
-	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
+	for (int stereoEye = -1; stereoEye <= 1; stereoEye += 2) {
 		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
 		const emptyCommand_t* cmds = allcmds;
 
@@ -65,10 +65,8 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 			{
 				const drawSurfsCommand_t* const dsc = (const drawSurfsCommand_t*)cmds;
 				viewDef_t& eyeViewDef = *dsc->viewDef;
-
-				if (eyeViewDef.renderView.viewEyeBuffer != 0) {
-					vrSupport->AdjustViewWithActualHeadPose( &eyeViewDef, stereoEye );
-				}
+				if (eyeViewDef.renderView.viewEyeBuffer != 0)
+					eyeViewDef.renderView.viewEyeBuffer = stereoEye;
 
 				RB_DrawView( cmds );
 				break;
@@ -77,10 +75,10 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 				//RB_SetBuffer( cmds );
 				break;
 			case RC_BLOOM:
-				RB_Bloom();
+				//RB_Bloom();
 				break;
 			case RC_COPY_RENDER:
-				RB_CopyRender( cmds );
+				//RB_CopyRender( cmds );
 				break;
 			case RC_SWAP_BUFFERS:
 				//RB_SwapBuffers( cmds );

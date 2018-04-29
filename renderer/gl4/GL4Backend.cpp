@@ -16,6 +16,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "GL4Backend.h"
 #include "OpenGL4Renderer.h"
 #include "GLDebugGroup.h"
+#include "../../vr/VrSupport.h"
 
 idCVar r_useOpenGL4( "r_useOpenGL4", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use experimental OpenGL4 rendering backend" );
 idCVar r_useOcclusionCulling( "r_useOcclusionCulling", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "Use GPU occlusion culling to reduce number of objects needing to be rendered" );
@@ -30,7 +31,15 @@ void GL4_DrawView( void ) {
 	drawSurf_t	 **drawSurfs;
 	int			numDrawSurfs, processed;
 
-	RB_LogComment( "---------- RB_STD_DrawView ----------\n" );
+	RB_LogComment( "---------- GL4_DrawView ----------\n" );
+
+	if( backEnd.viewDef->renderView.viewEyeBuffer == 0 ) {
+		memcpy( backEnd.viewMatrix, backEnd.viewDef->worldSpace.modelViewMatrix, sizeof( backEnd.viewMatrix ) );
+		memcpy( backEnd.projectionMatrix, backEnd.viewDef->projectionMatrix, sizeof( backEnd.projectionMatrix ) );
+		backEnd.viewOrigin = backEnd.viewDef->renderView.vieworg;
+	} else {
+		vrSupport->GetCurrentViewProjection( backEnd.viewDef->renderView, backEnd.viewOrigin, backEnd.viewMatrix, backEnd.projectionMatrix );
+	}
 
 	backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
 

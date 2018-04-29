@@ -699,6 +699,11 @@ typedef struct {
 	int					c_copyFrameBuffer;
 
 	// bool				usingSoftShadows; //~SS
+
+	int					currentEye;
+	float				projectionMatrix[16];
+	float				viewMatrix[16];
+	idVec3				viewOrigin;
 } backEndState_t;
 
 const int MAX_GUI_SURFACES	= 1024;		// default size of the drawSurfs list for guis, will

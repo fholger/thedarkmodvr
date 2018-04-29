@@ -50,13 +50,16 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	GLuint ssboSize = sizeof( DepthFastDrawData ) * numDrawSurfs;
 	DepthFastDrawData *drawData = ( DepthFastDrawData* )openGL4Renderer.ReserveSSBO( ssboSize );
 
+	float modelView[16];
+
 	int cmdIdx = 0;
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		if( r_useOcclusionCulling.GetBool() && occlusionSystem.WasEntityCulledLastFrame(drawSurfs[i]->space->entityIndex) ) {
 			continue;
 		}
-		//myGlMultMatrix( drawSurfs[i]->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData[i].mvpMatrix );
-		memcpy( drawData[cmdIdx].mvpMatrix, drawSurfs[i]->space->mvpMatrix, sizeof( drawData[cmdIdx].mvpMatrix ) );
+		myGlMultMatrix( drawSurfs[i]->space->modelMatrix, backEnd.viewMatrix, modelView );
+		myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData[i].mvpMatrix );
+		//memcpy( drawData[cmdIdx].mvpMatrix, drawSurfs[i]->space->mvpMatrix, sizeof( drawData[cmdIdx].mvpMatrix ) );
 		const srfTriangles_t *tri = drawSurfs[i]->backendGeo;
 		commands[cmdIdx].count = tri->numIndexes;
 		commands[cmdIdx].instanceCount = 1;
@@ -98,6 +101,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL_SelectTexture( 0 );
 	openGL4Renderer.BindUBO( 0 );
 
+	float modelView[16];
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		drawSurf_t *surf = drawSurfs[i];
 		if( r_useOcclusionCulling.GetBool() && occlusionSystem.WasEntityCulledLastFrame( surf->space->entityIndex ) ) {
@@ -124,7 +128,9 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 		if( surf->space != backEnd.currentSpace ) {
 			backEnd.currentSpace = surf->space;
-			myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
+			myGlMultMatrix( surf->space->modelMatrix, backEnd.viewMatrix, modelView );
+			myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData.mvpMatrix );
+			//myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
 		}
 
 		// set polygon offset if necessary
@@ -330,7 +336,7 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	}
 
 	if( !subViewSurfaces.empty() ) {
-		GL4_GenericDepth( subViewSurfaces.data(), subViewSurfaces.size() );
+		//GL4_GenericDepth( subViewSurfaces.data(), subViewSurfaces.size() );
 	}
 
 

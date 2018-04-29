@@ -149,6 +149,8 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 	const srfTriangles_t *tri = surf->backendGeo;
 	const idMaterial *shader = surf->material;
 
+	float modelView[16];
+
 	if( !shader->HasAmbient() )
 		return;
 
@@ -165,8 +167,14 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 	if( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
-		myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
-		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, drawData.localEyePos.ToVec3() );
+		if( backEnd.viewDef->renderView.viewEyeBuffer != 0 ) {
+			return;
+			myGlMultMatrix( surf->space->modelMatrix, backEnd.viewMatrix, modelView );
+			myGlMultMatrix( modelView, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
+		} else {
+			myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
+		}
+		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewOrigin, drawData.localEyePos.ToVec3() );
 		drawData.localEyePos.w = 1;
 	}
 

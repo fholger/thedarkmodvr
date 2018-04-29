@@ -24,10 +24,13 @@ public:
 	void FrameEnd( idImage *leftEyeImage, idImage *rightEyeImage ) override;
 	void EnableMenuOverlay( idImage* menuImage ) override;
 	void DisableMenuOverlay() override;
+	void GetCurrentViewProjection( const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) override;
 private:
 	float GetInterPupillaryDistance() const;
 	void SubmitEyeFrame( int eye, idImage* image );
 	void UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis );
+	void SetupProjectionMatrix( const renderView_t &renderView, float *projectionMatrix );
+	void SetupViewMatrix( const idVec3 & vieworg, const idMat3 & viewaxis, float * view_matrix );
 
 	vr::IVRSystem *vrSystem;
 	vr::VROverlayHandle_t menuOverlay;
@@ -160,33 +163,73 @@ void OpenVrSupport::FrameStart() {
 	UpdateHmdOriginAndAxis( trackedDevicePose, hmdOrigin, hmdAxis );
 }
 
-void OpenVrSupport::SetupProjectionMatrix( viewDef_t* viewDef ) {
-	const float zNear = (viewDef->renderView.cramZNear) ? (r_znear.GetFloat() * 0.25f) : r_znear.GetFloat();
-	const int eye = viewDef->renderView.viewEyeBuffer == LEFT_EYE ? 0 : 1;
+void OpenVrSupport::SetupProjectionMatrix(viewDef_t* viewDef) {
+	SetupProjectionMatrix( viewDef->renderView, viewDef->projectionMatrix );
+}
+
+void OpenVrSupport::SetupProjectionMatrix( const renderView_t &renderView, float *projectionMatrix ) {
+	const float zNear = (renderView.cramZNear) ? (r_znear.GetFloat() * 0.25f) : r_znear.GetFloat();
+	const int eye = renderView.viewEyeBuffer == LEFT_EYE ? 0 : 1;
 	const float idx = 1.0f / (rawProjection[eye][1] - rawProjection[eye][0]);
 	const float idy = 1.0f / (rawProjection[eye][3] - rawProjection[eye][2]);
 	const float sx = rawProjection[eye][0] + rawProjection[eye][1];
 	const float sy = rawProjection[eye][2] + rawProjection[eye][3];
 
-	viewDef->projectionMatrix[0 * 4 + 0] = 2.0f * idx;
-	viewDef->projectionMatrix[1 * 4 + 0] = 0.0f;
-	viewDef->projectionMatrix[2 * 4 + 0] = sx * idx;
-	viewDef->projectionMatrix[3 * 4 + 0] = 0.0f;
+	projectionMatrix[0 * 4 + 0] = 2.0f * idx;
+	projectionMatrix[1 * 4 + 0] = 0.0f;
+	projectionMatrix[2 * 4 + 0] = sx * idx;
+	projectionMatrix[3 * 4 + 0] = 0.0f;
 
-	viewDef->projectionMatrix[0 * 4 + 1] = 0.0f;
-	viewDef->projectionMatrix[1 * 4 + 1] = 2.0f * idy;
-	viewDef->projectionMatrix[2 * 4 + 1] = sy*idy;	
-	viewDef->projectionMatrix[3 * 4 + 1] = 0.0f;
+	projectionMatrix[0 * 4 + 1] = 0.0f;
+	projectionMatrix[1 * 4 + 1] = 2.0f * idy;
+	projectionMatrix[2 * 4 + 1] = sy*idy;	
+	projectionMatrix[3 * 4 + 1] = 0.0f;
 
-	viewDef->projectionMatrix[0 * 4 + 2] = 0.0f;
-	viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
-	viewDef->projectionMatrix[2 * 4 + 2] = -0.999f; 
-	viewDef->projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
+	projectionMatrix[0 * 4 + 2] = 0.0f;
+	projectionMatrix[1 * 4 + 2] = 0.0f;
+	projectionMatrix[2 * 4 + 2] = -0.999f; 
+	projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
 
-	viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
-	viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
-	viewDef->projectionMatrix[2 * 4 + 3] = -1.0f;
-	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
+	projectionMatrix[0 * 4 + 3] = 0.0f;
+	projectionMatrix[1 * 4 + 3] = 0.0f;
+	projectionMatrix[2 * 4 + 3] = -1.0f;
+	projectionMatrix[3 * 4 + 3] = 0.0f;
+}
+
+void OpenVrSupport::SetupViewMatrix( const idVec3 &origin, const idMat3 &viewaxis, float *viewMatrix ) {
+	float	viewerMatrix[16];
+	static float	s_flipMatrix[16] = {
+		// convert from our coordinate system (looking down X)
+		// to OpenGL's coordinate system (looking down -Z)
+		0, 0, -1, 0,
+		-1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 0, 1
+	};
+
+	viewerMatrix[0] = viewaxis[0][0];
+	viewerMatrix[4] = viewaxis[0][1];
+	viewerMatrix[8] = viewaxis[0][2];
+	viewerMatrix[12] = -origin[0] * viewerMatrix[0] + -origin[1] * viewerMatrix[4] + -origin[2] * viewerMatrix[8];
+
+	viewerMatrix[1] = viewaxis[1][0];
+	viewerMatrix[5] = viewaxis[1][1];
+	viewerMatrix[9] = viewaxis[1][2];
+	viewerMatrix[13] = -origin[0] * viewerMatrix[1] + -origin[1] * viewerMatrix[5] + -origin[2] * viewerMatrix[9];
+
+	viewerMatrix[2] = viewaxis[2][0];
+	viewerMatrix[6] = viewaxis[2][1];
+	viewerMatrix[10] = viewaxis[2][2];
+	viewerMatrix[14] = -origin[0] * viewerMatrix[2] + -origin[1] * viewerMatrix[6] + -origin[2] * viewerMatrix[10];
+
+	viewerMatrix[3] = 0;
+	viewerMatrix[7] = 0;
+	viewerMatrix[11] = 0;
+	viewerMatrix[15] = 1;
+
+	// convert from our coordinate system (looking down X)
+	// to OpenGL's coordinate system (looking down -Z)
+	myGlMultMatrix( viewerMatrix, s_flipMatrix, viewMatrix );
 }
 
 void OpenVrSupport::GetFov( float& fovX, float& fovY ) {
@@ -254,6 +297,21 @@ void OpenVrSupport::EnableMenuOverlay( idImage* menuImage ) {
 void OpenVrSupport::DisableMenuOverlay() {
 	vr::VROverlay()->HideOverlay( menuOverlay );
 	vr::VROverlay()->ClearOverlayTexture( menuOverlay );
+}
+
+void OpenVrSupport::GetCurrentViewProjection( const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) {
+	int eye = eyeView.viewEyeBuffer;
+	idMat3 viewAxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
+	viewOrigin = eyeView.vieworg - (eyeView.hmdOrigin * viewAxis);
+
+	viewOrigin += hmdOrigin * eyeView.viewaxis;
+	viewAxis = hmdAxis * viewAxis;
+	viewOrigin -= eye * eyeView.halfEyeDistance * viewAxis[1];
+
+	viewOrigin = eyeView.vieworg - eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
+
+	SetupProjectionMatrix( eyeView, projectionMatrix );
+	SetupViewMatrix( viewOrigin, eyeView.viewaxis, viewMatrix );
 }
 
 

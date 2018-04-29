@@ -31,6 +31,7 @@ public:
 	virtual void FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) = 0;
 	virtual void EnableMenuOverlay( idImage* menuImage ) = 0;
 	virtual void DisableMenuOverlay() = 0;
+	virtual void GetCurrentViewProjection( const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) = 0;
 };
 
 extern VrSupport* vrSupport;

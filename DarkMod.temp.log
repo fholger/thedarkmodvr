@@ -1,5 +1,5 @@
 [game\DarkModGlobals.cpp ( 221):INI (INIT) FR:    0] Initializing mod logging
-[game\DarkModGlobals.cpp ( 221):INI (INIT) FR:    0] Darkmod path is C:\src\darkmod\
-[game\DarkModGlobals.cpp ( 265):INI (INIT) FR:    0] Trying to open C:\src\darkmod\\darkmod.ini
+[game\DarkModGlobals.cpp ( 221):INI (INIT) FR:    0] Darkmod path is C:\src\thedarkmodvr\..\darkmod\
+[game\DarkModGlobals.cpp ( 265):INI (INIT) FR:    0] Trying to open C:\src\thedarkmodvr\..\darkmod\\darkmod.ini
 [game\DarkModGlobals.cpp ( 335):INI (INIT) FR:    0] Loading INI settings
 [game\DarkModGlobals.cpp ( 359):INI (INIT) FR:    0] Switching logfile to Darkmod.log.

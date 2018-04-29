@@ -62,6 +62,8 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 	StencilDrawData* drawData = ( StencilDrawData* )openGL4Renderer.ReserveSSBO( drawDataSize );
 	DrawElementsIndirectCommand* commands = openGL4Renderer.ReserveCommandBuffer( count );
 
+	float modelView[16];
+
 	count = 0;
 	for( const drawSurf_t *drawSurf = drawSurfs; drawSurf; drawSurf = drawSurf->nextOnLight ) {
 		const srfTriangles_t *tri = drawSurf->backendGeo;
@@ -103,7 +105,8 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 		if( isExt != external )
 			continue;
 
-		myGlMultMatrix( drawSurf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData[count].mvpMatrix );
+		myGlMultMatrix( drawSurf->space->modelMatrix, backEnd.viewMatrix, modelView );
+		myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData[count].mvpMatrix );
 		R_GlobalPointToLocal( drawSurf->space->modelMatrix, backEnd.vLight->globalLightOrigin, drawData[count].lightOrigin.ToVec3() );
 		drawData[count].lightOrigin.w = 0.0f;
 
@@ -314,7 +317,7 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 		backEnd.currentSpace = surf->space;
 		// tranform the light/view origin into model local space
 		R_GlobalPointToLocal( surf->space->modelMatrix, vLight->globalLightOrigin, drawData.lightOrigin.ToVec3() );
-		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, drawData.viewOrigin.ToVec3() );
+		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewOrigin, drawData.viewOrigin.ToVec3() );
 		drawData.lightOrigin[3] = 0;
 		drawData.viewOrigin[3] = 1;
 
@@ -330,7 +333,11 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 
 		// copy model matrix
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
-		openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE ).SetModelViewProjectionMatrix( 0, surf->space );
+		float modelView[16];
+		float mvp[16];
+		myGlMultMatrix( surf->space->modelMatrix, backEnd.viewMatrix, modelView );
+		myGlMultMatrix( modelView, backEnd.projectionMatrix, mvp );
+		openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE ).SetUniformMatrix4( 0, mvp );
 	}
 
 	// check for the fast path
