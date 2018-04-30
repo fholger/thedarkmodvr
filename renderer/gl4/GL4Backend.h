@@ -35,5 +35,6 @@ void GL4_DrawInteractions();
 int  GL4_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs, bool afterFog );
 void GL4_DrawView();
 void GL4_CheckBoundingBoxOcclusion();
+void GL4_SetCurrentScissor(const idScreenRect &scissorRect);
 
 #endif

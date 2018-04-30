@@ -537,7 +537,7 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 			if( surf->space != backEnd.currentSpace && r_useDepthBoundsTest.GetBool() ) {
 				if( !surf->space->weaponDepthHack && surf->space->modelDepthHack == 0.0f ) {
 					if( lightDepthBoundsDisabled ) {
-						GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
+						//GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
 						lightDepthBoundsDisabled = false;
 					}
 				}
@@ -590,10 +590,7 @@ void GL4_DrawLight_Stencil() {
 	if( backEnd.vLight->globalShadows || backEnd.vLight->localShadows ) {
 		backEnd.currentScissor = backEnd.vLight->scissorRect;
 		if( r_useScissor.GetBool() ) {
-			qglScissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
-				backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
-				backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
-				backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
+			GL4_SetCurrentScissor( backEnd.currentScissor );
 		}
 		qglClear( GL_STENCIL_BUFFER_BIT );
 	}

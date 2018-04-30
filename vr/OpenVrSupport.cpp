@@ -164,7 +164,33 @@ void OpenVrSupport::FrameStart() {
 }
 
 void OpenVrSupport::SetupProjectionMatrix(viewDef_t* viewDef) {
-	SetupProjectionMatrix( viewDef->renderView, viewDef->projectionMatrix );
+	const float zNear = ( viewDef->renderView.cramZNear ) ? ( r_znear.GetFloat() * 0.25f ) : r_znear.GetFloat();
+	// a "combined" projection matrix to cover both eyes' field of view
+	// needed for the frontend to calculate correct scissor rectangles that are valid for both eyes
+	const float idx = 1.0f / ( rawProjection[1][1] - rawProjection[0][0] );
+	const float idy = 1.0f / ( rawProjection[1][3] - rawProjection[1][2] );
+	const float sx = rawProjection[1][0] + rawProjection[0][1];
+	const float sy = rawProjection[1][2] + rawProjection[1][3];
+
+	viewDef->projectionMatrix[0 * 4 + 0] = 2.0f * idx;
+	viewDef->projectionMatrix[1 * 4 + 0] = 0.0f;
+	viewDef->projectionMatrix[2 * 4 + 0] = sx * idx;
+	viewDef->projectionMatrix[3 * 4 + 0] = 0.0f;
+
+	viewDef->projectionMatrix[0 * 4 + 1] = 0.0f;
+	viewDef->projectionMatrix[1 * 4 + 1] = 2.0f * idy;
+	viewDef->projectionMatrix[2 * 4 + 1] = sy*idy;
+	viewDef->projectionMatrix[3 * 4 + 1] = 0.0f;
+
+	viewDef->projectionMatrix[0 * 4 + 2] = 0.0f;
+	viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
+	viewDef->projectionMatrix[2 * 4 + 2] = -0.999f;
+	viewDef->projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
+
+	viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
+	viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
+	viewDef->projectionMatrix[2 * 4 + 3] = -1.0f;
+	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
 }
 
 void OpenVrSupport::SetupProjectionMatrix( const renderView_t &renderView, float *projectionMatrix ) {
@@ -243,7 +269,7 @@ void OpenVrSupport::AdjustViewWithCurrentHeadPose( renderView_t& eyeView ) {
 
 	float halfEyeSeparationCentimeters = 0.5f * GetInterPupillaryDistance();
 	float halfEyeSeparationWorldUnits = halfEyeSeparationCentimeters / 2.309f;  // 1.1 world units are 1 inch
-	eyeView.viewEyeBuffer = 1;
+	eyeView.viewEyeBuffer = -1;
 	eyeView.halfEyeDistance = halfEyeSeparationWorldUnits;
 	eyeView.hmdOrigin = hmdOrigin;
 	eyeView.hmdAxis = hmdAxis;

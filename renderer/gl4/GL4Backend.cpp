@@ -79,3 +79,12 @@ void GL4_DrawView( void ) {
 	RB_RenderDebugTools( drawSurfs, numDrawSurfs );*/
 	
 }
+
+void GL4_SetCurrentScissor(const idScreenRect &scissorRect) {
+	short modX = backEnd.viewDef->viewport.x2 * 0.2;
+	backEnd.currentScissor = scissorRect;
+	qglScissor( backEnd.viewDef->viewport.x1 + max(0, backEnd.currentScissor.x1 - modX),
+		backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
+		backEnd.currentScissor.x2 + 1 + 2 * modX - backEnd.currentScissor.x1,
+		backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
+}

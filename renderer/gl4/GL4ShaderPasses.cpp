@@ -168,9 +168,8 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 		backEnd.currentSpace = surf->space;
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
 		if( backEnd.viewDef->renderView.viewEyeBuffer != 0 ) {
-			return;
 			myGlMultMatrix( surf->space->modelMatrix, backEnd.viewMatrix, modelView );
-			myGlMultMatrix( modelView, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
+			myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData.mvpMatrix );
 		} else {
 			myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
 		}
@@ -180,11 +179,7 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 
 	// change the scissor if needed
 	if( r_useScissor.GetBool() && !backEnd.currentScissor.Equals( surf->scissorRect ) ) {
-		backEnd.currentScissor = surf->scissorRect;
-		qglScissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
-			backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
-			backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
-			backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
+		GL4_SetCurrentScissor( surf->scissorRect );
 	}
 
 	// check whether we're drawing a soft particle surface #3878
