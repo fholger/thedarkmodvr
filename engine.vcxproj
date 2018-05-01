@@ -1575,8 +1575,12 @@
     <None Include="game\game.def" />
     <None Include="gl4progs\black.frag.glsl" />
     <None Include="gl4progs\depth_fast_md.vert.glsl" />
+    <None Include="gl4progs\depth_fast_md_stereo.geom.glsl" />
+    <None Include="gl4progs\depth_fast_md_stereo.vert.glsl" />
     <None Include="gl4progs\depth_generic.frag.glsl" />
     <None Include="gl4progs\depth_generic.vert.glsl" />
+    <None Include="gl4progs\depth_generic_stereo.geom.glsl" />
+    <None Include="gl4progs\depth_generic_stereo.vert.glsl" />
     <None Include="gl4progs\interaction_simple.frag.glsl" />
     <None Include="gl4progs\interaction_simple.vert.glsl" />
     <None Include="gl4progs\occlusion.frag.glsl" />

@@ -34,6 +34,9 @@ public:
 	void SetProjectionMatrix( GLint location );
 	void SetViewMatrix( GLint location );
 	void SetViewProjectionMatrix( GLint location );
+	void SetStereoViewProjectionMatrix( GLint location );
+	void SetStereoProjectionMatrix( GLint location );
+	void SetStereoViewMatrix( GLint location );
 	void SetModelViewProjectionMatrix( GLint location, const viewEntity_t *entity );
 
 	GL4Program();

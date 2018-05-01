@@ -20,18 +20,18 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "OcclusionSystem.h"
 
 struct DepthFastDrawData {
-	float mvpMatrix[16];
+	float modelMatrix[16];
 };
 
 struct DepthGenericDrawData {
-	float mvpMatrix[16];
+	float modelMatrix[16];
 	float textureMatrix[16];
 	idPlane clipPlane;
 	idVec4 color;
 	idVec4 alphaTest;
 };
 
-const int SU_LOC_PROJ_MATRIX = 0;
+const int SU_LOC_VIEWPROJ_MATRIX = 0;
 const int SU_LOC_MODELVIEW_MATRIX = 1;
 const int SU_LOC_CLIPPLANE = 2;
 const int SU_LOC_TEXTURE_MATRIX = 3;
@@ -50,16 +50,12 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 	GLuint ssboSize = sizeof( DepthFastDrawData ) * numDrawSurfs;
 	DepthFastDrawData *drawData = ( DepthFastDrawData* )openGL4Renderer.ReserveSSBO( ssboSize );
 
-	float modelView[16];
-
 	int cmdIdx = 0;
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		if( r_useOcclusionCulling.GetBool() && occlusionSystem.WasEntityCulledLastFrame(drawSurfs[i]->space->entityIndex) ) {
 			continue;
 		}
-		myGlMultMatrix( drawSurfs[i]->space->modelMatrix, backEnd.viewMatrix, modelView );
-		myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData[i].mvpMatrix );
-		//memcpy( drawData[cmdIdx].mvpMatrix, drawSurfs[i]->space->mvpMatrix, sizeof( drawData[cmdIdx].mvpMatrix ) );
+		memcpy( drawData[cmdIdx].modelMatrix, drawSurfs[i]->space->modelMatrix, sizeof( drawData[cmdIdx].modelMatrix ) );
 		const srfTriangles_t *tri = drawSurfs[i]->backendGeo;
 		commands[cmdIdx].count = tri->numIndexes;
 		commands[cmdIdx].instanceCount = 1;
@@ -84,8 +80,9 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL_DEBUG_GROUP( GenericDepth, DEPTH );
 
-	GL4Program depthShader = openGL4Renderer.GetShader( SHADER_DEPTH_GENERIC );
+	GL4Program depthShader = openGL4Renderer.GetShader( SHADER_DEPTH_GENERIC_STEREO );
 	depthShader.Activate();
+	depthShader.SetStereoViewProjectionMatrix( SU_LOC_VIEWPROJ_MATRIX );
 
 	DepthGenericDrawData drawData;
 	memcpy( drawData.textureMatrix, mat4_identity.ToFloatPtr(), sizeof( drawData.textureMatrix ) );
@@ -101,7 +98,6 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL_SelectTexture( 0 );
 	openGL4Renderer.BindUBO( 0 );
 
-	float modelView[16];
 	for( int i = 0; i < numDrawSurfs; ++i ) {
 		drawSurf_t *surf = drawSurfs[i];
 		if( r_useOcclusionCulling.GetBool() && occlusionSystem.WasEntityCulledLastFrame( surf->space->entityIndex ) ) {
@@ -124,9 +120,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 		if( surf->space != backEnd.currentSpace ) {
 			backEnd.currentSpace = surf->space;
-			myGlMultMatrix( surf->space->modelMatrix, backEnd.viewMatrix, modelView );
-			myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData.mvpMatrix );
-			//myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
+			memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
 		}
 
 		// set polygon offset if necessary
@@ -332,7 +326,7 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	}
 
 	if( !subViewSurfaces.empty() ) {
-		//GL4_GenericDepth( subViewSurfaces.data(), subViewSurfaces.size() );
+		GL4_GenericDepth( subViewSurfaces.data(), subViewSurfaces.size() );
 	}
 
 
@@ -344,9 +338,9 @@ void GL4_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	} );
 
 
-	GL4Program depthShaderMD = openGL4Renderer.GetShader( SHADER_DEPTH_FAST_MD );
+	GL4Program depthShaderMD = openGL4Renderer.GetShader( SHADER_DEPTH_FAST_MD_STEREO );
 	depthShaderMD.Activate();
-	//depthShaderMD.SetProjectionMatrix( SU_LOC_PROJ_MATRIX );
+	depthShaderMD.SetStereoViewProjectionMatrix( SU_LOC_VIEWPROJ_MATRIX );
 
 	GL4_MultiDrawDepth( staticVertexStaticIndex.data(), staticVertexStaticIndex.size(), true, true );
 	GL4_MultiDrawDepth( staticVertexFrameIndex.data(), staticVertexFrameIndex.size(), true, false );

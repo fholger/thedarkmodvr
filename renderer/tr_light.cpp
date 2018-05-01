@@ -256,7 +256,6 @@ viewEntity_t *R_SetEntityDefViewEntity( idRenderEntityLocal *def ) {
 	// we may not have a viewDef if we are just creating shadows at entity creation time
 	if ( tr.viewDef ) {
 		myGlMultMatrix( vModel->modelMatrix, tr.viewDef->worldSpace.modelViewMatrix, vModel->modelViewMatrix );
-		myGlMultMatrix( vModel->modelViewMatrix, tr.viewDef->projectionMatrix, vModel->mvpMatrix );
 
 		vModel->next = tr.viewDef->viewEntitys;
 		tr.viewDef->viewEntitys = vModel;

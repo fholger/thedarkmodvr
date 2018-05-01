@@ -24,7 +24,7 @@ public:
 	void FrameEnd( idImage *leftEyeImage, idImage *rightEyeImage ) override;
 	void EnableMenuOverlay( idImage* menuImage ) override;
 	void DisableMenuOverlay() override;
-	void GetCurrentViewProjection( const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) override;
+	void GetCurrentViewProjection( int eye, const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) override;
 private:
 	float GetInterPupillaryDistance() const;
 	void SubmitEyeFrame( int eye, idImage* image );
@@ -53,8 +53,8 @@ private:
 OpenVrSupport vrLocal;
 VrSupport* vrSupport = &vrLocal;
 
-extern Framebuffer * stereoRenderFBOs[2];
-extern idImage * stereoRenderImages[2];
+extern Framebuffer * stereoEyeFBOs[2];
+extern idImage * stereoEyeImages[2];
 
 
 OpenVrSupport::OpenVrSupport(): vrSystem(nullptr) {
@@ -105,8 +105,8 @@ void OpenVrSupport::Shutdown()
 		vr::VR_Shutdown();
 		vrSystem = nullptr;
 		for (int i = 0; i < 2; ++i) {
-			delete stereoRenderFBOs[i];
-			delete stereoRenderImages[i];
+			delete stereoEyeFBOs[i];
+			delete stereoEyeImages[i];
 		}
 	}
 }
@@ -295,7 +295,6 @@ void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef, int eye ) 
 	R_SetViewMatrix( *viewDef );
 	for (viewEntity_t * vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next) {
 		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
-		myGlMultMatrix( vEntity->modelViewMatrix, viewDef->projectionMatrix, vEntity->mvpMatrix );
 	}
 }
 
@@ -325,8 +324,7 @@ void OpenVrSupport::DisableMenuOverlay() {
 	vr::VROverlay()->ClearOverlayTexture( menuOverlay );
 }
 
-void OpenVrSupport::GetCurrentViewProjection( const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) {
-	int eye = eyeView.viewEyeBuffer;
+void OpenVrSupport::GetCurrentViewProjection( int eye, const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) {
 	idMat3 viewAxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
 	viewOrigin = eyeView.vieworg - (eyeView.hmdOrigin * viewAxis);
 

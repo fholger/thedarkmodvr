@@ -298,7 +298,9 @@ void OpenGL4Renderer::EndFrame() {
 
 void OpenGL4Renderer::LoadShaders() {
 	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vert.glsl", "black.frag.glsl" );
+	shaders[SHADER_DEPTH_FAST_MD_STEREO] = GL4Program::Load( "depth_fast_md_stereo.vert.glsl", "black.frag.glsl", "depth_fast_md_stereo.geom.glsl" );
 	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vert.glsl", "depth_generic.frag.glsl" );
+	shaders[SHADER_DEPTH_GENERIC_STEREO] = GL4Program::Load( "depth_generic_stereo.vert.glsl", "depth_generic.frag.glsl", "depth_generic_stereo.geom.glsl" );
 	shaders[SHADER_OCCLUSION] = GL4Program::Load( "occlusion.vert.glsl", "occlusion.frag.glsl", "occlusion.geom.glsl" );
 	shaders[SHADER_OCCLUSION_BITPACK] = GL4Program::Load( "occlusion_bitpack.vert.glsl" );
 	shaders[SHADER_OCCLUSION_DEBUG] = GL4Program::Load( "occlusion_debug.vert.glsl", "occlusion_debug.frag.glsl", "occlusion_debug.geom.glsl" );

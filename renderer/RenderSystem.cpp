@@ -251,9 +251,6 @@ void R_LockSurfaceScene( viewDef_t &parms ) {
 		myGlMultMatrix( vModel->modelMatrix, 
 			tr.lockSurfacesCmd.viewDef->worldSpace.modelViewMatrix,
 			vModel->modelViewMatrix );
-		myGlMultMatrix( vModel->modelViewMatrix,
-			tr.lockSurfacesCmd.viewDef->projectionMatrix,
-			vModel->mvpMatrix );
 	}
 
 	// add the stored off surface commands again

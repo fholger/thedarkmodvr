@@ -152,6 +152,18 @@ void GL4Program::SetViewProjectionMatrix( GLint location ) {
 	SetUniformMatrix4( location, matrix );
 }
 
+void GL4Program::SetStereoViewProjectionMatrix(GLint location) {
+	qglProgramUniformMatrix4fv( program, location, 2, GL_FALSE, backEnd.viewProjectionMatrix[0] );
+}
+
+void GL4Program::SetStereoProjectionMatrix(GLint location) {
+	qglProgramUniformMatrix4fv( program, location, 2, GL_FALSE, backEnd.projectionMatrix[0] );
+}
+
+void GL4Program::SetStereoViewMatrix( GLint location ) {
+	qglProgramUniformMatrix4fv( program, location, 2, GL_FALSE, backEnd.viewMatrix[0] );
+}
+
 void GL4Program::SetModelViewProjectionMatrix( GLint location, const viewEntity_t *entity ) {
 	float mvpMatrix[16];
 	myGlMultMatrix( entity->modelViewMatrix, backEnd.viewDef->projectionMatrix, mvpMatrix );

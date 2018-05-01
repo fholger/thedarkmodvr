@@ -5,8 +5,9 @@
 #include "../renderer/gl4/OpenGL4Renderer.h"
 #pragma hdrstop
 
-Framebuffer * stereoRenderFBOs[2]; 
-idImage * stereoRenderImages[2];
+Framebuffer * stereoEyeFBOs[2]; 
+idImage * stereoEyeImages[2];
+Framebuffer *stereoRenderFBO;
 
 const void	RB_CopyRender( const void *data );
 
@@ -23,14 +24,24 @@ static void R_MakeStereoRenderImage( idImage* image )
 	image->AllocImage( width, height, TF_LINEAR, TR_CLAMP, TD_HIGH_QUALITY );
 }
 
-void RB_CreateStereoRenderFBO( int eye, Framebuffer*& framebuffer, idImage*& renderImage ) {
+void RB_CreateStereoEyeFBO( int eye, Framebuffer*& framebuffer, idImage*& renderImage ) {
 	renderImage = globalImages->ImageFromFunction( va( "_stereoRender%d", eye ), R_MakeStereoRenderImage );
 	uint32_t width, height;
 	vrSupport->DetermineRenderTargetSize( &width, &height );
-	framebuffer = new Framebuffer( va( "_stereoRenderFBO%d", eye ), width, height );
+	framebuffer = new Framebuffer( va( "_stereoEyeFBO%d", eye ), width, height );
 	framebuffer->Bind();
 	framebuffer->AddColorImage( renderImage, 0 );
 	framebuffer->AddDepthStencilBuffer( GL_DEPTH24_STENCIL8 );
+	framebuffer->Check();
+}
+
+void RB_CreateStereoRenderFBO(Framebuffer*& framebuffer) {
+	uint32_t width, height;
+	vrSupport->DetermineRenderTargetSize( &width, &height );
+	framebuffer = new Framebuffer( "_stereoRenderFBO", width, height );
+	framebuffer->Bind();
+	framebuffer->AddStereoColorArray( 1 );
+	framebuffer->AddStereoDepthStencilArray( 1 );
 	framebuffer->Check();
 }
 
@@ -44,51 +55,48 @@ Called if VR support is enabled.
 void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 	// create the stereoRenderFBOs if we haven't already
 	for (int i = 0; i < 2; ++i) {
-		if (stereoRenderFBOs[i] == nullptr) {
-			RB_CreateStereoRenderFBO( i, stereoRenderFBOs[i], stereoRenderImages[i] );
+		if (stereoEyeFBOs[i] == nullptr) {
+			RB_CreateStereoEyeFBO( i, stereoEyeFBOs[i], stereoEyeImages[i] );
 		}
 	}
+	if( stereoRenderFBO == nullptr ) {
+		RB_CreateStereoRenderFBO( stereoRenderFBO );
+	}
 
-	for (int stereoEye = -1; stereoEye <= 1; stereoEye += 2) {
-		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
-		const emptyCommand_t* cmds = allcmds;
+	const emptyCommand_t* cmds = allcmds;
 
-		primaryFramebuffer = stereoRenderFBOs[targetEye];
+	primaryFramebuffer = stereoRenderFBO;
 
-		RB_SetDefaultGLState();
+	RB_SetDefaultGLState();
 
-		while (cmds) {
-			switch (cmds->commandId) {
-			case RC_NOP:
-				break;
-			case RC_DRAW_VIEW:
-			{
-				const drawSurfsCommand_t* const dsc = (const drawSurfsCommand_t*)cmds;
-				viewDef_t& eyeViewDef = *dsc->viewDef;
-				if (eyeViewDef.renderView.viewEyeBuffer != 0)
-					eyeViewDef.renderView.viewEyeBuffer = stereoEye;
+	while( cmds ) {
+		switch( cmds->commandId ) {
+		case RC_NOP:
+			break;
+		case RC_DRAW_VIEW:
+		{
+			const drawSurfsCommand_t* const dsc = ( const drawSurfsCommand_t* )cmds;
+			viewDef_t& eyeViewDef = *dsc->viewDef;
 
-				RB_DrawView( cmds );
-				break;
-			}
-			case RC_SET_BUFFER:
-				//RB_SetBuffer( cmds );
-				break;
-			case RC_BLOOM:
-				//RB_Bloom();
-				break;
-			case RC_COPY_RENDER:
-				//RB_CopyRender( cmds );
-				break;
-			case RC_SWAP_BUFFERS:
-				//RB_SwapBuffers( cmds );
-				break;
-			default:
-				common->Error( "RB_ExecuteBackEndCommandsStereo: bad commandId" );
-				break;
-			}
-			cmds = (const emptyCommand_t *)cmds->next;
+			RB_DrawView( cmds );
+			break;
 		}
+		case RC_SET_BUFFER:
+			//RB_SetBuffer( cmds );
+			break;
+		case RC_BLOOM:
+			//RB_Bloom();
+			break;
+		case RC_COPY_RENDER:
+			//RB_CopyRender( cmds );
+			break;
+		case RC_SWAP_BUFFERS:
+			break;
+		default:
+			common->Error( "RB_ExecuteBackEndCommandsStereo: bad commandId" );
+			break;
+		}
+		cmds = ( const emptyCommand_t * )cmds->next;
 	}
 
 	// mirror one of the eyes to the screen
@@ -96,5 +104,5 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 	qglBlitFramebuffer( 0, 0, glConfig.vidWidth, glConfig.vidHeight, 0, 0, glConfig.windowWidth, glConfig.windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	GLimp_SwapBuffers();
 
-	vrSupport->FrameEnd( stereoRenderImages[0], stereoRenderImages[1] );
+	vrSupport->FrameEnd( stereoEyeImages[0], stereoEyeImages[1] );
 }

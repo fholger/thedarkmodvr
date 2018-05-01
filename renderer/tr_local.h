@@ -387,7 +387,6 @@ typedef struct viewEntity_s {
 
 	float				modelMatrix[16];		// local coords to global coords
 	float				modelViewMatrix[16];	// local coords to eye coords
-	float				mvpMatrix[16];			// local coords to clip space
 
 	idBounds			boundingBox;
 	int					entityIndex;
@@ -701,9 +700,10 @@ typedef struct {
 	// bool				usingSoftShadows; //~SS
 
 	int					currentEye;
-	float				projectionMatrix[16];
-	float				viewMatrix[16];
-	idVec3				viewOrigin;
+	float				projectionMatrix[2][16];
+	float				viewMatrix[2][16];
+	float				viewProjectionMatrix[2][16];
+	idVec3				viewOrigin[2];
 } backEndState_t;
 
 const int MAX_GUI_SURFACES	= 1024;		// default size of the drawSurfs list for guis, will

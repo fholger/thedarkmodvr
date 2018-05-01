@@ -34,12 +34,17 @@ void GL4_DrawView( void ) {
 	RB_LogComment( "---------- GL4_DrawView ----------\n" );
 
 	if( backEnd.viewDef->renderView.viewEyeBuffer == 0 ) {
-		memcpy( backEnd.viewMatrix, backEnd.viewDef->worldSpace.modelViewMatrix, sizeof( backEnd.viewMatrix ) );
-		memcpy( backEnd.projectionMatrix, backEnd.viewDef->projectionMatrix, sizeof( backEnd.projectionMatrix ) );
-		backEnd.viewOrigin = backEnd.viewDef->renderView.vieworg;
+		memcpy( backEnd.viewMatrix[0], backEnd.viewDef->worldSpace.modelViewMatrix, sizeof( backEnd.viewMatrix[0] ) );
+		memcpy( backEnd.projectionMatrix[0], backEnd.viewDef->projectionMatrix, sizeof( backEnd.projectionMatrix[0] ) );
+		memcpy( backEnd.viewMatrix[1], backEnd.viewDef->worldSpace.modelViewMatrix, sizeof( backEnd.viewMatrix[1] ) );
+		memcpy( backEnd.projectionMatrix[1], backEnd.viewDef->projectionMatrix, sizeof( backEnd.projectionMatrix[1] ) );
+		backEnd.viewOrigin[0] = backEnd.viewOrigin[1] = backEnd.viewDef->renderView.vieworg;
 	} else {
-		vrSupport->GetCurrentViewProjection( backEnd.viewDef->renderView, backEnd.viewOrigin, backEnd.viewMatrix, backEnd.projectionMatrix );
+		vrSupport->GetCurrentViewProjection( LEFT_EYE, backEnd.viewDef->renderView, backEnd.viewOrigin[0], backEnd.viewMatrix[0], backEnd.projectionMatrix[0] );
+		vrSupport->GetCurrentViewProjection( RIGHT_EYE, backEnd.viewDef->renderView, backEnd.viewOrigin[1], backEnd.viewMatrix[1], backEnd.projectionMatrix[1] );
 	}
+	myGlMultMatrix( backEnd.viewMatrix[0], backEnd.projectionMatrix[0], backEnd.viewProjectionMatrix[0] );
+	myGlMultMatrix( backEnd.viewMatrix[1], backEnd.projectionMatrix[1], backEnd.viewProjectionMatrix[1] );
 
 	backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
 
