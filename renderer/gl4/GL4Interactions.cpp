@@ -20,6 +20,8 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 idCVar r_skipInteractionFastPath( "r_skipInteractionFastPath", "0", CVAR_RENDERER | CVAR_BOOL, "" );
 
+const int SU_LOC_VIEWPROJ_MATRIX = 0;
+
 void RB_GLSL_CreateDrawInteractions( const drawSurf_t *surf );
 void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix );
 
@@ -33,7 +35,7 @@ enum InteractionTextures {
 };
 
 struct StencilDrawData {
-	float  mvpMatrix[16];
+	float  modelMatrix[16];
 	idVec4 lightOrigin;
 };
 
@@ -46,7 +48,7 @@ struct InteractionDrawData {
 	idVec4 colorModulate;
 	idVec4 colorAdd;
 	idVec4 lightOrigin;
-	idVec4 viewOrigin;
+	idVec4 viewOrigin[2];
 	idVec4 diffuseColor;
 	idVec4 specularColor;
 	idVec4 cubic;  // technically just a bool, but expanded for alignment
@@ -105,8 +107,7 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 		if( isExt != external )
 			continue;
 
-		myGlMultMatrix( drawSurf->space->modelMatrix, backEnd.viewMatrix, modelView );
-		myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData[count].mvpMatrix );
+		memcpy( drawData[count].modelMatrix, drawSurf->space->modelMatrix, sizeof( drawData[count].modelMatrix ) );
 		R_GlobalPointToLocal( drawSurf->space->modelMatrix, backEnd.vLight->globalLightOrigin, drawData[count].lightOrigin.ToVec3() );
 		drawData[count].lightOrigin.w = 0.0f;
 
@@ -134,6 +135,7 @@ void GL4_StencilShadowPass( const drawSurf_t* drawSurfs ) {
 
 	GL4Program stencilShader = openGL4Renderer.GetShader( SHADER_STENCIL_MD );
 	stencilShader.Activate();
+	stencilShader.SetStereoViewProjectionMatrix( SU_LOC_VIEWPROJ_MATRIX );
 
 	globalImages->BindNull();
 	GL_State( GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHFUNC_LESS );
@@ -317,9 +319,11 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 		backEnd.currentSpace = surf->space;
 		// tranform the light/view origin into model local space
 		R_GlobalPointToLocal( surf->space->modelMatrix, vLight->globalLightOrigin, drawData.lightOrigin.ToVec3() );
-		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewOrigin, drawData.viewOrigin.ToVec3() );
 		drawData.lightOrigin[3] = 0;
-		drawData.viewOrigin[3] = 1;
+		for( int i = 0; i < 2; ++i ) {
+			R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewOrigin[i], drawData.viewOrigin[i].ToVec3() );
+			drawData.viewOrigin[i][3] = 1;
+		}
 
 		// transform the light project into model local space
 		for( int i = 0; i < 4; i++ ) {
@@ -333,11 +337,6 @@ void GL4_RenderSurfaceInteractions(const drawSurf_t * surf, InteractionDrawData&
 
 		// copy model matrix
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
-		float modelView[16];
-		float mvp[16];
-		myGlMultMatrix( surf->space->modelMatrix, backEnd.viewMatrix, modelView );
-		myGlMultMatrix( modelView, backEnd.projectionMatrix, mvp );
-		openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE ).SetUniformMatrix4( 0, mvp );
 	}
 
 	// check for the fast path
@@ -465,6 +464,7 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 	// perform setup here that will be constant for all interactions
 	GL4Program interactionShader = openGL4Renderer.GetShader( SHADER_INTERACTION_SIMPLE );
 	interactionShader.Activate();
+	interactionShader.SetStereoViewProjectionMatrix( SU_LOC_VIEWPROJ_MATRIX );
 	openGL4Renderer.BindUBO( 0 );
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
 	openGL4Renderer.PrepareVertexAttribs();

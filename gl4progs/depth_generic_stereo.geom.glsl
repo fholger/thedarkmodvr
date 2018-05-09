@@ -8,8 +8,8 @@ in VertexOut{
 	float clipPlaneDist;
 	flat vec4 color;
 	flat float alphaTest;
-	vec4 worldPos;
-} IN;
+	vec4 position[2];
+} IN[];
 
 out GeometryOut{
 	vec2 uv;
@@ -21,11 +21,11 @@ out GeometryOut{
 void main() {
 	for( int i = 0; i < IN.length(); i++ ) {
 		gl_Layer = gl_InvocationID;
-		gl_Position = IN.position[gl_InvocationID];
-		OUT.uv = IN.uv;
-		OUT.clipPlaneDist = IN.clipPlaneDist;
-		OUT.color = IN.color;
-		OUT.alphaTest = IN.alphaTest;
+		gl_Position = IN[i].position[gl_InvocationID];
+		OUT.uv = IN[i].uv;
+		OUT.clipPlaneDist = IN[i].clipPlaneDist;
+		OUT.color = IN[i].color;
+		OUT.alphaTest = IN[i].alphaTest;
 		EmitVertex();
 	}
 	EndPrimitive();

@@ -16,10 +16,14 @@ public:
 
 	void AddColorBuffer( GLuint format, int index );
 	void AddColorImage( idImage* colorImage, int index, int mipmapLod = 0 );
+	void AddColorImageLayer(GLuint texture, int layer, int index, int mipmapLod = 0);
 	void AddDepthStencilBuffer( GLuint format );
 
 	void AddStereoColorArray(int numSamples);
 	void AddStereoDepthStencilArray(int numSamples);
+
+	uint32_t GetStereoColorArray() const { return stereoColorArray; }
+	uint32_t GetFbo() const { return frameBuffer; }
 
 	int GetWidth() const { return width; }
 	int GetHeight() const { return height; }

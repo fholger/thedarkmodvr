@@ -65,7 +65,10 @@ void GL4_DrawView( void ) {
 	GL4_DrawInteractions();
 
 	// now draw any non-light dependent shading passes
-	processed = GL4_DrawShaderPasses( drawSurfs, numDrawSurfs, false );
+	if( backEnd.viewDef->renderView.viewEyeBuffer != 0 )
+		processed = GL4_DrawShaderPasses( drawSurfs, numDrawSurfs, false );
+	else
+		processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
 
 	
 	if( r_useOcclusionCulling.GetBool() ) {

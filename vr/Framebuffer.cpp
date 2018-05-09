@@ -77,11 +77,20 @@ void Framebuffer::AddColorBuffer( GLuint format, int index ) {
 
 void Framebuffer::AddColorImage( idImage* colorImage, int index, int mipmapLod ) {
 	if (index < 0 || index >= 16) { // FIXME: retrieve actual upper value from OpenGL
-		common->Warning( "Framebuffer::AddColorBuffer( %s ): bad index = %i", fboName.c_str(), index );
+		common->Warning( "Framebuffer::AddColorImage( %s ): bad index = %i", fboName.c_str(), index );
 		return;
 	}
 
 	qglFramebufferTexture2D( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, GL_TEXTURE_2D, colorImage->texnum, mipmapLod );
+}
+
+void Framebuffer::AddColorImageLayer(GLuint texture, int layer, int index, int mipmapLod) {
+	if( index < 0 || index >= 16 ) { // FIXME: retrieve actual upper value from OpenGL
+		common->Warning( "Framebuffer::AddColorImageLayer( %s ): bad index = %i", fboName.c_str(), index );
+		return;
+	}
+	
+	qglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, texture, mipmapLod, layer );	
 }
 
 void Framebuffer::AddDepthStencilBuffer( GLuint format ) {

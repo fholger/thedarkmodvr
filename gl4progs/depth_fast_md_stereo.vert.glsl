@@ -10,7 +10,7 @@ layout( std140, binding = 0 ) buffer CB0
 	mat4 modelMatrix[];
 };
 
-layout( binding = 0 ) uniform mat4 viewProj[2];
+layout( location = 0 ) uniform mat4 viewProj[2];
 
 out VertexOut{
 	vec4 position[2];

@@ -11,7 +11,7 @@ layout( std140, binding = 0 ) uniform UBO{
 layout( location = 0 ) in vec4 position;
 layout( location = 1 ) in vec2 texCoord;
 
-layout( binding = 0 ) uniform mat4 viewProj[2];
+layout( location = 0 ) uniform mat4 viewProj[2];
 
 out VertexOut{
 	vec2 uv;

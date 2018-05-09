@@ -20,11 +20,13 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "../glsl.h"
 #include "OcclusionSystem.h"
 
+const int SU_LOC_VIEWPROJ_LEFT = 0;
+const int SU_LOC_VIEWPROJ_RIGHT = 0;
+
 struct ShaderPassDrawData {
 	float modelMatrix[16];
-	float mvpMatrix[16];
 	float textureMatrix[16];
-	idVec4 localEyePos;
+	idVec4 localEyePos[2];
 	idVec4 colorAdd;
 	idVec4 colorMul;
 	idVec4 vertexColor;
@@ -59,6 +61,8 @@ void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * 
 	const idVec4 one ( 1, 1, 1, 1 );
 	const idVec4 negOne ( -color[0], -color[1], -color[2], -1 );
 
+	float viewProj[16];
+
 	switch( pStage->texture.texgen ) {
 	case TG_SKYBOX_CUBE: case TG_WOBBLESKY_CUBE:
 		// TODO: not implemented
@@ -77,7 +81,17 @@ void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * 
 		drawData.screenTex.x = 1;
 	default:
 		openGL4Renderer.EnableVertexAttribs( { VA_POSITION, VA_TEXCOORD, VA_COLOR } );
-		openGL4Renderer.GetShader( SHADER_OLDSTAGE ).Activate();
+		GL4Program oldStageShader = openGL4Renderer.GetShader( SHADER_OLDSTAGE );
+		oldStageShader.Activate();
+		if( backEnd.viewDef->renderView.viewEyeBuffer != 0 ) {
+			oldStageShader.SetUniformMatrix4( SU_LOC_VIEWPROJ_LEFT, backEnd.viewProjectionMatrix[0] );
+			oldStageShader.SetUniformMatrix4( SU_LOC_VIEWPROJ_RIGHT, backEnd.viewProjectionMatrix[1] );
+		}
+		else {
+			myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProj );
+			oldStageShader.SetUniformMatrix4( SU_LOC_VIEWPROJ_LEFT, viewProj );
+			oldStageShader.SetUniformMatrix4( SU_LOC_VIEWPROJ_RIGHT, viewProj );
+		}
 		switch( pStage->vertexColor ) {
 		case SVC_IGNORE:
 			drawData.colorMul = zero;
@@ -149,8 +163,6 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 	const srfTriangles_t *tri = surf->backendGeo;
 	const idMaterial *shader = surf->material;
 
-	float modelView[16];
-
 	if( !shader->HasAmbient() )
 		return;
 
@@ -167,14 +179,10 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 	if( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );
-		if( backEnd.viewDef->renderView.viewEyeBuffer != 0 ) {
-			myGlMultMatrix( surf->space->modelMatrix, backEnd.viewMatrix, modelView );
-			myGlMultMatrix( modelView, backEnd.projectionMatrix, drawData.mvpMatrix );
-		} else {
-			myGlMultMatrix( surf->space->modelViewMatrix, backEnd.viewDef->projectionMatrix, drawData.mvpMatrix );
+		for( int i = 0; i < 2; ++i ) {
+			R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewOrigin[i], drawData.localEyePos[i].ToVec3() );
+			drawData.localEyePos[i].w = 1;
 		}
-		R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewOrigin, drawData.localEyePos.ToVec3() );
-		drawData.localEyePos.w = 1;
 	}
 
 	// change the scissor if needed

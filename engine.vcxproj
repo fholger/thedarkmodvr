@@ -1583,6 +1583,8 @@
     <None Include="gl4progs\depth_generic_stereo.vert.glsl" />
     <None Include="gl4progs\interaction_simple.frag.glsl" />
     <None Include="gl4progs\interaction_simple.vert.glsl" />
+    <None Include="gl4progs\interaction_simple_stereo.geom.glsl" />
+    <None Include="gl4progs\interaction_simple_stereo.vert.glsl" />
     <None Include="gl4progs\occlusion.frag.glsl" />
     <None Include="gl4progs\occlusion.geom.glsl" />
     <None Include="gl4progs\occlusion.vert.glsl" />
@@ -1592,7 +1594,11 @@
     <None Include="gl4progs\occlusion_debug.vert.glsl" />
     <None Include="gl4progs\oldstage.frag.glsl" />
     <None Include="gl4progs\oldstage.vert.glsl" />
+    <None Include="gl4progs\oldstage_stereo.geom.glsl" />
+    <None Include="gl4progs\oldstage_stereo.vert.glsl" />
     <None Include="gl4progs\stencil_md.vert.glsl" />
+    <None Include="gl4progs\stencil_md_stereo.geom.glsl" />
+    <None Include="gl4progs\stencil_md_stereo.vert.glsl" />
     <None Include="sys\win32\rc\res\BEVEL.BMP" />
     <None Include="sys\win32\rc\res\BITMAP2.BMP" />
     <None Include="sys\win32\rc\res\BMP00001.BMP" />

@@ -631,7 +631,7 @@ static void R_CheckPortableExtensions( void ) {
 		qglCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC)GLimp_ExtensionPointer( "glCheckFramebufferStatus" );
 		qglFramebufferTexture1D = (PFNGLFRAMEBUFFERTEXTURE1DPROC)GLimp_ExtensionPointer( "glFramebufferTexture1D" );
 		qglFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)GLimp_ExtensionPointer( "glFramebufferTexture2D" );
-		qglFramebufferTexture = (PFNGLFRAMEBUFFERTEXTUREPROC)GLimp_ExtensionPointer( "glFramebufferTexture" );
+		qglFramebufferTexture = ( PFNGLFRAMEBUFFERTEXTUREPROC )GLimp_ExtensionPointer( "glFramebufferTexture" );
 		qglFramebufferRenderbuffer = (PFNGLFRAMEBUFFERRENDERBUFFERPROC)GLimp_ExtensionPointer( "glFramebufferRenderbuffer" );
 		qglGetFramebufferAttachmentParameteriv = (PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC)GLimp_ExtensionPointer( "glGetFramebufferAttachmentParameteriv" );
 		qglGenerateMipmap = (PFNGLGENERATEMIPMAPPROC)GLimp_ExtensionPointer( "glGenerateMipmap" );

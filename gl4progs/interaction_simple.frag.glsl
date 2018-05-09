@@ -2,18 +2,20 @@
 
 layout (early_fragment_tests) in;
 
-layout (location = 0) in vec3 position;
-layout (location = 1) in vec2 uvDiffuse;        
-layout (location = 2) in vec2 uvNormal;        
-layout (location = 3) in vec2 uvSpecular;       
-layout (location = 4) in vec4 uvLight; 
-layout (location = 5) in mat3 tangentSpace; 
-layout (location = 8) in vec4 color;        
-layout (location = 9) in vec4 lightOrigin;
-layout (location = 10) in vec4 viewOrigin;
-layout (location = 11) in vec4 diffuseColor;
-layout (location = 12) in vec4 specularColor;
-layout (location = 13) in float cubic;
+in GeomOut{
+	vec3 position;
+	vec2 uvDiffuse;
+	vec2 uvNormal;
+	vec2 uvSpecular;
+	vec4 uvLight;
+	mat3 tangentSpace;
+	vec4 color;
+	vec4 lightOrigin;
+	vec4 viewOrigin;
+	vec4 diffuseColor;
+	vec4 specularColor;
+	float cubic;
+} IN;
      
 layout (binding = 0) uniform sampler2D texNormal;
 layout (binding = 1) uniform sampler2D texLightFalloff;         
@@ -27,22 +29,22 @@ layout (location = 0) out vec4 fragColor;
 vec3 lightColor() {
 	// compute light projection and falloff 
 	vec3 lightColor;
-	if (cubic == 1.0) {
-		vec3 cubeTC = uvLight.xyz * 2.0 - 1.0;
+	if (IN.cubic == 1.0) {
+		vec3 cubeTC = IN.uvLight.xyz * 2.0 - 1.0;
 		lightColor = texture(cubeTexLightProjection, cubeTC).rgb;
 		float att = clamp(1.0-length(cubeTC), 0.0, 1.0);
 		lightColor *= att*att;
 	} else {
-		vec3 lightProjection = texture2DProj( texLightProjection, uvLight.xyw ).rgb; 
-		vec3 lightFalloff = texture2D( texLightFalloff, vec2( uvLight.z, 0.5 ) ).rgb;
+		vec3 lightProjection = texture2DProj( texLightProjection, IN.uvLight.xyw ).rgb; 
+		vec3 lightFalloff = texture2D( texLightFalloff, vec2( IN.uvLight.z, 0.5 ) ).rgb;
 		lightColor = lightProjection * lightFalloff;
 	}
 	return lightColor;
 }
 
 void main() {
-    vec3 lightDir	= lightOrigin.xyz - position;
-    vec3 viewDir	= viewOrigin.xyz - position;
+    vec3 lightDir	= IN.lightOrigin.xyz - IN.position;
+	vec3 viewDir = IN.viewOrigin.xyz - IN.position;
 
     // compute normalized light, view and half angle vectors 
     vec3 L = normalize( lightDir ); 
@@ -50,19 +52,19 @@ void main() {
     vec3 H = normalize( L + V );
 
     // compute normal from normal map, move from [0, 1] to [-1, 1] range, normalize 
-    vec3 RawN = normalize( ( 2. * texture2D ( texNormal, uvNormal.st ).wyz ) - 1. ); 
-    vec3 N = tangentSpace * RawN; 
+	vec3 RawN = normalize( ( 2. * texture2D ( texNormal, IN.uvNormal.st ).wyz ) - 1. );
+	vec3 N = IN.tangentSpace * RawN;
     float NdotH = clamp( dot( N, H ), 0.0, 1.0 );
     float NdotL = dot( N, L );
 
 	// compute the diffuse term    
-	vec3 diffuse = texture2D( texDiffuse, uvDiffuse ).rgb * diffuseColor.rgb;
+	vec3 diffuse = texture2D( texDiffuse, IN.uvDiffuse ).rgb * IN.diffuseColor.rgb;
 
 	// compute the specular term
     float specularPower = 10.0;
     float specularContribution = pow( NdotH, specularPower );
-	vec3 specular = texture2D( texSpecular, uvSpecular ).rgb * specularContribution * specularColor.rgb;
+	vec3 specular = texture2D( texSpecular, IN.uvSpecular ).rgb * specularContribution * IN.specularColor.rgb;
 
 	// compute lighting model
-    fragColor =  vec4(( diffuse + specular ) * NdotL * lightColor() * color.rgb, 1);
+	fragColor = vec4( ( diffuse + specular ) * NdotL * lightColor() * IN.color.rgb, 1 );
 } 

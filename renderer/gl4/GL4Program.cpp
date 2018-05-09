@@ -42,6 +42,11 @@ GLuint CompileShader( GLint type, const char *fileName ) {
 		qglGetShaderInfoLog( shader, length, &result, log );
 
 		common->Warning( "Compiling shader '%s' failed:\n%s\n", fileName, log );
+		static idFile *shaderErrors = fileSystem->OpenFileWrite( "shader_errors.log", "fs_savepath", "" );
+		shaderErrors->WriteString( fileName );
+		shaderErrors->WriteString( log );
+		shaderErrors->Flush();
+
 		delete[] log;
 
 		qglDeleteShader( shader );
