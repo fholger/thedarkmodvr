@@ -45,6 +45,7 @@ void main() {
 		OUT.uvDiffuse = IN[i].uvDiffuse;
 		OUT.uvNormal = IN[i].uvNormal;
 		OUT.uvSpecular = IN[i].uvSpecular;
+		OUT.uvLight = IN[i].uvLight;
 		OUT.tangentSpace = IN[i].tangentSpace;
 		OUT.color = IN[i].color;
 		OUT.lightOrigin = IN[i].lightOrigin;

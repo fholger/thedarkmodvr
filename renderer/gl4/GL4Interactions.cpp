@@ -64,8 +64,6 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 	StencilDrawData* drawData = ( StencilDrawData* )openGL4Renderer.ReserveSSBO( drawDataSize );
 	DrawElementsIndirectCommand* commands = openGL4Renderer.ReserveCommandBuffer( count );
 
-	float modelView[16];
-
 	count = 0;
 	for( const drawSurf_t *drawSurf = drawSurfs; drawSurf; drawSurf = drawSurf->nextOnLight ) {
 		const srfTriangles_t *tri = drawSurf->backendGeo;
@@ -537,7 +535,7 @@ void GL4_RenderInteractions( const drawSurf_t *surfList ) {
 			if( surf->space != backEnd.currentSpace && r_useDepthBoundsTest.GetBool() ) {
 				if( !surf->space->weaponDepthHack && surf->space->modelDepthHack == 0.0f ) {
 					if( lightDepthBoundsDisabled ) {
-						//GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
+						GL_DepthBoundsTest( vLight->scissorRect.zmin, vLight->scissorRect.zmax );
 						lightDepthBoundsDisabled = false;
 					}
 				}
