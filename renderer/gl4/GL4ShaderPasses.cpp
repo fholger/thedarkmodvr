@@ -21,7 +21,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "OcclusionSystem.h"
 
 const int SU_LOC_VIEWPROJ_LEFT = 0;
-const int SU_LOC_VIEWPROJ_RIGHT = 0;
+const int SU_LOC_VIEWPROJ_RIGHT = 1;
 
 struct ShaderPassDrawData {
 	float modelMatrix[16];
@@ -175,7 +175,7 @@ void GL4_RenderShaderPasses(drawSurf_t * surf, ShaderPassDrawData& drawData) {
 
 	GL_DEBUG_GROUP( RenderShaderPasses_GL4, SHADER_PASS );
 
-	// calculate MVP matrix
+	// calculate local eye positions
 	if( surf->space != backEnd.currentSpace ) {
 		backEnd.currentSpace = surf->space;
 		memcpy( drawData.modelMatrix, surf->space->modelMatrix, sizeof( drawData.modelMatrix ) );

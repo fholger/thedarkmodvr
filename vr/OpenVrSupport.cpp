@@ -29,7 +29,7 @@ private:
 	float GetInterPupillaryDistance() const;
 	void SubmitEyeFrame( int eye, idImage* image );
 	void UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis );
-	void SetupProjectionMatrix( const renderView_t &renderView, float *projectionMatrix );
+	void SetupProjectionMatrix(int viewEye, bool cramZNear, float* projectionMatrix);
 	void SetupViewMatrix( const idVec3 & vieworg, const idMat3 & viewaxis, float * view_matrix );
 
 	vr::IVRSystem *vrSystem;
@@ -193,9 +193,9 @@ void OpenVrSupport::SetupProjectionMatrix(viewDef_t* viewDef) {
 	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
 }
 
-void OpenVrSupport::SetupProjectionMatrix( const renderView_t &renderView, float *projectionMatrix ) {
-	const float zNear = (renderView.cramZNear) ? (r_znear.GetFloat() * 0.25f) : r_znear.GetFloat();
-	const int eye = renderView.viewEyeBuffer == LEFT_EYE ? 0 : 1;
+void OpenVrSupport::SetupProjectionMatrix( int viewEye, bool cramZNear, float *projectionMatrix ) {
+	const float zNear = cramZNear ? (r_znear.GetFloat() * 0.25f) : r_znear.GetFloat();
+	const int eye = viewEye == LEFT_EYE ? 0 : 1;
 	const float idx = 1.0f / (rawProjection[eye][1] - rawProjection[eye][0]);
 	const float idy = 1.0f / (rawProjection[eye][3] - rawProjection[eye][2]);
 	const float sx = rawProjection[eye][0] + rawProjection[eye][1];
@@ -301,7 +301,7 @@ void OpenVrSupport::AdjustViewWithActualHeadPose( viewDef_t* viewDef, int eye ) 
 void OpenVrSupport::FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) {
 	SubmitEyeFrame( LEFT_EYE, leftEyeImage );
 	SubmitEyeFrame( RIGHT_EYE, rightEyeImage );
-	vr::VRCompositor()->PostPresentHandoff();
+	//vr::VRCompositor()->PostPresentHandoff();
 }
 
 void OpenVrSupport::EnableMenuOverlay( idImage* menuImage ) {
@@ -325,16 +325,16 @@ void OpenVrSupport::DisableMenuOverlay() {
 }
 
 void OpenVrSupport::GetCurrentViewProjection( int eye, const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) {
-	idMat3 viewAxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
+	/*idMat3 viewAxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
 	viewOrigin = eyeView.vieworg - (eyeView.hmdOrigin * viewAxis);
 
 	viewOrigin += hmdOrigin * eyeView.viewaxis;
 	viewAxis = hmdAxis * viewAxis;
-	viewOrigin -= eye * eyeView.halfEyeDistance * viewAxis[1];
+	viewOrigin -= eye * eyeView.halfEyeDistance * viewAxis[1];*/
 
 	viewOrigin = eyeView.vieworg - eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
 
-	SetupProjectionMatrix( eyeView, projectionMatrix );
+	SetupProjectionMatrix( eye, eyeView.cramZNear, projectionMatrix );
 	SetupViewMatrix( viewOrigin, eyeView.viewaxis, viewMatrix );
 }
 
