@@ -5,6 +5,8 @@
 #include "../renderer/gl4/OpenGL4Renderer.h"
 #pragma hdrstop
 
+idCVar vr_msaa( "vr_msaa", "1", CVAR_RENDERER | CVAR_INTEGER, "set MSAA value for VR rendering" );
+
 Framebuffer * stereoEyeFBOs[2]; 
 idImage * stereoEyeImages[2];
 Framebuffer *stereoRenderFBO;
@@ -45,8 +47,8 @@ void RB_CreateStereoRenderFBO(Framebuffer*& framebuffer) {
 	vrSupport->DetermineRenderTargetSize( &width, &height );
 	framebuffer = new Framebuffer( "_stereoRenderFBO", width, height );
 	framebuffer->Bind();
-	framebuffer->AddStereoColorArray( 1 );
-	framebuffer->AddStereoDepthStencilArray( 1 );
+	framebuffer->AddStereoColorArray( vr_msaa.GetInteger() );
+	framebuffer->AddStereoDepthStencilArray( vr_msaa.GetInteger() );
 	framebuffer->Check();
 }
 
@@ -133,6 +135,6 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 	qglBlitFramebuffer( 0, 0, glConfig.vidWidth, glConfig.vidHeight, 0, 0, glConfig.windowWidth, glConfig.windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	GLimp_SwapBuffers();
 
-	WaitForGPUFinish();
+	//WaitForGPUFinish();
 	vrSupport->FrameEnd( stereoEyeImages[0], stereoEyeImages[1] );
 }

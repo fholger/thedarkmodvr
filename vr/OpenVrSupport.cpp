@@ -6,6 +6,7 @@
 #include "Framebuffer.h"
 
 idCVar vr_enable( "vr_enable", "1", CVAR_RENDERER | CVAR_BOOL, "enable OpenVR support" );
+idCVar vr_renderScale( "vr_renderScale", "1", CVAR_RENDERER | CVAR_FLOAT, "set VR resolution scaling" );
 
 class OpenVrSupport : public VrSupport {
 public:
@@ -121,6 +122,8 @@ float OpenVrSupport::GetInterPupillaryDistance() const {
 
 void OpenVrSupport::DetermineRenderTargetSize( uint32_t* width, uint32_t* height ) const {
 	vrSystem->GetRecommendedRenderTargetSize( width, height );
+	*width *= vr_renderScale.GetFloat();
+	*height *= vr_renderScale.GetFloat();
 	common->Printf( "OpenVR: Recommended render target size %d x %d\n", *width, *height );
 }
 
