@@ -58,6 +58,19 @@ void RB_CopyStereoArrayToEyeTextures() {
 	}
 }
 
+void WaitForGPUFinish() {
+	GLsync fenceSync = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
+	GLenum result = qglClientWaitSync( fenceSync, 0, 1 );
+	while( result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED ) {
+		result = qglClientWaitSync( fenceSync, GL_SYNC_FLUSH_COMMANDS_BIT, 1000000 );
+		if( result == GL_WAIT_FAILED ) {
+			common->Warning( "glClientWaitSync failed.\n" );
+			break;
+		}
+	}
+	qglDeleteSync( fenceSync );
+}
+
 /*
 ====================
 RB_ExecuteBackEndCommandsStereo
@@ -120,5 +133,6 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 	qglBlitFramebuffer( 0, 0, glConfig.vidWidth, glConfig.vidHeight, 0, 0, glConfig.windowWidth, glConfig.windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	GLimp_SwapBuffers();
 
+	WaitForGPUFinish();
 	vrSupport->FrameEnd( stereoEyeImages[0], stereoEyeImages[1] );
 }

@@ -638,6 +638,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		if( vrSupport->IsInitialized() ) {
 			vrSupport->FrameStart();
 		}
+		double startSignal = Sys_GetClockTicks();
 		session->ActivateFrontend();
 		double endSignal = Sys_GetClockTicks();
 		// render lightgem
@@ -666,7 +667,8 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 			}
 			const double TO_MICROS = 1000000 / Sys_ClockTicksPerSecond();
 			static double lastEndTime = Sys_GetClockTicks();
-			double signalFrontend = (endSignal - startLoop) * TO_MICROS;
+			double vrWaitForPoses = ( startSignal - startLoop ) * TO_MICROS;
+			double signalFrontend = (endSignal - startSignal) * TO_MICROS;
 			double lightGem = (endLightgem - endSignal) * TO_MICROS;
 			double render = (endRender - endLightgem) * TO_MICROS;
 			double waitForFrontend = (endWait - endRender) * TO_MICROS;
@@ -675,7 +677,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 			lastEndTime = endWait;
 			
 			smpTimingsLogFile->Printf( "Frame %.7d: preparation %.2f - total frame time %.2f us\n", frameCount, framePrep, totalFrameTime );
-			smpTimingsLogFile->Printf( "  Backend: signal frontend %.2f us - lightgem %.2f us - render %.2f us - wait for frontend %.2f us\n", signalFrontend, lightGem, render, waitForFrontend );
+			smpTimingsLogFile->Printf( "  Backend: vr sync %.2f us - signal frontend %.2f us - lightgem %.2f us - render %.2f us - wait for frontend %.2f us\n", vrWaitForPoses, signalFrontend, lightGem, render, waitForFrontend );
 			session->LogFrontendTimings( *smpTimingsLogFile );
 		}
 	} catch( std::shared_ptr<ErrorReportedException> e ) {

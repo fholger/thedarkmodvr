@@ -89,7 +89,7 @@ void GL4_DrawView( void ) {
 }
 
 void GL4_SetCurrentScissor(const idScreenRect &scissorRect) {
-	short modX = backEnd.viewDef->viewport.x2 * 0.2;
+	short modX = backEnd.viewDef->viewport.x2 * 0.05;
 	backEnd.currentScissor = scissorRect;
 	qglScissor( backEnd.viewDef->viewport.x1 + max(0, backEnd.currentScissor.x1 - modX),
 		backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
