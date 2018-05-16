@@ -298,18 +298,18 @@ void OpenGL4Renderer::EndFrame() {
 
 void OpenGL4Renderer::LoadShaders() {
 	shaders[SHADER_DEPTH_FAST_MD] = GL4Program::Load( "depth_fast_md.vert.glsl", "black.frag.glsl" );
-	shaders[SHADER_DEPTH_FAST_MD_STEREO] = GL4Program::Load( "depth_fast_md_stereo.vert.glsl", "black.frag.glsl", "depth_fast_md_stereo.geom.glsl" );
+	shaders[SHADER_DEPTH_FAST_MD_STEREO] = GL4Program::Load( "depth_fast_md_stereo.vert.glsl", "black.frag.glsl" );
 	shaders[SHADER_DEPTH_GENERIC] = GL4Program::Load( "depth_generic.vert.glsl", "depth_generic.frag.glsl" );
-	shaders[SHADER_DEPTH_GENERIC_STEREO] = GL4Program::Load( "depth_generic_stereo.vert.glsl", "depth_generic.frag.glsl", "depth_generic_stereo.geom.glsl" );
+	shaders[SHADER_DEPTH_GENERIC_STEREO] = GL4Program::Load( "depth_generic_stereo.vert.glsl", "depth_generic.frag.glsl" );
 	shaders[SHADER_OCCLUSION] = GL4Program::Load( "occlusion.vert.glsl", "occlusion.frag.glsl", "occlusion.geom.glsl" );
 	shaders[SHADER_OCCLUSION_BITPACK] = GL4Program::Load( "occlusion_bitpack.vert.glsl" );
 	shaders[SHADER_OCCLUSION_DEBUG] = GL4Program::Load( "occlusion_debug.vert.glsl", "occlusion_debug.frag.glsl", "occlusion_debug.geom.glsl" );
 	//shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md.vert.glsl", "black.frag.glsl" );
-	shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md_stereo.vert.glsl", "black.frag.glsl", "stencil_md_stereo.geom.glsl" );
+	shaders[SHADER_STENCIL_MD] = GL4Program::Load( "stencil_md_stereo.vert.glsl", "black.frag.glsl" );
 	//shaders[SHADER_INTERACTION_SIMPLE] = GL4Program::Load( "interaction_simple.vert.glsl", "interaction_simple.frag.glsl" );
-	shaders[SHADER_INTERACTION_SIMPLE] = GL4Program::Load( "interaction_simple_stereo.vert.glsl", "interaction_simple.frag.glsl", "interaction_simple_stereo.geom.glsl" );
+	shaders[SHADER_INTERACTION_SIMPLE] = GL4Program::Load( "interaction_simple_stereo.vert.glsl", "interaction_simple.frag.glsl" );
 	//shaders[SHADER_OLDSTAGE] = GL4Program::Load( "oldstage.vert.glsl", "oldstage.frag.glsl" );
-	shaders[SHADER_OLDSTAGE] = GL4Program::Load( "oldstage_stereo.vert.glsl", "oldstage.frag.glsl", "oldstage_stereo.geom.glsl" );
+	shaders[SHADER_OLDSTAGE] = GL4Program::Load( "oldstage_stereo.vert.glsl", "oldstage.frag.glsl" );
 	
 	// validate all shaders
 	for( int i = 0; i < TOTAL_SHADER_COUNT; ++i ) {

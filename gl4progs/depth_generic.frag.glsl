@@ -3,7 +3,7 @@
 
 layout (binding = 0) uniform sampler2D tex0;
 
-in GeometryOut{
+in VertexOut{
 	vec2 uv;
 	float clipPlaneDist;
 	flat vec4 color;

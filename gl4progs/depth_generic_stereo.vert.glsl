@@ -1,4 +1,5 @@
 #version 430
+#extension GL_AMD_vertex_shader_layer : require
 
 layout( std140, binding = 0 ) uniform UBO{
 	mat4 modelMatrix;
@@ -18,7 +19,6 @@ out VertexOut{
 	float clipPlaneDist;
 	flat vec4 color;
 	flat float alphaTest;
-	vec4 position[2];
 } OUT;
 
 void main() {
@@ -27,6 +27,6 @@ void main() {
 	OUT.color = color;
 	OUT.alphaTest = alphaTest.x;
 	vec4 worldPos = modelMatrix * position;
-	OUT.position[0] = viewProj[0] * position;
-	OUT.position[1] = viewProj[1] * position;
+	gl_Position = viewProj[gl_InstanceID] * position;
+	gl_Layer = gl_InstanceID;
 }

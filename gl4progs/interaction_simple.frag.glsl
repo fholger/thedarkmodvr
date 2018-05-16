@@ -2,7 +2,7 @@
 
 layout (early_fragment_tests) in;
 
-in GeomOut{
+in VertexOut{
 	vec3 position;
 	vec2 uvDiffuse;
 	vec2 uvNormal;

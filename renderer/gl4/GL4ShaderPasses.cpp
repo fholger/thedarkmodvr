@@ -84,8 +84,7 @@ void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * 
 		GL4Program oldStageShader = openGL4Renderer.GetShader( SHADER_OLDSTAGE );
 		oldStageShader.Activate();
 		if( backEnd.viewDef->renderView.viewEyeBuffer != 0 ) {
-			oldStageShader.SetUniformMatrix4( SU_LOC_VIEWPROJ_LEFT, backEnd.viewProjectionMatrix[0] );
-			oldStageShader.SetUniformMatrix4( SU_LOC_VIEWPROJ_RIGHT, backEnd.viewProjectionMatrix[1] );
+			oldStageShader.SetStereoViewProjectionMatrix( SU_LOC_VIEWPROJ_LEFT );
 		}
 		else {
 			myGlMultMatrix( backEnd.viewDef->worldSpace.modelViewMatrix, backEnd.viewDef->projectionMatrix, viewProj );
@@ -144,7 +143,7 @@ void GL4_RenderShaderPasses_OldStage(const shaderStage_t * pStage, drawSurf_t * 
 	} else {
 		vertexCache.UnbindIndex();
 	}
-	qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, indexes, baseVertex );
+	qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, indexes, 2, baseVertex );
 
 	// unset privatePolygonOffset if necessary
 	if( pStage->privatePolygonOffset && !surf->material->TestMaterialFlag( MF_POLYGONOFFSET ) ) {

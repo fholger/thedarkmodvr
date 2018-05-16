@@ -219,6 +219,7 @@ extern PFNGLPUSHDEBUGGROUPPROC				qglPushDebugGroup;
 extern PFNGLPOPDEBUGGROUPPROC				qglPopDebugGroup;
 extern PFNGLBUFFERSTORAGEPROC				qglBufferStorage;
 extern PFNGLDRAWELEMENTSBASEVERTEXPROC		qglDrawElementsBaseVertex;
+extern PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC	qglDrawElementsInstancedBaseVertex;
 extern PFNGLDRAWELEMENTSINDIRECTPROC		qglDrawElementsIndirect;
 extern PFNGLMULTIDRAWELEMENTSINDIRECTPROC	qglMultiDrawElementsIndirect;
 extern PFNGLBINDBUFFERBASEPROC				qglBindBufferBase;

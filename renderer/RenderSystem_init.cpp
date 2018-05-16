@@ -399,6 +399,7 @@ PFNGLPUSHDEBUGGROUPPROC						qglPushDebugGroup;
 PFNGLPOPDEBUGGROUPPROC						qglPopDebugGroup;
 PFNGLBUFFERSTORAGEPROC						qglBufferStorage;
 PFNGLDRAWELEMENTSBASEVERTEXPROC				qglDrawElementsBaseVertex;
+PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC	qglDrawElementsInstancedBaseVertex;
 PFNGLDRAWELEMENTSINDIRECTPROC				qglDrawElementsIndirect;
 PFNGLMULTIDRAWELEMENTSINDIRECTPROC			qglMultiDrawElementsIndirect;
 PFNGLBINDBUFFERBASEPROC						qglBindBufferBase;
@@ -686,6 +687,7 @@ static void R_CheckPortableExtensions( void ) {
 	if( glConfig.openGL4Available ) {
 		qglBufferStorage = ( PFNGLBUFFERSTORAGEPROC )GLimp_ExtensionPointer( "glBufferStorage" );
 		qglDrawElementsBaseVertex = ( PFNGLDRAWELEMENTSBASEVERTEXPROC )GLimp_ExtensionPointer( "glDrawElementsBaseVertex" );
+		qglDrawElementsInstancedBaseVertex = ( PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXPROC )GLimp_ExtensionPointer( "glDrawElementsInstancedBaseVertex" );
 		qglDrawElementsIndirect = ( PFNGLDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glDrawElementsIndirect" );
 		qglMultiDrawElementsIndirect = ( PFNGLMULTIDRAWELEMENTSINDIRECTPROC )GLimp_ExtensionPointer( "glMultiDrawElementsIndirect" );
 		qglBindBufferBase = ( PFNGLBINDBUFFERBASEPROC )GLimp_ExtensionPointer( "glBindBufferBase" );

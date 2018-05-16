@@ -1,4 +1,5 @@
 #version 430
+#extension GL_AMD_vertex_shader_layer : require
 
 layout( location = 0 ) in vec4 Position;
 layout( location = 1 ) in vec4 TexCoord;
@@ -28,6 +29,8 @@ layout( std140, binding = 0 ) uniform UBO{
 	vec4 cubic;
 };
 
+layout( location = 0 ) uniform mat4 viewProj[2];
+
 out VertexOut{
 	vec3 position;
 	vec2 uvDiffuse;
@@ -37,16 +40,16 @@ out VertexOut{
 	mat3 tangentSpace;
 	vec4 color;
 	vec4 lightOrigin;
-	vec4 viewOrigin[2];
+	vec4 viewOrigin;
 	vec4 diffuseColor;
 	vec4 specularColor;
 	float cubic;
-	vec4 worldPos;
 } OUT;
 
 void main( void ) {
 	OUT.position = Position.xyz;
-	OUT.worldPos = modelMatrix * Position;
+	gl_Position = viewProj[gl_InstanceID] * (modelMatrix * Position);
+	gl_Layer = gl_InstanceID;
 
 	// normal map texgen   
 	OUT.uvNormal.x = dot( bumpMatrixS, TexCoord );
@@ -74,8 +77,7 @@ void main( void ) {
 
 	// pass through uniforms
 	OUT.lightOrigin = lightOrigin;
-	OUT.viewOrigin[0] = viewOrigin[0];
-	OUT.viewOrigin[1] = viewOrigin[1];
+	OUT.viewOrigin = viewOrigin[gl_InstanceID];
 	OUT.diffuseColor = diffuseColor;
 	OUT.specularColor = specularColor;
 	OUT.cubic = cubic.x;

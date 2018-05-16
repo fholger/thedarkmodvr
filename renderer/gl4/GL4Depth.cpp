@@ -58,7 +58,7 @@ void GL4_MultiDrawDepth( drawSurf_t **drawSurfs, int numDrawSurfs, bool staticVe
 		memcpy( drawData[cmdIdx].modelMatrix, drawSurfs[i]->space->modelMatrix, sizeof( drawData[cmdIdx].modelMatrix ) );
 		const srfTriangles_t *tri = drawSurfs[i]->backendGeo;
 		commands[cmdIdx].count = tri->numIndexes;
-		commands[cmdIdx].instanceCount = 1;
+		commands[cmdIdx].instanceCount = 2;
 		if( !tri->indexCache ) {
 			common->Warning( "GL4_MultiDrawDepth: Missing indexCache" );
 		}
@@ -195,7 +195,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 				// draw it
 				openGL4Renderer.UpdateUBO( &drawData, sizeof( DepthGenericDrawData ) );
-				qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
+				qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), 2, baseVertex );
 
 				// unset privatePolygonOffset if necessary
 				if( pStage->privatePolygonOffset && !surf->material->TestMaterialFlag( MF_POLYGONOFFSET ) ) {

@@ -110,7 +110,7 @@ void GL4_MultiDrawStencil( const drawSurf_t* drawSurfs, bool external ) {
 		drawData[count].lightOrigin.w = 0.0f;
 
 		commands[count].count = numIndexes;
-		commands[count].instanceCount = 1;
+		commands[count].instanceCount = 2;
 		commands[count].firstIndex = ( ( tri->indexCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( glIndex_t );
 		commands[count].baseVertex = ( ( tri->shadowCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( shadowCache_t );
 		commands[count].baseInstance = count;
@@ -243,7 +243,7 @@ static void GL4_DrawSingleInteraction( InteractionDrawData &drawData, drawIntera
 	int baseVertex = ( ( tri->ambientCache >> VERTCACHE_OFFSET_SHIFT ) & VERTCACHE_OFFSET_MASK ) / sizeof( idDrawVert );
 	//openGL4Renderer.BindVertexBuffer( vertexCache.CacheIsStatic( tri->ambientCache ) );
 	openGL4Renderer.UpdateUBO( &drawData, sizeof( drawData ) );
-	qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
+	qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), 2, baseVertex );
 }
 
 void GL4_SetDrawInteraction( const shaderStage_t *surfaceStage, const float *surfaceRegs,

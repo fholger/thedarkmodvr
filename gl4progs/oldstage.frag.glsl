@@ -1,6 +1,6 @@
 #version 430
 
-in GeomOut{
+in VertexOut{
 	vec4 color;
 	vec4 uv;
 	flat vec4 localEyePos;
