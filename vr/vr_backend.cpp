@@ -135,6 +135,7 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 	qglBlitFramebuffer( 0, 0, glConfig.vidWidth, glConfig.vidHeight, 0, 0, glConfig.windowWidth, glConfig.windowHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	GLimp_SwapBuffers();
 
-	//WaitForGPUFinish();
 	vrSupport->FrameEnd( stereoEyeImages[0], stereoEyeImages[1] );
+	vrSupport->FrameStart();
+	//WaitForGPUFinish();
 }

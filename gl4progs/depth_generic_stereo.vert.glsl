@@ -26,7 +26,6 @@ void main() {
 	OUT.clipPlaneDist = dot( position, clipPlane );
 	OUT.color = color;
 	OUT.alphaTest = alphaTest.x;
-	vec4 worldPos = modelMatrix * position;
-	gl_Position = viewProj[gl_InstanceID] * position;
+	gl_Position = viewProj[gl_InstanceID] * (modelMatrix * position);
 	gl_Layer = gl_InstanceID;
 }

@@ -636,7 +636,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		common->SetErrorIndirection( true );
 		double startLoop = Sys_GetClockTicks();
 		if( vrSupport->IsInitialized() ) {
-			vrSupport->FrameStart();
+			//vrSupport->FrameStart();
 		}
 		double startSignal = Sys_GetClockTicks();
 		session->ActivateFrontend();
