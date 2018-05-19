@@ -328,14 +328,13 @@ void OpenVrSupport::DisableMenuOverlay() {
 }
 
 void OpenVrSupport::GetCurrentViewProjection( int eye, const renderView_t &eyeView, idVec3 &viewOrigin, float *viewMatrix, float *projectionMatrix ) {
-	/*idMat3 viewAxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
+	// Replace HMD prediction from last frame with the current prediction for a more accurate result
+	idMat3 viewAxis = eyeView.hmdAxis.Inverse() * eyeView.viewaxis;
 	viewOrigin = eyeView.vieworg - (eyeView.hmdOrigin * viewAxis);
 
-	viewOrigin += hmdOrigin * eyeView.viewaxis;
+	viewOrigin += hmdOrigin * viewAxis;
 	viewAxis = hmdAxis * viewAxis;
-	viewOrigin -= eye * eyeView.halfEyeDistance * viewAxis[1];*/
-
-	viewOrigin = eyeView.vieworg - eye * eyeView.halfEyeDistance * eyeView.viewaxis[1];
+	viewOrigin -= eye * eyeView.halfEyeDistance * viewAxis[1];
 
 	SetupProjectionMatrix( eye, eyeView.cramZNear, projectionMatrix );
 	SetupViewMatrix( viewOrigin, eyeView.viewaxis, viewMatrix );
