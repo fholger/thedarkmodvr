@@ -218,7 +218,7 @@ void GL4_GenericDepth( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 			// draw it
 			openGL4Renderer.UpdateUBO( &drawData, sizeof( DepthGenericDrawData ) );
-			qglDrawElementsBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), baseVertex );
+			qglDrawElementsInstancedBaseVertex( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, vertexCache.IndexPosition( tri->indexCache ), 2, baseVertex );
 		}
 
 		// reset polygon offset
