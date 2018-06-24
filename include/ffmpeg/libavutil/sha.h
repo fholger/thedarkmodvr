@@ -27,7 +27,6 @@
 #ifndef AVUTIL_SHA_H
 #define AVUTIL_SHA_H
 
-#include <stddef.h>
 #include <stdint.h>
 
 #include "attributes.h"
@@ -70,15 +69,11 @@ int av_sha_init(struct AVSHA* context, int bits);
 /**
  * Update hash value.
  *
- * @param ctx     hash function context
+ * @param context hash function context
  * @param data    input data to update hash with
  * @param len     input data length
  */
-#if FF_API_CRYPTO_SIZE_T
-void av_sha_update(struct AVSHA *ctx, const uint8_t *data, unsigned int len);
-#else
-void av_sha_update(struct AVSHA *ctx, const uint8_t *data, size_t len);
-#endif
+void av_sha_update(struct AVSHA* context, const uint8_t* data, unsigned int len);
 
 /**
  * Finish hashing and output digest value.
