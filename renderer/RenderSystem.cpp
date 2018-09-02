@@ -109,6 +109,7 @@ static void R_PerformanceCounters( void ) {
 	memset( &backEnd.pc, 0, sizeof( backEnd.pc ) );
 }
 
+
 /*
 ====================
 R_IssueRenderCommands
@@ -116,6 +117,7 @@ R_IssueRenderCommands
 Called by R_EndFrame each frame
 ====================
 */
+void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t * cmds );
 void R_IssueRenderCommands( frameData_t *frameData ) {
 	emptyCommand_t *cmds = frameData->cmdHead;
 	if ( cmds->commandId == RC_NOP
@@ -133,7 +135,7 @@ void R_IssueRenderCommands( frameData_t *frameData ) {
 	// r_skipRender is usually more usefull, because it will still
 	// draw 2D graphics
 	if ( !r_skipBackEnd.GetBool() ) {
-		RB_ExecuteBackEndCommands( cmds );
+		RB_ExecuteBackEndCommandsStereo( cmds );
 	}
 	R_ClearCommandChain( frameData );
 }
@@ -619,11 +621,10 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		ProfilingBeginFrame();
 		common->SetErrorIndirection( true );
 		double startLoop = Sys_GetClockTicks();
-		if( vrSupport->IsInitialized() ) {
-			vrSupport->FrameStart();
-		}
 		session->ActivateFrontend();
 		double endSignal = Sys_GetClockTicks();
+		vrSupport->FrameStart();
+		double endVrFrameStart = Sys_GetClockTicks();
 		// start the back end up again with the new command list
 		R_IssueRenderCommands( backendFrameData );
 		double endRender = Sys_GetClockTicks();
@@ -642,6 +643,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 			const double TO_MICROS = 1000000 / Sys_ClockTicksPerSecond();
 			static double lastEndTime = Sys_GetClockTicks();
 			double signalFrontend = ( endSignal - startLoop ) * TO_MICROS;
+			double vrStart = ( endVrFrameStart - endSignal ) * TO_MICROS;
 			double render = ( endRender - endSignal ) * TO_MICROS;
 			double waitForFrontend = ( endWait - endRender ) * TO_MICROS;
 			double framePrep = ( startLoop - lastEndTime ) * TO_MICROS;
@@ -649,7 +651,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 			lastEndTime = endWait;
 
 			smpTimingsLogFile->Printf( "Frame %.7d: preparation %.2f - total frame time %.2f us\n", frameCount, framePrep, totalFrameTime );
-			smpTimingsLogFile->Printf( "  Backend: signal frontend %.2f us - render %.2f us - wait for frontend %.2f us\n", signalFrontend, render, waitForFrontend );
+			smpTimingsLogFile->Printf( "  Backend: signal frontend %.2f us - vr start %.2f us - render %.2f us - wait for frontend %.2f us\n", signalFrontend, vrStart, render, waitForFrontend );
 			session->LogFrontendTimings( *smpTimingsLogFile );
 		}
 	} catch ( std::shared_ptr<ErrorReportedException> e ) {

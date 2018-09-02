@@ -282,7 +282,7 @@ void CheckCreatePrimary() {
 			r_useFbo.SetBool( false );
 			r_softShadowsQuality.SetInteger( 0 );
 		}
-		qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		Framebuffer::BindPrimary();
 	}
 }
 
@@ -379,7 +379,7 @@ void CheckCreateShadow() {
 			qglDeleteFramebuffers( 1, &fboShadow );
 			fboShadow = 0; // try from scratch next time
 		}
-		qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		Framebuffer::BindPrimary();
 		nowType = type;
 	}
 	GL_CheckErrors();
@@ -472,6 +472,9 @@ void FB_ToggleShadow( bool on, bool clear ) {
 		// with MSAA on, we need to render against the multisampled primary buffer, otherwise stencil is drawn
 		// against a lower-quality depth map which may cause render errors with shadows
 		qglBindFramebuffer( GL_FRAMEBUFFER, fboPrimary );
+	}
+	if (!on && !primaryOn) {
+		Framebuffer::BindPrimary();
 	}
 
 	// stencil softshadows
@@ -592,7 +595,7 @@ void LeavePrimary() {
 		FB_ResolveMultisampling( GL_COLOR_BUFFER_BIT );
 		qglBindFramebuffer( GL_READ_FRAMEBUFFER, fboResolve );
 	}
-	qglBindFramebuffer( GL_DRAW_FRAMEBUFFER, 0 );
+	Framebuffer::BindPrimary( GL_DRAW_FRAMEBUFFER );
 	qglBlitFramebuffer( 0, 0, globalImages->currentRenderImage->uploadWidth,
 	                    globalImages->currentRenderImage->uploadHeight,
 	                    0, 0, glConfig.vidWidth, glConfig.vidHeight, GL_COLOR_BUFFER_BIT, GL_LINEAR );
@@ -601,7 +604,7 @@ void LeavePrimary() {
 		if ( r_multiSamples.GetInteger() > 1 ) {
 			FB_ResolveMultisampling( GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 		}
-		qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+		Framebuffer::BindPrimary();
 
 		qglLoadIdentity();
 		qglMatrixMode( GL_PROJECTION );
@@ -632,7 +635,7 @@ void LeavePrimary() {
 		qglMatrixMode( GL_MODELVIEW );
 		GL_SelectTexture( 0 );
 	}
-	qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
+	Framebuffer::BindPrimary();
 
 	primaryOn = false;
 

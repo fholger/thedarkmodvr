@@ -2,6 +2,7 @@
 #include "VrSupport.h"
 #include "VrFramebuffer.h"
 #include "../renderer/tr_local.h"
+#include "../renderer/FrameBuffer.h"
 #pragma hdrstop
 
 Framebuffer * stereoRenderFBOs[2]; 
@@ -68,7 +69,7 @@ void RB_DisplayEyeView( idImage* image ) {
 ====================
 RB_ExecuteBackEndCommandsStereo
 
-Called if VR support is enabled.
+Called to render two eyes for VR.
 ====================
 */
 void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
@@ -78,6 +79,17 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 			RB_CreateStereoRenderFBO( i, stereoRenderFBOs[i], stereoRenderImages[i] );
 		}
 	}
+
+	static int backEndStartTime, backEndFinishTime;
+
+	if( allcmds->commandId == RC_NOP && !allcmds->next ) {
+		return;
+	}
+
+	backEndStartTime = Sys_Milliseconds();
+
+	// needed for editor rendering
+	RB_SetDefaultGLState();
 
 	for (int stereoEye = 1; stereoEye >= -1; stereoEye -= 2) {
 		const int targetEye = stereoEye == RIGHT_EYE ? 1 : 0;
@@ -95,6 +107,7 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 			{
 				const drawSurfsCommand_t* const dsc = (const drawSurfsCommand_t*)cmds;
 				viewDef_t& eyeViewDef = *dsc->viewDef;
+				backEnd.viewDef = dsc->viewDef;
 
 				if (eyeViewDef.renderView.viewEyeBuffer && eyeViewDef.renderView.viewEyeBuffer != stereoEye) {
 					// this is the render view for the other eye
@@ -123,6 +136,8 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 			}
 			cmds = (const emptyCommand_t *)cmds->next;
 		}
+
+		FB_TogglePrimary( false );
 	}
 
 	// mirror one of the eyes to the screen
@@ -130,4 +145,14 @@ void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds ) {
 	GLimp_SwapBuffers();
 
 	vrSupport->FrameEnd( stereoRenderImages[0], stereoRenderImages[1] );
+
+	// go back to the default texture so the editor doesn't mess up a bound image
+	qglBindTexture( GL_TEXTURE_2D, 0 );
+	GL_CheckErrors();
+	backEnd.glState.tmu[0].current2DMap = -1;
+
+	// stop rendering on this thread
+	backEndFinishTime = Sys_Milliseconds();
+	backEnd.pc.msecLast = backEndFinishTime - backEndStartTime;
+	backEnd.pc.msec += backEnd.pc.msecLast;
 }

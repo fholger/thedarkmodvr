@@ -25,21 +25,21 @@ Framebuffer::~Framebuffer() {
 	qglDeleteFramebuffers( 1, &frameBuffer );
 }
 
-void Framebuffer::Bind() {
+void Framebuffer::Bind( GLuint target ) {
 	if (backEnd.glState.currentFramebuffer != this) {
-		qglBindFramebuffer( GL_FRAMEBUFFER, frameBuffer );
+		qglBindFramebuffer( target, frameBuffer );
 		backEnd.glState.currentFramebuffer = this;
 		wglSwapIntervalEXT( 0 );
 	}
 }
 
-void Framebuffer::BindPrimary() {
+void Framebuffer::BindPrimary( GLuint target ) {
 	qglBindFramebuffer( GL_FRAMEBUFFER, 0 );
 	qglBindRenderbuffer( GL_RENDERBUFFER, 0 );
 	backEnd.glState.currentFramebuffer = nullptr;
 
 	if (primaryFramebuffer != nullptr) {
-		primaryFramebuffer->Bind();
+		primaryFramebuffer->Bind(target);
 		glConfig.vidWidth = primaryFramebuffer->GetWidth();
 		glConfig.vidHeight = primaryFramebuffer->GetHeight();
 	} else {

@@ -11,8 +11,8 @@ public:
 	Framebuffer(const char* name, int width, int height);
 	~Framebuffer();
 
-	void Bind();
-	static void BindPrimary();
+	void Bind( GLuint target = GL_FRAMEBUFFER );
+	static void BindPrimary( GLuint target = GL_FRAMEBUFFER );
 
 	void AddColorBuffer( GLuint format, int index );
 	void AddColorImage( idImage* colorImage, int index, int mipmapLod = 0 );

@@ -5,8 +5,6 @@
 #include "../renderer/tr_local.h"
 #include "VrFramebuffer.h"
 
-idCVar vr_enable( "vr_enable", "1", CVAR_RENDERER | CVAR_BOOL, "enable OpenVR support" );
-
 class OpenVrSupport : public VrSupport {
 public:
 	OpenVrSupport();
@@ -14,7 +12,6 @@ public:
 	
 	void Init() override;
 	void Shutdown() override;
-	bool IsInitialized() const override;
 	void DetermineRenderTargetSize( uint32_t *width, uint32_t *height ) const override;
 	void FrameStart() override;
 	void GetFov( float& fovX, float& fovY ) override;
@@ -22,15 +19,12 @@ public:
 	void AdjustViewWithActualHeadPose( viewDef_t* viewDef ) override;
 	void SetupProjectionMatrix( viewDef_t* viewDef ) override;
 	void FrameEnd( idImage *leftEyeImage, idImage *rightEyeImage ) override;
-	void EnableMenuOverlay( idImage* menuImage ) override;
-	void DisableMenuOverlay() override;
 private:
 	float GetInterPupillaryDistance() const;
 	void SubmitEyeFrame( int eye, idImage* image );
 	void UpdateHmdOriginAndAxis( const vr::TrackedDevicePose_t devicePose[16], idVec3& origin, idMat3& axis );
 
 	vr::IVRSystem *vrSystem;
-	vr::VROverlayHandle_t menuOverlay;
 	vr::TrackedDevicePose_t trackedDevicePose[vr::k_unMaxTrackedDeviceCount];
 	vr::TrackedDevicePose_t predictedDevicePose[vr::k_unMaxTrackedDeviceCount];
 	float rawProjection[2][4];
@@ -63,10 +57,6 @@ OpenVrSupport::~OpenVrSupport()
 
 void OpenVrSupport::Init()
 {
-	if (!vr_enable.GetBool()) {
-		return;
-	}
-
 	common->Printf( "Initializing OpenVR support...\n" );
 	if (!vr::VR_IsHmdPresent())
 	{
@@ -79,17 +69,10 @@ void OpenVrSupport::Init()
 	if (initError != vr::VRInitError_None)
 	{
 		vrSystem = nullptr;
-		common->Warning("OpenVR initialization failed: %s", vr::VR_GetVRInitErrorAsEnglishDescription(initError));
-		return;
+		common->FatalError("OpenVR initialization failed: %s", vr::VR_GetVRInitErrorAsEnglishDescription(initError));
 	}
 
 	vr::VRCompositor()->SetTrackingSpace( vr::TrackingUniverseSeated );
-	vr::EVROverlayError overlayError = vr::VROverlay()->CreateOverlay( "tdm_menu_overlay", "The Dark Mod Menu", &menuOverlay );
-	if (overlayError != vr::VROverlayError_None) {
-		common->Warning( "OpenVR overlay initialization failed: %d", overlayError );
-		Shutdown();
-		return;
-	}
 	InitParameters();
 	common->Printf( "OpenVR support ready.\n" );
 }
@@ -106,10 +89,6 @@ void OpenVrSupport::Shutdown()
 			delete stereoRenderImages[i];
 		}
 	}
-}
-
-bool OpenVrSupport::IsInitialized() const {
-	return vrSystem != nullptr;
 }
 
 float OpenVrSupport::GetInterPupillaryDistance() const {
@@ -233,27 +212,6 @@ void OpenVrSupport::FrameEnd( idImage* leftEyeImage, idImage* rightEyeImage ) {
 	SubmitEyeFrame( RIGHT_EYE, rightEyeImage );
 	vr::VRCompositor()->PostPresentHandoff();
 }
-
-void OpenVrSupport::EnableMenuOverlay( idImage* menuImage ) {
-	vr::Texture_t texture = { (void*)menuImage->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
-	vr::VROverlay()->SetOverlayTexture( menuOverlay, &texture );
-	vr::VROverlay()->SetHighQualityOverlay( menuOverlay );
-	vr::HmdMatrix34_t transform;
-	memset( transform.m, 0, sizeof( transform.m ) );
-	transform.m[0][0] = 1;
-	transform.m[1][1] = -1;
-	transform.m[2][2] = -1;
-	transform.m[2][3] = -2;
-	vr::VROverlay()->SetOverlayWidthInMeters( menuOverlay, 4 );
-	vr::VROverlay()->SetOverlayTransformAbsolute( menuOverlay, vr::TrackingUniverseSeated, &transform );
-	vr::VROverlay()->ShowOverlay( menuOverlay );
-}
-
-void OpenVrSupport::DisableMenuOverlay() {
-	vr::VROverlay()->HideOverlay( menuOverlay );
-	vr::VROverlay()->ClearOverlayTexture( menuOverlay );
-}
-
 
 void OpenVrSupport::InitParameters() {
 	vrSystem->GetProjectionRaw( vr::Eye_Left, &rawProjection[0][0], &rawProjection[0][1], &rawProjection[0][2], &rawProjection[0][3] );

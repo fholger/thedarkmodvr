@@ -799,10 +799,10 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 {
 	const renderView_t *view = player->GetRenderView();
 
-	if( vrSupport->IsInitialized() ) {
-		StereoView( hud, view, RIGHT_EYE );
-		StereoView( hud, view, LEFT_EYE );
-	} else
+	StereoView( hud, view, RIGHT_EYE );
+	StereoView( hud, view, LEFT_EYE );
+
+#if 0  // disabled for VR rendering
 	if(g_skipViewEffects.GetBool())
 	{
 		SingleView( hud, view );
@@ -839,6 +839,7 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 
 		ScreenFade();
 	}
+#endif
 
 	player->DrawHUD(hud);
 

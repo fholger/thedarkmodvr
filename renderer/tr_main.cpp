@@ -850,7 +850,7 @@ This uses the "infinite far z" trick
 ===============
 */
 void R_SetupProjection( void ) {
-	if( vrSupport->IsInitialized() && tr.viewDef->renderView.viewEyeBuffer != 0 ) {
+	if( tr.viewDef->renderView.viewEyeBuffer != 0 ) {
 		vrSupport->SetupProjectionMatrix( tr.viewDef );
 		return;
 	}

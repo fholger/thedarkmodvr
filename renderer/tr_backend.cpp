@@ -820,12 +820,11 @@ void RB_CopyRender( const void *data ) {
 
 /*
 ====================
-RB_ExecuteBackEndCommandsMono
-
-Called if VR support is disabled.
+RB_ExecuteBackEndCommands
+Always runs on the main thread
 ====================
 */
-void RB_ExecuteBackEndCommandsMono( const emptyCommand_t *cmds ) {
+void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 	static int backEndStartTime, backEndFinishTime;
 
 	if ( cmds->commandId == RC_NOP && !cmds->next ) {
@@ -890,48 +889,10 @@ void RB_ExecuteBackEndCommandsMono( const emptyCommand_t *cmds ) {
 			c_swapBuffers++;
 			break;
 		default:
-			common->Error( "RB_ExecuteBackEndCommandsMono: bad commandId" );
+			common->Error( "RB_ExecuteBackEndCommands: bad commandId" );
 			break;
 		}
 		cmds = ( const emptyCommand_t * )cmds->next;
-	}
-
-
-	// revelator: added depthcopy to counters
-	if ( r_debugRenderToTexture.GetInteger() ) {
-		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, SwpBuf: %i, drwBloom: %i, CpyRenders: %i, CpyFrameBuf: %i, CpyDepthBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_swapBuffers, c_drawBloom, c_copyRenders, backEnd.c_copyFrameBuffer, backEnd.c_copyDepthBuffer );
-		backEnd.c_copyFrameBuffer = 0;
-		backEnd.c_copyDepthBuffer = 0;
-	}
-}
-
-void RB_ExecuteBackEndCommandsStereo( const emptyCommand_t* allcmds );
-
-/*
-====================
-RB_ExecuteBackEndCommands
-
-This function will be called syncronously if running without
-smp extensions, or asyncronously by another thread.
-====================
-*/
-void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
-	static int backEndStartTime, backEndFinishTime;
-
-	if( cmds->commandId == RC_NOP && !cmds->next ) {
-		return;
-	}
-
-	backEndStartTime = Sys_Milliseconds();
-
-	// needed for editor rendering
-	RB_SetDefaultGLState();
-
-	if( vrSupport->IsInitialized() ) {
-		RB_ExecuteBackEndCommandsStereo( cmds );
-	}
-	else {
-		RB_ExecuteBackEndCommandsMono( cmds );
 	}
 
 	// go back to the default texture so the editor doesn't mess up a bound image
@@ -943,4 +904,11 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 	backEndFinishTime = Sys_Milliseconds();
 	backEnd.pc.msecLast = backEndFinishTime - backEndStartTime;
 	backEnd.pc.msec += backEnd.pc.msecLast;
+
+	// revelator: added depthcopy to counters
+	if ( r_debugRenderToTexture.GetInteger() ) {
+		common->Printf( "3d: %i, 2d: %i, SetBuf: %i, SwpBuf: %i, drwBloom: %i, CpyRenders: %i, CpyFrameBuf: %i, CpyDepthBuf: %i\n", c_draw3d, c_draw2d, c_setBuffers, c_swapBuffers, c_drawBloom, c_copyRenders, backEnd.c_copyFrameBuffer, backEnd.c_copyDepthBuffer );
+		backEnd.c_copyFrameBuffer = 0;
+		backEnd.c_copyDepthBuffer = 0;
+	}
 }
