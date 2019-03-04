@@ -1,9 +1,0 @@
-# Boost.Build Configuration
-
-using darwin : 8.11 : /usr/bin/g++-4.0 :
-    <architecture>"combined"
-    <address-model>"32"
-    <macosx-version>"10.4"
-    <macosx-version-min>"10.4"
-    <link>"static"
-    <threading>"multi" ;
