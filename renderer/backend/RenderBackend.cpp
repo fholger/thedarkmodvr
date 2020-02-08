@@ -18,6 +18,9 @@
 
 #include "RenderBackend.h"
 #include "../Profiling.h"
+#include "../GLSLProgram.h"
+#include "../FrameBuffer.h"
+#include "../GLSLProgramManager.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
@@ -80,7 +83,7 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 		// fill the depth buffer and clear color buffer to black except on subviews
         void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs );
 		RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
-		RB_GLSL_DrawInteractions();
+		DrawShadowsAndInteractions( viewDef );
 	}
 		
 	// now draw any non-light dependent shading passes
@@ -112,4 +115,123 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 
 void RenderBackend::EndFrame() {
 	shaderParamsBuffer.Lock();
+}
+
+void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
+	void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear = false );
+
+	if ( vLight->lightShader->LightCastsShadows() ) {
+		RB_GLSL_DrawInteractions_ShadowMap( vLight->globalInteractions, true );
+		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
+		RB_GLSL_DrawInteractions_ShadowMap( vLight->localInteractions );
+	} else {
+		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
+	}
+	interactionStage.DrawInteractions( vLight, vLight->globalInteractions );
+
+	GLSLProgram::Deactivate();
+}
+
+void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef, viewLight_t *vLight ) {
+	bool useShadowFbo = r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem();// && (r_shadows.GetInteger() != 2);
+
+	// set depth bounds for the whole light
+	const DepthBoundsTest depthBoundsTest( vLight->scissorRect );
+
+	// clear the stencil buffer if needed
+	if ( vLight->globalShadows || vLight->localShadows ) {
+		backEnd.currentScissor = vLight->scissorRect;
+
+		if ( r_useScissor.GetBool() ) {
+			GL_Scissor( viewDef->viewport.x1 + backEnd.currentScissor.x1,
+			            viewDef->viewport.y1 + backEnd.currentScissor.y1,
+			            backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
+			            backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
+		}
+
+		if ( useShadowFbo ) {
+			FB_ToggleShadow( true );
+		}
+		qglClear( GL_STENCIL_BUFFER_BIT );
+	} else {
+		// no shadows, so no need to read or write the stencil buffer
+		qglStencilFunc( GL_ALWAYS, 128, 255 );
+	}
+	programManager->stencilShadowShader->Activate();
+
+	RB_StencilShadowPass( vLight->globalShadows );
+	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
+		FB_ResolveShadowAA();
+	}
+
+	if ( useShadowFbo ) {
+		FB_ToggleShadow( false );
+	}
+	interactionStage.DrawInteractions( vLight, vLight->localInteractions );
+
+	if ( useShadowFbo ) {
+		FB_ToggleShadow( true );
+	}
+	programManager->stencilShadowShader->Activate();
+
+	RB_StencilShadowPass( vLight->localShadows );
+	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
+		FB_ResolveShadowAA();
+	}
+
+
+	if ( useShadowFbo ) {
+		FB_ToggleShadow( false );
+	}
+
+	interactionStage.DrawInteractions( vLight, vLight->globalInteractions );
+
+	GLSLProgram::Deactivate();
+}
+
+void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
+	GL_PROFILE( "LightInteractions" );
+
+	if ( r_shadows.GetInteger() == 2 ) {
+		if ( r_shadowMapSinglePass.GetBool() ) {
+			void RB_ShadowMap_RenderAllLights();
+			RB_ShadowMap_RenderAllLights();
+		}
+	}
+
+	if ( r_shadows.GetInteger() != 1 && r_interactionProgram.GetInteger() == 2 ) {
+		extern void RB_GLSL_DrawInteractions_MultiLight();
+		RB_GLSL_DrawInteractions_MultiLight();
+		return;
+	}
+
+	// for each light, perform adding and shadowing
+	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+		if ( vLight->lightShader->IsFogLight() || vLight->lightShader->IsBlendLight() ) {
+			break;
+		}
+
+		// if there are no interactions, get out!
+		if ( !vLight->localInteractions && !vLight->globalInteractions && !vLight->translucentInteractions )
+			break;
+
+		backEnd.vLight = vLight;
+		if ( vLight->shadows == LS_MAPS ) {
+			DrawInteractionsWithShadowMapping( vLight );
+		} else {
+			DrawInteractionsWithStencilShadows( viewDef, vLight );
+		}
+
+		if ( r_skipTranslucent.GetBool() ) {
+			break;
+		}
+		qglStencilFunc( GL_ALWAYS, 128, 255 );
+		backEnd.depthFunc = GLS_DEPTHFUNC_LESS;
+		interactionStage.DrawInteractions( vLight, vLight->translucentInteractions );
+		backEnd.depthFunc = GLS_DEPTHFUNC_EQUAL;
+	}
+
+	// disable stencil shadow test
+	qglStencilFunc( GL_ALWAYS, 128, 255 );
+	GL_SelectTexture( 0 );
 }

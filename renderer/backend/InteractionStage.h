@@ -25,9 +25,13 @@ public:
 	void Init();
 	void Shutdown();
 
-	void DrawInteractions( const drawSurf_t *interactionSurfs );
+	void DrawInteractions( viewLight_t *vLight, const drawSurf_t *interactionSurfs );
 
 private:
 	ShaderParamsBuffer *shaderParamsBuffer;
 	GLSLProgram *interactionShader;
+
+	void ChooseInteractionProgram( viewLight_t *vLight );
+	void ProcessSingleSurface( viewLight_t * vLight, const drawSurf_t * surf );
+	void PrepareDrawCommand( drawInteraction_t * inter );
 };
