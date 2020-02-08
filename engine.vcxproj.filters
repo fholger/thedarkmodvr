@@ -1258,6 +1258,9 @@
     <ClInclude Include="renderer\ImmediateRendering.h">
       <Filter>Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\ShaderParamsBuffer.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="renderer\AmbientOcclusionStage.h">
       <Filter>Renderer</Filter>
     </ClInclude>
@@ -2972,6 +2975,9 @@
       <Filter>Tools\Compilers\Particle</Filter>
     </ClCompile>
     <ClCompile Include="renderer\ImmediateRendering.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\ShaderParamsBuffer.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\AmbientOcclusionStage.cpp">
