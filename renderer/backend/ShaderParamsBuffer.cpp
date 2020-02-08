@@ -17,11 +17,12 @@
 #pragma hdrstop
 
 #include "ShaderParamsBuffer.h"
-#include "tr_local.h"
+#include "../tr_local.h"
 
 extern idCVarBool r_usePersistentMapping;
 
 const uint32_t SHADER_BUFFER_SIZE = 8192 * 1024 * 3;
+
 
 ShaderParamsBuffer::ShaderParamsBuffer() : mBufferObject( 0 ), mMapBase( nullptr ) {}
 
@@ -88,6 +89,7 @@ byte *ShaderParamsBuffer::ReserveRaw( GLuint size ) {
 	WaitForLockedRange( mCurrentOffset, requestedSize );
 	byte *reserved = mMapBase + mCurrentOffset;
 	mCurrentOffset += requestedSize;
+	return reserved;
 }
 
 void ShaderParamsBuffer::CommitRaw( byte *offset, GLuint size ) {
@@ -109,8 +111,10 @@ void ShaderParamsBuffer::BindRangeRaw( GLuint index, byte *offset, GLuint size )
 }
 
 void ShaderParamsBuffer::Lock() {
-	LockRange( mLastLocked, mCurrentOffset - mLastLocked );
-	mLastLocked = mCurrentOffset;
+	if( mCurrentOffset != mLastLocked ) {
+		LockRange( mLastLocked, mCurrentOffset - mLastLocked );
+		mLastLocked = mCurrentOffset;
+	}
 }
 
 void ShaderParamsBuffer::LockRange(GLuint offset, GLuint count ) {

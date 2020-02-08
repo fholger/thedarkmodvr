@@ -18,6 +18,8 @@
 #include "tr_local.h"
 #include "FrameBuffer.h"
 #include "glsl.h"
+#include "GLSLProgramManager.h"
+#include "backend/RenderBackend.h"
 #include "Profiling.h"
 #include "BloomStage.h"
 #include "FrameBufferManager.h"
@@ -841,7 +843,11 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 					}
 				}
 			}
-			RB_DrawView();
+			if( r_useNewBackend.GetBool() ) {
+				renderBackend->DrawView( backEnd.viewDef );
+			} else {
+				RB_DrawView();
+			}
 			GL_CheckErrors();
 			if ( isv3d ) {
 				c_draw3d++;
