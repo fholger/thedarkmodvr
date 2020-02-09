@@ -32,6 +32,6 @@ private:
 	GLSLProgram *interactionShader;
 
 	void ChooseInteractionProgram( viewLight_t *vLight );
-	void ProcessSingleSurface( viewLight_t * vLight, const drawSurf_t * surf );
+	void ProcessSingleSurface( viewLight_t *vLight, const shaderStage_t *lightStage, const drawSurf_t *surf );
 	void PrepareDrawCommand( drawInteraction_t * inter );
 };

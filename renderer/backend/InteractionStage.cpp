@@ -58,7 +58,13 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	if ( !interactionSurfs ) {
 		return;
 	}
-	GL_PROFILE( "GLSL_CreateDrawInteractions" );
+	if ( vLight->lightShader->IsAmbientLight() ) {
+		if ( r_skipAmbient.GetInteger() & 2 )
+			return;
+	} else if ( r_skipInteractions.GetBool() ) 
+		return;
+
+	GL_PROFILE( "DrawInteractions" );
 
 	// perform setup here that will be constant for all interactions
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
@@ -70,19 +76,38 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	interactionUniforms->RGTC.Set( globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
 	interactionUniforms->SetForShadows( interactionSurfs == vLight->translucentInteractions );
 
-	for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight ) {
-		if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
+	// texture 1 will be the light falloff texture
+	GL_SelectTexture( 1 );
+	vLight->falloffImage->Bind();
+
+	const idMaterial	*lightShader = vLight->lightShader;
+	const float			*lightRegs = vLight->shaderRegisters;
+	for ( int lightStageNum = 0; lightStageNum < lightShader->GetNumStages(); lightStageNum++ ) {
+		const shaderStage_t	*lightStage = lightShader->GetStage( lightStageNum );
+
+		// ignore stages that fail the condition
+		if ( !lightRegs[lightStage->conditionRegister] ) {
 			continue;
 		}
-		if ( backEnd.currentSpace != surf->space ) {
-			// FIXME needs a better integration with RB_CreateSingleDrawInteractions
-			interactionUniforms->modelMatrix.Set( surf->space->modelMatrix );
+
+		// texture 2 will be the light projection texture
+		GL_SelectTexture( 2 );
+		lightStage->texture.image->Bind();
+
+		for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight ) {
+			if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
+				continue;
+			}
+			if ( backEnd.currentSpace != surf->space ) {
+				// FIXME needs a better integration with RB_CreateSingleDrawInteractions
+				interactionUniforms->modelMatrix.Set( surf->space->modelMatrix );
+			}
+
+			// set the vertex pointers
+			vertexCache.VertexPosition( surf->ambientCache );
+
+			ProcessSingleSurface( vLight, lightStage, surf );
 		}
-
-		// set the vertex pointers
-		vertexCache.VertexPosition( surf->ambientCache );
-
-		ProcessSingleSurface( vLight, surf );
 	}
 
 	GL_SelectTexture( 0 );
@@ -101,7 +126,7 @@ void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
 	interactionShader->Activate();
 }
 
-void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const drawSurf_t *surf ) {
+void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderStage_t *lightStage, const drawSurf_t *surf ) {
 	const idMaterial	*material = surf->material;
 	const float			*surfaceRegs = surf->shaderRegisters;
 	const idMaterial	*lightShader = vLight->lightShader;
@@ -112,9 +137,10 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const drawSurf
 		return;
 	}
 
-	if ( vLight->lightShader->IsAmbientLight() ) {
-		if ( r_skipAmbient.GetInteger() & 2 )
-			return;
+	if ( lightShader->IsAmbientLight() ) {
+		inter.worldUpLocal.x = surf->space->modelMatrix[2];
+		inter.worldUpLocal.y = surf->space->modelMatrix[6];
+		inter.worldUpLocal.z = surf->space->modelMatrix[10];
 		auto ambientRegs = material->GetAmbientRimColor().registers;
 		if ( ambientRegs[0] ) {
 			for ( int i = 0; i < 3; i++ )
@@ -122,8 +148,7 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const drawSurf
 			inter.ambientRimColor[3] = 1;
 		} else
 			inter.ambientRimColor.Zero();
-	} else if ( r_skipInteractions.GetBool() ) 
-		return;
+	}
 
 	// change the matrix and light projection vectors if needed
 	if ( surf->space != backEnd.currentSpace ) {
@@ -147,7 +172,6 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const drawSurf
 	}
 
 	inter.surf = surf;
-	inter.lightFalloffImage = vLight->falloffImage;
 
 	R_GlobalPointToLocal( surf->space->modelMatrix, vLight->globalLightOrigin, inter.localLightOrigin.ToVec3() );
 	R_GlobalPointToLocal( surf->space->modelMatrix, backEnd.viewDef->renderView.vieworg, inter.localViewOrigin.ToVec3() );
@@ -156,15 +180,6 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const drawSurf
 	inter.cubicLight = lightShader->IsCubicLight(); // nbohr1more #3881: cubemap lights
 	inter.ambientLight = lightShader->IsAmbientLight();
 
-	// rebb: world-up vector in local coordinates, required for certain effects, currently only for ambient lights. alternatively pass whole modelMatrix and calculate in shader
-	// nbohr1more #3881: cubemap lights further changes
-	if ( lightShader->IsAmbientLight() ) {
-		// remove commented code as needed, just shows what was simplified here
-		inter.worldUpLocal.x = surf->space->modelMatrix[2];
-		inter.worldUpLocal.y = surf->space->modelMatrix[6];
-		inter.worldUpLocal.z = surf->space->modelMatrix[10];
-	}
-
 	// the base projections may be modified by texture matrix on light stages
 	idPlane lightProject[4];
 	R_GlobalPlaneToLocal( surf->space->modelMatrix, vLight->lightProject[0], lightProject[0] );
@@ -172,98 +187,88 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const drawSurf
 	R_GlobalPlaneToLocal( surf->space->modelMatrix, vLight->lightProject[2], lightProject[2] );
 	R_GlobalPlaneToLocal( surf->space->modelMatrix, vLight->lightProject[3], lightProject[3] );
 
-	for ( int lightStageNum = 0; lightStageNum < lightShader->GetNumStages(); lightStageNum++ ) {
-		const shaderStage_t	*lightStage = lightShader->GetStage( lightStageNum );
+	memcpy( inter.lightProjection, lightProject, sizeof( inter.lightProjection ) );
 
-		// ignore stages that fail the condition
-		if ( !lightRegs[lightStage->conditionRegister] ) {
-			continue;
-		}
-		inter.lightImage = lightStage->texture.image;
-
-		memcpy( inter.lightProjection, lightProject, sizeof( inter.lightProjection ) );
-
-		// now multiply the texgen by the light texture matrix
-		if ( lightStage->texture.hasMatrix ) {
-			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
-			void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix );
-			RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), backEnd.lightTextureMatrix );
-		}
-		inter.bumpImage = NULL;
-		inter.specularImage = NULL;
-		inter.diffuseImage = NULL;
-		inter.diffuseColor[0] = inter.diffuseColor[1] = inter.diffuseColor[2] = inter.diffuseColor[3] = 0;
-		inter.specularColor[0] = inter.specularColor[1] = inter.specularColor[2] = inter.specularColor[3] = 0;
-
-		// backEnd.lightScale is calculated so that lightColor[] will never exceed
-		// tr.backEndRendererMaxLight
-		float lightColor[4] = {
-			lightColor[0] = backEnd.lightScale * lightRegs[lightStage->color.registers[0]],
-			lightColor[1] = backEnd.lightScale * lightRegs[lightStage->color.registers[1]],
-			lightColor[2] = backEnd.lightScale * lightRegs[lightStage->color.registers[2]],
-			lightColor[3] = lightRegs[lightStage->color.registers[3]]
-		};
-
-		// go through the individual stages
-		for ( int surfaceStageNum = 0; surfaceStageNum < material->GetNumStages(); surfaceStageNum++ ) {
-			const shaderStage_t	*surfaceStage = material->GetStage( surfaceStageNum );
-
-			if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) // ignore stage that fails the condition
-				continue;
-
-
-			void R_SetDrawInteraction( const shaderStage_t *surfaceStage, const float *surfaceRegs, idImage **image, idVec4 matrix[2], float color[4] );
-
-			switch ( surfaceStage->lighting ) {
-			case SL_AMBIENT: {
-				// ignore ambient stages while drawing interactions
-				break;
-			}
-			case SL_BUMP: {				
-				if ( !r_skipBump.GetBool() ) {
-					PrepareDrawCommand( &inter ); // draw any previous interaction
-					inter.diffuseImage = NULL;
-					inter.specularImage = NULL;
-					R_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.bumpImage, inter.bumpMatrix, NULL );
-				}
-				break;
-			}
-			case SL_DIFFUSE: {
-				if ( inter.diffuseImage ) {
-					PrepareDrawCommand( &inter );
-				}
-				R_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.diffuseImage,
-				                      inter.diffuseMatrix, inter.diffuseColor.ToFloatPtr() );
-				inter.diffuseColor[0] *= lightColor[0];
-				inter.diffuseColor[1] *= lightColor[1];
-				inter.diffuseColor[2] *= lightColor[2];
-				inter.diffuseColor[3] *= lightColor[3];
-				inter.vertexColor = surfaceStage->vertexColor;
-				break;
-			}
-			case SL_SPECULAR: {
-				// nbohr1more: #4292 nospecular and nodiffuse fix
-				if ( backEnd.vLight->noSpecular ) {
-					break;
-				}
-				if ( inter.specularImage ) {
-					PrepareDrawCommand( &inter );
-				}
-				R_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.specularImage,
-				                      inter.specularMatrix, inter.specularColor.ToFloatPtr() );
-				inter.specularColor[0] *= lightColor[0];
-				inter.specularColor[1] *= lightColor[1];
-				inter.specularColor[2] *= lightColor[2];
-				inter.specularColor[3] *= lightColor[3];
-				inter.vertexColor = surfaceStage->vertexColor;
-				break;
-			}
-			}
-		}
-
-		// draw the final interaction
-		PrepareDrawCommand( &inter );
+	// now multiply the texgen by the light texture matrix
+	if ( lightStage->texture.hasMatrix ) {
+		RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
+		void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix );
+		RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), backEnd.lightTextureMatrix );
 	}
+	inter.bumpImage = NULL;
+	inter.specularImage = NULL;
+	inter.diffuseImage = NULL;
+	inter.diffuseColor[0] = inter.diffuseColor[1] = inter.diffuseColor[2] = inter.diffuseColor[3] = 0;
+	inter.specularColor[0] = inter.specularColor[1] = inter.specularColor[2] = inter.specularColor[3] = 0;
+
+	// backEnd.lightScale is calculated so that lightColor[] will never exceed
+	// tr.backEndRendererMaxLight
+	float lightColor[4] = {
+		lightColor[0] = backEnd.lightScale * lightRegs[lightStage->color.registers[0]],
+		lightColor[1] = backEnd.lightScale * lightRegs[lightStage->color.registers[1]],
+		lightColor[2] = backEnd.lightScale * lightRegs[lightStage->color.registers[2]],
+		lightColor[3] = lightRegs[lightStage->color.registers[3]]
+	};
+
+	// go through the individual stages
+	for ( int surfaceStageNum = 0; surfaceStageNum < material->GetNumStages(); surfaceStageNum++ ) {
+		const shaderStage_t	*surfaceStage = material->GetStage( surfaceStageNum );
+
+		if ( !surfaceRegs[ surfaceStage->conditionRegister ] ) // ignore stage that fails the condition
+			continue;
+
+
+		void R_SetDrawInteraction( const shaderStage_t *surfaceStage, const float *surfaceRegs, idImage **image, idVec4 matrix[2], float color[4] );
+
+		switch ( surfaceStage->lighting ) {
+		case SL_AMBIENT: {
+			// ignore ambient stages while drawing interactions
+			break;
+		}
+		case SL_BUMP: {				
+			if ( !r_skipBump.GetBool() ) {
+				PrepareDrawCommand( &inter ); // draw any previous interaction
+				inter.diffuseImage = NULL;
+				inter.specularImage = NULL;
+				R_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.bumpImage, inter.bumpMatrix, NULL );
+			}
+			break;
+		}
+		case SL_DIFFUSE: {
+			if ( inter.diffuseImage ) {
+				PrepareDrawCommand( &inter );
+			}
+			R_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.diffuseImage,
+								  inter.diffuseMatrix, inter.diffuseColor.ToFloatPtr() );
+			inter.diffuseColor[0] *= lightColor[0];
+			inter.diffuseColor[1] *= lightColor[1];
+			inter.diffuseColor[2] *= lightColor[2];
+			inter.diffuseColor[3] *= lightColor[3];
+			inter.vertexColor = surfaceStage->vertexColor;
+			break;
+		}
+		case SL_SPECULAR: {
+			// nbohr1more: #4292 nospecular and nodiffuse fix
+			if ( vLight->noSpecular ) {
+				break;
+			}
+			if ( inter.specularImage ) {
+				PrepareDrawCommand( &inter );
+			}
+			R_SetDrawInteraction( surfaceStage, surfaceRegs, &inter.specularImage,
+								  inter.specularMatrix, inter.specularColor.ToFloatPtr() );
+			inter.specularColor[0] *= lightColor[0];
+			inter.specularColor[1] *= lightColor[1];
+			inter.specularColor[2] *= lightColor[2];
+			inter.specularColor[3] *= lightColor[3];
+			inter.vertexColor = surfaceStage->vertexColor;
+			break;
+		}
+		}
+	}
+
+	// draw the final interaction
+	PrepareDrawCommand( &inter );
 }
 
 void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
@@ -295,14 +300,6 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 			interactionUniforms->hasTextureDNS.Set( 1, 1, 1 );
 		}
 	}
-
-	// texture 1 will be the light falloff texture
-	GL_SelectTexture( 1 );
-	din->lightFalloffImage->Bind();
-
-	// texture 2 will be the light projection texture
-	GL_SelectTexture( 2 );
-	din->lightImage->Bind();
 
 	// texture 3 is the per-surface diffuse map
 	GL_SelectTexture( 3 );
