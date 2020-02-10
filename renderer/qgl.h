@@ -57,7 +57,7 @@
 #endif
 
 #define QGL_REQUIRED_VERSION_MAJOR 3
-#define QGL_REQUIRED_VERSION_MINOR 1
+#define QGL_REQUIRED_VERSION_MINOR 3
 
 // Loads all GL/WGL/GLX functions from OpenGL library (using glad-generated loader).
 // Note: no requirements are checked here, run GLimp_CheckRequiredFeatures afterwards.

@@ -463,6 +463,7 @@ void GL_SetProjection( float* matrix ) {
 		qglLoadMatrixf( matrix );
 		qglMatrixMode( GL_MODELVIEW );
 	} else {
+		qglBindBuffer( GL_UNIFORM_BUFFER, programManager->uboHandle );
 		qglBufferData( GL_UNIFORM_BUFFER, sizeof( backEnd.viewDef->projectionMatrix ), matrix, GL_DYNAMIC_DRAW );
 	}
 }

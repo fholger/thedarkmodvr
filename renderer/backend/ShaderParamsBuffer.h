@@ -28,7 +28,7 @@ public:
 		static_assert( sizeof(T) % 16 == 0,
 			"UBO structs must be 16-byte aligned, use padding if necessary. Be sure to obey the std140 layout rules." );
 		
-		T *array = static_cast<T*>( ReserveRaw( sizeof(T) * count ) );
+		T *array = reinterpret_cast<T*>( ReserveRaw( sizeof(T) * count ) );
 		return array;
 	}
 
