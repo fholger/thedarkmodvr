@@ -120,6 +120,8 @@ void RenderBackend::EndFrame() {
 void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
 	void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear = false );
 
+	GL_PROFILE( "DrawLight_ShadowMap" );
+
 	if ( vLight->lightShader->LightCastsShadows() ) {
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->globalInteractions, true );
 		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
@@ -133,6 +135,8 @@ void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
 }
 
 void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef, viewLight_t *vLight ) {
+	GL_PROFILE( "DrawLight_Stencil" );
+
 	bool useShadowFbo = r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem();// && (r_shadows.GetInteger() != 2);
 
 	// set depth bounds for the whole light

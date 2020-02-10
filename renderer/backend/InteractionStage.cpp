@@ -43,10 +43,9 @@ struct InteractionStage::ShaderParams {
 
 struct InteractionStage::DrawCall {
 	const drawSurf_t *surf;
-	int paramIndex;
-	idImage *diffuse;
-	idImage *specular;
-	idImage *bump;
+	int diffuse;
+	int specular;
+	int bump;
 };
 
 namespace {
@@ -91,7 +90,7 @@ namespace {
 		DEFINE_UNIFORM( int, testStencilSelfShadowFix )
 	};
 
-	const int MAX_DRAWS_PER_BATCH = 32;
+	const int MAX_DRAWS_PER_BATCH = 14;
 }
 
 
@@ -147,9 +146,22 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	Uniforms::Interaction *interactionUniforms = interactionShader->GetUniformGroup<Uniforms::Interaction>();
 	interactionUniforms->RGTC.Set( globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
 	interactionUniforms->SetForShadows( interactionSurfs == vLight->translucentInteractions );
+	if( vLight->lightShader->IsCubicLight() ) {
+		interactionUniforms->lightProjectionCubemap.Set( 3 );
+		interactionUniforms->lightFalloffCubemap.Set( 2 );
+		interactionUniforms->lightProjectionTexture.Set( 49 );
+		interactionUniforms->lightFalloffTexture.Set( 50 );
+	} else {
+		interactionUniforms->lightProjectionTexture.Set( 3 );
+		interactionUniforms->lightFalloffTexture.Set( 2 );
+		interactionUniforms->lightProjectionCubemap.Set( 49 );
+		interactionUniforms->lightFalloffCubemap.Set( 50 );
+	}
+	interactionUniforms->normalTexture.Set( 4 );
+	interactionUniforms->diffuseTexture.Set( 5 );
+	interactionUniforms->specularTexture.Set( 6 );
 
-	// texture 1 will be the light falloff texture
-	GL_SelectTexture( 1 );
+	GL_SelectTexture( 2 );
 	vLight->falloffImage->Bind();
 
 	if ( r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem() || vLight->shadows == LS_MAPS )
@@ -165,8 +177,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 			continue;
 		}
 
-		// texture 2 will be the light projection texture
-		GL_SelectTexture( 2 );
+		GL_SelectTexture( 3 );
 		lightStage->texture.image->Bind();
 
 		for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight ) {
@@ -202,14 +213,6 @@ void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
 		interactionShader = stencilInteractionShader;
 	}
 	interactionShader->Activate();
-	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
-	uniforms->lightProjectionTexture.Set( 2 );
-	uniforms->lightProjectionCubemap.Set( 2 );
-	uniforms->lightFalloffTexture.Set( 1 );
-	uniforms->lightFalloffCubemap.Set( 1 );
-	uniforms->normalTexture.Set( 0 );
-	uniforms->diffuseTexture.Set( 3 );
-	uniforms->specularTexture.Set( 4 );
 }
 
 void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderStage_t *lightStage, const drawSurf_t *surf ) {
@@ -224,7 +227,6 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderSt
 	}
 
 	if ( lightShader->IsAmbientLight() ) {
-		return;  // FIXME
 		inter.worldUpLocal.x = surf->space->modelMatrix[2];
 		inter.worldUpLocal.y = surf->space->modelMatrix[6];
 		inter.worldUpLocal.z = surf->space->modelMatrix[10];
@@ -375,7 +377,7 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 		params.colorAdd = idVec4(1, 1, 1, 1);
 		break;
 	}
-	params.lightOrigin = din->localLightOrigin;
+	params.lightOrigin = din->ambientLight ? din->worldUpLocal : din->localLightOrigin;
 	params.viewOrigin = din->localViewOrigin;
 	params.diffuseColor = din->diffuseColor;
 	params.specularColor = din->specularColor;
@@ -386,11 +388,25 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	}
 	params.ambientRimColor = din->ambientRimColor;
 
-	drawCall.paramIndex = currentIndex;
 	drawCall.surf = din->surf;
-	drawCall.bump = din->bumpImage;
-	drawCall.diffuse = din->diffuseImage;
-	drawCall.specular = din->specularImage;
+	drawCall.bump = FindBoundTextureUnit( din->bumpImage, currentTextureUnit );
+	if( drawCall.bump == -1 ) {
+		GL_SelectTexture( currentTextureUnit );
+		din->bumpImage->Bind();
+		drawCall.bump = currentTextureUnit++;
+	}
+	drawCall.diffuse = FindBoundTextureUnit( din->diffuseImage, currentTextureUnit );
+	if( drawCall.diffuse == -1 ) {
+		GL_SelectTexture( currentTextureUnit );
+		din->diffuseImage->Bind();
+		drawCall.diffuse = currentTextureUnit++;
+	}
+	drawCall.specular = FindBoundTextureUnit( din->specularImage, currentTextureUnit );
+	if( drawCall.specular == -1 ) {
+		GL_SelectTexture( currentTextureUnit );
+		din->specularImage->Bind();
+		drawCall.specular = currentTextureUnit++;
+	}
 
 	++currentIndex;
 	if (currentIndex == MAX_DRAWS_PER_BATCH) {
@@ -399,8 +415,18 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	}
 }
 
+int InteractionStage::FindBoundTextureUnit( idImage *texture, int usedUnits ) {
+	for( int i = 0; i < usedUnits; ++i ) {
+		if( backEnd.glState.tmu[i].current2DMap == texture->texnum || backEnd.glState.tmu[i].currentCubeMap == texture->texnum) {
+			return i;
+		}
+	}
+	return -1;
+}
+
 void InteractionStage::ResetShaderParams() {
 	currentIndex = 0;
+	currentTextureUnit = 4;
 	shaderParams = shaderParamsBuffer->Request<ShaderParams>(MAX_DRAWS_PER_BATCH);
 }
 
@@ -415,18 +441,10 @@ void InteractionStage::ExecuteDrawCalls() {
 	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
 
 	for( int i = 0; i < currentIndex; ++i ) {
-		if( drawCalls[i].bump ) {
-			GL_SelectTexture( 0 );
-			drawCalls[i].bump->Bind();
-		}
-		// texture 3 is the per-surface diffuse map
-		GL_SelectTexture( 3 );
-		drawCalls[i].diffuse->Bind();
-		// texture 4 is the per-surface specular map
-		GL_SelectTexture( 4 );
-		drawCalls[i].specular->Bind();
-
-		uniforms->idx.Set(drawCalls[i].paramIndex);
+		uniforms->normalTexture.Set( drawCalls[i].bump );
+		uniforms->diffuseTexture.Set( drawCalls[i].diffuse );
+		uniforms->specularTexture.Set( drawCalls[i].specular );
+		uniforms->idx.Set( i );
 		vertexCache.VertexPosition( drawCalls[i].surf->ambientCache );
 		RB_DrawElementsWithCounters( drawCalls[i].surf );		
 	}

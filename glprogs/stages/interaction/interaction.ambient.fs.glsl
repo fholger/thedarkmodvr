@@ -1,25 +1,48 @@
 #version 140
 
-#pragma tdm_include "stages/interaction/interaction.common.fs.glsl"
+#pragma tdm_include "stages/interaction/interaction.params.glsl"
+
+in vec3 var_Position;
+in vec2 var_TexDiffuse;        
+in vec2 var_TexSpecular;
+in vec2 var_TexNormal;      
+in vec4 var_TexLight;      
+in mat3 var_TangentBinormalNormalMatrix;      
+in vec4 var_Color;        
+in vec3 var_tc0;  
+in vec3 var_localViewDir;
+
+out vec4 FragColor;
      
+uniform sampler2D u_normalTexture;         
+uniform sampler2D u_lightFalloffTexture;         
+uniform sampler2D u_lightProjectionTexture;         
+uniform sampler2D u_diffuseTexture;   
+uniform sampler2D u_specularTexture;
+
+uniform samplerCube	u_lightProjectionCubemap;
 uniform samplerCube	u_lightFalloffCubemap;
          
+uniform float u_cubic;
 uniform float u_gamma, u_minLevel;
-uniform vec4 u_rimColor;   
+uniform float u_RGTC;
       
-out vec4 FragColor;
-
 void main() {         
-	calcNormals();
-	//stgatilov: without normalization |N| > 1 is possible, which leads to |spec| > 1,
-	//which causes white sparklies when antialiasing is enabled (http://forums.thedarkmod.com/topic/19134-aliasing-artefact-white-pixels-near-edges/)
-	N = normalize(N);
-
 	// compute the diffuse term     
 	vec4 matDiffuse = texture( u_diffuseTexture, var_TexDiffuse );
 	vec3 matSpecular = texture( u_specularTexture, var_TexSpecular ).rgb;
 
-	vec3 nViewDir = normalize(var_ViewDirLocal);
+	// compute normal from normal map, move from [0, 1] to [-1, 1] range, normalize    
+	vec4 bumpTexel = texture ( u_normalTexture, var_TexNormal.st ) * 2. - 1.;
+	vec3 localNormal = u_RGTC == 1. 
+		? vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0)))
+		: normalize( bumpTexel.wyz ); 
+	vec3 N = var_TangentBinormalNormalMatrix * localNormal;
+	//stgatilov: without normalization |N| > 1 is possible, which leads to |spec| > 1,
+	//which causes white sparklies when antialiasing is enabled (http://forums.thedarkmod.com/topic/19134-aliasing-artefact-white-pixels-near-edges/)
+	N = normalize(N);
+
+	vec3 nViewDir = normalize(var_localViewDir);
 	vec3 reflect = - (nViewDir - 2*N*dot(N, nViewDir));
 
 	// compute lighting model     
@@ -61,10 +84,10 @@ void main() {
 	if(u_gamma != 1 ) // old-school exponential
 		light.rgb = pow(light.rgb, vec3(1.0 / u_gamma));
 
-	if(u_rimColor.a != 0) { // produces no visible speed difference on nVidia 1060, but maybe on some other hardware?..
+	if(params[u_idx].ambientRimColor.a != 0) { // produces no visible speed difference on nVidia 1060, but maybe on some other hardware?..
 		float NV = 1-abs(dot(N, nViewDir));
 		NV *= NV;
-		light.rgb += u_rimColor.rgb * NV * NV;
+		light.rgb += params[u_idx].ambientRimColor.rgb * NV * NV;
 	}
 
 	FragColor = light;
