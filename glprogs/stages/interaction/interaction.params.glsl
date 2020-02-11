@@ -20,7 +20,7 @@ struct ShaderParams {
 };
 
 layout (std140) uniform ShaderParamsBlock {
-    ShaderParams params[14];
+    ShaderParams params[32];
 };
 uniform int u_idx;
 
