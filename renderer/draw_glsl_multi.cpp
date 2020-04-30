@@ -32,6 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "FrameBuffer.h"
 #include "Profiling.h"
 #include "GLSLProgramManager.h"
+#include "FrameBufferManager.h"
 
 static const uint MAX_LIGHTS = 16;
 
@@ -248,7 +249,7 @@ void RB_ShadowMap_RenderAllLights( drawSurf_t *surf ) {
 void RB_ShadowMap_RenderAllLights() {
 	GL_PROFILE( "ShadowMap_RenderAllLights" );
 
-	FB_ToggleShadow( true );
+	frameBuffers->EnterShadowMap();
 
 	GL_CheckErrors();
 	shadowShader()->Activate();
@@ -284,7 +285,7 @@ void RB_ShadowMap_RenderAllLights() {
 	backEnd.currentSpace = NULL; // or else conflicts with qglLoadMatrixf
 	GLSLProgram::Deactivate();
 
-	FB_ToggleShadow( false );
+	frameBuffers->LeaveShadowMap();
 
 	GL_CheckErrors();
 }

@@ -23,6 +23,7 @@
 #include "GLSLUniforms.h"
 #include "GLSLProgramManager.h"
 #include "AmbientOcclusionStage.h"
+#include "FrameBufferManager.h"
 
 struct CubemapUniforms : GLSLUniformGroup {
 	UNIFORM_GROUP_DEF( CubemapUniforms );
@@ -308,7 +309,7 @@ void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 	// Make the early depth pass available to shaders. #3877
 	if ( !backEnd.viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
-		FB_CopyDepthBuffer();
+		frameBuffers->UpdateCurrentDepthCopy();
 		RB_SetProgramEnvironment();
 	}
 	GLSLProgram::Deactivate();
@@ -910,7 +911,7 @@ int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 
 		// only dump if in a 3d view
 		if ( backEnd.viewDef->viewEntitys ) {
-			FB_CopyColorBuffer();
+			frameBuffers->UpdateCurrentRenderCopy();
 		}
 		backEnd.currentRenderCopied = true;
 	}
