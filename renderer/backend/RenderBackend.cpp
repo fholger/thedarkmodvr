@@ -19,8 +19,8 @@
 #include "RenderBackend.h"
 #include "../Profiling.h"
 #include "../GLSLProgram.h"
-#include "../FrameBuffer.h"
 #include "../GLSLProgramManager.h"
+#include "../FrameBufferManager.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
@@ -154,7 +154,7 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 		}
 
 		if ( useShadowFbo ) {
-			FB_ToggleShadow( true );
+			frameBuffers->EnterShadowStencil();
 		}
 		qglClear( GL_STENCIL_BUFFER_BIT );
 	} else {
@@ -165,27 +165,27 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 
 	RB_StencilShadowPass( vLight->globalShadows );
 	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
-		FB_ResolveShadowAA();
+		frameBuffers->ResolveShadowStencilAA();
 	}
 
 	if ( useShadowFbo ) {
-		FB_ToggleShadow( false );
+		frameBuffers->LeaveShadowStencil();
 	}
 	interactionStage.DrawInteractions( vLight, vLight->localInteractions );
 
 	if ( useShadowFbo ) {
-		FB_ToggleShadow( true );
+		frameBuffers->EnterShadowStencil();
 	}
 	programManager->stencilShadowShader->Activate();
 
 	RB_StencilShadowPass( vLight->localShadows );
 	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
-		FB_ResolveShadowAA();
+		frameBuffers->ResolveShadowStencilAA();
 	}
 
 
 	if ( useShadowFbo ) {
-		FB_ToggleShadow( false );
+		frameBuffers->LeaveShadowStencil();
 	}
 
 	interactionStage.DrawInteractions( vLight, vLight->globalInteractions );

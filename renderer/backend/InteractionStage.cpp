@@ -158,7 +158,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	vLight->falloffImage->Bind();
 
 	if ( r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem() || vLight->shadows == LS_MAPS )
-		FB_BindShadowTexture();
+		BindShadowTexture();
 
 	const idMaterial	*lightShader = vLight->lightShader;
 	const float			*lightRegs = vLight->shaderRegisters;
@@ -194,6 +194,20 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	GL_SelectTexture( 0 );
 
 	GLSLProgram::Deactivate();
+}
+
+void InteractionStage::BindShadowTexture() {
+	if ( backEnd.vLight->shadowMapIndex ) {
+		GL_SelectTexture( 6 );
+		globalImages->shadowAtlas->Bind();
+	} else {
+		GL_SelectTexture( 6 );
+		globalImages->currentDepthImage->Bind();
+		GL_SelectTexture( 7 );
+
+		globalImages->shadowDepthFbo->Bind();
+		qglTexParameteri( GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX );
+	}
 }
 
 void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
