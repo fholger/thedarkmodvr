@@ -213,6 +213,8 @@ void InteractionStage::BindShadowTexture() {
 void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
 	if ( vLight->lightShader->IsAmbientLight() ) {
 		interactionShader = ambientInteractionShader;
+		Uniforms::Interaction *uniforms = ambientInteractionShader->GetUniformGroup<Uniforms::Interaction>();
+		uniforms->ambient = true;
 	} else if ( vLight->shadowMapIndex ) {
 		// FIXME: port shadowmap shader
 		interactionShader = stencilInteractionShader;
