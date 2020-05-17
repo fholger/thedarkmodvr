@@ -115,6 +115,8 @@ void InteractionStage::Shutdown() {
 	delete[] drawCalls;
 }
 
+idCVar r_sortByMaterial("r_sortByMaterial", "0", CVAR_RENDERER|CVAR_BOOL, "Sort draw surfs by material");
+
 void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *interactionSurfs ) {
 	if ( !interactionSurfs ) {
 		return;
@@ -134,7 +136,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 
 	if ( r_useScissor.GetBool() && !backEnd.currentScissor.Equals( vLight->scissorRect ) ) {
 		backEnd.currentScissor = vLight->scissorRect;
-		GL_Scissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
+		GL_ScissorVidSize( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
 		            backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
 		            backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
 		            backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
@@ -153,6 +155,16 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	interactionUniforms->normalTexture.Set( 4 );
 	interactionUniforms->diffuseTexture.Set( 5 );
 	interactionUniforms->specularTexture.Set( 6 );
+
+	std::vector<const drawSurf_t*> drawSurfs;
+	for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight) {
+		drawSurfs.push_back( surf );
+	}
+	if (r_sortByMaterial.GetBool()) {
+		std::sort( drawSurfs.begin(), drawSurfs.end(), [](const drawSurf_t *a, const drawSurf_t *b) {
+			return a->material < b->material;
+		} );
+	}
 
 	GL_SelectTexture( 2 );
 	vLight->falloffImage->Bind();
@@ -173,7 +185,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 		GL_SelectTexture( 3 );
 		lightStage->texture.image->Bind();
 
-		for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight ) {
+		for ( const drawSurf_t *surf : drawSurfs ) {
 			if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
 				continue;
 			}
