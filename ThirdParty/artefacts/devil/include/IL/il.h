@@ -454,7 +454,7 @@ typedef long long unsigned int ILuint64;
 //
 
 // This is from Win32's <windef.h>
-#if (_MSC_VER >= 800) || defined(_STDCALL_SUPPORTED) || defined(__BORLANDC__) || defined(__LCC__)
+#if (_MSC_VER >= 800) || defined(_STDCALL_SUPPORTED) || defined(__BORLANDC__) || 0/*defined(__LCC__)*/
 	#define ILAPIENTRY __stdcall 
 	#define IL_PACKSTRUCT
 //#elif defined(linux) || defined(MACOSX) || defined(__CYGWIN__) //fix bug 840364
@@ -473,7 +473,7 @@ typedef long long unsigned int ILuint64;
 #endif
 
 // This is from Win32's <wingdi.h> and <winnt.h>
-#if defined(__LCC__)
+#if 0/*defined(__LCC__)*/
 	#define ILAPI __stdcall
 #elif defined(_WIN32) //changed 20031221 to fix bug 840421
 	#ifdef IL_STATIC_LIB
