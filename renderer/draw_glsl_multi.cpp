@@ -269,7 +269,7 @@ void RB_ShadowMap_RenderAllLights() {
 
 	qglViewport( 0, 0, texSize, texSize );
 	if ( r_useScissor.GetBool() )
-		GL_Scissor( 0, 0, texSize, texSize );
+		GL_ScissorVidSize( 0, 0, texSize, texSize );
 	qglClear( GL_DEPTH_BUFFER_BIT );
 	for ( int i = 0; i < 4; i++ ) // clip the geometry shader output to each of the atlas pages
 		qglEnable( GL_CLIP_PLANE0 + i );

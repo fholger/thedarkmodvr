@@ -192,8 +192,8 @@ void BloomStage::ComputeBloomFromRenderImage() {
 	}
 	Upsample();
 
-	qglViewport( 0, 0, globalImages->currentRenderImage->uploadWidth, globalImages->currentRenderImage->uploadHeight );
 	frameBuffers->currentRenderFbo->Bind();
+	GL_ViewportRelative( 0, 0, 1, 1 );
 }
 
 void BloomStage::BindBloomTexture() {
@@ -207,7 +207,7 @@ void BloomStage::Downsample() {
 	downsampleWithBrightPassShader->Activate();
 	BloomDownsampleUniforms *uniforms = downsampleWithBrightPassShader->GetUniformGroup<BloomDownsampleUniforms>();
 	downsampleFBOs[0]->Bind();
-	qglViewport( 0, 0, bloomDownSamplers[0]->uploadWidth, bloomDownSamplers[0]->uploadHeight );
+	GL_ViewportRelative( 0, 0, 1, 1 );
 	uniforms->brightnessThreshold.Set( r_bloom_threshold.GetFloat() );
 	uniforms->thresholdFalloff.Set( r_bloom_threshold_falloff.GetFloat() );
 	GL_SelectTexture( 0 );
@@ -221,7 +221,7 @@ void BloomStage::Downsample() {
 	uniforms = downsampleShader->GetUniformGroup<BloomDownsampleUniforms>();
 	for (int i = 1; i < numDownsamplingSteps; ++i) {
 		downsampleFBOs[i]->Bind();
-		qglViewport( 0, 0, bloomDownSamplers[i]->uploadWidth, bloomDownSamplers[i]->uploadHeight );
+		GL_ViewportRelative( 0, 0, 1, 1 );
 		qglClear(GL_COLOR_BUFFER_BIT);
 		RB_DrawFullScreenQuad();
 		bloomDownSamplers[i]->Bind();
@@ -240,7 +240,7 @@ void BloomStage::Blur() {
 	bloomDownSamplers[step]->Bind();
 	uniforms->axis.Set( 1, 0 );
 	upsampleFBOs[step]->Bind();
-	qglViewport(0, 0, bloomUpSamplers[step]->uploadWidth, bloomUpSamplers[step]->uploadHeight);
+	GL_ViewportRelative( 0, 0, 1, 1 );
 	qglClear(GL_COLOR_BUFFER_BIT);
 	RB_DrawFullScreenQuad();
 
@@ -268,7 +268,7 @@ void BloomStage::Upsample() {
 		GL_SelectTexture( 1 );
 		bloomDownSamplers[i]->Bind();
 		upsampleFBOs[i]->Bind();
-		qglViewport( 0, 0, bloomUpSamplers[i]->uploadWidth, bloomUpSamplers[i]->uploadHeight );
+		GL_ViewportRelative( 0, 0, 1, 1 );
 		RB_DrawFullScreenQuad();
 		// next upsampling steps go from upsampler[mip+1] to upsampler[mip]
 		GL_SelectTexture( 0 );

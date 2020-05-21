@@ -53,18 +53,9 @@ public:
 
 	void BlitTo(FrameBuffer *target, GLbitfield mask, GLenum filter = GL_LINEAR);
 
-	/* Set viewport in relative coordinates [0,1] */
-	void SetViewportRelative(float x, float y, float w, float h);
-	/* Set viewport in window resolution (automatically scaled by appropriate FBO resolution factor) */
-	void SetViewportVidSize(int x, int y, int w, int h);
-	/* Set viewport in absolute pixels */
-	void SetViewportAbsolute(int x, int y, int w, int h);
-	/* Set scissor in relative coordinates [0,1] */
-	void SetScissorRelative(float x, float y, float w, float h);
-	/* Set scissor in window resolution (automatically scaled by appropriate FBO resolution factor) */
-	void SetScissorVidSize(int x, int y, int w, int h);
-	/* Set scissor in absolute pixels */
-	void SetScissorAbsolute(int x, int y, int w, int h);
+	int Width() const { return width; }
+	int Height() const { return height; }
+	int MultiSamples() const { return msaa; }
 
 	const char *Name() const { return name.c_str(); }
 

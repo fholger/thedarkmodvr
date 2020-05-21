@@ -187,7 +187,6 @@ void AmbientOcclusionStage::ComputeSSAOFromDepth() {
 		Init();
 	}
 
-	qglScissor(0, 0, viewspaceDepth->uploadWidth, viewspaceDepth->uploadHeight);
 	PrepareDepthPass();
 	SSAOPass();
 	BlurPass();
@@ -252,6 +251,7 @@ void AmbientOcclusionStage::PrepareDepthPass() {
 	GL_PROFILE("PrepareDepthPass");
 
 	depthMipFBOs[0]->Bind();
+	GL_ScissorRelative( 0, 0, 1, 1 );
 	qglClear(GL_COLOR_BUFFER_BIT);
 	GL_SelectTexture(0);
 	globalImages->currentDepthImage->Bind();

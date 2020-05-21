@@ -164,42 +164,6 @@ void FrameBuffer::BlitTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) 
 	qglEnable(GL_SCISSOR_TEST);
 }
 
-void FrameBuffer::SetViewportRelative( float x, float y, float w, float h ) {
-	SetViewportAbsolute( x * width, y * height, w * width, h * height );
-}
-
-void FrameBuffer::SetViewportVidSize( int x, int y, int w, int h ) {
-	float xScale = static_cast<float>(width) / glConfig.vidWidth;
-	float yScale = static_cast<float>(height) / glConfig.vidHeight;
-	SetViewportAbsolute( x * xScale, y * yScale, w * xScale, h * yScale );
-}
-
-void FrameBuffer::SetViewportAbsolute( int x, int y, int w, int h ) {
-	if (w <= 0 || h <= 0) {
-		common->Warning("Invalid viewport dimensions: (%d, %d, %d, %d)", x, y, w, h);
-		return;
-	}
-	qglViewport(x, y, w, h);
-}
-
-void FrameBuffer::SetScissorRelative( float x, float y, float w, float h ) {
-	SetScissorAbsolute( x * width, y * height, w * width, h * height );
-}
-
-void FrameBuffer::SetScissorVidSize( int x, int y, int w, int h ) {
-	float xScale = static_cast<float>(width) / glConfig.vidWidth;
-	float yScale = static_cast<float>(height) / glConfig.vidHeight;
-	SetScissorAbsolute( x * xScale, y * yScale, w * xScale, h * yScale );
-}
-
-void FrameBuffer::SetScissorAbsolute( int x, int y, int w, int h ) {
-	if (w <= 0 || h <= 0) {
-		common->Warning("Invalid scissor dimensions: (%d, %d, %d, %d)", x, y, w, h);
-		return;
-	}
-	qglScissor(x, y, w, h);
-}
-
 void FrameBuffer::CreateDefaultFrameBuffer(FrameBuffer *fbo) {
 	// this doesn't actually create a new framebuffer object, but creates a class that represents the "default" (0) framebuffer
 	fbo->fbo = 0;
@@ -246,7 +210,7 @@ void FrameBuffer::AddRenderBuffer( GLuint &buffer, GLenum attachment, GLenum for
 }
 
 void FrameBuffer::AddRenderTexture( idImage *texture, GLenum attachment, int mipLevel ) {
-	if (texture->uploadWidth >> mipLevel != width || texture->uploadHeight >> mipLevel != height) {
+	if ( (texture->uploadWidth >> mipLevel) != width || (texture->uploadHeight >> mipLevel) != height ) {
 		common->Warning("Adding texture %s to framebuffer %s: size mismatch", texture->imgName.c_str(), name.c_str());
 	}
 	Bind();
@@ -257,17 +221,13 @@ void FrameBuffer::AddRenderTexture( idImage *texture, GLenum attachment, int mip
 renderCrop_t ShadowAtlasPages[42];
 idCVar r_fboResolution( "r_fboResolution", "1", CVAR_RENDERER | CVAR_FLOAT | CVAR_ARCHIVE, "internal rendering resolution factor" );
 
-#if defined(_MSC_VER) && _MSC_VER >= 1800 && !defined(DEBUG)
-//#pragma optimize("t", off) // duzenko: used in release to enforce breakpoints in inlineable code. Please do not remove
-#endif
-
 void FB_RenderTexture(idImage *texture) {
 	texture->type = TT_2D;	
 }
 
 void FB_ApplyScissor() {
 	if ( r_useScissor.GetBool() ) {
-		frameBuffers->activeFbo->SetScissorVidSize(
+		GL_ScissorVidSize(
 			backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
 		    backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
 		    backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
@@ -284,8 +244,8 @@ void FB_DebugShowContents() {
 		frameBuffers->ResolvePrimary( GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 	}
 	frameBuffers->defaultFbo->Bind();
-	frameBuffers->activeFbo->SetViewportRelative( 0, 0, 1, 1 );
-	frameBuffers->activeFbo->SetScissorRelative( 0, 0, 1, 1 );
+	GL_ViewportRelative( 0, 0, 1, 1 );
+	GL_ScissorRelative( 0, 0, 1, 1 );
 
 	GL_SetProjection( mat4_identity.ToFloatPtr() );
 
@@ -334,8 +294,25 @@ Utility function,
 if you absolutely must check for anything out of the ordinary, then do it here.
 ====================
 */
-void GL_Scissor( int x /* left*/, int y /* bottom */, int w, int h ) {
-	frameBuffers->activeFbo->SetScissorVidSize( x, y, w, h );
+void GL_ScissorAbsolute( int x, int y, int w, int h ) {
+	if (w <= 0 || h <= 0) {
+		// apparently, this happens quite a bit for some reason
+		//common->Warning("Invalid scissor dimensions: (%d, %d, %d, %d)", x, y, w, h);
+		return;
+	}
+	qglScissor(x, y, w, h);
+}
+
+void GL_ScissorVidSize( int x /* left*/, int y /* bottom */, int w, int h ) {
+	float xScale = static_cast<float>(frameBuffers->activeFbo->Width()) / glConfig.vidWidth;
+	float yScale = static_cast<float>(frameBuffers->activeFbo->Height()) / glConfig.vidHeight;
+	GL_ScissorAbsolute( x * xScale, y * yScale, w * xScale, h * yScale );
+}
+
+void GL_ScissorRelative( float x, float y, float w, float h ) {
+	int width = frameBuffers->activeFbo->Width();
+	int height = frameBuffers->activeFbo->Height();
+	GL_ScissorAbsolute( x * width, y * height, w * width, h * height );
 }
 
 /*
@@ -346,6 +323,22 @@ Utility function,
 if you absolutly must check for anything out of the ordinary, then do it here.
 ====================
 */
-void GL_Viewport( int x /* left */, int y /* bottom */, int w, int h ) {
-	frameBuffers->activeFbo->SetViewportVidSize( x, y, w, h );
+void GL_ViewportAbsolute( int x, int y, int w, int h ) {
+	if (w <= 0 || h <= 0) {
+		common->Warning("Invalid viewport dimensions: (%d, %d, %d, %d)", x, y, w, h);
+		return;
+	}
+	qglViewport(x, y, w, h);
+}
+
+void GL_ViewportVidSize( int x /* left */, int y /* bottom */, int w, int h ) {
+	float xScale = static_cast<float>(frameBuffers->activeFbo->Width()) / glConfig.vidWidth;
+	float yScale = static_cast<float>(frameBuffers->activeFbo->Height()) / glConfig.vidHeight;
+	GL_ViewportAbsolute( x * xScale, y * yScale, w * xScale, h * yScale );
+}
+
+void GL_ViewportRelative( float x, float y, float w, float h ) {
+	int width = frameBuffers->activeFbo->Width();
+	int height = frameBuffers->activeFbo->Height();
+	GL_ViewportAbsolute( x * width, y * height, w * width, h * height );
 }

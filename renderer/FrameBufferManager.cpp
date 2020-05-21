@@ -111,12 +111,12 @@ void FrameBufferManager::EnterPrimary() {
 	currentRenderFbo = primaryFbo;
 	primaryFbo->Bind();
 
-	activeFbo->SetViewportVidSize( tr.viewportOffset[0] + backEnd.viewDef->viewport.x1,
+	GL_ViewportVidSize( tr.viewportOffset[0] + backEnd.viewDef->viewport.x1,
 	             tr.viewportOffset[1] + backEnd.viewDef->viewport.y1,
 	             backEnd.viewDef->viewport.x2 + 1 - backEnd.viewDef->viewport.x1,
 	             backEnd.viewDef->viewport.y2 + 1 - backEnd.viewDef->viewport.y1 );
 
-	activeFbo->SetScissorVidSize( tr.viewportOffset[0] + backEnd.viewDef->viewport.x1 + backEnd.viewDef->scissor.x1,
+	GL_ScissorVidSize( tr.viewportOffset[0] + backEnd.viewDef->viewport.x1 + backEnd.viewDef->scissor.x1,
 	            tr.viewportOffset[1] + backEnd.viewDef->viewport.y1 + backEnd.viewDef->scissor.y1,
 	            backEnd.viewDef->scissor.x2 + 1 - backEnd.viewDef->scissor.x1,
 	            backEnd.viewDef->scissor.y2 + 1 - backEnd.viewDef->scissor.y1 );
@@ -143,8 +143,8 @@ void FrameBufferManager::LeavePrimary(bool copyToDefault) {
 	}
 
 	defaultFbo->Bind();
-	activeFbo->SetViewportRelative( 0, 0, 1, 1 );
-	activeFbo->SetScissorRelative( 0, 0, 1, 1 );
+	GL_ViewportRelative( 0, 0, 1, 1 );
+	GL_ScissorRelative( 0, 0, 1, 1 );
 }
 
 void FrameBufferManager::EnterShadowStencil() {
@@ -182,8 +182,8 @@ void FrameBufferManager::LeaveShadowMap() {
 	currentRenderFbo->Bind();
 
 	const idScreenRect &r = backEnd.viewDef->viewport;
-	GL_Viewport( r.x1, r.y1, r.x2 - r.x1 + 1, r.y2 - r.y1 + 1 );
-	GL_Scissor( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
+	GL_ViewportVidSize( r.x1, r.y1, r.x2 - r.x1 + 1, r.y2 - r.y1 + 1 );
+	GL_ScissorVidSize( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
 		backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
 		backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
 		backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );

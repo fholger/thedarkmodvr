@@ -65,7 +65,7 @@ void RB_SetDefaultGLState( void ) {
 	//qglShadeModel( GL_SMOOTH );
 
 	if ( r_useScissor.GetBool() ) {
-		GL_Scissor( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
+		GL_ScissorVidSize( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
 	}
 
 	GL_CheckErrors();
@@ -482,9 +482,9 @@ This is not used by the normal game paths, just by some tools
 */
 void RB_SetGL2D( void ) {
 	// set 2D virtual screen size
-	GL_Viewport( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
+	GL_ViewportVidSize( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
 	if ( r_useScissor.GetBool() ) {
-		GL_Scissor( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
+		GL_ScissorVidSize( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
 	}
 	qglMatrixMode( GL_PROJECTION );
 	qglLoadIdentity();
@@ -675,7 +675,7 @@ void RB_Tonemap( bloomCommand_t *cmd ) {
 	globalImages->currentRenderImage->Bind();
 
 	frameBuffers->defaultFbo->BindDraw();
-	GL_Viewport( 0, 0, w, h );
+	GL_ViewportVidSize( 0, 0, w, h );
 
 	if ( cmd->screenRect.IsEmpty() ) {
 		frameBuffers->LeavePrimary(false);
@@ -703,10 +703,10 @@ void RB_Tonemap( bloomCommand_t *cmd ) {
 
 	if ( !cmd->screenRect.IsEmpty() ) {
 		auto& r = cmd->screenRect;
-		GL_Scissor( r.x1, r.y1, r.x2 - r.x1, r.y2 - r.y1 );
+		GL_ScissorVidSize( r.x1, r.y1, r.x2 - r.x1, r.y2 - r.y1 );
 	}
 	RB_DrawFullScreenQuad();
-	GL_Scissor( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
+	GL_ScissorVidSize( 0, 0, glConfig.vidWidth, glConfig.vidHeight );
 
 	GL_SelectTexture( 0 );
 	tonemap->Deactivate();
