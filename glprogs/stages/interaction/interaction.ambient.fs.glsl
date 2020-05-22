@@ -12,6 +12,7 @@ in vec4 var_Color;
 in vec3 var_tc0;  
 in vec3 var_localViewDir;
 in vec4 var_ClipPosition;
+flat in int var_drawId;
 
 out vec4 FragColor;
      
@@ -50,7 +51,7 @@ void main() {
 	vec3 reflect = - (nViewDir - 2*N*dot(N, nViewDir));
 
 	// compute lighting model     
-	vec4 color = params[u_idx].diffuseColor * var_Color, light;
+	vec4 color = params[var_drawId].diffuseColor * var_Color, light;
 	if (u_cubic == 1.0) {
 		//color.rgb = vec3(var_TexLight.z);
 		vec3 tl = vec3(var_TexLight.xy/var_TexLight.w, var_TexLight.z) - .5;
@@ -63,7 +64,7 @@ void main() {
 	} 
 
 	if (u_cubic == 1.0) {
-		vec4 worldN = params[u_idx].modelMatrix * vec4(N, 0); // rotation only
+		vec4 worldN = params[var_drawId].modelMatrix * vec4(N, 0); // rotation only
 		vec3 cubeTC = var_TexLight.xyz * 2.0 - 1.0;
 		// diffuse
 		vec4 light1 = texture(u_lightProjectionCubemap, worldN.xyz) * matDiffuse;
@@ -73,8 +74,8 @@ void main() {
 		light.a = light1.a;
 	} else {
 		vec3 light1 = vec3(.5); // directionless half
-		light1 += max(dot(N, params[u_idx].lightOrigin.xyz) * (1. - matSpecular) * .5, 0);
-		float spec = max(dot(reflect, params[u_idx].lightOrigin.xyz), 0);
+		light1 += max(dot(N, params[var_drawId].lightOrigin.xyz) * (1. - matSpecular) * .5, 0);
+		float spec = max(dot(reflect, params[var_drawId].lightOrigin.xyz), 0);
 		float specPow = clamp((spec*spec), 0.0, 1.1);
 		light1 += vec3(spec*specPow*specPow) * matSpecular * 1.0;
 		light.a = matDiffuse.a;
@@ -89,10 +90,10 @@ void main() {
 	if(u_gamma != 1 ) // old-school exponential
 		light.rgb = pow(light.rgb, vec3(1.0 / u_gamma));
 
-	if(params[u_idx].ambientRimColor.a != 0) { // produces no visible speed difference on nVidia 1060, but maybe on some other hardware?..
+	if(params[var_drawId].ambientRimColor.a != 0) { // produces no visible speed difference on nVidia 1060, but maybe on some other hardware?..
 		float NV = 1-abs(dot(N, nViewDir));
 		NV *= NV;
-		light.rgb += params[u_idx].ambientRimColor.rgb * NV * NV;
+		light.rgb += params[var_drawId].ambientRimColor.rgb * NV * NV;
 	}
 
     if (u_ssaoEnabled == 1) {

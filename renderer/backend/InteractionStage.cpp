@@ -116,7 +116,7 @@ void InteractionStage::Shutdown() {
 	delete[] drawCalls;
 }
 
-idCVar r_sortByMaterial("r_sortByMaterial", "0", CVAR_RENDERER|CVAR_BOOL, "Sort draw surfs by material");
+idCVar r_sortByMaterial("r_sortByMaterial", "1", CVAR_RENDERER|CVAR_BOOL, "Sort draw surfs by material");
 
 void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *interactionSurfs ) {
 	if ( !interactionSurfs ) {
@@ -448,14 +448,13 @@ void InteractionStage::ResetShaderParams() {
 }
 
 void InteractionStage::ExecuteDrawCalls() {
-	if (currentIndex == 0) {
+	int totalDrawCalls = currentIndex;
+	if (totalDrawCalls == 0) {
 		return;
 	}
 
-	shaderParamsBuffer->Commit( shaderParams, currentIndex );
-	shaderParamsBuffer->BindRange( 1, shaderParams, currentIndex );
-
-	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
+	shaderParamsBuffer->Commit( shaderParams, totalDrawCalls );
+	shaderParamsBuffer->BindRange( 1, shaderParams, totalDrawCalls );
 
 	for( int i = 0; i < currentIndex; ++i ) {
 		GL_SelectTexture( 4 );
@@ -464,7 +463,7 @@ void InteractionStage::ExecuteDrawCalls() {
 		drawCalls[i].diffuseTexture->Bind();
 		GL_SelectTexture( 6 );
 		drawCalls[i].specularTexture->Bind();
-		uniforms->idx.Set( i );
+		qglVertexAttribI1i( 15, i );
 		vertexCache.VertexPosition( drawCalls[i].surf->ambientCache );
 		RB_DrawElementsWithCounters( drawCalls[i].surf );		
 	}
