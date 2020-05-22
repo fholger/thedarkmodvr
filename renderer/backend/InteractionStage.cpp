@@ -22,6 +22,7 @@
 #include "../GLSLProgramManager.h"
 #include "../FrameBuffer.h"
 #include "ShaderParamsBuffer.h"
+#include "../AmbientOcclusionStage.h"
 
 // NOTE: must match struct in shader, beware of std140 layout requirements and alignment!
 struct InteractionStage::ShaderParams {
@@ -129,8 +130,14 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 
 	GL_PROFILE( "DrawInteractions" );
 
+	// if using float buffers, alpha values are not clamped and can stack up quite high, since most interactions add 1 to its value
+	// this in turn causes issues with some shader stage materials that use DST_ALPHA blending.
+	// masking the alpha channel for interactions seems to fix those issues, but only do it for float buffers in case it has
+	// unwanted side effects
+	int alphaMask = r_fboColorBits.GetInteger() == 64 ? GLS_ALPHAMASK : 0;
+
 	// perform setup here that will be constant for all interactions
-	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | backEnd.depthFunc );
+	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | alphaMask | backEnd.depthFunc );
 	backEnd.currentSpace = NULL; // ambient/interaction shaders conflict
 	ResetShaderParams();
 
@@ -155,6 +162,10 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	interactionUniforms->normalTexture.Set( 4 );
 	interactionUniforms->diffuseTexture.Set( 5 );
 	interactionUniforms->specularTexture.Set( 6 );
+	interactionUniforms->ssaoTexture.Set( 7 );
+	if( backEnd.vLight->lightShader->IsAmbientLight() && ambientOcclusion->ShouldEnableForCurrentView() ) {
+		ambientOcclusion->BindSSAOTexture( 7 );
+	}
 
 	std::vector<const drawSurf_t*> drawSurfs;
 	for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight) {

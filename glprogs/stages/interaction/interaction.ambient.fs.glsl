@@ -1,4 +1,4 @@
-#version 140
+#version 330 core
 
 #pragma tdm_include "stages/interaction/interaction.params.glsl"
 
@@ -11,6 +11,7 @@ in mat3 var_TangentBinormalNormalMatrix;
 in vec4 var_Color;        
 in vec3 var_tc0;  
 in vec3 var_localViewDir;
+in vec4 var_ClipPosition;
 
 out vec4 FragColor;
      
@@ -25,8 +26,13 @@ uniform samplerCube	u_lightFalloffCubemap;
          
 uniform float u_cubic;
 uniform float u_gamma, u_minLevel;
-uniform float u_RGTC;
-      
+   
+uniform sampler2D u_ssaoTexture;
+uniform int u_ssaoEnabled;
+float sampleSSAO() {
+	return texture(u_ssaoTexture, 0.5 + 0.5 * var_ClipPosition.xy / var_ClipPosition.w).r;
+}
+   
 void main() {         
 	// compute the diffuse term     
 	vec4 matDiffuse = texture( u_diffuseTexture, var_TexDiffuse );
@@ -79,6 +85,7 @@ void main() {
 		light.rgb *= matDiffuse.rgb * light1;
 	}
 
+	light = max(light, vec4(0));  // avoid negative values, which with floating point render buffers can lead to NaN artefacts
 	if(u_gamma != 1 ) // old-school exponential
 		light.rgb = pow(light.rgb, vec3(1.0 / u_gamma));
 
@@ -86,6 +93,10 @@ void main() {
 		float NV = 1-abs(dot(N, nViewDir));
 		NV *= NV;
 		light.rgb += params[u_idx].ambientRimColor.rgb * NV * NV;
+	}
+
+    if (u_ssaoEnabled == 1) {
+		light *= sampleSSAO();
 	}
 
 	FragColor = light;

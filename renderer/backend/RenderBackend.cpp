@@ -17,6 +17,8 @@
 #pragma hdrstop
 
 #include "RenderBackend.h"
+
+#include "../AmbientOcclusionStage.h"
 #include "../Profiling.h"
 #include "../GLSLProgram.h"
 #include "../GLSLProgramManager.h"
@@ -83,6 +85,10 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 		// fill the depth buffer and clear color buffer to black except on subviews
         void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs );
 		RB_STD_FillDepthBuffer( drawSurfs, numDrawSurfs );
+		if( ambientOcclusion->ShouldEnableForCurrentView() ) {
+			ambientOcclusion->ComputeSSAOFromDepth();
+		}
+
 		DrawShadowsAndInteractions( viewDef );
 	}
 		
