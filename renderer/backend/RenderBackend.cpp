@@ -28,6 +28,7 @@ RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
 
 idCVar r_useNewBackend( "r_useNewBackend", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental new backend" );
+idCVar r_useBindlessTextures("r_useBindlessTextures", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental bindless texturing to reduce drawcall overhead (if supported by hardware)");
 
 RenderBackend::RenderBackend() 
 	: interactionStage( &shaderParamsBuffer, &drawBatchExecutor )
@@ -123,6 +124,14 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 
 void RenderBackend::EndFrame() {
 	shaderParamsBuffer.Lock();
+	drawBatchExecutor.Lock();
+	if (GLAD_GL_ARB_bindless_texture) {
+		globalImages->MakeUnusedImagesNonResident();
+	}
+}
+
+bool RenderBackend::ShouldUseBindlessTextures() const {
+	return GLAD_GL_ARB_bindless_texture && r_useBindlessTextures.GetBool();
 }
 
 void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {

@@ -32,6 +32,7 @@ public:
 	void BeginBatch(int maxDrawCalls);
 	void AddDrawVertSurf(const drawSurf_t *surf);
 	void DrawBatch();
+	void Lock();
 
 	static const int MAX_DRAW_COMMANDS = 4096;
 private:

@@ -40,6 +40,11 @@ struct InteractionStage::ShaderParams {
 	idVec4 specularColor;
 	idVec4 hasTextureDNS;
 	idVec4 ambientRimColor;
+	// bindless texture handles, if supported
+	uint64_t normalTexture;
+	uint64_t diffuseTexture;
+	uint64_t specularTexture;
+	uint64_t padding;
 };
 
 struct InteractionStage::DrawCall {
@@ -52,8 +57,6 @@ struct InteractionStage::DrawCall {
 namespace {
 	struct InteractionUniforms: GLSLUniformGroup {
 		UNIFORM_GROUP_DEF( InteractionUniforms )
-
-		DEFINE_UNIFORM( int, idx )
 
 		DEFINE_UNIFORM( float, cubic )
 		DEFINE_UNIFORM( sampler, normalTexture )

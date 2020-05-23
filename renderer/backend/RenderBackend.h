@@ -18,6 +18,7 @@
 #include "../tr_local.h"
 
 extern idCVar r_useNewBackend;
+extern idCVar r_useBindlessTextures;
 
 class RenderBackend {
 public:
@@ -29,6 +30,8 @@ public:
 	void DrawView( const viewDef_t *viewDef );
 
 	void EndFrame();
+
+	bool ShouldUseBindlessTextures() const;
 
 private:
 	ShaderParamsBuffer shaderParamsBuffer;

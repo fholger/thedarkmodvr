@@ -97,6 +97,10 @@ void DrawBatchExecutor::DrawBatch() {
 	maxDrawCommands = 0;
 }
 
+void DrawBatchExecutor::Lock() {
+	drawCommandBuffer.Lock();
+}
+
 bool DrawBatchExecutor::ShouldUseMultiDraw() const {
 	return GLAD_GL_ARB_multi_draw_indirect && r_useMultiDrawIndirect;
 }

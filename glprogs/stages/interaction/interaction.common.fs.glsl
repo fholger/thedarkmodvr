@@ -2,6 +2,11 @@
 // Includes: illumination model, fetching surface and light properties
 // Excludes: shadows
 
+#pragma tdm_define "BINDLESS_TEXTURES"
+
+#ifdef BINDLESS_TEXTURES
+#extension GL_ARB_bindless_texture : require
+#endif
 
 in vec3 var_Position;
 in vec4 var_Color;
@@ -11,9 +16,40 @@ in vec2 var_TexSpecular;
 in vec4 var_TexLight;
 flat in int var_drawId;
 
+#pragma tdm_include "stages/interaction/interaction.params.glsl"
+
+#ifdef BINDLESS_TEXTURES
+vec4 textureNormal(vec2 uv) {
+    sampler2D normalTexture = sampler2D(params[var_drawId].normalTexture);
+    return texture(normalTexture, uv);
+}
+
+vec4 textureDiffuse(vec2 uv) {
+    sampler2D diffuseTexture = sampler2D(params[var_drawId].diffuseTexture);
+    return texture(diffuseTexture, uv);
+}
+
+vec4 textureSpecular(vec2 uv) {
+    sampler2D specularTexture = sampler2D(params[var_drawId].specularTexture);
+    return texture(specularTexture, uv);
+}
+#else
 uniform sampler2D u_normalTexture;
 uniform sampler2D u_diffuseTexture;
 uniform sampler2D u_specularTexture;
+
+vec4 textureNormal(vec2 uv) {
+    return texture(u_normalTexture, uv);
+}
+
+vec4 textureDiffuse(vec2 uv) {
+    return texture(u_diffuseTexture, uv);
+}
+
+vec4 textureSpecular(vec2 uv) {
+    return texture(u_specularTexture, uv);
+}
+#endif
 uniform sampler2D u_lightFalloffTexture;
 uniform sampler2D u_lightProjectionTexture;
 uniform samplerCube	u_lightProjectionCubemap;
@@ -23,7 +59,6 @@ uniform float	u_cubic;
 uniform int		u_testSpecularFix;	//stgatilov #5044: for testing only!
 uniform int		u_testBumpmapLightTogglingFix;  //stgatilov #4825: for testing only
 
-#pragma tdm_include "stages/interaction/interaction.params.glsl"
 
 // output of fetchDNS
 vec3 RawN, N;
@@ -40,7 +75,7 @@ in vec3 var_ViewDirLocal;
 void calcNormals() {
     // compute normal from normal map, move from [0, 1] to [-1, 1] range, normalize 
 	if (params[var_drawId].hasTextureDNS[1] != 0) {
-		vec4 bumpTexel = texture ( u_normalTexture, var_TexNormal.st ) * 2. - 1.;
+		vec4 bumpTexel = textureNormal( var_TexNormal.st ) * 2. - 1.;
     	RawN = vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0))); 
     	N = var_TangentBitangentNormalMatrix * RawN; 
 	}
@@ -84,12 +119,12 @@ vec3 lightColor() {
 //illumination model with "simple interaction" setting
 vec3 simpleInteraction() {
 	// compute the diffuse term    
-	vec3 diffuse = texture(u_diffuseTexture, var_TexDiffuse).rgb * params[var_drawId].diffuseColor.rgb;
+	vec3 diffuse = textureDiffuse(var_TexDiffuse).rgb * params[var_drawId].diffuseColor.rgb;
 
 	// compute the specular term
 	float specularPower = 10.0;
 	float specularContribution = pow(NdotH, specularPower);
-	vec3 specular = texture(u_specularTexture, var_TexSpecular).rgb * specularContribution * params[var_drawId].specularColor.rgb;
+	vec3 specular = textureSpecular(var_TexSpecular).rgb * specularContribution * params[var_drawId].specularColor.rgb;
 
 	// compute lighting model
 	vec3 finalColor = (diffuse + specular) * NdotL * lightColor() * var_Color.rgb;
@@ -103,11 +138,11 @@ vec3 advancedInteraction() {
 	vec4 fresnelParms2 = vec4(.2, .023, 120.0, 4.0);
 	vec4 lightParms = vec4(.7, 1.8, 10.0, 30.0);
 
-	vec3 diffuse = texture(u_diffuseTexture, var_TexDiffuse).rgb;
+	vec3 diffuse = textureDiffuse(var_TexDiffuse).rgb;
 
 	vec3 specular = vec3(0.026);	//default value if texture not set?...
 	if (dot(params[var_drawId].specularColor, params[var_drawId].specularColor) > 0.0)
-		specular = texture(u_specularTexture, var_TexSpecular).rgb;
+		specular = textureSpecular(var_TexSpecular).rgb;
 
 	vec3 localL = normalize(var_LightDirLocal);
 	vec3 localV = normalize(var_ViewDirLocal);
