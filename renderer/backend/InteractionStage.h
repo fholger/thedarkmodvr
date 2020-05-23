@@ -13,6 +13,7 @@
 
 ******************************************************************************/
 #pragma once
+#include "DrawBatchExecutor.h"
 #include "../tr_local.h"
 
 class GLSLProgram;
@@ -20,7 +21,7 @@ class ShaderParamsBuffer;
 
 class InteractionStage {
 public:
-	InteractionStage( ShaderParamsBuffer *shaderParamsBuffer );
+	InteractionStage( ShaderParamsBuffer *shaderParamsBuffer, DrawBatchExecutor *drawBatchExecutor );
 
 	void Init();
 	void Shutdown();
@@ -32,6 +33,7 @@ private:
 	struct DrawCall;
 
 	ShaderParamsBuffer *shaderParamsBuffer;
+	DrawBatchExecutor *drawBatches;
 	GLSLProgram *stencilInteractionShader;
 	GLSLProgram *ambientInteractionShader;
 	GLSLProgram *interactionShader;
@@ -44,7 +46,6 @@ private:
 	void ChooseInteractionProgram( viewLight_t *vLight );
 	void ProcessSingleSurface( viewLight_t *vLight, const shaderStage_t *lightStage, const drawSurf_t *surf );
 	void PrepareDrawCommand( drawInteraction_t * inter );
-	int  FindBoundTextureUnit( idImage *texture, int usedUnits );
 	void ResetShaderParams();
 	void ExecuteDrawCalls();
 };

@@ -117,6 +117,16 @@ void UniversalGpuBuffer::BindRange( GLuint index, byte *offset, GLuint size ) {
 	qglBindBufferRange( mType, index, mBufferObject, mapOffset, size );
 }
 
+void UniversalGpuBuffer::Bind() {
+	qglBindBuffer(mType, mBufferObject);
+}
+
+const void * UniversalGpuBuffer::BufferOffset( const void *offset ) {
+	GLintptr mapOffset = static_cast< const byte* >( offset ) - mMapBase;
+	assert(mapOffset >= 0 && mapOffset < mSize);
+	return reinterpret_cast< const void* >( mapOffset );
+}
+
 void UniversalGpuBuffer::LockRange( GLuint offset, GLuint count ) {
 	GLsync fence = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
 	LockedRange range = { offset, count, fence };

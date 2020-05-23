@@ -95,8 +95,8 @@ namespace {
 }
 
 
-InteractionStage::InteractionStage( ShaderParamsBuffer *shaderParamsBuffer )
-	: shaderParamsBuffer( shaderParamsBuffer ), interactionShader( nullptr )
+InteractionStage::InteractionStage( ShaderParamsBuffer *shaderParamsBuffer, DrawBatchExecutor *drawBatchExecutor )
+	: shaderParamsBuffer( shaderParamsBuffer ), drawBatches( drawBatchExecutor ), interactionShader( nullptr )
 {}
 
 void InteractionStage::Init() {
@@ -372,9 +372,6 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderSt
 }
 
 void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
-	DrawCall &drawCall = drawCalls[currentIndex];
-	ShaderParams &params = shaderParams[currentIndex];
-
 	if ( !din->bumpImage && !r_skipBump.GetBool() )
 		return;
 
@@ -385,6 +382,18 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	if ( !din->specularImage || r_skipSpecular.GetBool() ) {
 		din->specularImage = globalImages->blackImage;
 	}
+
+	if (currentIndex > 0) {
+		DrawCall &prev = drawCalls[currentIndex-1];
+		if (prev.bumpTexture != din->bumpImage || prev.diffuseTexture != din->diffuseImage || prev.specularTexture != din->specularImage) {
+			// change in textures, execute previous draw calls
+			ExecuteDrawCalls();
+			ResetShaderParams();
+		}
+	}
+
+	DrawCall &drawCall = drawCalls[currentIndex];
+	ShaderParams &params = shaderParams[currentIndex];
 
 	memcpy( params.modelMatrix.ToFloatPtr(), din->surf->space->modelMatrix, sizeof(idMat4) );
 	memcpy( params.modelViewMatrix.ToFloatPtr(), din->surf->space->modelViewMatrix, sizeof(idMat4) );
@@ -424,6 +433,7 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	drawCall.diffuseTexture = din->diffuseImage;
 	drawCall.specularTexture = din->specularImage;
 	drawCall.bumpTexture = din->bumpImage;
+	drawBatches->AddDrawVertSurf( din->surf );
 
 	++currentIndex;
 	if (currentIndex == MAX_DRAWS_PER_BATCH) {
@@ -432,19 +442,11 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	}
 }
 
-int InteractionStage::FindBoundTextureUnit( idImage *texture, int usedUnits ) {
-	for( int i = 0; i < usedUnits; ++i ) {
-		if( backEnd.glState.tmu[i].current2DMap == texture->texnum || backEnd.glState.tmu[i].currentCubeMap == texture->texnum) {
-			return i;
-		}
-	}
-	return -1;
-}
-
 void InteractionStage::ResetShaderParams() {
 	currentIndex = 0;
 	currentTextureUnit = 4;
 	shaderParams = shaderParamsBuffer->Request<ShaderParams>(MAX_DRAWS_PER_BATCH);
+	drawBatches->BeginBatch( MAX_DRAWS_PER_BATCH );
 }
 
 void InteractionStage::ExecuteDrawCalls() {
@@ -453,10 +455,18 @@ void InteractionStage::ExecuteDrawCalls() {
 		return;
 	}
 
+	GL_SelectTexture( 4 );
+	drawCalls[0].bumpTexture->Bind();
+	GL_SelectTexture( 5 );
+	drawCalls[0].diffuseTexture->Bind();
+	GL_SelectTexture( 6 );
+	drawCalls[0].specularTexture->Bind();
+
 	shaderParamsBuffer->Commit( shaderParams, totalDrawCalls );
 	shaderParamsBuffer->BindRange( 1, shaderParams, totalDrawCalls );
 
-	for( int i = 0; i < currentIndex; ++i ) {
+	drawBatches->DrawBatch();
+	/*for( int i = 0; i < currentIndex; ++i ) {
 		GL_SelectTexture( 4 );
 		drawCalls[i].bumpTexture->Bind();
 		GL_SelectTexture( 5 );
@@ -466,5 +476,5 @@ void InteractionStage::ExecuteDrawCalls() {
 		qglVertexAttribI1i( 15, i );
 		vertexCache.VertexPosition( drawCalls[i].surf->ambientCache );
 		RB_DrawElementsWithCounters( drawCalls[i].surf );		
-	}
+	}*/
 }

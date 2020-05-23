@@ -30,17 +30,19 @@ RenderBackend *renderBackend = &renderBackendImpl;
 idCVar r_useNewBackend( "r_useNewBackend", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Use experimental new backend" );
 
 RenderBackend::RenderBackend() 
-	: interactionStage( &shaderParamsBuffer )
+	: interactionStage( &shaderParamsBuffer, &drawBatchExecutor )
 {}
 
 void RenderBackend::Init() {
 	shaderParamsBuffer.Init();
+	drawBatchExecutor.Init();
 	interactionStage.Init();
 }
 
 void RenderBackend::Shutdown() {
-	shaderParamsBuffer.Destroy();
 	interactionStage.Shutdown();
+	drawBatchExecutor.Destroy();
+	shaderParamsBuffer.Destroy();
 }
 
 void RenderBackend::DrawView( const viewDef_t *viewDef ) {

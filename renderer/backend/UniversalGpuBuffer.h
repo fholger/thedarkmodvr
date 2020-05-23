@@ -24,6 +24,8 @@ public:
 	byte *Reserve( GLuint size, bool precommit = false );
 	void Commit( byte *offset, GLuint size );
 	void BindRange( GLuint index, byte *offset, GLuint size );
+	void Bind();
+	const void * BufferOffset( const void *offset );
 
 private:
 	struct LockedRange {

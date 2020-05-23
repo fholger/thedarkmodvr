@@ -13,31 +13,37 @@
 
 ******************************************************************************/
 #pragma once
-#include "ShaderParamsBuffer.h"
-#include "InteractionStage.h"
+#include "UniversalGpuBuffer.h"
 #include "../tr_local.h"
 
-extern idCVar r_useNewBackend;
-
-class RenderBackend {
-public:
-	RenderBackend();
-
-	void Init();
-	void Shutdown();
-
-	void DrawView( const viewDef_t *viewDef );
-
-	void EndFrame();
-
-private:
-	ShaderParamsBuffer shaderParamsBuffer;
-	DrawBatchExecutor drawBatchExecutor;
-	InteractionStage interactionStage;
-
-	void DrawInteractionsWithShadowMapping( viewLight_t *vLight );
-	void DrawInteractionsWithStencilShadows( const viewDef_t *viewDef, viewLight_t *vLight );
-	void DrawShadowsAndInteractions( const viewDef_t *viewDef );
+struct DrawElementsIndirectCommand {
+    uint count;
+    uint instanceCount;
+    uint firstIndex;
+    uint baseVertex;
+    uint baseInstance;
 };
 
-extern RenderBackend *renderBackend;
+class DrawBatchExecutor {
+public:
+	void Init();
+	void Destroy();
+
+	void BeginBatch(int maxDrawCalls);
+	void AddDrawVertSurf(const drawSurf_t *surf);
+	void DrawBatch();
+
+	static const int MAX_DRAW_COMMANDS = 4096;
+private:
+	UniversalGpuBuffer drawCommandBuffer;
+	GLuint drawIdBuffer = 0;
+	bool drawIdVertexEnabled = false;
+	std::vector<DrawElementsIndirectCommand> fallbackBuffer;
+	
+	DrawElementsIndirectCommand *currentCommands = nullptr;
+	uint maxDrawCommands = 0;
+	uint currentIndex = 0;
+
+	bool ShouldUseMultiDraw() const;
+	void InitDrawIdBuffer();
+};
