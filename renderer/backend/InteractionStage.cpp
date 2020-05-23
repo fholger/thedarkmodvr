@@ -17,6 +17,8 @@
 #pragma hdrstop
 
 #include "InteractionStage.h"
+
+#include "RenderBackend.h"
 #include "../Profiling.h"
 #include "../glsl.h"
 #include "../GLSLProgramManager.h"
@@ -66,6 +68,7 @@ namespace {
 		DEFINE_UNIFORM( sampler, lightProjectionCubemap )
 		DEFINE_UNIFORM( sampler, lightFalloffTexture )
 		DEFINE_UNIFORM( sampler, lightFalloffCubemap )
+		DEFINE_UNIFORM( sampler, ssaoTexture )
 
 		DEFINE_UNIFORM( float, minLevel )
 		DEFINE_UNIFORM( float, gamma )
@@ -95,6 +98,31 @@ namespace {
 	};
 
 	const int MAX_DRAWS_PER_BATCH = 32;
+
+	void LoadInteractionShader(GLSLProgram *shader, const idStr &baseName, bool bindless) {
+		shader->Init();
+		shader->AttachVertexShader("stages/interaction/" + baseName + ".vs.glsl");
+		idDict defines;
+		if (bindless) {
+			defines.Set( "BINDLESS_TEXTURES", "1" );
+		}
+		shader->AttachFragmentShader("stages/interaction/" + baseName + ".fs.glsl", defines);
+		Attributes::Default::Bind(shader);
+		shader->Link();
+		shader->Activate();
+		InteractionUniforms *uniforms = shader->GetUniformGroup<InteractionUniforms>();
+		uniforms->lightProjectionCubemap.Set( 3 );
+		uniforms->lightProjectionTexture.Set( 3 );
+		uniforms->lightFalloffCubemap.Set( 2 );
+		uniforms->lightFalloffTexture.Set( 2 );
+		uniforms->ssaoTexture.Set( 7 );
+		if (!bindless) {
+			uniforms->normalTexture.Set( 4 );
+			uniforms->diffuseTexture.Set( 5 );
+			uniforms->specularTexture.Set( 6 );
+		}
+		shader->Deactivate();
+	}
 }
 
 
@@ -103,13 +131,11 @@ InteractionStage::InteractionStage( ShaderParamsBuffer *shaderParamsBuffer, Draw
 {}
 
 void InteractionStage::Init() {
-	ambientInteractionShader = programManager->Find( "interaction_ambient" );
-	if( ambientInteractionShader == nullptr ) {
-		ambientInteractionShader = programManager->LoadFromFiles( "interaction_ambient", "stages/interaction/interaction.ambient.vs.glsl", "stages/interaction/interaction.ambient.fs.glsl" );
-	}
-	stencilInteractionShader = programManager->Find( "interaction_stencil" );
-	if( stencilInteractionShader == nullptr ) {
-		stencilInteractionShader = programManager->LoadFromFiles( "interaction_stencil", "stages/interaction/interaction.stencil.vs.glsl", "stages/interaction/interaction.stencil.fs.glsl" );
+	ambientInteractionShader = programManager->LoadFromGenerator( "interaction_ambient", [](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.ambient", false ); } );
+	stencilInteractionShader = programManager->LoadFromGenerator( "interaction_stencil", [](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.stencil", false ); } );
+	if (GLAD_GL_ARB_bindless_texture) {
+		bindlessAmbientInteractionShader = programManager->LoadFromGenerator( "interaction_ambient_bindless", [](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.ambient", true ); } );
+		bindlessStencilInteractionShader = programManager->LoadFromGenerator( "interaction_stencil_bindless", [](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.stencil", true ); } );
 	}
 
 	drawCalls = new DrawCall[MAX_DRAWS_PER_BATCH];
@@ -158,14 +184,15 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	Uniforms::Interaction *interactionUniforms = interactionShader->GetUniformGroup<Uniforms::Interaction>();
 	interactionUniforms->RGTC.Set( globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
 	interactionUniforms->SetForShadows( interactionSurfs == vLight->translucentInteractions );
+	// TODO: clean this up
 	interactionUniforms->lightProjectionCubemap.Set( 3 );
 	interactionUniforms->lightProjectionTexture.Set( 3 );
 	interactionUniforms->lightFalloffCubemap.Set( 2 );
 	interactionUniforms->lightFalloffTexture.Set( 2 );
+	interactionUniforms->ssaoTexture.Set( 7 );
 	interactionUniforms->normalTexture.Set( 4 );
 	interactionUniforms->diffuseTexture.Set( 5 );
 	interactionUniforms->specularTexture.Set( 6 );
-	interactionUniforms->ssaoTexture.Set( 7 );
 	if( backEnd.vLight->lightShader->IsAmbientLight() && ambientOcclusion->ShouldEnableForCurrentView() ) {
 		ambientOcclusion->BindSSAOTexture( 7 );
 	}
@@ -238,14 +265,14 @@ void InteractionStage::BindShadowTexture() {
 
 void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
 	if ( vLight->lightShader->IsAmbientLight() ) {
-		interactionShader = ambientInteractionShader;
-		Uniforms::Interaction *uniforms = ambientInteractionShader->GetUniformGroup<Uniforms::Interaction>();
+		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessAmbientInteractionShader : ambientInteractionShader;
+		Uniforms::Interaction *uniforms = interactionShader->GetUniformGroup<Uniforms::Interaction>();
 		uniforms->ambient = true;
 	} else if ( vLight->shadowMapIndex ) {
 		// FIXME: port shadowmap shader
-		interactionShader = stencilInteractionShader;
+		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessStencilInteractionShader : stencilInteractionShader;
 	} else {
-		interactionShader = stencilInteractionShader;
+		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessStencilInteractionShader : stencilInteractionShader;
 	}
 	interactionShader->Activate();
 }
@@ -386,7 +413,7 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 		din->specularImage = globalImages->blackImage;
 	}
 
-	if (currentIndex > 0) {
+	if (currentIndex > 0 && !renderBackend->ShouldUseBindlessTextures()) {
 		DrawCall &prev = drawCalls[currentIndex-1];
 		if (prev.bumpTexture != din->bumpImage || prev.diffuseTexture != din->diffuseImage || prev.specularTexture != din->specularImage) {
 			// change in textures, execute previous draw calls
@@ -432,6 +459,15 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	}
 	params.ambientRimColor = din->ambientRimColor;
 
+	if (renderBackend->ShouldUseBindlessTextures()) {
+		din->bumpImage->MakeResident();
+		params.normalTexture = din->bumpImage->BindlessHandle();
+		din->diffuseImage->MakeResident();
+		params.diffuseTexture = din->diffuseImage->BindlessHandle();
+		din->specularImage->MakeResident();
+		params.specularTexture = din->specularImage->BindlessHandle();
+	}
+
 	drawCall.surf = din->surf;
 	drawCall.diffuseTexture = din->diffuseImage;
 	drawCall.specularTexture = din->specularImage;
@@ -458,12 +494,14 @@ void InteractionStage::ExecuteDrawCalls() {
 		return;
 	}
 
-	GL_SelectTexture( 4 );
-	drawCalls[0].bumpTexture->Bind();
-	GL_SelectTexture( 5 );
-	drawCalls[0].diffuseTexture->Bind();
-	GL_SelectTexture( 6 );
-	drawCalls[0].specularTexture->Bind();
+	if (!renderBackend->ShouldUseBindlessTextures()) {
+		GL_SelectTexture( 4 );
+		drawCalls[0].bumpTexture->Bind();
+		GL_SelectTexture( 5 );
+		drawCalls[0].diffuseTexture->Bind();
+		GL_SelectTexture( 6 );
+		drawCalls[0].specularTexture->Bind();
+	}
 
 	shaderParamsBuffer->Commit( shaderParams, totalDrawCalls );
 	shaderParamsBuffer->BindRange( 1, shaderParams, totalDrawCalls );

@@ -1,5 +1,11 @@
 #version 330 core
 
+#pragma tdm_define "BINDLESS_TEXTURES"
+
+#ifdef BINDLESS_TEXTURES
+#extension GL_ARB_bindless_texture : require
+#endif
+
 #pragma tdm_include "stages/interaction/interaction.params.glsl"
 
 in vec3 var_Position;
@@ -16,11 +22,41 @@ flat in int var_drawId;
 
 out vec4 FragColor;
      
-uniform sampler2D u_normalTexture;         
 uniform sampler2D u_lightFalloffTexture;         
 uniform sampler2D u_lightProjectionTexture;         
-uniform sampler2D u_diffuseTexture;   
+
+#ifdef BINDLESS_TEXTURES
+vec4 textureNormal(vec2 uv) {
+    sampler2D normalTexture = sampler2D(params[var_drawId].normalTexture);
+    return texture(normalTexture, uv);
+}
+
+vec4 textureDiffuse(vec2 uv) {
+    sampler2D diffuseTexture = sampler2D(params[var_drawId].diffuseTexture);
+    return texture(diffuseTexture, uv);
+}
+
+vec4 textureSpecular(vec2 uv) {
+    sampler2D specularTexture = sampler2D(params[var_drawId].specularTexture);
+    return texture(specularTexture, uv);
+}
+#else
+uniform sampler2D u_normalTexture;
+uniform sampler2D u_diffuseTexture;
 uniform sampler2D u_specularTexture;
+
+vec4 textureNormal(vec2 uv) {
+    return texture(u_normalTexture, uv);
+}
+
+vec4 textureDiffuse(vec2 uv) {
+    return texture(u_diffuseTexture, uv);
+}
+
+vec4 textureSpecular(vec2 uv) {
+    return texture(u_specularTexture, uv);
+}
+#endif
 
 uniform samplerCube	u_lightProjectionCubemap;
 uniform samplerCube	u_lightFalloffCubemap;
@@ -36,11 +72,11 @@ float sampleSSAO() {
    
 void main() {         
 	// compute the diffuse term     
-	vec4 matDiffuse = texture( u_diffuseTexture, var_TexDiffuse );
-	vec3 matSpecular = texture( u_specularTexture, var_TexSpecular ).rgb;
+	vec4 matDiffuse = textureDiffuse( var_TexDiffuse );
+	vec3 matSpecular = textureSpecular( var_TexSpecular ).rgb;
 
 	// compute normal from normal map, move from [0, 1] to [-1, 1] range, normalize    
-	vec4 bumpTexel = texture ( u_normalTexture, var_TexNormal.st ) * 2. - 1.;
+	vec4 bumpTexel = textureNormal( var_TexNormal.st ) * 2. - 1.;
 	vec3 localNormal = vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0))); 
 	vec3 N = var_TangentBinormalNormalMatrix * localNormal;
 	//stgatilov: without normalization |N| > 1 is possible, which leads to |spec| > 1,

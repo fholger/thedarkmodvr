@@ -36,6 +36,8 @@ private:
 	DrawBatchExecutor *drawBatches;
 	GLSLProgram *stencilInteractionShader;
 	GLSLProgram *ambientInteractionShader;
+	GLSLProgram *bindlessStencilInteractionShader;
+	GLSLProgram *bindlessAmbientInteractionShader;
 	GLSLProgram *interactionShader;
 	ShaderParams *shaderParams;
 	DrawCall *drawCalls;
