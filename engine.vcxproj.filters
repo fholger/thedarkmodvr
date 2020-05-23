@@ -1264,6 +1264,9 @@
     <ClInclude Include="renderer\backend\RenderBackend.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\backend\UniversalGpuBuffer.h">
+      <Filter>Renderer\Backend</Filter>
+    </ClInclude>
     <ClInclude Include="renderer\backend\ShaderParamsBuffer.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
@@ -2987,6 +2990,9 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\backend\RenderBackend.cpp">
+      <Filter>Renderer\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\backend\UniversalGpuBuffer.cpp">
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
     <ClCompile Include="renderer\backend\ShaderParamsBuffer.cpp">

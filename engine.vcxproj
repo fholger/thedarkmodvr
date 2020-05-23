@@ -461,6 +461,7 @@
     <ClInclude Include="idlib\precompiled.h" />
     <ClInclude Include="renderer\AmbientOcclusionStage.h" />
     <ClInclude Include="renderer\BloomStage.h" />
+    <ClInclude Include="renderer\backend\UniversalGpuBuffer.h" />
     <ClInclude Include="renderer\backend\InteractionStage.h" />
     <ClInclude Include="renderer\backend\RenderBackend.h" />
     <ClInclude Include="renderer\BufferObject.h" />
@@ -1007,6 +1008,7 @@
     </ClCompile>
     <ClCompile Include="renderer\AmbientOcclusionStage.cpp" />
     <ClCompile Include="renderer\BloomStage.cpp" />
+    <ClCompile Include="renderer\backend\UniversalGpuBuffer.cpp" />
     <ClCompile Include="renderer\backend\InteractionStage.cpp" />
     <ClCompile Include="renderer\backend\RenderBackend.cpp" />
     <ClCompile Include="renderer\BufferObject.cpp" />

@@ -14,59 +14,34 @@
 ******************************************************************************/
 #pragma once
 
+#include "UniversalGpuBuffer.h"
+
 class ShaderParamsBuffer {
 public:
-	ShaderParamsBuffer();
-
 	void Init();
 	void Destroy();
 
-	void Lock();
+	void Lock() { uniformBuffer.Lock(); }
 
 	template<typename T>
-	T *Request( uint32_t count ) {
+	T *Request( uint32_t count, bool precommit = false ) {
 		static_assert( sizeof(T) % 16 == 0,
 			"UBO structs must be 16-byte aligned, use padding if necessary. Be sure to obey the std140 layout rules." );
 		
-		T *array = reinterpret_cast<T*>( ReserveRaw( sizeof(T) * count ) );
+		T *array = reinterpret_cast<T*>( uniformBuffer.Reserve( sizeof(T) * count, precommit ) );
 		return array;
 	}
 
 	template<typename T>
 	void Commit(T *array, uint32_t count) {
-		CommitRaw( (byte*)array, sizeof(T) * count );		
+		uniformBuffer.Commit( (byte*)array, sizeof(T) * count );		
 	}
 
 	template<typename T>
 	void BindRange( GLuint index, T *array, uint32_t count ) {
-		BindRangeRaw( index, (byte*)array, sizeof(T) * count );		
+		uniformBuffer.BindRange( index, (byte*)array, sizeof(T) * count );		
 	}
 
 private:
-	struct LockedRange {
-		GLuint offset;
-		GLuint count;
-		GLsync fenceSync;
-
-		bool Overlaps(const LockedRange& other) const {
-			return offset < other.offset + other.count && other.offset < offset + count;
-		}
-	};
-
-	bool mUsePersistentMapping;
-
-	GLuint mBufferObject;
-	GLuint mSize;
-	GLuint mAlign;
-	byte * mMapBase;
-	GLuint mCurrentOffset;
-	GLuint mLastLocked;
-	std::vector<LockedRange> mRangeLocks;
-
-	byte *ReserveRaw( GLuint size );
-	void CommitRaw( byte *offset, GLuint size );
-	void BindRangeRaw( GLuint index, byte *offset, GLuint size );
-	void LockRange( GLuint offset, GLuint count );
-	void WaitForLockedRange( GLuint offset, GLuint count );
-	void Wait( LockedRange &range );	
+	UniversalGpuBuffer uniformBuffer;
 };
