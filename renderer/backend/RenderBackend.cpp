@@ -229,12 +229,12 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 	// for each light, perform adding and shadowing
 	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
 		if ( vLight->lightShader->IsFogLight() || vLight->lightShader->IsBlendLight() ) {
-			break;
+			continue;
 		}
 
 		// if there are no interactions, get out!
 		if ( !vLight->localInteractions && !vLight->globalInteractions && !vLight->translucentInteractions )
-			break;
+			continue;
 
 		backEnd.vLight = vLight;
 		if ( vLight->shadows == LS_MAPS ) {
@@ -244,7 +244,7 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		}
 
 		if ( r_skipTranslucent.GetBool() ) {
-			break;
+			continue;
 		}
 		qglStencilFunc( GL_ALWAYS, 128, 255 );
 		backEnd.depthFunc = GLS_DEPTHFUNC_LESS;
