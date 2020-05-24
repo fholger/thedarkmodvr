@@ -2,6 +2,8 @@ uniform block {
 	uniform mat4 u_projectionMatrix;
 };
 
+#pragma tdm_define "MAX_SHADER_PARAMS"
+
 struct ShaderParams {
     mat4 modelMatrix;
     mat4 modelViewMatrix;
@@ -25,5 +27,5 @@ struct ShaderParams {
 };
 
 layout (std140) uniform ShaderParamsBlock {
-    ShaderParams params[32];
+    ShaderParams params[MAX_SHADER_PARAMS];
 };

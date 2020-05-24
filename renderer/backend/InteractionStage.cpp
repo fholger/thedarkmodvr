@@ -97,15 +97,16 @@ namespace {
 		DEFINE_UNIFORM( int, testStencilSelfShadowFix )
 	};
 
-	const int MAX_DRAWS_PER_BATCH = 32;
+	int maxDrawCallsPerBatch;
 
 	void LoadInteractionShader(GLSLProgram *shader, const idStr &baseName, bool bindless) {
 		shader->Init();
-		shader->AttachVertexShader("stages/interaction/" + baseName + ".vs.glsl");
 		idDict defines;
+		defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", maxDrawCallsPerBatch ) );
 		if (bindless) {
 			defines.Set( "BINDLESS_TEXTURES", "1" );
 		}
+		shader->AttachVertexShader("stages/interaction/" + baseName + ".vs.glsl", defines);
 		shader->AttachFragmentShader("stages/interaction/" + baseName + ".fs.glsl", defines);
 		Attributes::Default::Bind(shader);
 		shader->Link();
@@ -131,6 +132,12 @@ InteractionStage::InteractionStage( ShaderParamsBuffer *shaderParamsBuffer, Draw
 {}
 
 void InteractionStage::Init() {
+	// determine maximal number of draw calls in one UBO supported by hardware
+	int maxUniformBlockSize;
+	qglGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
+	// some cards (AMD) don't have any relevant limit on the UBO block size, so limit this to a sensible number as necessary
+	maxDrawCallsPerBatch = std::min(256, maxUniformBlockSize / (int) sizeof(ShaderParams));
+	
 	ambientInteractionShader = programManager->LoadFromGenerator( "interaction_ambient", [](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.ambient", false ); } );
 	stencilInteractionShader = programManager->LoadFromGenerator( "interaction_stencil", [](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.stencil", false ); } );
 	if (GLAD_GL_ARB_bindless_texture) {
@@ -138,7 +145,7 @@ void InteractionStage::Init() {
 		bindlessStencilInteractionShader = programManager->LoadFromGenerator( "interaction_stencil_bindless", [](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.stencil", true ); } );
 	}
 
-	drawCalls = new DrawCall[MAX_DRAWS_PER_BATCH];
+	drawCalls = new DrawCall[maxDrawCallsPerBatch];
 }
 
 void InteractionStage::Shutdown() {
@@ -475,7 +482,7 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	drawBatches->AddDrawVertSurf( din->surf );
 
 	++currentIndex;
-	if (currentIndex == MAX_DRAWS_PER_BATCH) {
+	if (currentIndex == maxDrawCallsPerBatch) {
 		ExecuteDrawCalls();
 		ResetShaderParams();
 	}
@@ -484,8 +491,8 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 void InteractionStage::ResetShaderParams() {
 	currentIndex = 0;
 	currentTextureUnit = 4;
-	shaderParams = shaderParamsBuffer->Request<ShaderParams>(MAX_DRAWS_PER_BATCH);
-	drawBatches->BeginBatch( MAX_DRAWS_PER_BATCH );
+	shaderParams = shaderParamsBuffer->Request<ShaderParams>(maxDrawCallsPerBatch);
+	drawBatches->BeginBatch( maxDrawCallsPerBatch );
 }
 
 void InteractionStage::ExecuteDrawCalls() {
@@ -507,15 +514,4 @@ void InteractionStage::ExecuteDrawCalls() {
 	shaderParamsBuffer->BindRange( 1, shaderParams, totalDrawCalls );
 
 	drawBatches->DrawBatch();
-	/*for( int i = 0; i < currentIndex; ++i ) {
-		GL_SelectTexture( 4 );
-		drawCalls[i].bumpTexture->Bind();
-		GL_SelectTexture( 5 );
-		drawCalls[i].diffuseTexture->Bind();
-		GL_SelectTexture( 6 );
-		drawCalls[i].specularTexture->Bind();
-		qglVertexAttribI1i( 15, i );
-		vertexCache.VertexPosition( drawCalls[i].surf->ambientCache );
-		RB_DrawElementsWithCounters( drawCalls[i].surf );		
-	}*/
 }
