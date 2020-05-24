@@ -60,7 +60,6 @@ namespace {
 	struct InteractionUniforms: GLSLUniformGroup {
 		UNIFORM_GROUP_DEF( InteractionUniforms )
 
-		DEFINE_UNIFORM( float, cubic )
 		DEFINE_UNIFORM( sampler, normalTexture )
 		DEFINE_UNIFORM( sampler, diffuseTexture )
 		DEFINE_UNIFORM( sampler, specularTexture )
@@ -69,32 +68,6 @@ namespace {
 		DEFINE_UNIFORM( sampler, lightFalloffTexture )
 		DEFINE_UNIFORM( sampler, lightFalloffCubemap )
 		DEFINE_UNIFORM( sampler, ssaoTexture )
-
-		DEFINE_UNIFORM( float, minLevel )
-		DEFINE_UNIFORM( float, gamma )
-		DEFINE_UNIFORM( vec4, rimColor )
-
-		DEFINE_UNIFORM( float, advanced )
-		DEFINE_UNIFORM( int, shadows )
-		DEFINE_UNIFORM( int, shadowMapCullFront )
-		DEFINE_UNIFORM( vec4, shadowRect )
-		DEFINE_UNIFORM( int, softShadowsQuality )
-		DEFINE_UNIFORM( vec2, softShadowsSamples )
-		DEFINE_UNIFORM( float, softShadowsRadius )
-		DEFINE_UNIFORM( int, shadowMap )
-		DEFINE_UNIFORM( sampler, depthTexture )
-		DEFINE_UNIFORM( sampler, stencilTexture )
-		DEFINE_UNIFORM( vec2, renderResolution )
-
-		DEFINE_UNIFORM( float, RGTC )
-
-		// temp
-		DEFINE_UNIFORM( int, shadowMapHistory )
-		DEFINE_UNIFORM( int, frameCount )
-		DEFINE_UNIFORM( vec3, lightSamples )
-		DEFINE_UNIFORM( int, testSpecularFix )
-		DEFINE_UNIFORM( int, testBumpmapLightTogglingFix )
-		DEFINE_UNIFORM( int, testStencilSelfShadowFix )
 	};
 
 	int maxDrawCallsPerBatch;
@@ -112,15 +85,15 @@ namespace {
 		shader->Link();
 		shader->Activate();
 		InteractionUniforms *uniforms = shader->GetUniformGroup<InteractionUniforms>();
-		uniforms->lightProjectionCubemap.Set( 3 );
-		uniforms->lightProjectionTexture.Set( 3 );
-		uniforms->lightFalloffCubemap.Set( 2 );
-		uniforms->lightFalloffTexture.Set( 2 );
-		uniforms->ssaoTexture.Set( 7 );
+		uniforms->lightProjectionCubemap.Set( 2 );
+		uniforms->lightProjectionTexture.Set( 2 );
+		uniforms->lightFalloffCubemap.Set( 1 );
+		uniforms->lightFalloffTexture.Set( 1 );
+		uniforms->ssaoTexture.Set( 6 );
 		if (!bindless) {
-			uniforms->normalTexture.Set( 4 );
-			uniforms->diffuseTexture.Set( 5 );
-			uniforms->specularTexture.Set( 6 );
+			uniforms->normalTexture.Set( 0 );
+			uniforms->diffuseTexture.Set( 3 );
+			uniforms->specularTexture.Set( 4 );
 		}
 		shader->Deactivate();
 	}
@@ -189,19 +162,9 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	// bind the vertex and fragment program
 	ChooseInteractionProgram( vLight );
 	Uniforms::Interaction *interactionUniforms = interactionShader->GetUniformGroup<Uniforms::Interaction>();
-	interactionUniforms->RGTC.Set( globalImages->image_useNormalCompression.GetInteger() == 2 ? 1 : 0 );
 	interactionUniforms->SetForShadows( interactionSurfs == vLight->translucentInteractions );
-	// TODO: clean this up
-	interactionUniforms->lightProjectionCubemap.Set( 3 );
-	interactionUniforms->lightProjectionTexture.Set( 3 );
-	interactionUniforms->lightFalloffCubemap.Set( 2 );
-	interactionUniforms->lightFalloffTexture.Set( 2 );
-	interactionUniforms->ssaoTexture.Set( 7 );
-	interactionUniforms->normalTexture.Set( 4 );
-	interactionUniforms->diffuseTexture.Set( 5 );
-	interactionUniforms->specularTexture.Set( 6 );
 	if( backEnd.vLight->lightShader->IsAmbientLight() && ambientOcclusion->ShouldEnableForCurrentView() ) {
-		ambientOcclusion->BindSSAOTexture( 7 );
+		ambientOcclusion->BindSSAOTexture( 6 );
 	}
 
 	std::vector<const drawSurf_t*> drawSurfs;
@@ -214,7 +177,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 		} );
 	}
 
-	GL_SelectTexture( 2 );
+	GL_SelectTexture( 1 );
 	vLight->falloffImage->Bind();
 
 	if ( r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem() || vLight->shadows == LS_MAPS )
@@ -230,7 +193,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 			continue;
 		}
 
-		GL_SelectTexture( 3 );
+		GL_SelectTexture( 2 );
 		lightStage->texture.image->Bind();
 
 		for ( const drawSurf_t *surf : drawSurfs ) {
@@ -263,8 +226,8 @@ void InteractionStage::BindShadowTexture() {
 	} else {
 		GL_SelectTexture( 6 );
 		globalImages->currentDepthImage->Bind();
-		GL_SelectTexture( 7 );
 
+		GL_SelectTexture( 7 );
 		globalImages->shadowDepthFbo->Bind();
 		qglTexParameteri( GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX );
 	}
@@ -409,8 +372,11 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderSt
 }
 
 void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
-	if ( !din->bumpImage && !r_skipBump.GetBool() )
-		return;
+	if ( !din->bumpImage ) {
+		if ( !r_skipBump.GetBool() )
+			return;
+		din->bumpImage = globalImages->flatNormalMap;		
+	}
 
 	if ( !din->diffuseImage || r_skipDiffuse.GetBool() ) {
 		din->diffuseImage = globalImages->blackImage;
@@ -502,11 +468,11 @@ void InteractionStage::ExecuteDrawCalls() {
 	}
 
 	if (!renderBackend->ShouldUseBindlessTextures()) {
-		GL_SelectTexture( 4 );
+		GL_SelectTexture( 0 );
 		drawCalls[0].bumpTexture->Bind();
-		GL_SelectTexture( 5 );
+		GL_SelectTexture( 3 );
 		drawCalls[0].diffuseTexture->Bind();
-		GL_SelectTexture( 6 );
+		GL_SelectTexture( 4 );
 		drawCalls[0].specularTexture->Bind();
 	}
 
