@@ -42,7 +42,6 @@ private:
 	ShaderParams *shaderParams;
 	DrawCall *drawCalls;
 	int currentIndex;
-	int currentTextureUnit;
 
 	void BindShadowTexture();
 	void ChooseInteractionProgram( viewLight_t *vLight );

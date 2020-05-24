@@ -148,7 +148,6 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	// perform setup here that will be constant for all interactions
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | alphaMask | backEnd.depthFunc );
 	backEnd.currentSpace = NULL; // ambient/interaction shaders conflict
-	ResetShaderParams();
 
 	if ( r_useScissor.GetBool() && !backEnd.currentScissor.Equals( vLight->scissorRect ) ) {
 		backEnd.currentScissor = vLight->scissorRect;
@@ -195,14 +194,18 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 
 		GL_SelectTexture( 2 );
 		lightStage->texture.image->Bind();
+		// careful - making bindless textures resident could bind an arbitrary texture to the currently active
+		// slot, so reset this to something that is safe to override in bindless mode!
+		GL_SelectTexture(0);
 
+		ResetShaderParams();
 		for ( const drawSurf_t *surf : drawSurfs ) {
 			if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
 				continue;
 			}
-			if ( backEnd.currentSpace != surf->space ) {
-				// FIXME needs a better integration with RB_CreateSingleDrawInteractions
-				interactionUniforms->modelMatrix.Set( surf->space->modelMatrix );
+			if ( !surf->ambientCache.IsValid() ) {
+				common->Warning( "Found invalid ambientCache!" );
+				continue;
 			}
 
 			// set the vertex pointers
@@ -210,9 +213,8 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 
 			ProcessSingleSurface( vLight, lightStage, surf );
 		}
+		ExecuteDrawCalls();
 	}
-
-	ExecuteDrawCalls();
 
 	GL_SelectTexture( 0 );
 
@@ -456,7 +458,6 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 
 void InteractionStage::ResetShaderParams() {
 	currentIndex = 0;
-	currentTextureUnit = 4;
 	shaderParams = shaderParamsBuffer->Request<ShaderParams>(maxDrawCallsPerBatch);
 	drawBatches->BeginBatch( maxDrawCallsPerBatch );
 }
