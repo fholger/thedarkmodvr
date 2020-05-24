@@ -14,6 +14,8 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "DrawBatchExecutor.h"
+
+#include "../glsl.h"
 #include "../qgl.h"
 
 const int DrawBatchExecutor::MAX_DRAW_COMMANDS;
@@ -74,7 +76,7 @@ void DrawBatchExecutor::DrawBatch() {
 	if (ShouldUseMultiDraw()) {
 		if (!drawIdVertexEnabled) {
 			drawIdVertexEnabled = true;
-			qglEnableVertexAttribArray( 15 );
+			qglEnableVertexAttribArray( Attributes::Default::DrawId );
 		}
 		drawCommandBuffer.Commit( reinterpret_cast< byte* >( currentCommands ), numDrawCalls * sizeof(DrawElementsIndirectCommand) );
 		vertexCache.BindIndex();
@@ -82,12 +84,12 @@ void DrawBatchExecutor::DrawBatch() {
 	} else {
 		if (drawIdVertexEnabled) {
 			drawIdVertexEnabled = false;
-			qglDisableVertexAttribArray( 15 );
+			qglDisableVertexAttribArray( Attributes::Default::DrawId );
 		}
 		for (int i = 0; i < numDrawCalls; ++i) {
 			DrawElementsIndirectCommand &cmd = currentCommands[i];
 			const void *indexOffset = reinterpret_cast< const void* >( cmd.firstIndex * sizeof(glIndex_t) );
-			qglVertexAttribI1i(15, i);
+			qglVertexAttribI1i(Attributes::Default::DrawId, i);
 			qglDrawElementsBaseVertex(GL_TRIANGLES, cmd.count, GL_INDEX_TYPE, indexOffset, cmd.baseVertex);
 		}
 	}
@@ -115,10 +117,10 @@ void DrawBatchExecutor::InitDrawIdBuffer() {
 	qglBufferData(GL_ARRAY_BUFFER, drawIds.size(), drawIds.data(), GL_STATIC_DRAW);
 	qglBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	qglVertexAttribIFormat( 15, 1, GL_UNSIGNED_INT, 0 );
-	qglBindVertexBuffer( 15, drawIdBuffer, 0, sizeof(uint32_t) );
-	qglVertexAttribBinding( 15, 15 );
-	qglVertexBindingDivisor( 15, 1 );
-	qglEnableVertexAttribArray( 15 );
+	qglVertexAttribIFormat( Attributes::Default::DrawId, 1, GL_UNSIGNED_INT, 0 );
+	qglBindVertexBuffer( Attributes::Default::DrawId, drawIdBuffer, 0, sizeof(uint32_t) );
+	qglVertexAttribBinding( Attributes::Default::DrawId, Attributes::Default::DrawId );
+	qglVertexBindingDivisor( Attributes::Default::DrawId, 1 );
+	qglEnableVertexAttribArray( Attributes::Default::DrawId );
 	drawIdVertexEnabled = true;
 }

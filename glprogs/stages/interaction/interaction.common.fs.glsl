@@ -14,23 +14,23 @@ in vec2 var_TexDiffuse;
 in vec2 var_TexNormal;
 in vec2 var_TexSpecular;
 in vec4 var_TexLight;
-flat in int var_drawId;
+flat in int var_DrawId;
 
 #pragma tdm_include "stages/interaction/interaction.params.glsl"
 
 #ifdef BINDLESS_TEXTURES
 vec4 textureNormal(vec2 uv) {
-    sampler2D normalTexture = sampler2D(params[var_drawId].normalTexture);
+    sampler2D normalTexture = sampler2D(params[var_DrawId].normalTexture);
     return texture(normalTexture, uv);
 }
 
 vec4 textureDiffuse(vec2 uv) {
-    sampler2D diffuseTexture = sampler2D(params[var_drawId].diffuseTexture);
+    sampler2D diffuseTexture = sampler2D(params[var_DrawId].diffuseTexture);
     return texture(diffuseTexture, uv);
 }
 
 vec4 textureSpecular(vec2 uv) {
-    sampler2D specularTexture = sampler2D(params[var_drawId].specularTexture);
+    sampler2D specularTexture = sampler2D(params[var_DrawId].specularTexture);
     return texture(specularTexture, uv);
 }
 #else
@@ -74,7 +74,7 @@ in vec3 var_ViewDirLocal;
 
 void calcNormals() {
     // compute normal from normal map, move from [0, 1] to [-1, 1] range, normalize 
-	if (params[var_drawId].hasTextureDNS[1] != 0) {
+	if (params[var_DrawId].hasTextureDNS[1] != 0) {
 		vec4 bumpTexel = textureNormal( var_TexNormal.st ) * 2. - 1.;
     	RawN = vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0))); 
     	N = var_TangentBitangentNormalMatrix * RawN; 
@@ -87,8 +87,8 @@ void calcNormals() {
 //fetch surface normal at fragment
 void fetchDNS() {
 	//initialize common variables (TODO: move somewhere else?)
-	lightDir = params[var_drawId].lightOrigin.xyz - var_Position;
-	viewDir = params[var_drawId].viewOrigin.xyz - var_Position;
+	lightDir = params[var_DrawId].lightOrigin.xyz - var_Position;
+	viewDir = params[var_DrawId].viewOrigin.xyz - var_Position;
 	L = normalize(lightDir);
 	V = normalize(viewDir);
 	H = normalize(L + V);
@@ -119,12 +119,12 @@ vec3 lightColor() {
 //illumination model with "simple interaction" setting
 vec3 simpleInteraction() {
 	// compute the diffuse term    
-	vec3 diffuse = textureDiffuse(var_TexDiffuse).rgb * params[var_drawId].diffuseColor.rgb;
+	vec3 diffuse = textureDiffuse(var_TexDiffuse).rgb * params[var_DrawId].diffuseColor.rgb;
 
 	// compute the specular term
 	float specularPower = 10.0;
 	float specularContribution = pow(NdotH, specularPower);
-	vec3 specular = textureSpecular(var_TexSpecular).rgb * specularContribution * params[var_drawId].specularColor.rgb;
+	vec3 specular = textureSpecular(var_TexSpecular).rgb * specularContribution * params[var_DrawId].specularColor.rgb;
 
 	// compute lighting model
 	vec3 finalColor = (diffuse + specular) * NdotL * lightColor() * var_Color.rgb;
@@ -141,7 +141,7 @@ vec3 advancedInteraction() {
 	vec3 diffuse = textureDiffuse(var_TexDiffuse).rgb;
 
 	vec3 specular = vec3(0.026);	//default value if texture not set?...
-	if (dot(params[var_drawId].specularColor, params[var_drawId].specularColor) > 0.0)
+	if (dot(params[var_DrawId].specularColor, params[var_DrawId].specularColor) > 0.0)
 		specular = textureSpecular(var_TexSpecular).rgb;
 
 	vec3 localL = normalize(var_LightDirLocal);
@@ -173,9 +173,9 @@ vec3 advancedInteraction() {
 
 	vec3 totalColor;
 	if (u_testSpecularFix != 0)
-		totalColor = (specularColor * params[var_drawId].specularColor.rgb * R2f + diffuse * params[var_drawId].diffuseColor.rgb) * light * lightColor() * var_Color.rgb;
+		totalColor = (specularColor * params[var_DrawId].specularColor.rgb * R2f + diffuse * params[var_DrawId].diffuseColor.rgb) * light * lightColor() * var_Color.rgb;
 	else
-		totalColor = (specularColor * R2f + diffuse) * light * params[var_drawId].diffuseColor.rgb * lightColor() * var_Color.rgb;
+		totalColor = (specularColor * R2f + diffuse) * light * params[var_DrawId].diffuseColor.rgb * lightColor() * var_Color.rgb;
 
 	return totalColor;
 }
