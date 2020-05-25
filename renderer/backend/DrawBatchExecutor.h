@@ -45,6 +45,9 @@ private:
 	uint maxDrawCommands = 0;
 	uint currentIndex = 0;
 
+	uint numVerts = 0;
+	uint numIndexes = 0;
+
 	bool ShouldUseMultiDraw() const;
 	void InitDrawIdBuffer();
 };

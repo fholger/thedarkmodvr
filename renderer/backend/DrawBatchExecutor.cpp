@@ -46,6 +46,9 @@ void DrawBatchExecutor::BeginBatch( int maxDrawCalls ) {
 		fallbackBuffer.resize( maxDrawCalls );
 		currentCommands = fallbackBuffer.data();
 	}
+
+	numVerts = 0;
+	numIndexes = 0;
 }
 
 void DrawBatchExecutor::AddDrawVertSurf( const drawSurf_t *surf ) {
@@ -61,6 +64,10 @@ void DrawBatchExecutor::AddDrawVertSurf( const drawSurf_t *surf ) {
 	cmd.firstIndex = surf->indexCache.offset / sizeof(glIndex_t);
 	cmd.baseVertex = surf->ambientCache.offset / sizeof(idDrawVert);
 	cmd.baseInstance = idx;
+
+	if (surf->frontendGeo)
+		numVerts += surf->frontendGeo->numVerts;
+	numIndexes += surf->numIndexes;
 }
 
 void DrawBatchExecutor::DrawBatch() {
@@ -97,6 +104,13 @@ void DrawBatchExecutor::DrawBatch() {
 	currentIndex = 0;
 	currentCommands = nullptr;
 	maxDrawCommands = 0;
+
+	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
+		backEnd.pc.c_drawElements += numDrawCalls;
+		backEnd.pc.c_drawIndexes += numIndexes;
+		backEnd.pc.c_drawVertexes += numVerts;
+		backEnd.pc.c_vboIndexes += numIndexes;
+	}
 }
 
 void DrawBatchExecutor::Lock() {
