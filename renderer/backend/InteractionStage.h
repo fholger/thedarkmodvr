@@ -30,7 +30,6 @@ public:
 
 private:
 	struct ShaderParams;
-	struct DrawCall;
 
 	ShaderParamsBuffer *shaderParamsBuffer;
 	DrawBatchExecutor *drawBatches;
@@ -40,9 +39,11 @@ private:
 	GLSLProgram *bindlessAmbientInteractionShader;
 	GLSLProgram *interactionShader;
 	ShaderParams *shaderParams;
-	DrawCall *drawCalls;
 	int currentIndex;
 
+	int maxSupportedDrawsPerBatch;
+
+	void LoadInteractionShader(GLSLProgram *shader, const idStr &baseName, bool bindless);
 	void BindShadowTexture();
 	void ChooseInteractionProgram( viewLight_t *vLight );
 	void ProcessSingleSurface( viewLight_t *vLight, const shaderStage_t *lightStage, const drawSurf_t *surf );
