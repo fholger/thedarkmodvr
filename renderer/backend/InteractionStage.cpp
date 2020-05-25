@@ -61,6 +61,14 @@ namespace {
 		DEFINE_UNIFORM( sampler, lightFalloffTexture )
 		DEFINE_UNIFORM( sampler, lightFalloffCubemap )
 		DEFINE_UNIFORM( sampler, ssaoTexture )
+
+		DEFINE_UNIFORM( int, advanced )
+		DEFINE_UNIFORM( int, testSpecularFix )
+		DEFINE_UNIFORM( int, testBumpmapLightTogglingFix )
+		DEFINE_UNIFORM( int, cubic )
+		DEFINE_UNIFORM( float, gamma )
+		DEFINE_UNIFORM( float, minLevel )
+		DEFINE_UNIFORM( int, ssaoEnabled )
 	};
 
 	enum TextureUnits {
@@ -108,11 +116,7 @@ InteractionStage::InteractionStage( ShaderParamsBuffer *shaderParamsBuffer, Draw
 {}
 
 void InteractionStage::Init() {
-	// determine maximal number of draw calls in one UBO supported by hardware
-	int maxUniformBlockSize;
-	qglGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
-	// some cards (AMD) don't have any relevant limit on the UBO block size, so limit this to a sensible number as necessary
-	maxSupportedDrawsPerBatch = std::min(256, maxUniformBlockSize / (int) sizeof(ShaderParams));
+	maxSupportedDrawsPerBatch = shaderParamsBuffer->MaxSupportedParamBufferSize<ShaderParams>();
 	
 	ambientInteractionShader = programManager->LoadFromGenerator( "interaction_ambient", 
 		[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.ambient", false ); } );
@@ -162,8 +166,10 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 
 	// bind the vertex and fragment program
 	ChooseInteractionProgram( vLight );
-	Uniforms::Interaction *interactionUniforms = interactionShader->GetUniformGroup<Uniforms::Interaction>();
-	interactionUniforms->SetForShadows( interactionSurfs == vLight->translucentInteractions );
+	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
+	uniforms->cubic.Set( vLight->lightShader->IsCubicLight() ? 1 : 0 );
+	//interactionUniforms->SetForShadows( interactionSurfs == vLight->translucentInteractions );
+
 	if( backEnd.vLight->lightShader->IsAmbientLight() && ambientOcclusion->ShouldEnableForCurrentView() ) {
 		ambientOcclusion->BindSSAOTexture( 6 );
 	}
@@ -247,6 +253,13 @@ void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
 		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessStencilInteractionShader : stencilInteractionShader;
 	}
 	interactionShader->Activate();
+
+	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
+	uniforms->advanced.Set( r_interactionProgram.GetInteger() );
+	uniforms->gamma.Set( r_ambientGamma.GetFloat() );
+	uniforms->minLevel.Set( r_ambientMinLevel.GetFloat() );
+	uniforms->testSpecularFix.Set( 1 );
+	uniforms->testBumpmapLightTogglingFix.Set( 0 );
 }
 
 void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderStage_t *lightStage, const drawSurf_t *surf ) {

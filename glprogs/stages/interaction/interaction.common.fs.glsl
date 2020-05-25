@@ -50,12 +50,13 @@ vec4 textureSpecular(vec2 uv) {
     return texture(u_specularTexture, uv);
 }
 #endif
+
 uniform sampler2D u_lightFalloffTexture;
 uniform sampler2D u_lightProjectionTexture;
 uniform samplerCube	u_lightProjectionCubemap;
 
-uniform float	u_advanced;
-uniform float	u_cubic;
+uniform int	    u_advanced;
+uniform int 	u_cubic;
 uniform int		u_testSpecularFix;	//stgatilov #5044: for testing only!
 uniform int		u_testBumpmapLightTogglingFix;  //stgatilov #4825: for testing only
 
@@ -182,7 +183,7 @@ vec3 advancedInteraction() {
 
 vec3 computeInteraction() {
 	vec3 res;
-	if (u_advanced == 1.0)
+	if (u_advanced == 1)
 		res = advancedInteraction();
 	else
 		res = simpleInteraction();

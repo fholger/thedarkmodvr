@@ -27,6 +27,7 @@ public:
 	T *Request( uint32_t count, bool precommit = false ) {
 		static_assert( sizeof(T) % 16 == 0,
 			"UBO structs must be 16-byte aligned, use padding if necessary. Be sure to obey the std140 layout rules." );
+		assert(count <= MaxSupportedParamBufferSize<T>());
 		
 		T *array = reinterpret_cast<T*>( uniformBuffer.Reserve( sizeof(T) * count, precommit ) );
 		return array;
@@ -42,6 +43,13 @@ public:
 		uniformBuffer.BindRange( index, (byte*)array, sizeof(T) * count );		
 	}
 
+	template<typename T>
+	int MaxSupportedParamBufferSize() const {
+		// some cards (AMD) don't have any relevant limit on the UBO block size, so limit this to a sensible number as necessary
+		return Min(256, maxUniformBlockSize / (int)sizeof(T));
+	}
+
 private:
 	UniversalGpuBuffer uniformBuffer;
+	int maxUniformBlockSize = 0;
 };

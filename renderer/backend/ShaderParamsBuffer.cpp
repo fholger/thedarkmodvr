@@ -24,6 +24,8 @@ void ShaderParamsBuffer::Init() {
 	GLint uboAlignment;
 	qglGetIntegerv( GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboAlignment );
 	uniformBuffer.Init( GL_UNIFORM_BUFFER, SHADER_BUFFER_SIZE, uboAlignment );
+
+	qglGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
 }
 
 void ShaderParamsBuffer::Destroy() {

@@ -22,9 +22,6 @@ flat in int var_DrawId;
 
 out vec4 FragColor;
      
-uniform sampler2D u_lightFalloffTexture;         
-uniform sampler2D u_lightProjectionTexture;         
-
 #ifdef BINDLESS_TEXTURES
 vec4 textureNormal(vec2 uv) {
     sampler2D normalTexture = sampler2D(params[var_DrawId].normalTexture);
@@ -58,10 +55,12 @@ vec4 textureSpecular(vec2 uv) {
 }
 #endif
 
+uniform sampler2D u_lightProjectionTexture;         
 uniform samplerCube	u_lightProjectionCubemap;
+uniform sampler2D u_lightFalloffTexture;         
 uniform samplerCube	u_lightFalloffCubemap;
          
-uniform float u_cubic;
+uniform int u_cubic;
 uniform float u_gamma, u_minLevel;
    
 uniform sampler2D u_ssaoTexture;
@@ -88,7 +87,7 @@ void main() {
 
 	// compute lighting model     
 	vec4 color = params[var_DrawId].diffuseColor * var_Color, light;
-	if (u_cubic == 1.0) {
+	if (u_cubic == 1) {
 		//color.rgb = vec3(var_TexLight.z);
 		vec3 tl = vec3(var_TexLight.xy/var_TexLight.w, var_TexLight.z) - .5;
 		float a = .25 - tl.x*tl.x - tl.y*tl.y - tl.z*tl.z;
@@ -99,7 +98,7 @@ void main() {
 		light = vec4(lightProjection * lightFalloff, 1);
 	} 
 
-	if (u_cubic == 1.0) {
+	if (u_cubic == 1) {
 		vec4 worldN = params[var_DrawId].modelMatrix * vec4(N, 0); // rotation only
 		vec3 cubeTC = var_TexLight.xyz * 2.0 - 1.0;
 		// diffuse
