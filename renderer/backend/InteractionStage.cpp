@@ -261,6 +261,7 @@ void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
 	uniforms->minLevel.Set( r_ambientMinLevel.GetFloat() );
 	uniforms->testSpecularFix.Set( 1 );
 	uniforms->testBumpmapLightTogglingFix.Set( 0 );
+	uniforms->ssaoEnabled.Set( ambientOcclusion->ShouldEnableForCurrentView() ? 1 : 0 );
 }
 
 void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderStage_t *lightStage, const drawSurf_t *surf ) {
