@@ -483,6 +483,10 @@ This will defer the free until the current frame has run through the back end.
 ==============
 */
 void R_FreeStaticTriSurf( srfTriangles_t *tri ) {
+	R_ReallyFreeStaticTriSurf( tri );
+	return;
+	// FIXME: do we need this, do we need to make it runnable concurrently?
+	
 	frameData_t		*frame;
 
 	if ( !tri ) {
