@@ -460,19 +460,18 @@ R_FreeDeferredTriSurfs
 ==================
 */
 void R_FreeDeferredTriSurfs( frameData_t *frame ) {
-	srfTriangles_t	*tri, *next;
+	srfTriangles_t *next;
 
-	if ( !frame || !frame->firstDeferredFreeTriSurf ) {
+	if ( !frame ) {
 		return;
 	}
 
-	for ( tri = frame->firstDeferredFreeTriSurf; tri; tri = next ) {
+	for ( srfTriangles_t *tri = frame->deferredFreeTriSurfs; tri; tri = next ) {
 		next = tri->nextDeferredFree;
 		R_ReallyFreeStaticTriSurf( tri );
 	}
 
-	frame->firstDeferredFreeTriSurf = NULL;
-	frame->lastDeferredFreeTriSurf = NULL;
+	frame->deferredFreeTriSurfs = nullptr;
 }
 
 /*
@@ -483,10 +482,6 @@ This will defer the free until the current frame has run through the back end.
 ==============
 */
 void R_FreeStaticTriSurf( srfTriangles_t *tri ) {
-	R_ReallyFreeStaticTriSurf( tri );
-	return;
-	// FIXME: do we need this, do we need to make it runnable concurrently?
-	
 	frameData_t		*frame;
 
 	if ( !tri ) {
@@ -505,13 +500,10 @@ void R_FreeStaticTriSurf( srfTriangles_t *tri ) {
 #ifdef ID_DEBUG_MEMORY
 		R_CheckStaticTriSurfMemory( tri );
 #endif
-		tri->nextDeferredFree = NULL;
-		if ( frame->lastDeferredFreeTriSurf ) {
-			frame->lastDeferredFreeTriSurf->nextDeferredFree = tri;
-		} else {
-			frame->firstDeferredFreeTriSurf = tri;
-		}
-		frame->lastDeferredFreeTriSurf = tri;
+		// lock-free atomic linked list, since multiple frontend worker threads can call this
+		do {
+			tri->nextDeferredFree = frame->deferredFreeTriSurfs;
+		} while ( !frame->deferredFreeTriSurfs.compare_exchange_weak( tri->nextDeferredFree, tri ) );
 	}
 }
 
