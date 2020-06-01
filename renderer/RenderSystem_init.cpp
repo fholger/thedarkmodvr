@@ -1610,11 +1610,12 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		// free all of our texture numbers
 		soundSystem->ShutdownHW();
 		Sys_ShutdownInput();
-		renderBackend->Shutdown();
+		frameBuffers->PurgeAll();
 		globalImages->PurgeAllImages();
 		// free the context and close the window
 		session->TerminateFrontendThread();
 		vertexCache.Shutdown();
+		renderBackend->Shutdown();
 		GLimp_Shutdown();
 		glConfig.isInitialized = false;
 
@@ -1628,7 +1629,6 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 
 		// regenerate all images
 		globalImages->ReloadAllImages();
-		frameBuffers->PurgeAll();
 		session->StartFrontendThread();
 	} else {
 		glimpParms_t	parms;
