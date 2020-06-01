@@ -77,6 +77,11 @@ void FrameBufferManager::PurgeAll() {
 	for (auto fbo : fbos) {
 		fbo->Destroy();
 	}
+
+	if (pbo != 0) {
+		qglDeleteBuffers(1, &pbo);
+		pbo = 0;
+	}
 }
 
 void FrameBufferManager::BeginFrame() {
