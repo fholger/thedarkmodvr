@@ -154,13 +154,16 @@ void AmbientOcclusionStage::Init() {
 void AmbientOcclusionStage::Shutdown() {
 	if (ssaoFBO != nullptr) {
 		ssaoFBO->Destroy();
+		ssaoFBO = nullptr;
 	}
 	if (ssaoBlurFBO != nullptr) {
 		ssaoBlurFBO->Destroy();
+		ssaoBlurFBO = nullptr;
 	}
 	for (int i = 0; i <= MAX_DEPTH_MIPS; ++i) {
 		if (depthMipFBOs[i] != nullptr) {
 			depthMipFBOs[i]->Destroy();
+			depthMipFBOs[i] = nullptr;
 		}
 	}
 	if (viewspaceDepth != nullptr) {
@@ -183,7 +186,7 @@ extern bool primaryOn;
 void AmbientOcclusionStage::ComputeSSAOFromDepth() {
 	GL_PROFILE("AmbientOcclusionStage");
 
-	if (ssaoFBO == 0) {
+	if (ssaoFBO == nullptr) {
 		Init();
 	}
 

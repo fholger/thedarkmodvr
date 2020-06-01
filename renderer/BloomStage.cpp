@@ -155,15 +155,19 @@ void BloomStage::Shutdown() {
 	for (int i = 0; i < MAX_DOWNSAMPLING_STEPS; ++i) {
 		if (downsampleFBOs[i] != nullptr) {
 			downsampleFBOs[i]->Destroy();
+			downsampleFBOs[i] = nullptr;
 		}
 		if (upsampleFBOs[i] != nullptr) {
 			upsampleFBOs[i]->Destroy();
+			upsampleFBOs[i] = nullptr;
 		}
 		if (bloomDownSamplers[i] != nullptr) {
 			bloomDownSamplers[i]->PurgeImage();
+			bloomDownSamplers[i] = nullptr;
 		}
 		if (bloomUpSamplers[i] != nullptr) {
 			bloomUpSamplers[i]->PurgeImage();
+			bloomUpSamplers[i] = nullptr;
 		}
 	}
 }
