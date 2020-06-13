@@ -205,6 +205,8 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 		// slot, so reset this to something that is safe to override in bindless mode!
 		GL_SelectTexture(TU_NORMAL);
 
+		vertexCache.BindVertex();
+
 		ResetShaderParams();
 		for ( const drawSurf_t *surf : drawSurfs ) {
 			if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
@@ -215,10 +217,18 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 				continue;
 			}
 
-			// set the vertex pointers
-			vertexCache.VertexPosition( surf->ambientCache );
+			if ( surf->space->weaponDepthHack ) {
+				// GL state change, need to execute previous draw calls
+				ExecuteDrawCalls();
+				RB_EnterWeaponDepthHack();
+			}
 
 			ProcessSingleSurface( vLight, lightStage, surf );
+
+			if ( surf->space->weaponDepthHack ) {
+				ExecuteDrawCalls();
+				RB_LeaveDepthHack();
+			}
 		}
 		ExecuteDrawCalls();
 	}
@@ -410,7 +420,6 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 
 			// change in textures, execute previous draw calls
 			ExecuteDrawCalls();
-			ResetShaderParams();
 		}
 	}
 
@@ -474,7 +483,6 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	++currentIndex;
 	if (currentIndex == maxSupportedDrawsPerBatch) {
 		ExecuteDrawCalls();
-		ResetShaderParams();
 	}
 }
 
@@ -494,4 +502,6 @@ void InteractionStage::ExecuteDrawCalls() {
 	shaderParamsBuffer->BindRange( 1, shaderParams, totalDrawCalls );
 
 	drawBatches->DrawBatch();
+
+	ResetShaderParams();
 }
