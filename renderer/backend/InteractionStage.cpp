@@ -86,17 +86,12 @@ namespace {
 }
 
 void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &baseName, bool bindless ) {
-	shader->Init();
 	idDict defines;
 	defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", maxSupportedDrawsPerBatch ) );
 	if (bindless) {
 		defines.Set( "BINDLESS_TEXTURES", "1" );
 	}
-	shader->AttachVertexShader("stages/interaction/" + baseName + ".vs.glsl", defines);
-	shader->AttachFragmentShader("stages/interaction/" + baseName + ".fs.glsl", defines);
-	Attributes::Default::Bind(shader);
-	shader->Link();
-	shader->Activate();
+	shader->InitFromFiles( "stages/interaction/" + baseName + ".vs.glsl", "stages/interaction/" + baseName + ".fs.glsl", defines );
 	InteractionUniforms *uniforms = shader->GetUniformGroup<InteractionUniforms>();
 	uniforms->lightProjectionCubemap.Set( TU_LIGHT_PROJECT );
 	uniforms->lightProjectionTexture.Set( TU_LIGHT_PROJECT );
@@ -108,7 +103,6 @@ void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &
 		uniforms->diffuseTexture.Set( TU_DIFFUSE );
 		uniforms->specularTexture.Set( TU_SPECULAR );
 	}
-	shader->Deactivate();
 }
 
 
