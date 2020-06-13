@@ -122,7 +122,6 @@ void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, in
 	qglEnable( GL_STENCIL_TEST );
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 
-	vertexCache.BindIndex();
 	vertexCache.BindVertex();
 
 	ResetShaderParams();

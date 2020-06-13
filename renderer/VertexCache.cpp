@@ -216,10 +216,10 @@ void idVertexCache::BindVertex( attribBind_t attrib ) {
 	if (currentVertexBuffer != dynamicData.vertexBuffer.GetAPIObject()) {
 		currentVertexBuffer = dynamicData.vertexBuffer.GetAPIObject();
 		qglBindBuffer( GL_ARRAY_BUFFER, currentVertexBuffer );
-	}
-	if (attrib != currentAttribBinding) {
 		BindAttributes( 0, attrib );
-		currentAttribBinding = attrib;
+	}
+	else if (attrib != currentAttribBinding) {
+		BindAttributes( 0, attrib );
 	}
 }
 
