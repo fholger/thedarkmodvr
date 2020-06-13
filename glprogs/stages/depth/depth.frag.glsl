@@ -29,6 +29,10 @@ vec4 textureAlpha() {
 void main() {
 	if (clipPlaneDist < 0.0)
 		discard;
+	vec4 scissor = params[var_DrawId].scissor;
+	// manual scissor test to avoid GL state change; needed to cull invisible parts of surfaces around visportals
+	if (gl_FragCoord.x < scissor.x || gl_FragCoord.y < scissor.y || gl_FragCoord.x >= scissor.z || gl_FragCoord.y >= scissor.w)
+		discard;
 	
 	if (params[var_DrawId].alphaTest.x < 0) {
 		FragColor = params[var_DrawId].color;

@@ -4,6 +4,7 @@ struct ShaderParams {
     mat4 modelViewMatrix;
 	mat4 textureMatrix;
 	vec4 color;
+	vec4 scissor;
 	vec2 alphaTest;
 	uvec2 texture;
 };
