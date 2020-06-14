@@ -43,6 +43,9 @@ private:
 
 	int maxSupportedDrawsPerBatch;
 
+	GLuint poissonSamplesUbo = 0;
+	idList<idVec2> poissonSamples;
+
 	void LoadInteractionShader(GLSLProgram *shader, const idStr &baseName, bool bindless);
 	void BindShadowTexture();
 	void ChooseInteractionProgram( viewLight_t *vLight );
@@ -50,4 +53,6 @@ private:
 	void PrepareDrawCommand( drawInteraction_t * inter );
 	void ResetShaderParams();
 	void ExecuteDrawCalls();
+
+	void PreparePoissonSamples();
 };
