@@ -62,6 +62,7 @@ namespace {
 		DEFINE_UNIFORM( sampler, lightFalloffTexture )
 		DEFINE_UNIFORM( sampler, lightFalloffCubemap )
 		DEFINE_UNIFORM( sampler, ssaoTexture )
+		DEFINE_UNIFORM( vec3, globalLightOrigin )
 
 		DEFINE_UNIFORM( int, advanced )
 		DEFINE_UNIFORM( int, testSpecularFix )
@@ -79,6 +80,7 @@ namespace {
 		DEFINE_UNIFORM( int, shadowMapCullFront )
 		DEFINE_UNIFORM( sampler, stencilTexture )
 		DEFINE_UNIFORM( sampler, depthTexture )
+		DEFINE_UNIFORM( sampler, shadowMap )
 	};
 
 	enum TextureUnits {
@@ -109,6 +111,7 @@ void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &
 	uniforms->ssaoTexture.Set( TU_SSAO );
 	uniforms->stencilTexture.Set( TU_SHADOW_STENCIL );
 	uniforms->depthTexture.Set( TU_SHADOW_DEPTH );
+	uniforms->shadowMap.Set( TU_SHADOW_MAP );
 	if (!bindless) {
 		uniforms->normalTexture.Set( TU_NORMAL );
 		uniforms->diffuseTexture.Set( TU_DIFFUSE );
@@ -131,11 +134,15 @@ void InteractionStage::Init() {
 		[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.ambient", false ); } );
 	stencilInteractionShader = programManager->LoadFromGenerator( "interaction_stencil", 
 		[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.stencil", false ); } );
+	shadowMapInteractionShader = programManager->LoadFromGenerator( "interaction_shadowmap", 
+		[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.shadowmap", false ); } );
 	if (GLAD_GL_ARB_bindless_texture) {
 		bindlessAmbientInteractionShader = programManager->LoadFromGenerator( "interaction_ambient_bindless", 
 			[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.ambient", true ); } );
 		bindlessStencilInteractionShader = programManager->LoadFromGenerator( "interaction_stencil_bindless", 
 			[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.stencil", true ); } );
+		bindlessShadowMapInteractionShader = programManager->LoadFromGenerator( "interaction_shadowmap_bindless", 
+			[this](GLSLProgram *shader) { LoadInteractionShader( shader, "interaction.shadowmap", true ); } );
 	}
 
 	qglGenBuffers( 1, &poissonSamplesUbo );
@@ -184,10 +191,10 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	}
 
 	// bind the vertex and fragment program
-	ChooseInteractionProgram( vLight );
+	ChooseInteractionProgram( vLight, interactionSurfs == backEnd.vLight->translucentInteractions );
 	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
 	uniforms->cubic.Set( vLight->lightShader->IsCubicLight() ? 1 : 0 );
-	//interactionUniforms->SetForShadows( interactionSurfs == vLight->translucentInteractions );
+	uniforms->globalLightOrigin.Set( vLight->globalLightOrigin );
 
 	std::vector<const drawSurf_t*> drawSurfs;
 	for ( const drawSurf_t *surf = interactionSurfs; surf; surf = surf->nextOnLight) {
@@ -203,8 +210,8 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	if ( r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem() || vLight->shadows == LS_MAPS )
 		BindShadowTexture();
 
-	if( backEnd.vLight->lightShader->IsAmbientLight() && ambientOcclusion->ShouldEnableForCurrentView() ) {
-		ambientOcclusion->BindSSAOTexture( 6 );
+	if( vLight->lightShader->IsAmbientLight() && ambientOcclusion->ShouldEnableForCurrentView() ) {
+		ambientOcclusion->BindSSAOTexture( TU_SSAO );
 	}
 
 	const idMaterial	*lightShader = vLight->lightShader;
@@ -270,14 +277,13 @@ void InteractionStage::BindShadowTexture() {
 	}
 }
 
-void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
+void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight, bool translucent ) {
 	if ( vLight->lightShader->IsAmbientLight() ) {
 		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessAmbientInteractionShader : ambientInteractionShader;
 		Uniforms::Interaction *uniforms = interactionShader->GetUniformGroup<Uniforms::Interaction>();
 		uniforms->ambient = true;
 	} else if ( vLight->shadowMapIndex ) {
-		// FIXME: port shadowmap shader
-		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessStencilInteractionShader : stencilInteractionShader;
+		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessShadowMapInteractionShader : shadowMapInteractionShader;
 	} else {
 		interactionShader = renderBackend->ShouldUseBindlessTextures() ? bindlessStencilInteractionShader : stencilInteractionShader;
 	}
@@ -309,7 +315,7 @@ void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight ) {
 	}
 	uniforms->shadowMapCullFront.Set( r_shadowMapCullFront );
 
-	if ( ( vLight->globalShadows || vLight->localShadows || r_shadows.GetInteger() == 2 ) && !backEnd.viewDef->IsLightGem() ) {
+	if ( !translucent && ( vLight->globalShadows || vLight->localShadows || r_shadows.GetInteger() == 2 ) && !backEnd.viewDef->IsLightGem() ) {
 		uniforms->softShadowsQuality.Set( r_softShadowsQuality.GetInteger() );
 	} else {
 		uniforms->softShadowsQuality.Set( 0 );
