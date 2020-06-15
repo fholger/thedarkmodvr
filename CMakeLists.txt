@@ -217,6 +217,7 @@ find_package(FFMPEG REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(PUGIXML REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(PNG REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 find_package(MBEDTLS REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
+find_package(OPENVR REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 
 include_directories(
 		"${PROJECT_SOURCE_DIR}"
@@ -234,6 +235,7 @@ include_directories(
 		${PUGIXML_INCLUDE_DIRS}
 		${PNG_INCLUDE_DIRS}
 		${MBEDTLS_INCLUDE_DIRS}
+        ${OPENVR_INCLUDE_DIRS}
 )
 
 target_link_libraries(TheDarkMod
@@ -247,6 +249,7 @@ target_link_libraries(TheDarkMod
 		${FFMPEG_LIBRARIES}
 		${PNG_LIBRARIES}
 		${MBEDTLS_LIBRARIES}
+        ${OPENVR_LIBRARIES}
 )
 target_link_libraries(TheDarkMod debug ${PUGIXML_LIBRARIES_D} optimized ${PUGIXML_LIBRARIES})
 
@@ -275,6 +278,7 @@ if (COPY_EXE)
 	add_custom_command(
 			TARGET TheDarkMod POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:TheDarkMod> "${GAME_DIR}"
+			COMMAND ${CMAKE_COMMAND} -E copy "${OPENVR_DLL}" "${GAME_DIR}"
 			COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/glprogs" "${GAME_DIR}/glprogs"
 	)
 	if (UNIX)
