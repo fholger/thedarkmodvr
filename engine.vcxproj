@@ -503,6 +503,7 @@
     <ClInclude Include="renderer\simplex.h" />
     <ClInclude Include="renderer\tr_local.h" />
     <ClInclude Include="renderer\VertexCache.h" />
+    <ClInclude Include="renderer\vr\OpenVRBackend.h" />
     <ClInclude Include="sound\efxlib.h" />
     <ClInclude Include="sound\snd_efxpresets.h" />
     <ClInclude Include="sound\snd_local.h" />
@@ -1097,6 +1098,7 @@
     <ClCompile Include="renderer\tr_trisurf.cpp" />
     <ClCompile Include="renderer\tr_turboshadow.cpp" />
     <ClCompile Include="renderer\VertexCache.cpp" />
+    <ClCompile Include="renderer\vr\OpenVRBackend.cpp" />
     <ClCompile Include="sound\snd_cache.cpp" />
     <ClCompile Include="sound\snd_decoder.cpp" />
     <ClCompile Include="sound\snd_efxfile.cpp" />

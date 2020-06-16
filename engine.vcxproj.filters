@@ -142,6 +142,9 @@
     <Filter Include="Renderer\Backend">
       <UniqueIdentifier>{26537bda-7135-4d5d-b420-3003aa3a506b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\VR">
+      <UniqueIdentifier>{ca633a16-e4aa-4e39-a1f8-1e94cf749397}/UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1281,6 +1284,9 @@
     </ClInclude>
     <ClInclude Include="renderer\backend\DepthStage.h">
       <Filter>Renderer\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vr\OpenVRBackend.h">
+      <Filter>Renderer\VR</Filter>
     </ClInclude>
     <ClInclude Include="renderer\AmbientOcclusionStage.h">
       <Filter>Renderer</Filter>
@@ -3018,6 +3024,9 @@
     </ClCompile>
     <ClCompile Include="renderer\backend\DepthStage.cpp">
       <Filter>Renderer\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vr\OpenVRBackend.cpp">
+      <Filter>Renderer\VR</Filter>
     </ClCompile>
     <ClCompile Include="renderer\AmbientOcclusionStage.cpp">
       <Filter>Renderer</Filter>
