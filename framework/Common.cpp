@@ -24,7 +24,6 @@
 #include "Debug.h"
 #include <iostream>
 #include "../renderer/backend/RenderBackend.h"
-#include "../renderer/vr/OpenVRBackend.h"
 
 #define MAX_WARNING_LIST	256
 
@@ -3044,7 +3043,6 @@ void idCommonLocal::InitGame( void )
 
 	//PrintLoadingMessage( Translate( "#str_04347" ) );
 
-	vrBackend->Init();
 
 #ifdef	ID_DEDICATED
 	// init async network
@@ -3108,8 +3106,6 @@ void idCommonLocal::ShutdownGame( bool reloading ) {
 
 	// shut down the event loop
 	eventLoop->Shutdown();
-
-	vrBackend->Shutdown();
 
 
 	// shut down the renderSystem

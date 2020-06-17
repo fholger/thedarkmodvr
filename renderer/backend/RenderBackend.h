@@ -32,6 +32,7 @@ public:
 
 	void DrawView( const viewDef_t *viewDef );
 
+	void BeginFrame();
 	void EndFrame();
 
 	bool ShouldUseBindlessTextures() const;

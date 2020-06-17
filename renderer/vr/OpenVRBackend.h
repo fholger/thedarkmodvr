@@ -17,11 +17,16 @@
 
 extern idCVar vr_enable;
 
+class FrameBuffer;
+
 class OpenVRBackend {
 public:
 	void Init();
 	void Shutdown();
 	bool IsInitialized() const;
+
+	void BeginFrame();
+	void EndFrame();
 
 private:
 	vr::IVRSystem *vrSystem = nullptr;
@@ -38,8 +43,19 @@ private:
 	idVec3 predictedHmdOrigin;
 	idMat3 predictedHmdAxis;
 	float scale;
+	uint32_t renderWidth;
+	uint32_t renderHeight;
+
+	FrameBuffer *eyeFBOs[2] = { nullptr, nullptr };
+	idImage *eyeTextures[2] = { nullptr, nullptr };
+	FrameBuffer *overlayFBO = nullptr;
+	idImage *overlayTexture = nullptr;
 
 	void InitParameters();
+	void InitRenderTargets();
+	void DetermineRenderTargetSize();
+
+	void CreateEyeFBO( FrameBuffer *fbo, idImage *texture );
 };
 
 extern OpenVRBackend *vrBackend;

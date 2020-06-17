@@ -23,6 +23,7 @@
 #include "../GLSLProgram.h"
 #include "../GLSLProgramManager.h"
 #include "../FrameBufferManager.h"
+#include "../vr/OpenVRBackend.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
@@ -42,9 +43,11 @@ void RenderBackend::Init() {
 	depthStage.Init();
 	interactionStage.Init();
 	stencilShadowStage.Init();
+	vrBackend->Init();
 }
 
 void RenderBackend::Shutdown() {
+	vrBackend->Shutdown();
 	stencilShadowStage.Shutdown();
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
@@ -126,7 +129,13 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	}
 }
 
+void RenderBackend::BeginFrame() {
+	vrBackend->BeginFrame();
+}
+
 void RenderBackend::EndFrame() {
+	vrBackend->EndFrame();
+	
 	shaderParamsBuffer.Lock();
 	drawBatchExecutor.Lock();
 	if (GLAD_GL_ARB_bindless_texture) {

@@ -15,10 +15,18 @@
 #include "precompiled.h"
 #include "OpenVRBackend.h"
 
+
+#include "../FrameBuffer.h"
+#include "../FrameBufferManager.h"
+#include "../Image.h"
+
 idCVar vr_enable( "vr_enable", "1", CVAR_RENDERER | CVAR_BOOL, "enable OpenVR rendering" );
 
 OpenVRBackend openVrBackend;
 OpenVRBackend *vrBackend = &openVrBackend;
+
+namespace {
+}
 
 void OpenVRBackend::Init() {
 	if( !vr_enable.GetBool() ) {
@@ -58,6 +66,21 @@ bool OpenVRBackend::IsInitialized() const {
 	return vrSystem != nullptr;
 }
 
+void OpenVRBackend::BeginFrame() {
+	DetermineRenderTargetSize();
+	if (renderWidth != eyeFBOs[0]->Width() || renderHeight != eyeFBOs[0]->Height()) {
+		eyeFBOs[0]->Destroy();
+		eyeFBOs[1]->Destroy();
+		overlayFBO->Destroy();
+	}
+
+	vr::VRCompositor()->WaitGetPoses( trackedDevicePose, vr::k_unMaxTrackedDeviceCount, predictedDevicePose, vr::k_unMaxTrackedDeviceCount );
+}
+
+void OpenVRBackend::EndFrame() {
+	
+}
+
 void OpenVRBackend::InitParameters() {
 	vrSystem->GetProjectionRaw( vr::Eye_Left, &rawProjection[0][0], &rawProjection[0][1], &rawProjection[0][2], &rawProjection[0][3] );
 	common->Printf( "OpenVR left eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[0][0], rawProjection[0][1], rawProjection[0][2], rawProjection[0][3] );
@@ -75,10 +98,34 @@ void OpenVRBackend::InitParameters() {
 
 	vr::HmdMatrix34_t eyeToHead = vrSystem->GetEyeToHeadTransform( vr::Eye_Right );
 	eyeForward = -eyeToHead.m[2][3];
-	common->Printf( "Distance from eye to head: %.2f m\n", eyeForward );
+	common->Printf( "Distance from eye to head: %.3f m\n", eyeForward );
 
 	hmdOrigin.Zero();
 	hmdAxis.Identity();
 	predictedHmdOrigin.Zero();
 	predictedHmdAxis.Identity();	
+
+	DetermineRenderTargetSize();
 }
+
+void OpenVRBackend::InitRenderTargets() {
+	for (int i = 0; i < 2; ++i) {
+		eyeTextures[i] = globalImages->ImageFromFunction( idStr::Fmt( "vr_eye_%d", i ), FB_RenderTexture );
+		eyeFBOs[i] = frameBuffers->CreateFromGenerator( idStr::Fmt( "vr_eye_%d", i ), [=](FrameBuffer *fbo) { CreateEyeFBO( fbo, eyeTextures[i] ); } );
+	}		
+	overlayTexture = globalImages->ImageFromFunction( "vr_overlay", FB_RenderTexture );
+	overlayFBO = frameBuffers->CreateFromGenerator( "vr_overlay", [=](FrameBuffer *fbo) { CreateEyeFBO( fbo, overlayTexture ); } );
+}
+
+void OpenVRBackend::DetermineRenderTargetSize() {
+	uint32_t width, height;
+	vrSystem->GetRecommendedRenderTargetSize( &width, &height );
+	renderWidth = width * r_fboResolution.GetFloat();
+	renderHeight = height * r_fboResolution.GetFloat();
+}
+
+void OpenVRBackend::CreateEyeFBO(FrameBuffer *fbo, idImage *texture) {
+	texture->GenerateAttachment( renderWidth, renderHeight, GL_RGBA8, GL_LINEAR );
+	fbo->Init( renderWidth, renderHeight );
+	fbo->AddColorRenderTexture( 0, texture );
+}	
