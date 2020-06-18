@@ -460,18 +460,19 @@ R_FreeDeferredTriSurfs
 ==================
 */
 void R_FreeDeferredTriSurfs( frameData_t *frame ) {
-	srfTriangles_t *next;
+	srfTriangles_t	*tri, *next;
 
-	if ( !frame ) {
+	if ( !frame || !frame->firstDeferredFreeTriSurf ) {
 		return;
 	}
 
-	for ( srfTriangles_t *tri = frame->deferredFreeTriSurfs; tri; tri = next ) {
+	for ( tri = frame->firstDeferredFreeTriSurf; tri; tri = next ) {
 		next = tri->nextDeferredFree;
 		R_ReallyFreeStaticTriSurf( tri );
 	}
 
-	frame->deferredFreeTriSurfs = nullptr;
+	frame->firstDeferredFreeTriSurf = NULL;
+	frame->lastDeferredFreeTriSurf = NULL;
 }
 
 /*
@@ -500,10 +501,15 @@ void R_FreeStaticTriSurf( srfTriangles_t *tri ) {
 #ifdef ID_DEBUG_MEMORY
 		R_CheckStaticTriSurfMemory( tri );
 #endif
-		// lock-free atomic linked list, since multiple frontend worker threads can call this
-		do {
-			tri->nextDeferredFree = frame->deferredFreeTriSurfs;
-		} while ( !frame->deferredFreeTriSurfs.compare_exchange_weak( tri->nextDeferredFree, tri ) );
+
+		std::lock_guard<std::mutex> lock(frame->deferredFreeMutex);
+		tri->nextDeferredFree = NULL;
+		if ( frame->lastDeferredFreeTriSurf ) {
+			frame->lastDeferredFreeTriSurf->nextDeferredFree = tri;
+		} else {
+			frame->firstDeferredFreeTriSurf = tri;
+		}
+		frame->lastDeferredFreeTriSurf = tri;
 	}
 }
 

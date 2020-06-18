@@ -621,7 +621,9 @@ typedef struct {
 	std::atomic<int>	frameMemoryUsed;
 	byte				*frameMemory;
 
-	std::atomic<srfTriangles_t*> deferredFreeTriSurfs;
+	srfTriangles_t 		*firstDeferredFreeTriSurf;
+	srfTriangles_t 		*lastDeferredFreeTriSurf;
+	std::mutex			deferredFreeMutex;
 
 	int					memoryHighwater;	// max used on any frame
 
