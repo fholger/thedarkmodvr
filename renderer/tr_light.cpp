@@ -597,10 +597,10 @@ idStr idInteractionTable::Stats() const {
 
 /*
 =================
-R_LinkLightSurf
+R_PrepareLightSurf
 =================
 */
-void R_LinkLightSurf( drawSurf_t **link, const srfTriangles_t *tri, const viewEntity_t *space,
+drawSurf_t *R_PrepareLightSurf( const srfTriangles_t *tri, const viewEntity_t *space,
 		const idMaterial *material, const idScreenRect &scissor, bool viewInsideShadow ) {
 	if ( !space ) {
 		space = &tr.viewDef->worldSpace;
@@ -651,11 +651,7 @@ void R_LinkLightSurf( drawSurf_t **link, const srfTriangles_t *tri, const viewEn
 		}
 	}
 
-	Sys_EnterCriticalSection( CRITICAL_SECTION_TWO );
-	// actually link it in
-	drawSurf->nextOnLight = *link;
-	*link = drawSurf;
-	Sys_LeaveCriticalSection( CRITICAL_SECTION_TWO );
+	return drawSurf;
 }
 
 /*
@@ -946,7 +942,10 @@ void R_AddLightSurfaces( void ) {
 			if ( !vertexCache.CacheIsCurrent( tri->indexCache ) ) {
 				tri->indexCache = vertexCache.AllocIndex( tri->indexes, ALIGN( tri->numIndexes * sizeof( tri->indexes[0] ), INDEX_CACHE_ALIGN ) );
 			}
-			R_LinkLightSurf( &vLight->globalShadows, tri, NULL, NULL, vLight->scissorRect, true /* FIXME ? */ );
+			drawSurf_t *surf = R_PrepareLightSurf( tri, NULL, NULL, vLight->scissorRect, true /* FIXME ? */ );
+			// actually link it in
+			surf->nextOnLight = vLight->globalShadows;
+			vLight->globalShadows = surf;
 		}
 	}
 }

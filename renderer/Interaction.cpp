@@ -33,55 +33,8 @@ idCVarInt r_singleShadowEntity( "r_singleShadowEntity", "-1", CVAR_RENDERER, "su
 
 void idInteraction::PrepareLightSurf( linkLocation_t link, const srfTriangles_t *tri, const viewEntity_s *space,
 		const idMaterial *material, const idScreenRect &scissor, bool viewInsideShadow ) {
-	if ( !space ) {
-		space = &tr.viewDef->worldSpace;
-	}
-	drawSurf_t *drawSurf = (drawSurf_t *)R_FrameAlloc( sizeof( *drawSurf ) );
 
-	drawSurf->CopyGeo( tri );
-	drawSurf->space = space;
-	drawSurf->material = material;
-	drawSurf->scissorRect = scissor;
-	drawSurf->dsFlags = scissor.IsEmpty() ? DSF_SHADOW_MAP_ONLY : 0;
-	if ( space->entityDef && space->entityDef->parms.noShadow || !material || !material->SurfaceCastsShadow() ) { // some dynamic models use a no-shadow material and for shadows have a separate geometry with an invisible (in main render) material
-		drawSurf->dsFlags |= DSF_SHADOW_MAP_IGNORE;
-	}
-	
-	static idCVar r_skipDynamicShadows( "r_skipDynamicShadows", "0", CVAR_ARCHIVE | CVAR_BOOL | CVAR_RENDERER, "" );
-	if ( r_skipDynamicShadows.GetBool() )
-		for ( auto ent = space; ent; ent = ent->next ) {
-			//&& !space->entityDef->parms.hModel->IsStaticWorldModel() 
-			//	&& space->entityDef->lastModifiedFrameNum == tr.viewCount 
-			if ( ent->entityDef && ent->entityDef->parms.hModel && ent->entityDef->parms.hModel->IsDynamicModel() ) {
-				drawSurf->dsFlags |= DSF_SHADOW_MAP_IGNORE;
-			}
-		}
-
-	drawSurf->particle_radius = 0.0f; // #3878
-
-	if ( viewInsideShadow ) {
-		drawSurf->dsFlags |= DSF_VIEW_INSIDE_SHADOW;
-	}
-
-	if ( !material ) {
-		// shadows won't have a shader
-		drawSurf->shaderRegisters = NULL;
-		if ( !(drawSurf->dsFlags & DSF_VIEW_INSIDE_SHADOW) )
-			drawSurf->numIndexes = tri->numShadowIndexesNoCaps;
-	} else {
-		// process the shader expressions for conditionals / color / texcoords
-		const float *constRegs = material->ConstantRegisters();
-		if ( constRegs ) {
-			// this shader has only constants for parameters
-			drawSurf->shaderRegisters = constRegs;
-		} else {
-			// FIXME: share with the ambient surface?
-			float *regs = (float *)R_FrameAlloc( material->GetNumRegisters() * sizeof( float ) );
-			drawSurf->shaderRegisters = regs;
-			material->EvaluateRegisters( regs, space->entityDef->parms.shaderParms, tr.viewDef, space->entityDef->parms.referenceSound );
-		}
-	}
-
+	drawSurf_t *drawSurf = R_PrepareLightSurf( tri, space, material, scissor, viewInsideShadow );
 	drawSurf->nextOnLight = surfsToLink[link];
 	surfsToLink[link] = drawSurf;
 }

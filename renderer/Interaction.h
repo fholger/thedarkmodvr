@@ -125,7 +125,7 @@ public:
 	int						MemoryUsed( void );
 
 	// makes sure all necessary light surfaces and shadow surfaces are created, and
-	// calls R_LinkLightSurf() for each one
+	// calls R_PrepareLightSurf() for each one
 	void					AddActiveInteraction( void );
 	// returns false if the whole interaction can be omitted from rendering (culled away)
 	// also writes screen scissor bounding the visible part of interaction
