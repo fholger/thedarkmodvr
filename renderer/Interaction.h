@@ -157,13 +157,17 @@ private:
 	// projected to the bounds of the light
 	idScreenRect			CalcInteractionScissorRectangle( const idFrustum &viewFrustum );
 
-	struct surfLink_t {
-		drawSurf_s **link;
-		drawSurf_s *surf;
+	enum linkLocation_t {
+		INTERACTION_TRANSLUCENT = 0,
+		INTERACTION_LOCAL,
+		INTERACTION_GLOBAL,
+		SHADOW_LOCAL,
+		SHADOW_GLOBAL,
+		MAX_LOCATIONS
 	};
-	idList<surfLink_t>		surfsToLink;
+	drawSurf_s *			surfsToLink[MAX_LOCATIONS] = { nullptr };
 
-	void PrepareLightSurf( drawSurf_s **link, const srfTriangles_t *tri, const viewEntity_s *space,
+	void PrepareLightSurf( linkLocation_t link, const srfTriangles_t *tri, const viewEntity_s *space,
 		const idMaterial *material, const idScreenRect &scissor, bool viewInsideShadow );
 };
 
