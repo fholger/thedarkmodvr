@@ -84,15 +84,17 @@ namespace {
 	};
 
 	enum TextureUnits {
-		TU_LIGHT_PROJECT = 2,
-		TU_LIGHT_FALLOFF = 1,
 		TU_NORMAL = 0,
-		TU_DIFFUSE = 3,
-		TU_SPECULAR = 4,
-		TU_SSAO = 6,
-		TU_SHADOW_MAP = 6,
-		TU_SHADOW_DEPTH = 6,
-		TU_SHADOW_STENCIL = 7,
+		TU_DIFFUSE = 1,
+		TU_SPECULAR = 2,
+		TU_LIGHT_PROJECT = 3,
+		TU_LIGHT_PROJECT_CUBE = 4,
+		TU_LIGHT_FALLOFF = 5,
+		TU_LIGHT_FALLOFF_CUBE = 6,
+		TU_SSAO = 7,
+		TU_SHADOW_MAP = 8,
+		TU_SHADOW_DEPTH = 9,
+		TU_SHADOW_STENCIL = 10,
 	};
 }
 
@@ -104,9 +106,9 @@ void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &
 	}
 	shader->InitFromFiles( "stages/interaction/" + baseName + ".vs.glsl", "stages/interaction/" + baseName + ".fs.glsl", defines );
 	InteractionUniforms *uniforms = shader->GetUniformGroup<InteractionUniforms>();
-	uniforms->lightProjectionCubemap.Set( TU_LIGHT_PROJECT );
+	uniforms->lightProjectionCubemap.Set( TU_LIGHT_PROJECT_CUBE );
 	uniforms->lightProjectionTexture.Set( TU_LIGHT_PROJECT );
-	uniforms->lightFalloffCubemap.Set( TU_LIGHT_FALLOFF );
+	uniforms->lightFalloffCubemap.Set( TU_LIGHT_FALLOFF_CUBE );
 	uniforms->lightFalloffTexture.Set( TU_LIGHT_FALLOFF );
 	uniforms->ssaoTexture.Set( TU_SSAO );
 	uniforms->stencilTexture.Set( TU_SHADOW_STENCIL );
@@ -204,7 +206,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 		return a->material < b->material;
 	} );
 
-	GL_SelectTexture( TU_LIGHT_FALLOFF );
+	GL_SelectTexture( vLight->lightShader->IsCubicLight() ? TU_LIGHT_FALLOFF_CUBE : TU_LIGHT_FALLOFF );
 	vLight->falloffImage->Bind();
 
 	if ( r_softShadowsQuality.GetBool() && !backEnd.viewDef->IsLightGem() || vLight->shadows == LS_MAPS )
@@ -224,7 +226,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 			continue;
 		}
 
-		GL_SelectTexture( TU_LIGHT_PROJECT );
+		GL_SelectTexture( vLight->lightShader->IsCubicLight() ? TU_LIGHT_PROJECT_CUBE : TU_LIGHT_PROJECT );
 		lightStage->texture.image->Bind();
 		// careful - making bindless textures resident could bind an arbitrary texture to the currently active
 		// slot, so reset this to something that is safe to override in bindless mode!
