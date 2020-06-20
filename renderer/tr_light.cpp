@@ -1116,6 +1116,32 @@ static void R_FindSurfaceLights( drawSurf_t& drawSurf ) {
 	}
 }
 
+void R_AddSurfaceToView( drawSurf_t *drawSurf ) {
+	// bumping this offset each time causes surfaces with equal sort orders to still
+	// deterministically draw in the order they are added
+	drawSurf->sort += tr.sortOffset;
+	tr.sortOffset += 0.000001f;
+	// if it doesn't fit, resize the list
+	if ( tr.viewDef->numDrawSurfs == tr.viewDef->maxDrawSurfs ) {
+		drawSurf_t	**old = tr.viewDef->drawSurfs;
+		int			count;
+
+		if ( tr.viewDef->maxDrawSurfs == 0 ) {
+			tr.viewDef->maxDrawSurfs = INITIAL_DRAWSURFS;
+			count = 0;
+		} else {
+			count = tr.viewDef->maxDrawSurfs * sizeof( tr.viewDef->drawSurfs[0] );
+			tr.viewDef->maxDrawSurfs *= 2;
+		}
+		int newSize = tr.viewDef->maxDrawSurfs * sizeof( tr.viewDef->drawSurfs[0] );
+		tr.viewDef->drawSurfs = (drawSurf_t **)R_FrameAlloc( newSize );
+		//memset( tr.viewDef->drawSurfs, -1, newSize );
+		memcpy( tr.viewDef->drawSurfs, old, count );
+	}
+	tr.viewDef->drawSurfs[tr.viewDef->numDrawSurfs] = drawSurf;
+	tr.viewDef->numDrawSurfs++;
+}
+
 /*
 =================
 R_AddDrawSurf
@@ -1134,7 +1160,7 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 	drawSurf->space = space;
 	drawSurf->material = material;
 	drawSurf->scissorRect = scissor;
-	drawSurf->sort = material->GetSort() + tr.sortOffset;
+	drawSurf->sort = material->GetSort();
 	drawSurf->dsFlags = 0;
 	if( scissor.IsEmpty() )
 		drawSurf->dsFlags |= DSF_SHADOW_MAP_ONLY;
@@ -1154,30 +1180,7 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 	}
 
 	if (!deferred) {
-		// bumping this offset each time causes surfaces with equal sort orders to still
-		// deterministically draw in the order they are added
-		tr.sortOffset += 0.000001f;
-		// if it doesn't fit, resize the list
-		Sys_EnterCriticalSection( CRITICAL_SECTION_TWO );
-		if ( tr.viewDef->numDrawSurfs == tr.viewDef->maxDrawSurfs ) {
-			drawSurf_t	**old = tr.viewDef->drawSurfs;
-			int			count;
-
-			if ( tr.viewDef->maxDrawSurfs == 0 ) {
-				tr.viewDef->maxDrawSurfs = INITIAL_DRAWSURFS;
-				count = 0;
-			} else {
-				count = tr.viewDef->maxDrawSurfs * sizeof( tr.viewDef->drawSurfs[0] );
-				tr.viewDef->maxDrawSurfs *= 2;
-			}
-			int newSize = tr.viewDef->maxDrawSurfs * sizeof( tr.viewDef->drawSurfs[0] );
-			tr.viewDef->drawSurfs = (drawSurf_t **)R_FrameAlloc( newSize );
-			//memset( tr.viewDef->drawSurfs, -1, newSize );
-			memcpy( tr.viewDef->drawSurfs, old, count );
-		}
-		tr.viewDef->drawSurfs[tr.viewDef->numDrawSurfs] = drawSurf;
-		tr.viewDef->numDrawSurfs++;
-		Sys_LeaveCriticalSection( CRITICAL_SECTION_TWO );
+		R_AddSurfaceToView( drawSurf );
 	}
 
 	// process the shader expressions for conditionals / color / texcoords
@@ -1270,9 +1273,7 @@ void R_AddDrawSurf( const srfTriangles_t *tri, const viewEntity_t *space, const 
 			if (!deferred) {
 				// did we ever use this to forward an entity color to a gui that didn't set color?
 	//			memcpy( tr.guiShaderParms, shaderParms, sizeof( tr.guiShaderParms ) );
-				Sys_EnterCriticalSection( CRITICAL_SECTION_TWO );
 				R_RenderGuiSurf( gui, drawSurf );
-				Sys_LeaveCriticalSection( CRITICAL_SECTION_TWO );
 			}
 		} else {
 			gui = nullptr;
@@ -1594,29 +1595,7 @@ void R_AddSingleModel( viewEntity_t *vEntity ) {
 
 void R_AddPreparedSurfaces( viewEntity_t *vEntity ) {
 	for (preparedSurf_t *it = vEntity->preparedSurfs; it; it = it->next) {
-		// bumping this offset each time causes surfaces with equal sort orders to still
-		// deterministically draw in the order they are added
-		tr.sortOffset += 0.000001f;
-		it->surf->sort += 0.000001f;
-		// if it doesn't fit, resize the list
-		if ( tr.viewDef->numDrawSurfs == tr.viewDef->maxDrawSurfs ) {
-			drawSurf_t	**old = tr.viewDef->drawSurfs;
-			int			count;
-
-			if ( tr.viewDef->maxDrawSurfs == 0 ) {
-				tr.viewDef->maxDrawSurfs = INITIAL_DRAWSURFS;
-				count = 0;
-			} else {
-				count = tr.viewDef->maxDrawSurfs * sizeof( tr.viewDef->drawSurfs[0] );
-				tr.viewDef->maxDrawSurfs *= 2;
-			}
-			int newSize = tr.viewDef->maxDrawSurfs * sizeof( tr.viewDef->drawSurfs[0] );
-			tr.viewDef->drawSurfs = (drawSurf_t **)R_FrameAlloc( newSize );
-			//memset( tr.viewDef->drawSurfs, -1, newSize );
-			memcpy( tr.viewDef->drawSurfs, old, count );
-		}
-		tr.viewDef->drawSurfs[tr.viewDef->numDrawSurfs] = it->surf;
-		tr.viewDef->numDrawSurfs++;
+		R_AddSurfaceToView( it->surf );
 
 		if (it->gui) {
 			R_RenderGuiSurf( it->gui, it->surf );
