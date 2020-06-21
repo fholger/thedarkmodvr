@@ -17,7 +17,6 @@
 #define __TR_LOCAL_H__
 
 #include <atomic>
-#include <mutex>
 
 #include "Image.h"
 #include "MegaTexture.h"
@@ -343,7 +342,7 @@ public:
 	bool					needsPortalSky;
 	int						centerArea;
 
-	std::mutex				mutex;						// needed to synchronize R_EntityDefDynamicModel over multiple threads
+	idSysMutex				mutex;						// needed to synchronize R_EntityDefDynamicModel over multiple threads
 };
 
 // viewLights are allocated on the frame temporary stack memory
@@ -623,7 +622,7 @@ typedef struct {
 
 	srfTriangles_t 		*firstDeferredFreeTriSurf;
 	srfTriangles_t 		*lastDeferredFreeTriSurf;
-	std::mutex			deferredFreeMutex;
+	idSysMutex			deferredFreeMutex;
 
 	int					memoryHighwater;	// max used on any frame
 

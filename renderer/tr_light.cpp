@@ -1002,7 +1002,7 @@ it and any necessary overlays
 ===================
 */
 idRenderModel *R_EntityDefDynamicModel( idRenderEntityLocal *def ) {
-	std::lock_guard<std::mutex> lock (def->mutex);
+	idScopedCriticalSection lock (def->mutex);
 
 	bool callbackUpdate = false;
 
