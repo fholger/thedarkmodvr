@@ -39,7 +39,7 @@
 #define BASE_TDM					"darkmod"
 
 // filenames
-#define CONFIG_FILE					"Darkmod.cfg"
+#define CONFIG_FILE					"darkmod_vr.cfg"
 #define KEYBINDS_FILE				"DarkmodKeybinds.cfg"
 
 // base folder where the source code lives
