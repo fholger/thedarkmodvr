@@ -208,6 +208,7 @@ find_package(ffmpeg REQUIRED)
 find_package(pugixml REQUIRED)
 find_package(libpng REQUIRED)
 find_package(mbedtls REQUIRED)
+find_package(OPENXR REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
 
 include_directories(
 		"${PROJECT_SOURCE_DIR}"
@@ -225,6 +226,7 @@ include_directories(
 		${pugixml_INCLUDE_DIRS}
 		${libpng_INCLUDE_DIRS}
 		${mbedtls_INCLUDE_DIRS}
+		${OPENXR_INCLUDE_DIRS}
 )
 
 target_link_libraries(TheDarkMod
@@ -238,6 +240,7 @@ target_link_libraries(TheDarkMod
 		${ffmpeg_LIBRARIES}
 		${libpng_LIBRARIES}
 		${mbedtls_LIBRARIES}
+		${OPENXR_LIBRARIES}
 )
 target_link_libraries(TheDarkMod debug ${pugixml_LIBRARIES_D} optimized ${pugixml_LIBRARIES})
 
