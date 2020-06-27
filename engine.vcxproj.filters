@@ -142,6 +142,9 @@
     <Filter Include="Renderer\Backend">
       <UniqueIdentifier>{26537bda-7135-4d5d-b420-3003aa3a506b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Renderer\VR">
+      <UniqueIdentifier>{5b341bd6-6338-44a1-8fd6-6107d376be26}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1287,6 +1290,9 @@
     </ClInclude>
     <ClInclude Include="renderer\backend\GpuBuffer.h">
       <Filter>Renderer\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vr\VrBackend.h">
+      <Filter>Renderer\VR</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -3021,6 +3027,9 @@
     </ClCompile>
     <ClCompile Include="renderer\backend\GpuBuffer.cpp">
       <Filter>Renderer\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vr\VrBackend.cpp">
+      <Filter>Renderer\VR</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
