@@ -21,6 +21,7 @@
 #include "Profiling.h"
 #include "backend/RenderBackend.h"
 #include "FrameBufferManager.h"
+#include "vr/VrBackend.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;
@@ -632,12 +633,14 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	try {
 		ProfilingBeginFrame();
 		common->SetErrorIndirection( true );
+		vr->BeginFrame();
 		double startLoop = Sys_GetClockTicks();
 		session->ActivateFrontend();
 		double endSignal = Sys_GetClockTicks();
 		frameBuffers->BeginFrame();
 		// start the back end up again with the new command list
 		R_IssueRenderCommands( backendFrameData );
+		vr->EndFrame();
 		renderBackend->EndFrame();
 		double endRender = Sys_GetClockTicks();
 		session->WaitForFrontendCompletion();
