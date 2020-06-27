@@ -23,6 +23,7 @@
 #include "../GLSLProgram.h"
 #include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
+#include "../vr/VrBackend.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
@@ -38,7 +39,7 @@ namespace {
 	}
 }
 
-RenderBackend::RenderBackend() 
+RenderBackend::RenderBackend()
 	: depthStage( &drawBatchExecutor ),
 	  interactionStage( &drawBatchExecutor ),
 	  stencilShadowStage( &drawBatchExecutor )
@@ -56,11 +57,15 @@ void RenderBackend::Init() {
 		qglBindBuffer( GL_PIXEL_PACK_BUFFER, lightgemPbos[i] );
 		qglBufferData( GL_PIXEL_PACK_BUFFER, DARKMOD_LG_RENDER_WIDTH * DARKMOD_LG_RENDER_WIDTH * 3, nullptr, GL_STREAM_READ );
 	}
+
+	vr->Init();
 }
 
 void RenderBackend::Shutdown() {
+	vr->Destroy();
+
 	qglDeleteBuffers( 3, lightgemPbos );
-	
+
 	stencilShadowStage.Shutdown();
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
@@ -144,7 +149,7 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 void RenderBackend::DrawLightgem( const viewDef_t *viewDef, byte *lightgemData ) {
 	FrameBuffer *currentFbo = frameBuffers->activeFbo;
 	lightgemFbo->Bind();
-	
+
 	DrawView( viewDef );
 
 	// asynchronously copy contents of the lightgem framebuffer to a pixel buffer
