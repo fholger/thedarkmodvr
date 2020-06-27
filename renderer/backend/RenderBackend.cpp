@@ -22,6 +22,7 @@
 #include "../Profiling.h"
 #include "../GLSLProgram.h"
 #include "../FrameBufferManager.h"
+#include "../vr/VrBackend.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
@@ -40,9 +41,13 @@ void RenderBackend::Init() {
 	depthStage.Init();
 	interactionStage.Init();
 	stencilShadowStage.Init();
+
+	vr->Init();
 }
 
 void RenderBackend::Shutdown() {
+	vr->Destroy();
+	
 	stencilShadowStage.Shutdown();
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
