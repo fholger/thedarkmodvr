@@ -14,24 +14,16 @@
 ******************************************************************************/
 #pragma once
 
-#include <openxr/openxr.h>
+#define XR_USE_GRAPHICS_API_OPENGL 1
+#ifdef WIN32
+#define XR_USE_PLATFORM_WIN32 1
+#endif
+#include <openxr/openxr_platform.h>
 
-class VrBackend {
-public:
-	void Init();
-	void Destroy();
+extern bool XR_KHR_opengl_enable_available;
+extern bool XR_KHR_visibility_mask_available;
+extern bool XR_EXT_debug_utils_available;
 
-	void BeginFrame();
-	void EndFrame();
-	
-private:
-	XrInstance instance = nullptr;
-	XrSystemId system = 0;
-	XrSession session = nullptr;
-	bool vrSessionActive = false;
-	bool shouldSubmitFrame = false;
+void XR_CheckResult( XrResult result, const char *description, XrInstance instance = nullptr );
+XrInstance XR_CreateInstance();
 
-	void HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent );
-};
-
-extern VrBackend *vr;

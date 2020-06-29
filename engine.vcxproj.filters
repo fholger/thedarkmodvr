@@ -1294,6 +1294,9 @@
     <ClInclude Include="renderer\vr\VrBackend.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\vr\xr_loader.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -3029,6 +3032,9 @@
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\VrBackend.cpp">
+      <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vr\xr_loader.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
   </ItemGroup>
