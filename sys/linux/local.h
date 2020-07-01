@@ -30,6 +30,9 @@ extern glconfig_t glConfig;
 extern Display *dpy;
 extern int scrnum;
 extern Window win;
+extern GLXContext ctx;
+extern GLXFBConfig bestFbc;
+extern XVisualInfo *visinfo;
 
 extern bool vidmode_nowmfullscreen;
 
