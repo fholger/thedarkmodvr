@@ -15,13 +15,12 @@
 #include "precompiled.h"
 #include "VrBackend.h"
 #include "xr_loader.h"
-#include "../../sys/win32/win_local.h"
 
 VrBackend vrImpl;
 VrBackend *vr = &vrImpl;
 
-namespace {
 #ifdef WIN32
+#include "../../sys/win32/win_local.h"
 XrGraphicsBindingOpenGLWin32KHR Sys_CreateGraphicsBinding() {
 	return {
 		XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
@@ -31,7 +30,22 @@ XrGraphicsBindingOpenGLWin32KHR Sys_CreateGraphicsBinding() {
 	};
 }
 #endif
+
+#ifdef __linux__
+#include "../../sys/linux/local.h"
+XrGraphicsBindingOpenGLXlibKHR Sys_CreateGraphicsBinding() {
+    uint32_t visualId = XVisualIDFromVisual(visinfo->visual);
+    return {
+        XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR,
+        nullptr,
+        dpy,
+        visualId,
+        bestFbc,
+        win,
+        ctx,
+    };
 }
+#endif
 
 void VrBackend::Init() {
 	if ( instance != nullptr ) {

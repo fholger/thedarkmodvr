@@ -18,6 +18,9 @@
 #ifdef WIN32
 #define XR_USE_PLATFORM_WIN32 1
 #endif
+#ifdef __linux__
+#define XR_USE_PLATFORM_XLIB 1
+#endif
 #include <openxr/openxr_platform.h>
 
 extern bool XR_KHR_opengl_enable_available;
