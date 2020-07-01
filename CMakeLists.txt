@@ -184,9 +184,9 @@ elseif (UNIX)
 		# ffmpeg dep was compiled without -fPIC, so need to disable on 64bit builds
 		set_target_properties(TheDarkMod PROPERTIES POSITION_INDEPENDENT_CODE OFF)
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
-		set_target_properties(TheDarkMod PROPERTIES OUTPUT_NAME "thedarkmod.x64")
+		set_target_properties(TheDarkMod PROPERTIES OUTPUT_NAME "thedarkmodvr.x64")
 	else ()
-		set_target_properties(TheDarkMod PROPERTIES OUTPUT_NAME "thedarkmod.x86")
+		set_target_properties(TheDarkMod PROPERTIES OUTPUT_NAME "thedarkmodvr.x86")
 	endif ()
 elseif (MSVC)
 	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -208,7 +208,7 @@ find_package(ffmpeg REQUIRED)
 find_package(pugixml REQUIRED)
 find_package(libpng REQUIRED)
 find_package(mbedtls REQUIRED)
-find_package(OPENXR REQUIRED HINTS ${PACKAGE_CONFIG_PATH})
+find_package(openxr REQUIRED)
 
 include_directories(
 		"${PROJECT_SOURCE_DIR}"
@@ -226,7 +226,7 @@ include_directories(
 		${pugixml_INCLUDE_DIRS}
 		${libpng_INCLUDE_DIRS}
 		${mbedtls_INCLUDE_DIRS}
-		${OPENXR_INCLUDE_DIRS}
+		${openxr_INCLUDE_DIRS}
 )
 
 target_link_libraries(TheDarkMod
@@ -240,7 +240,7 @@ target_link_libraries(TheDarkMod
 		${ffmpeg_LIBRARIES}
 		${libpng_LIBRARIES}
 		${mbedtls_LIBRARIES}
-		${OPENXR_LIBRARIES}
+		${openxr_LIBRARIES}
 )
 target_link_libraries(TheDarkMod debug ${pugixml_LIBRARIES_D} optimized ${pugixml_LIBRARIES})
 
@@ -269,6 +269,7 @@ if (COPY_EXE)
 	add_custom_command(
 			TARGET TheDarkMod POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:TheDarkMod> "${GAME_DIR}"
+			COMMAND ${CMAKE_COMMAND} -E copy "${openxr_LIBRARIES}" "${GAME_DIR}"
 			COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/glprogs" "${GAME_DIR}/glprogs"
 	)
 	if (UNIX)
