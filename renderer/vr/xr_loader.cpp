@@ -106,7 +106,7 @@ XrInstance XR_CreateInstance() {
 		0,
 		{
 			"The Dark Mod",
-			XR_MAKE_VERSION( 2, 0, 9 ),
+            (2 << 16) | 9,
 			"",
 			0,
 			XR_CURRENT_API_VERSION,

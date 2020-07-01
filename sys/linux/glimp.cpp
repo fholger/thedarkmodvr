@@ -28,12 +28,14 @@ idCVar v_nowmfullscreen( "v_nowmfullscreen", "0", CVAR_SYSTEM | CVAR_ARCHIVE | C
 
 Display *dpy = NULL;
 int scrnum = 0;
+GLXFBConfig bestFbc = 0;
+XVisualInfo *visinfo = NULL;
 
 Window win = 0;
 
 bool dga_found = false;
 
-static GLXContext ctx = NULL;
+GLXContext ctx = NULL;
 
 static bool vidmode_ext = false;
 static int vidmode_MajorVersion = 0, vidmode_MinorVersion = 0;	// major and minor of XF86VidExtensions
@@ -353,8 +355,8 @@ int GLX_Init(glimpParms_t a) {
 		}
 	}
 
-	GLXFBConfig bestFbc = 0;
-	XVisualInfo *visinfo = NULL;
+	bestFbc = 0;
+	visinfo = NULL;
 
 	if (r_glCoreProfile.GetInteger() == 0) {
 		//stgatilov: old code using deprecated glXChooseVisual and glXCreateContext
