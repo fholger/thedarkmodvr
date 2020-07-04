@@ -15,6 +15,7 @@
 #pragma once
 
 #include <openxr/openxr.h>
+#include "VrSwapchain.h"
 
 class VrBackend {
 public:
@@ -23,6 +24,9 @@ public:
 
 	void BeginFrame();
 	void EndFrame();
+
+	XrInstance Instance() const { return instance; }
+	XrSession Session() const { return session; }
 	
 private:
 	XrInstance instance = nullptr;
@@ -30,6 +34,9 @@ private:
 	XrSession session = nullptr;
 	bool vrSessionActive = false;
 	bool shouldSubmitFrame = false;
+
+	VrSwapchain eyeSwapchains[2];
+	VrSwapchain uiSwapchain;
 
 	void HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent );
 };
