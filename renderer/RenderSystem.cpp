@@ -640,7 +640,6 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		frameBuffers->BeginFrame();
 		// start the back end up again with the new command list
 		R_IssueRenderCommands( backendFrameData );
-		vr->EndFrame();
 		renderBackend->EndFrame();
 		double endRender = Sys_GetClockTicks();
 		session->WaitForFrontendCompletion();
