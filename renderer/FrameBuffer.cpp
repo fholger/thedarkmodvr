@@ -168,8 +168,8 @@ void FrameBuffer::BlitTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) 
 void FrameBuffer::CreateDefaultFrameBuffer(FrameBuffer *fbo) {
 	// this doesn't actually create a new framebuffer object, but creates a class that represents the "default" (0) framebuffer
 	fbo->fbo = 0;
-	fbo->width = glConfig.vidWidth;
-	fbo->height = glConfig.vidHeight;
+	fbo->width = glConfig.windowWidth;
+	fbo->height = glConfig.windowHeight;
 	fbo->msaa = 0;
 	fbo->initialized = true;
 }
