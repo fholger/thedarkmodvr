@@ -246,7 +246,7 @@ void VrBackend::EndFrame() {
 		XR_EYE_VISIBILITY_BOTH,
 		uiSwapchain.CurrentSwapchainSubImage(),
 		{ {0, 0, 0, 1}, {0, 0, -2} },
-		{ 2, 1.6f },
+		{ 2, 1.5f },
 	};
 	const XrCompositionLayerBaseHeader * const submittedLayers[] = {
 		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &stereoLayer ),
@@ -317,6 +317,11 @@ void VrBackend::InitSwapchains() {
 		2, &numViews, views );
 	XR_CheckResult( result, "getting view info", instance );
 	common->Printf( "Recommended render resolution: %dx%d\n", views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
+
+	// hack: force primary fbo to use our desired render resolution
+	glConfig.vidWidth = views[0].recommendedImageRectWidth;
+	glConfig.vidHeight = views[0].recommendedImageRectHeight;
+	r_fboResolution.SetModified();
 	
 	eyeSwapchains[0].Init( "leftEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
 	eyeSwapchains[1].Init( "rightEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
