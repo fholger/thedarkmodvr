@@ -336,6 +336,9 @@ void R_InitOpenGL( void ) {
 		r_multiSamples.SetInteger( 0 );
 	}
 
+	glConfig.windowWidth = glConfig.vidWidth;
+	glConfig.windowHeight = glConfig.vidHeight;
+
 	// input and sound systems need to be tied to the new window
 	Sys_InitInput();
 	soundSystem->InitHW();
