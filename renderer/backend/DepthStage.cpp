@@ -49,6 +49,13 @@ namespace {
 	}
 
 	void CalcScissorParam( uint32_t scissor[4], const idScreenRect &screenRect ) {
+		if ( !r_useScissor.GetBool() ) {
+			scissor[0] = scissor[1] = 0;
+			scissor[2] = frameBuffers->activeFbo->Width();
+			scissor[3] = frameBuffers->activeFbo->Height();
+			return;
+		}
+
 		float xScale = static_cast<float>(frameBuffers->activeFbo->Width()) / glConfig.vidWidth;
 		float yScale = static_cast<float>(frameBuffers->activeFbo->Height()) / glConfig.vidHeight;
 
