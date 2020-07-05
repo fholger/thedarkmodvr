@@ -102,7 +102,7 @@ void VrSwapchain::PrepareNextImage() {
 	result = xrWaitSwapchainImage( swapchain, &waitInfo );
 	XR_CheckResult( result, "awaiting swapchain image", vr->Instance() );
 
-	currentImage.imageArrayIndex = curIndex;
+	currentImage.imageArrayIndex = 0;
 	currentImage.swapchain = swapchain;
 	currentImage.imageRect = { {0, 0}, {width, height} };
 }
