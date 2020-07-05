@@ -505,6 +505,7 @@
     <ClInclude Include="renderer\vr\VrBackend.h" />
     <ClInclude Include="renderer\vr\VrSwapchain.h" />
     <ClInclude Include="renderer\vr\xr_loader.h" />
+    <ClInclude Include="renderer\vr\xr_math.h" />
     <ClInclude Include="sound\efxlib.h" />
     <ClInclude Include="sound\snd_efxpresets.h" />
     <ClInclude Include="sound\snd_local.h" />
@@ -1101,6 +1102,7 @@
     <ClCompile Include="renderer\vr\VrBackend.cpp" />
     <ClCompile Include="renderer\vr\VrSwapchain.cpp" />
     <ClCompile Include="renderer\vr\xr_loader.cpp" />
+    <ClCompile Include="renderer\vr\xr_math.cpp" />
     <ClCompile Include="sound\snd_cache.cpp" />
     <ClCompile Include="sound\snd_decoder.cpp" />
     <ClCompile Include="sound\snd_efxfile.cpp" />

@@ -61,6 +61,7 @@ typedef struct glconfig_s {
 	bool				bufferStorageAvailable; // persistent mapping
 	bool				stencilTexturing;		// stencil SS
 	int					vidWidth, vidHeight;	// passed to R_BeginFrame
+	int					windowWidth, windowHeight;
 	int					displayFrequency;
 	bool				isFullscreen;
 	bool				srgb;
