@@ -20,11 +20,15 @@
 #include "../FrameBuffer.h"
 #include "../FrameBufferManager.h"
 #include "../Image.h"
+#include "../Profiling.h"
 
 void VrSwapchain::Init( const idStr &name, GLuint format, int width, int height ) {
 	if ( swapchain != nullptr ) {
 		Destroy();
 	}
+
+	this->width = width;
+	this->height = height;
 
 	XrSwapchainCreateInfo createInfo = {
 		XR_TYPE_SWAPCHAIN_CREATE_INFO,
@@ -97,6 +101,10 @@ void VrSwapchain::PrepareNextImage() {
 	};
 	result = xrWaitSwapchainImage( swapchain, &waitInfo );
 	XR_CheckResult( result, "awaiting swapchain image", vr->Instance() );
+
+	currentImage.imageArrayIndex = 0;
+	currentImage.swapchain = swapchain;
+	currentImage.imageRect = { {0, 0}, {width, height} };
 }
 
 void VrSwapchain::ReleaseImage() {
@@ -125,6 +133,7 @@ void VrSwapchain::InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texn
 	image->texnum = texnum;
 	image->uploadWidth = width;
 	image->uploadHeight = height;
+	GL_SetDebugLabel( GL_TEXTURE, texnum, image->imgName );
 	fbo->Init( width, height );
 	fbo->AddColorRenderTexture( 0, image );
 }
