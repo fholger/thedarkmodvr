@@ -23,6 +23,7 @@
 #include "Profiling.h"
 #include "BloomStage.h"
 #include "FrameBufferManager.h"
+#include "vr/VrBackend.h"
 
 backEndState_t	backEnd;
 idCVarBool image_showBackgroundLoads( "image_showBackgroundLoads", "0", CVAR_RENDERER, "1 = print outstanding background loads" );
@@ -879,6 +880,7 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 		case RC_SWAP_BUFFERS:
 			// duzenko #4425: display the fbo content
 			frameBuffers->LeavePrimary();
+			vr->EndFrame();
 			RB_SwapBuffers( cmds );
 			c_swapBuffers++;
 			break;

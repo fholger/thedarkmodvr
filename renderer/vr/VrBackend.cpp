@@ -15,9 +15,14 @@
 #include "precompiled.h"
 #include "VrBackend.h"
 #include "xr_loader.h"
+#include "../tr_local.h"
+#include "../FrameBufferManager.h"
+#include "../FrameBuffer.h"
 
 VrBackend vrImpl;
 VrBackend *vr = &vrImpl;
+
+idCVar vr_uiResolution( "vr_uiResolution", "2048", CVAR_RENDERER|CVAR_ARCHIVE|CVAR_INTEGER, "Render resolution for 2D/UI overlay" );
 
 #ifdef WIN32
 #include "../../sys/win32/win_local.h"
@@ -47,6 +52,17 @@ XrGraphicsBindingOpenGLXlibKHR Sys_CreateGraphicsBinding() {
 }
 #endif
 
+namespace {
+	XrBool32 XRAPI_PTR XR_DebugMessengerCallback(
+            XrDebugUtilsMessageSeverityFlagsEXT              messageSeverity,
+            XrDebugUtilsMessageTypeFlagsEXT                  messageTypes,
+            const XrDebugUtilsMessengerCallbackDataEXT*      callbackData,
+            void*                                            userData) {
+		common->Printf("XR in %s: %s\n", callbackData->functionName, callbackData->message);
+		return XR_TRUE;
+	}
+}
+
 void VrBackend::Init() {
 	if ( instance != nullptr ) {
 		Destroy();
@@ -56,6 +72,11 @@ void VrBackend::Init() {
 	common->Printf( "Initializing VR subsystem\n" );
 
 	instance = XR_CreateInstance();
+
+	if ( XR_EXT_debug_utils_available ) {
+		SetupDebugMessenger();
+	}
+	
 	XrSystemGetInfo systemGetInfo = {
 		XR_TYPE_SYSTEM_GET_INFO,
 		nullptr,
@@ -84,18 +105,17 @@ void VrBackend::Init() {
 	XR_CheckResult( result, "creating session", instance );
 	common->Printf( "Session created\n" );
 
-	uint32_t numSupportedFormats = 0;
-	result = xrEnumerateSwapchainFormats( session, 0, &numSupportedFormats, nullptr );
-	XR_CheckResult( result, "getting supported swapchain formats", instance );
-	idList<int64_t> swapchainFormats;
-	swapchainFormats.SetNum( numSupportedFormats );
-	result = xrEnumerateSwapchainFormats( session, swapchainFormats.Num(), &numSupportedFormats, swapchainFormats.Ptr() );
-	XR_CheckResult( result, "getting supported swapchain formats", instance );
-	common->Printf("Supported swapchain formats: ");
-	for ( int64_t format : swapchainFormats ) {
-		common->Printf( "%d ", format );
-	}
-	common->Printf( "\n" );
+	InitSwapchains();
+
+	XrReferenceSpaceCreateInfo spaceCreateInfo = {
+		XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+		nullptr,
+		XR_REFERENCE_SPACE_TYPE_LOCAL,
+		{ {0, 0, 0, 1}, {0, 0, 0} },
+	};
+	result = xrCreateReferenceSpace( session, &spaceCreateInfo, &seatedSpace );
+	XR_CheckResult( result, "creating seated reference space", instance );
+	common->Printf( "Acquired seated reference space\n" );
 
 	common->Printf( "-----------------------------\n" );
 }
@@ -105,8 +125,16 @@ void VrBackend::Destroy() {
 		return;
 	}
 
+	uiSwapchain.Destroy();
+	eyeSwapchains[0].Destroy();
+	eyeSwapchains[1].Destroy();
+
 	xrDestroySession( session );
 	session = nullptr;
+
+	if ( debugMessenger != nullptr ) {
+		xrDestroyDebugUtilsMessengerEXT( debugMessenger );
+	}
 
 	xrDestroyInstance( instance );
 	instance = nullptr;
@@ -121,6 +149,7 @@ void VrBackend::BeginFrame() {
 	XrResult result = xrPollEvent( instance, &event );
 	XR_CheckResult( result, "polling events", instance );
 	if ( result == XR_SUCCESS ) {
+		common->Printf( "Received VR event: %d\n", event.type );
 		switch ( event.type ) {
 		case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED:
 			HandleSessionStateChange( *reinterpret_cast<XrEventDataSessionStateChanged*>(&event) );
@@ -133,9 +162,168 @@ void VrBackend::BeginFrame() {
 	if ( !vrSessionActive ) {
 		return;
 	}
+
+	// await and begin the frame
+	XrFrameState frameState = {
+		XR_TYPE_FRAME_STATE,
+		nullptr,
+	};
+	result = xrWaitFrame( session, nullptr, &frameState );
+	XR_CheckResult( result, "awaiting frame", instance );
+	shouldSubmitFrame = frameState.shouldRender == XR_TRUE;
+	currentFrameDisplayTime = frameState.predictedDisplayTime;
+	nextFrameDisplayTime = currentFrameDisplayTime + frameState.predictedDisplayPeriod;
+
+	XrViewLocateInfo locateInfo = {
+		XR_TYPE_VIEW_LOCATE_INFO,
+		nullptr,
+		XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+		currentFrameDisplayTime,
+		seatedSpace,
+	};
+	XrViewState viewState = {
+		XR_TYPE_VIEW_STATE,
+		nullptr,
+	};
+	for ( int i = 0; i < 2; ++i ) {
+		renderViews[i].type = XR_TYPE_VIEW;
+		renderViews[i].next = nullptr;
+	}
+	uint32_t viewCount = 0;
+	result = xrLocateViews( session, &locateInfo, &viewState, 2, &viewCount, renderViews );
+	XR_CheckResult( result, "locating views", instance, false );
+
+	result = xrBeginFrame( session, nullptr );
+	XR_CheckResult( result, "beginning frame", instance );
 }
 
-void VrBackend::EndFrame() {}
+void VrBackend::EndFrame() {
+	if ( !vrSessionActive || !shouldSubmitFrame ) {
+		return;
+	}
+
+	// FIXME: this is just a quick hack to get some render output to the headset
+	eyeSwapchains[0].PrepareNextImage();
+	eyeSwapchains[1].PrepareNextImage();
+	uiSwapchain.PrepareNextImage();
+	frameBuffers->defaultFbo->BlitTo( uiSwapchain.CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	frameBuffers->defaultFbo->BlitTo( eyeSwapchains[0].CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	frameBuffers->defaultFbo->BlitTo( eyeSwapchains[1].CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	qglFlush();
+	uiSwapchain.ReleaseImage();
+	eyeSwapchains[0].ReleaseImage();
+	eyeSwapchains[1].ReleaseImage();
+	
+	XrCompositionLayerProjectionView projectionViews[2] = {
+		{
+			XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+			nullptr,
+			renderViews[0].pose,
+			renderViews[0].fov,
+			eyeSwapchains[0].CurrentSwapchainSubImage(),
+		},
+		{
+			XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+			nullptr,
+			renderViews[1].pose,
+			renderViews[1].fov,
+			eyeSwapchains[1].CurrentSwapchainSubImage(),
+		},
+	};
+	XrCompositionLayerProjection stereoLayer = {
+		XR_TYPE_COMPOSITION_LAYER_PROJECTION,
+		nullptr,
+		0,
+		seatedSpace,
+		2,
+		projectionViews,
+	};
+	XrCompositionLayerQuad uiLayer = {
+		XR_TYPE_COMPOSITION_LAYER_QUAD,
+		nullptr,
+		XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT,
+		seatedSpace,
+		XR_EYE_VISIBILITY_BOTH,
+		uiSwapchain.CurrentSwapchainSubImage(),
+		{ {0, 0, 0, 1}, {0, 0, -2} },
+		{ 2, 1.6f },
+	};
+	const XrCompositionLayerBaseHeader * const submittedLayers[] = {
+		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &stereoLayer ),
+		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &uiLayer ),
+	};
+	XrFrameEndInfo frameEndInfo = {
+		XR_TYPE_FRAME_END_INFO,
+		nullptr,
+		currentFrameDisplayTime,
+		XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+		sizeof(submittedLayers) / sizeof(submittedLayers[0]),
+		submittedLayers,
+	};
+	XrResult result = xrEndFrame( session, &frameEndInfo );
+	XR_CheckResult( result, "submitting frame", instance, false );
+	shouldSubmitFrame = false;
+}
+
+void VrBackend::SetupDebugMessenger() {
+	XrDebugUtilsMessengerCreateInfoEXT createInfo = {
+		XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+		nullptr,
+		0xffffffff,
+		0xffffffff,
+		&XR_DebugMessengerCallback,
+		nullptr,
+	};
+	XrResult result = xrCreateDebugUtilsMessengerEXT( instance, &createInfo, &debugMessenger );
+	XR_CheckResult( result, "setting up debug messenger", instance );
+	common->Printf( "Enabled debug messenger\n" );
+}
+
+void VrBackend::ChooseSwapchainFormat() {
+	uint32_t numSupportedFormats = 0;
+	XrResult result = xrEnumerateSwapchainFormats( session, 0, &numSupportedFormats, nullptr );
+	XR_CheckResult( result, "getting supported swapchain formats", instance );
+	idList<int64_t> swapchainFormats;
+	swapchainFormats.SetNum( numSupportedFormats );
+	result = xrEnumerateSwapchainFormats( session, swapchainFormats.Num(), &numSupportedFormats, swapchainFormats.Ptr() );
+	XR_CheckResult( result, "getting supported swapchain formats", instance );
+
+	// find first matching desired swapchain format
+	swapchainFormat = 0;
+	std::set<int64_t> supportedFormats (swapchainFormats.begin(), swapchainFormats.end());
+	idList<int64_t> desiredFormats = { GL_RGBA8, GL_SRGB8_ALPHA8, GL_RGBA16F };
+	idList<idStr> formatNames = { "GL_RGBA8", "GL_SRGB8_ALPHA8", "GL_RGBA16F" };
+	for ( int i = 0; i < desiredFormats.Num(); ++i ) {
+		if ( supportedFormats.find( desiredFormats[i] ) != supportedFormats.end() ) {
+			swapchainFormat = desiredFormats[i];
+			common->Printf( "Using swapchain format: %s\n", formatNames[i].c_str() );
+			break;
+		}
+	}
+	if ( swapchainFormat == 0 ) {
+		common->FatalError( "No suitable supported swapchain format found" );
+	}
+}
+
+void VrBackend::InitSwapchains() {
+	ChooseSwapchainFormat();
+
+	uint32_t numViews = 0;
+	for ( int i = 0; i < 2; ++i ) {
+		views[i].type = XR_TYPE_VIEW_CONFIGURATION_VIEW;
+		views[i].next = nullptr;
+	}
+	XrResult result = xrEnumerateViewConfigurationViews( instance, system, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+		2, &numViews, views );
+	XR_CheckResult( result, "getting view info", instance );
+	common->Printf( "Recommended render resolution: %dx%d\n", views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
+	
+	eyeSwapchains[0].Init( "leftEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
+	eyeSwapchains[1].Init( "rightEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
+	uiSwapchain.Init( "ui", swapchainFormat, vr_uiResolution.GetInteger(), vr_uiResolution.GetInteger() );
+
+	common->Printf( "Created swapchains\n" );
+}
 
 void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent ) {
 	XrSessionBeginInfo beginInfo = {
@@ -145,7 +333,7 @@ void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &
 	};
 	XrResult result;
 
-	switch ( stateChangedEvent.type ) {
+	switch ( stateChangedEvent.state ) {
 	case XR_SESSION_STATE_READY:
 		common->Printf( "xr Session is ready, beginning session...\n" );
 		result = xrBeginSession( session, &beginInfo );
@@ -156,6 +344,7 @@ void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &
 	case XR_SESSION_STATE_SYNCHRONIZED:
 	case XR_SESSION_STATE_VISIBLE:
 	case XR_SESSION_STATE_FOCUSED:
+		common->Printf( "xr Session restored" );
 		vrSessionActive = true;
 		break;
 
@@ -163,8 +352,13 @@ void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &
 		vrSessionActive = false;
 		break;
 
-	case XR_SESSION_STATE_LOSS_PENDING:
 	case XR_SESSION_STATE_STOPPING:
-		common->FatalError( "xr Session shutting down or lost" );
+		vrSessionActive = false;
+		common->Printf( "xr Session lost or stopped" );
+		result = xrEndSession( session );
+		XR_CheckResult( result, "ending session", instance, false );
+		break;
+	case XR_SESSION_STATE_LOSS_PENDING:
+		common->FatalError( "xr Session lost" );
 	}	
 }

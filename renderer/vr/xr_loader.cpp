@@ -22,6 +22,8 @@ bool XR_KHR_visibility_mask_available = false;
 bool XR_EXT_debug_utils_available = false;
 
 PFN_xrGetOpenGLGraphicsRequirementsKHR qxrGetOpenGLGraphicsRequirementsKHR = nullptr;
+PFN_xrCreateDebugUtilsMessengerEXT qxrCreateDebugUtilsMessengerEXT = nullptr;
+PFN_xrDestroyDebugUtilsMessengerEXT qxrDestroyDebugUtilsMessengerEXT = nullptr;
 
 // -- xr function prototype implementations for dynamically loaded extension functions
 XRAPI_ATTR XrResult XRAPI_CALL xrGetOpenGLGraphicsRequirementsKHR(
@@ -30,16 +32,34 @@ XRAPI_ATTR XrResult XRAPI_CALL xrGetOpenGLGraphicsRequirementsKHR(
     XrGraphicsRequirementsOpenGLKHR*            graphicsRequirements) {
 	return qxrGetOpenGLGraphicsRequirementsKHR( instance, systemId, graphicsRequirements );	
 }
+
+XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
+    XrInstance                                  instance,
+    const XrDebugUtilsMessengerCreateInfoEXT*   createInfo,
+    XrDebugUtilsMessengerEXT*                   messenger) {
+
+	return qxrCreateDebugUtilsMessengerEXT( instance, createInfo, messenger );
+}
+
+XRAPI_ATTR XrResult XRAPI_CALL xrDestroyDebugUtilsMessengerEXT(
+    XrDebugUtilsMessengerEXT                    messenger) {
+
+	return qxrDestroyDebugUtilsMessengerEXT( messenger );
+}
 // -----------------------------------------------------------------------------------
 
-void XR_CheckResult( XrResult result, const char *description, XrInstance instance ) {
+void XR_CheckResult( XrResult result, const char *description, XrInstance instance, bool fatal ) {
 	if ( XR_SUCCEEDED( result ) ) {
 		return;
 	}
 
 	char resultString[XR_MAX_RESULT_STRING_SIZE];
 	xrResultToString( instance, result, resultString );
-	common->FatalError( "OpenXR call failed - %s: %s", description, resultString );
+	if ( fatal ) {
+		common->FatalError( "OpenXR call failed - %s: %s", description, resultString );
+	} else {
+		common->Warning( "OpenXR call failed - %s: %s", description, resultString );
+	}
 }
 
 void XR_CheckAvailableExtensions() {
@@ -58,10 +78,7 @@ void XR_CheckAvailableExtensions() {
 
 	common->Printf( "Supported extensions:\n" );
 	for ( auto ext : extensionProperties ) {
-		common->Printf( "- %s (v%d.%d.%d)\n", ext.extensionName,
-			XR_VERSION_MAJOR( ext.extensionVersion ),
-			XR_VERSION_MINOR( ext.extensionVersion ),
-			XR_VERSION_PATCH( ext.extensionVersion ) );
+		common->Printf( "- %s\n", ext.extensionName );
 
 		if ( strcmp( ext.extensionName, XR_KHR_OPENGL_ENABLE_EXTENSION_NAME ) == 0 ) {
 			XR_KHR_opengl_enable_available = true;
@@ -75,10 +92,38 @@ void XR_CheckAvailableExtensions() {
 	}
 }
 
+void XR_CheckAvailableApiLayers() {
+	uint32_t layersCount = 0;
+	XrResult result = xrEnumerateApiLayerProperties( 0, &layersCount, nullptr );
+	XR_CheckResult( result, "enumerating API layers", nullptr );
+
+	idList<XrApiLayerProperties> layerProperties;
+	layerProperties.SetNum( layersCount );
+	for ( auto &layer : layerProperties ) {
+		layer.type = XR_TYPE_API_LAYER_PROPERTIES;
+		layer.next = nullptr;
+	}
+	result = xrEnumerateApiLayerProperties( layerProperties.Num(), &layersCount, layerProperties.Ptr() );
+	XR_CheckResult( result, "enumerating API layers", nullptr );
+
+	common->Printf( "Supported API layers:\n" );
+	for ( auto layer : layerProperties ) {
+		common->Printf( "- %s\n", layer.layerName );
+	}
+}
+
 void XR_LoadExtensionOpenGL( XrInstance instance ) {
 	XrResult result;
 	result = xrGetInstanceProcAddr( instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction *)&qxrGetOpenGLGraphicsRequirementsKHR );
 	XR_CheckResult( result, "loading OpenGL extension function", instance );
+}
+
+void XR_LoadExtensionDebug( XrInstance instance ) {
+	XrResult result;
+	result = xrGetInstanceProcAddr( instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction *)&qxrCreateDebugUtilsMessengerEXT );
+	XR_CheckResult( result, "loading debug extension function", instance );
+	result = xrGetInstanceProcAddr( instance, "xrDestroyDebugUtilsMessengerEXT", (PFN_xrVoidFunction *)&qxrDestroyDebugUtilsMessengerEXT );
+	XR_CheckResult( result, "loading debug extension function", instance );
 }
 
 XrInstance XR_CreateInstance() {
@@ -86,6 +131,7 @@ XrInstance XR_CreateInstance() {
 	XR_KHR_visibility_mask_available = false;
 	XR_EXT_debug_utils_available = false;
 	XR_CheckAvailableExtensions();
+	XR_CheckAvailableApiLayers();
 	if ( !XR_KHR_opengl_enable_available ) {
 		common->FatalError( "XR_KHR_opengl_enable extension is required, but not supported" );
 	}
@@ -132,6 +178,9 @@ XrInstance XR_CreateInstance() {
 		XR_VERSION_PATCH( instanceProperties.runtimeVersion ) );
 
 	XR_LoadExtensionOpenGL( instance );
+	if ( XR_EXT_debug_utils_available ) {
+		XR_LoadExtensionDebug( instance );
+	}
 
 	return instance;
 }
