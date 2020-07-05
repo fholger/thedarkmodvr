@@ -164,12 +164,34 @@ void VrBackend::BeginFrame() {
 	}
 
 	// await and begin the frame
-	XrFrameState frameState;
+	XrFrameState frameState = {
+		XR_TYPE_FRAME_STATE,
+		nullptr,
+	};
 	result = xrWaitFrame( session, nullptr, &frameState );
 	XR_CheckResult( result, "awaiting frame", instance );
 	shouldSubmitFrame = frameState.shouldRender == XR_TRUE;
 	currentFrameDisplayTime = frameState.predictedDisplayTime;
 	nextFrameDisplayTime = currentFrameDisplayTime + frameState.predictedDisplayPeriod;
+
+	XrViewLocateInfo locateInfo = {
+		XR_TYPE_VIEW_LOCATE_INFO,
+		nullptr,
+		XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+		currentFrameDisplayTime,
+		seatedSpace,
+	};
+	XrViewState viewState = {
+		XR_TYPE_VIEW_STATE,
+		nullptr,
+	};
+	for ( int i = 0; i < 2; ++i ) {
+		renderViews[i].type = XR_TYPE_VIEW;
+		renderViews[i].next = nullptr;
+	}
+	uint32_t viewCount = 0;
+	result = xrLocateViews( session, &locateInfo, &viewState, 2, &viewCount, renderViews );
+	XR_CheckResult( result, "locating views", instance, false );
 
 	result = xrBeginFrame( session, nullptr );
 	XR_CheckResult( result, "beginning frame", instance );
@@ -181,11 +203,41 @@ void VrBackend::EndFrame() {
 	}
 
 	// FIXME: this is just a quick hack to get some render output to the headset
+	eyeSwapchains[0].PrepareNextImage();
+	eyeSwapchains[1].PrepareNextImage();
 	uiSwapchain.PrepareNextImage();
 	frameBuffers->defaultFbo->BlitTo( uiSwapchain.CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	frameBuffers->defaultFbo->BlitTo( eyeSwapchains[0].CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	frameBuffers->defaultFbo->BlitTo( eyeSwapchains[1].CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	qglFlush();
 	uiSwapchain.ReleaseImage();
+	eyeSwapchains[0].ReleaseImage();
+	eyeSwapchains[1].ReleaseImage();
 	
+	XrCompositionLayerProjectionView projectionViews[2] = {
+		{
+			XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+			nullptr,
+			renderViews[0].pose,
+			renderViews[0].fov,
+			eyeSwapchains[0].CurrentSwapchainSubImage(),
+		},
+		{
+			XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
+			nullptr,
+			renderViews[1].pose,
+			renderViews[1].fov,
+			eyeSwapchains[1].CurrentSwapchainSubImage(),
+		},
+	};
+	XrCompositionLayerProjection stereoLayer = {
+		XR_TYPE_COMPOSITION_LAYER_PROJECTION,
+		nullptr,
+		0,
+		seatedSpace,
+		2,
+		projectionViews,
+	};
 	XrCompositionLayerQuad uiLayer = {
 		XR_TYPE_COMPOSITION_LAYER_QUAD,
 		nullptr,
@@ -197,6 +249,7 @@ void VrBackend::EndFrame() {
 		{ 2, 1.6f },
 	};
 	const XrCompositionLayerBaseHeader * const submittedLayers[] = {
+		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &stereoLayer ),
 		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &uiLayer ),
 	};
 	XrFrameEndInfo frameEndInfo = {
@@ -204,13 +257,12 @@ void VrBackend::EndFrame() {
 		nullptr,
 		currentFrameDisplayTime,
 		XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-		//sizeof(submittedLayers) / sizeof(submittedLayers[0]),
-		//submittedLayers,
-		0,
-		nullptr,
+		sizeof(submittedLayers) / sizeof(submittedLayers[0]),
+		submittedLayers,
 	};
 	XrResult result = xrEndFrame( session, &frameEndInfo );
 	XR_CheckResult( result, "submitting frame", instance, false );
+	shouldSubmitFrame = false;
 }
 
 void VrBackend::SetupDebugMessenger() {
@@ -257,6 +309,10 @@ void VrBackend::InitSwapchains() {
 	ChooseSwapchainFormat();
 
 	uint32_t numViews = 0;
+	for ( int i = 0; i < 2; ++i ) {
+		views[i].type = XR_TYPE_VIEW_CONFIGURATION_VIEW;
+		views[i].next = nullptr;
+	}
 	XrResult result = xrEnumerateViewConfigurationViews( instance, system, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
 		2, &numViews, views );
 	XR_CheckResult( result, "getting view info", instance );
@@ -288,6 +344,7 @@ void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &
 	case XR_SESSION_STATE_SYNCHRONIZED:
 	case XR_SESSION_STATE_VISIBLE:
 	case XR_SESSION_STATE_FOCUSED:
+		common->Printf( "xr Session restored" );
 		vrSessionActive = true;
 		break;
 
@@ -295,8 +352,13 @@ void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &
 		vrSessionActive = false;
 		break;
 
-	case XR_SESSION_STATE_LOSS_PENDING:
 	case XR_SESSION_STATE_STOPPING:
-		common->FatalError( "xr Session shutting down or lost" );
+		vrSessionActive = false;
+		common->Printf( "xr Session lost or stopped" );
+		result = xrEndSession( session );
+		XR_CheckResult( result, "ending session", instance, false );
+		break;
+	case XR_SESSION_STATE_LOSS_PENDING:
+		common->FatalError( "xr Session lost" );
 	}	
 }

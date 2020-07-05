@@ -45,6 +45,8 @@ private:
 	XrTime currentFrameDisplayTime;
 	XrTime nextFrameDisplayTime;
 
+	XrView renderViews[2];
+
 	XrDebugUtilsMessengerEXT debugMessenger = nullptr;
 
 	void SetupDebugMessenger();
