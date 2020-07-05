@@ -32,12 +32,24 @@ private:
 	XrInstance instance = nullptr;
 	XrSystemId system = 0;
 	XrSession session = nullptr;
+	GLuint swapchainFormat = 0;
+	XrViewConfigurationView views[2];
 	bool vrSessionActive = false;
 	bool shouldSubmitFrame = false;
 
 	VrSwapchain eyeSwapchains[2];
 	VrSwapchain uiSwapchain;
 
+	XrSpace seatedSpace = nullptr;
+
+	XrTime currentFrameDisplayTime;
+	XrTime nextFrameDisplayTime;
+
+	XrDebugUtilsMessengerEXT debugMessenger = nullptr;
+
+	void SetupDebugMessenger();
+	void ChooseSwapchainFormat();
+	void InitSwapchains();
 	void HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent );
 };
 
