@@ -27,6 +27,6 @@ extern bool XR_KHR_opengl_enable_available;
 extern bool XR_KHR_visibility_mask_available;
 extern bool XR_EXT_debug_utils_available;
 
-void XR_CheckResult( XrResult result, const char *description, XrInstance instance = nullptr );
+void XR_CheckResult( XrResult result, const char *description, XrInstance instance = nullptr, bool fatal = true );
 XrInstance XR_CreateInstance();
 
