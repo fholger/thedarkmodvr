@@ -37,13 +37,18 @@ public:
 	// returns the currently acquired Image for rendering
 	idImage *CurrentImage() const;
 
+	const XrSwapchainSubImage &CurrentSwapchainSubImage() const { return currentImage; }
+
 private:
 	static const uint32_t INVALID_INDEX = 0xffffffff;
 	
+	int width;
+	int height;
 	XrSwapchain swapchain = nullptr;
 	idList<idImage *> images;
 	idList<FrameBuffer *> frameBuffers;
 	uint32_t curIndex = INVALID_INDEX;
+	XrSwapchainSubImage currentImage;
 
 	void InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texnum, int width, int height );
 };
