@@ -27,6 +27,8 @@ public:
 
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }
+
+	void AdjustRenderView( renderView_t *view );
 	
 private:
 	XrInstance instance = nullptr;

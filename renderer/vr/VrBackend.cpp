@@ -15,6 +15,7 @@
 #include "precompiled.h"
 #include "VrBackend.h"
 #include "xr_loader.h"
+#include "xr_math.h"
 #include "../tr_local.h"
 #include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
@@ -263,6 +264,44 @@ void VrBackend::EndFrame() {
 	XrResult result = xrEndFrame( session, &frameEndInfo );
 	XR_CheckResult( result, "submitting frame", instance, false );
 	shouldSubmitFrame = false;
+}
+
+void VrBackend::AdjustRenderView( renderView_t *view ) {
+	XrViewLocateInfo locateInfo = {
+		XR_TYPE_VIEW_LOCATE_INFO,
+		nullptr,
+		XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+		nextFrameDisplayTime,
+		seatedSpace,
+	};
+	XrViewState viewState = { XR_TYPE_VIEW_STATE, nullptr };
+	XrView views[2] = { { XR_TYPE_VIEW, nullptr }, { XR_TYPE_VIEW, nullptr }};
+	uint32_t viewCount = 0;
+	XrResult result = xrLocateViews( session, &locateInfo, &viewState, 2, &viewCount, views );
+	if ( !XR_SUCCEEDED( result ) ) {
+		return;
+	}
+
+	// locate the center point of the two eye views, which we'll use in the frontend to determine the contents
+	// of the view
+	view->hmdPosition = ( Vec3FromXr( views[0].pose.position ) + Vec3FromXr( views[1].pose.position ) ) * .5f;
+	view->hmdOrientation = ( QuatFromXr( views[0].pose.orientation ) + QuatFromXr( views[1].pose.orientation ) ) * .5f;
+	view->hmdOrientation.Normalize();
+
+	// adjust view axis and origin
+	view->vieworg += view->hmdPosition * view->viewaxis;
+	view->viewaxis = view->hmdOrientation.ToMat3() * view->viewaxis;
+
+	// set horizontal and vertical fov
+	// for the scene collection in the frontend, we'll use a symmetric FoV, with angles slidely widened
+	// to create a bit of a buffer in the frustum, since we are going to readjust the view in the actual
+	// rendering for the eyes
+	float leftFovX = 2 * Max( idMath::Fabs( views[0].fov.angleLeft ), idMath::Fabs( views[0].fov.angleRight ) );
+	float rightFovX = 2 * Max( idMath::Fabs( views[1].fov.angleLeft ), idMath::Fabs( views[1].fov.angleRight ) );
+	float leftFovY = 2 * Max( idMath::Fabs( views[0].fov.angleUp ), idMath::Fabs( views[0].fov.angleDown ) );
+	float rightFovY = 2 * Max( idMath::Fabs( views[1].fov.angleUp ), idMath::Fabs( views[1].fov.angleDown ) );
+	view->fov_x = RAD2DEG( Max( leftFovX, rightFovX ) ) + 5;
+	view->fov_y = RAD2DEG( Max( leftFovY, rightFovY ) ) + 5;
 }
 
 void VrBackend::SetupDebugMessenger() {
