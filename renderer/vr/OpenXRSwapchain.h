@@ -18,7 +18,7 @@
 class FrameBuffer;
 class idImage;
 
-class VrSwapchain {
+class OpenXRSwapchain {
 public:
 	void Init( const idStr &name, GLuint format, int width, int height );
 	void Destroy();

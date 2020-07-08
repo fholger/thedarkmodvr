@@ -13,16 +13,16 @@
 
 ******************************************************************************/
 #include "precompiled.h"
-#include "VrSwapchain.h"
+#include "OpenXRSwapchain.h"
 
-#include "VrBackend.h"
+#include "OpenXRBackend.h"
 #include "xr_loader.h"
 #include "../FrameBuffer.h"
 #include "../FrameBufferManager.h"
 #include "../Image.h"
 #include "../Profiling.h"
 
-void VrSwapchain::Init( const idStr &name, GLuint format, int width, int height ) {
+void OpenXRSwapchain::Init( const idStr &name, GLuint format, int width, int height ) {
 	if ( swapchain != nullptr ) {
 		Destroy();
 	}
@@ -43,13 +43,13 @@ void VrSwapchain::Init( const idStr &name, GLuint format, int width, int height 
 		1,
 		1,
 	};
-	XrResult result = xrCreateSwapchain( vr->Session(), &createInfo, &swapchain );
-	XR_CheckResult( result, "creating swapchain", vr->Instance() );
+	XrResult result = xrCreateSwapchain( xrBackend->Session(), &createInfo, &swapchain );
+	XR_CheckResult( result, "creating swapchain", xrBackend->Instance() );
 
 	// enumerate number of images in the swapchain
 	uint32_t imageCount = 0;
 	result = xrEnumerateSwapchainImages( swapchain, 0, &imageCount, nullptr );
-	XR_CheckResult( result, "enumerating swapchain images", vr->Instance() );
+	XR_CheckResult( result, "enumerating swapchain images", xrBackend->Instance() );
 	idList<XrSwapchainImageOpenGLKHR> swapchainImages;
 	swapchainImages.SetNum( imageCount );
 	for ( int i = 0; i < swapchainImages.Num(); ++i ) {
@@ -58,7 +58,7 @@ void VrSwapchain::Init( const idStr &name, GLuint format, int width, int height 
 	}
 	result = xrEnumerateSwapchainImages( swapchain, swapchainImages.Num(), &imageCount,
 		reinterpret_cast<XrSwapchainImageBaseHeader *>( swapchainImages.Ptr() ) );
-	XR_CheckResult( result, "enumerating swapchain images", vr->Instance() );
+	XR_CheckResult( result, "enumerating swapchain images", xrBackend->Instance() );
 
 	// prepare framebuffer objects for images
 	images.SetNum( imageCount );
@@ -70,7 +70,7 @@ void VrSwapchain::Init( const idStr &name, GLuint format, int width, int height 
 	}
 }
 
-void VrSwapchain::Destroy() {
+void OpenXRSwapchain::Destroy() {
 	if ( swapchain == nullptr ) {
 		return;
 	}
@@ -90,9 +90,9 @@ void VrSwapchain::Destroy() {
 	curIndex = INVALID_INDEX;
 }
 
-void VrSwapchain::PrepareNextImage() {
+void OpenXRSwapchain::PrepareNextImage() {
 	XrResult result = xrAcquireSwapchainImage( swapchain, nullptr, &curIndex );
-	XR_CheckResult( result, "acquiring swapchain image", vr->Instance() );
+	XR_CheckResult( result, "acquiring swapchain image", xrBackend->Instance() );
 
 	XrSwapchainImageWaitInfo waitInfo = {
 		XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
@@ -100,36 +100,36 @@ void VrSwapchain::PrepareNextImage() {
 		1000000000,
 	};
 	result = xrWaitSwapchainImage( swapchain, &waitInfo );
-	XR_CheckResult( result, "awaiting swapchain image", vr->Instance() );
+	XR_CheckResult( result, "awaiting swapchain image", xrBackend->Instance() );
 
 	currentImage.imageArrayIndex = 0;
 	currentImage.swapchain = swapchain;
 	currentImage.imageRect = { {0, 0}, {width, height} };
 }
 
-void VrSwapchain::ReleaseImage() {
+void OpenXRSwapchain::ReleaseImage() {
 	XrResult result = xrReleaseSwapchainImage( swapchain, nullptr );
-	XR_CheckResult( result, "releasing swapchain image", vr->Instance() );
+	XR_CheckResult( result, "releasing swapchain image", xrBackend->Instance() );
 	curIndex = INVALID_INDEX;
 }
 
-FrameBuffer * VrSwapchain::CurrentFrameBuffer() const {
+FrameBuffer * OpenXRSwapchain::CurrentFrameBuffer() const {
 	if ( curIndex == INVALID_INDEX ) {
-		common->Error( "VrSwapchain: no image currently acquired when attempting to access framebuffer" );
+		common->Error( "OpenXRSwapchain: no image currently acquired when attempting to access framebuffer" );
 	}
 
 	return frameBuffers[curIndex];
 }
 
-idImage * VrSwapchain::CurrentImage() const {
+idImage * OpenXRSwapchain::CurrentImage() const {
 	if ( curIndex == INVALID_INDEX ) {
-		common->Error( "VrSwapchain: no image currently acquired when attempting to access image" );
+		common->Error( "OpenXRSwapchain: no image currently acquired when attempting to access image" );
 	}
 
 	return images[curIndex];
 }
 
-void VrSwapchain::InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texnum, int width, int height ) {
+void OpenXRSwapchain::InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texnum, int width, int height ) {
 	image->texnum = texnum;
 	image->uploadWidth = width;
 	image->uploadHeight = height;
