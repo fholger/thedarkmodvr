@@ -26,6 +26,7 @@ public:
 	virtual void RenderStereoView( const emptyCommand_t * cmds ) = 0;
 };
 
-extern VRBackend *vr;
+extern VRBackend *vrBackend;
+extern idCVar vr_uiResolution;
 
 void SelectVRImplementation();

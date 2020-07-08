@@ -58,14 +58,14 @@ void RenderBackend::Init() {
 		qglBufferData( GL_PIXEL_PACK_BUFFER, DARKMOD_LG_RENDER_WIDTH * DARKMOD_LG_RENDER_WIDTH * 3, nullptr, GL_STREAM_READ );
 	}
 
-	vr->Init();
+	SelectVRImplementation();
+	vrBackend->Init();
 }
 
 void RenderBackend::Shutdown() {
-	vr->Destroy();
+	vrBackend->Destroy();
 
 	qglDeleteBuffers( 3, lightgemPbos );
-
 	stencilShadowStage.Shutdown();
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
