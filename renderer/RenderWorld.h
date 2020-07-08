@@ -245,8 +245,9 @@ typedef struct renderView_s {
 	const idMaterial		*globalMaterial;							// used to override everything draw
 
 	// VR support
-	idVec3					hmdPosition;
-	idQuat					hmdOrientation;
+	idVec3					initialVieworg;
+	idMat3					initialViewaxis;
+	bool					fixedOrigin;
 } renderView_t;
 
 

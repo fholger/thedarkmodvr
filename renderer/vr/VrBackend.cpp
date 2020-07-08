@@ -19,6 +19,8 @@
 #include "../tr_local.h"
 #include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
+#include "../Profiling.h"
+#include "../backend/RenderBackend.h"
 
 VrBackend vrImpl;
 VrBackend *vr = &vrImpl;
@@ -61,6 +63,49 @@ namespace {
             void*                                            userData) {
 		common->Printf("XR in %s: %s\n", callbackData->functionName, callbackData->message);
 		return XR_TRUE;
+	}
+
+	void SetupProjectionMatrix( viewDef_t *viewDef, XrFovf fov ) {
+		const float zNear = viewDef->renderView.cramZNear ? r_znear.GetFloat() * 0.25f : r_znear.GetFloat();
+		const float idx = 1.0f / (tan(fov.angleRight) - tan(fov.angleLeft));
+		const float idy = 1.0f / (tan(fov.angleUp) - tan(fov.angleDown));
+		const float sx = tan(fov.angleRight) + tan(fov.angleLeft);
+		const float sy = tan(fov.angleDown) + tan(fov.angleUp);
+
+		viewDef->projectionMatrix[0 * 4 + 0] = 2.0f * idx;
+		viewDef->projectionMatrix[1 * 4 + 0] = 0.0f;
+		viewDef->projectionMatrix[2 * 4 + 0] = sx * idx;
+		viewDef->projectionMatrix[3 * 4 + 0] = 0.0f;
+
+		viewDef->projectionMatrix[0 * 4 + 1] = 0.0f;
+		viewDef->projectionMatrix[1 * 4 + 1] = 2.0f * idy;
+		viewDef->projectionMatrix[2 * 4 + 1] = sy*idy;	
+		viewDef->projectionMatrix[3 * 4 + 1] = 0.0f;
+
+		viewDef->projectionMatrix[0 * 4 + 2] = 0.0f;
+		viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
+		viewDef->projectionMatrix[2 * 4 + 2] = -0.999f; 
+		viewDef->projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
+
+		viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
+		viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
+		viewDef->projectionMatrix[2 * 4 + 3] = -1.0f;
+		viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
+	}
+
+	void UpdateViewPose( viewDef_t *viewDef, XrPosef pose ) {
+		// update with new pose
+		renderView_t& eyeView = viewDef->renderView;
+		if ( !eyeView.fixedOrigin ) {
+			eyeView.vieworg += Vec3FromXr( pose.position ) * eyeView.initialViewaxis;
+		}
+		eyeView.viewaxis = QuatFromXr( pose.orientation ).ToMat3() * eyeView.initialViewaxis;
+
+		// apply new view matrix to view and all entities
+		R_SetViewMatrix( *viewDef );
+		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
+			myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
+		}
 	}
 }
 
@@ -142,6 +187,7 @@ void VrBackend::Destroy() {
 }
 
 void VrBackend::BeginFrame() {
+	GL_PROFILE("XrBeginFrame")
 	// poll xr events and react to them
 	XrEventDataBuffer event = {
 		XR_TYPE_EVENT_DATA_BUFFER,
@@ -203,18 +249,8 @@ void VrBackend::EndFrame() {
 		return;
 	}
 
-	// FIXME: this is just a quick hack to get some render output to the headset
-	eyeSwapchains[0].PrepareNextImage();
-	eyeSwapchains[1].PrepareNextImage();
-	uiSwapchain.PrepareNextImage();
-	frameBuffers->defaultFbo->BlitTo( uiSwapchain.CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	frameBuffers->defaultFbo->BlitTo( eyeSwapchains[0].CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	frameBuffers->defaultFbo->BlitTo( eyeSwapchains[1].CurrentFrameBuffer(), GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	qglFlush();
-	uiSwapchain.ReleaseImage();
-	eyeSwapchains[0].ReleaseImage();
-	eyeSwapchains[1].ReleaseImage();
-	
+	GL_PROFILE("XrSubmitFrame")
+
 	XrCompositionLayerProjectionView projectionViews[2] = {
 		{
 			XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
@@ -284,13 +320,16 @@ void VrBackend::AdjustRenderView( renderView_t *view ) {
 
 	// locate the center point of the two eye views, which we'll use in the frontend to determine the contents
 	// of the view
-	view->hmdPosition = ( Vec3FromXr( views[0].pose.position ) + Vec3FromXr( views[1].pose.position ) ) * .5f;
-	view->hmdOrientation = ( QuatFromXr( views[0].pose.orientation ) + QuatFromXr( views[1].pose.orientation ) ) * .5f;
-	view->hmdOrientation.Normalize();
+	idVec3 hmdPosition = ( Vec3FromXr( views[0].pose.position ) + Vec3FromXr( views[1].pose.position ) ) * .5f;
+	idQuat hmdOrientation = ( QuatFromXr( views[0].pose.orientation ) + QuatFromXr( views[1].pose.orientation ) ) * .5f;
+	hmdOrientation.Normalize();
 
 	// adjust view axis and origin
-	view->vieworg += view->hmdPosition * view->viewaxis;
-	view->viewaxis = view->hmdOrientation.ToMat3() * view->viewaxis;
+	view->initialVieworg = view->vieworg;
+	view->initialViewaxis = view->viewaxis;
+	view->fixedOrigin = false;
+	view->vieworg += hmdPosition * view->viewaxis;
+	view->viewaxis = hmdOrientation.ToMat3() * view->viewaxis;
 
 	// set horizontal and vertical fov
 	// for the scene collection in the frontend, we'll use a symmetric FoV, with angles slidely widened
@@ -302,6 +341,49 @@ void VrBackend::AdjustRenderView( renderView_t *view ) {
 	float rightFovY = 2 * Max( idMath::Fabs( views[1].fov.angleUp ), idMath::Fabs( views[1].fov.angleDown ) );
 	view->fov_x = RAD2DEG( Max( leftFovX, rightFovX ) ) + 5;
 	view->fov_y = RAD2DEG( Max( leftFovY, rightFovY ) ) + 5;
+}
+
+void VrBackend::RenderStereoView( const emptyCommand_t *cmds ) {
+	if ( !vrSessionActive || !shouldSubmitFrame ) {
+		RB_ExecuteBackEndCommands( cmds );
+		return;
+	}
+
+	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
+
+	// render lightgem and 2D UI elements
+	uiSwapchain.PrepareNextImage();
+	frameBuffers->defaultFbo = uiSwapchain.CurrentFrameBuffer();
+	frameBuffers->defaultFbo->Bind();
+	qglClearColor( 0, 0, 0, 0 );
+	qglClear( GL_COLOR_BUFFER_BIT );
+	ExecuteRenderCommands( cmds, false );
+
+	// render stereo views
+	for ( int eye = 0; eye < 2; ++eye ) {
+		UpdateRenderViewsForEye( cmds, eye );
+		eyeSwapchains[eye].PrepareNextImage();
+		frameBuffers->defaultFbo = eyeSwapchains[eye].CurrentFrameBuffer();
+		frameBuffers->defaultFbo->Bind();
+		qglClearColor( 0, 0, 0, 1 );
+		qglClear( GL_COLOR_BUFFER_BIT );
+		frameBuffers->EnterPrimary();
+		ExecuteRenderCommands( cmds, true );
+		frameBuffers->LeavePrimary();
+		FB_DebugShowContents();
+	}
+
+	eyeSwapchains[0].CurrentFrameBuffer()->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	uiSwapchain.CurrentFrameBuffer()->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	eyeSwapchains[0].ReleaseImage();
+	eyeSwapchains[1].ReleaseImage();
+	uiSwapchain.ReleaseImage();
+	EndFrame();
+	GLimp_SwapBuffers();
+	frameBuffers->defaultFbo = defaultFbo;
+	// go back to the default texture so the editor doesn't mess up a bound image
+	qglBindTexture( GL_TEXTURE_2D, 0 );
+	backEnd.glState.tmu[0].current2DMap = -1;
 }
 
 void VrBackend::SetupDebugMessenger() {
@@ -330,8 +412,8 @@ void VrBackend::ChooseSwapchainFormat() {
 	// find first matching desired swapchain format
 	swapchainFormat = 0;
 	std::set<int64_t> supportedFormats (swapchainFormats.begin(), swapchainFormats.end());
-	idList<int64_t> desiredFormats = { GL_RGBA8, GL_SRGB8_ALPHA8, GL_RGBA16F };
-	idList<idStr> formatNames = { "GL_RGBA8", "GL_SRGB8_ALPHA8", "GL_RGBA16F" };
+	idList<int64_t> desiredFormats = { GL_SRGB8_ALPHA8, GL_RGBA8, GL_RGBA16F };
+	idList<idStr> formatNames = { "GL_SRGB8_ALPHA8", "GL_RGBA8", "GL_RGBA16F" };
 	for ( int i = 0; i < desiredFormats.Num(); ++i ) {
 		if ( supportedFormats.find( desiredFormats[i] ) != supportedFormats.end() ) {
 			swapchainFormat = desiredFormats[i];
@@ -405,4 +487,83 @@ void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &
 	case XR_SESSION_STATE_LOSS_PENDING:
 		common->FatalError( "xr Session lost" );
 	}	
+}
+
+extern void RB_Tonemap( bloomCommand_t *cmd );
+extern void RB_CopyRender( const void *data );
+
+void VrBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D ) {
+	RB_SetDefaultGLState();
+
+	bool isv3d = false, fboOff = false; // needs to be declared outside of switch case
+
+	while ( cmds ) {
+		switch ( cmds->commandId ) {
+		case RC_NOP:
+			break;
+		case RC_DRAW_VIEW: {
+			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
+			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
+			if ( (backEnd.viewDef->IsLightGem() && !render3D) || (!backEnd.viewDef->IsLightGem() && isv3d == render3D) ) {
+				renderBackend->DrawView( backEnd.viewDef );
+			}
+			/*if ( !backEnd.viewDef->IsLightGem() ) {					// duzenko #4425: create/switch to framebuffer object
+				if ( !fboOff ) {									// don't switch to FBO if bloom or some 2d has happened
+					if ( isv3d ) {
+						frameBuffers->EnterPrimary();
+					} else {
+						frameBuffers->LeavePrimary();	// duzenko: render 2d in default framebuffer, as well as all 3d until frame end
+						FB_DebugShowContents();
+						fboOff = true;
+					}
+				}
+			}*/
+			break;
+		}
+		case RC_SET_BUFFER:
+			// not applicable
+			break;
+		case RC_BLOOM:
+			if ( !render3D ) {
+				break;
+			}
+			RB_Tonemap( (bloomCommand_t*)cmds );
+			FB_DebugShowContents();
+			fboOff = true;
+			break;
+		case RC_COPY_RENDER:
+			if ( !render3D ) {
+				break;
+			}
+			RB_CopyRender( cmds );
+			break;
+		case RC_SWAP_BUFFERS:
+			// not applicable
+			break;
+		default:
+			common->Error( "VRBackend::ExecuteRenderCommands: bad commandId" );
+			break;
+		}
+		cmds = ( const emptyCommand_t * )cmds->next;
+	}
+}
+
+void VrBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
+	GL_PROFILE("UpdateRenderViewsForEye")
+	
+	for ( const emptyCommand_t *cmd = cmds; cmd; cmd = ( const emptyCommand_t * )cmd->next ) {
+		if ( cmd->commandId == RC_DRAW_VIEW ) {
+			viewDef_t *viewDef = ( ( const drawSurfsCommand_t * )cmd )->viewDef;
+			if ( viewDef->IsLightGem() || viewDef->viewEntitys == nullptr ) {
+				continue;
+			}
+
+			if ( !r_ignore.GetBool() ) {
+				SetupProjectionMatrix( viewDef, renderViews[eye].fov );
+			}
+			if ( !r_ignore2.GetBool() ) {
+				UpdateViewPose( viewDef, renderViews[eye].pose );
+			}
+		}
+	}
 }

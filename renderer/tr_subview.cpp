@@ -396,6 +396,7 @@ void R_PortalRender( drawSurf_t *surf, textureStage_t *stage, idScreenRect& scis
 	parms->subviewSurface = surf;
 
 	parms->renderView.viewaxis = parms->renderView.viewaxis * gameLocal.GetLocalPlayer()->playerView.ShakeAxis();
+	parms->renderView.initialViewaxis = parms->renderView.initialViewaxis * gameLocal.GetLocalPlayer()->playerView.ShakeAxis();
 
 	// grayman #3108 - contributed by neuro & 7318
 	idVec3 diff, currentEyePos, PSOrigin, Zero;
@@ -435,6 +436,9 @@ void R_PortalRender( drawSurf_t *surf, textureStage_t *stage, idScreenRect& scis
 
 		parms->renderView.vieworg = PSOrigin;	// grayman #3108 - contributed by neuro & 7318
 		parms->renderView.viewaxis = tr.viewDef->renderView.viewaxis * gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetAxis();
+		parms->renderView.initialVieworg = PSOrigin;
+		parms->renderView.initialViewaxis = tr.viewDef->renderView.initialViewaxis * gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetAxis();
+		parms->renderView.fixedOrigin = true;
 
 		// set up viewport, adjusted for resolution and OpenGL style 0 at the bottom
 		tr.RenderViewToViewport( parms->renderView, parms->viewport );
