@@ -948,7 +948,7 @@ idPlayerView::RenderPlayerView
 void idPlayerView::RenderPlayerView( idUserInterface *hud )
 {
 	renderView_t playerRenderView = *player->GetRenderView();
-	vr->AdjustRenderView( &playerRenderView );
+	vrBackend->AdjustRenderView( &playerRenderView );
 	const renderView_t *view = &playerRenderView;
 
 	if(g_skipViewEffects.GetBool())
