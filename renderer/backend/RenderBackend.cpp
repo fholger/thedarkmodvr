@@ -22,7 +22,7 @@
 #include "../Profiling.h"
 #include "../GLSLProgram.h"
 #include "../FrameBufferManager.h"
-#include "../vr/OpenXRBackend.h"
+#include "../vr/VRBackend.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;

@@ -16,20 +16,21 @@
 
 #include <openxr/openxr.h>
 #include "OpenXRSwapchain.h"
+#include "VRBackend.h"
 
-class OpenXRBackend {
+class OpenXRBackend : public VRBackend {
 public:
-	void Init();
-	void Destroy();
+	void Init() override;
+	void Destroy() override;
 
-	void BeginFrame();
-	void EndFrame();
+	void BeginFrame() override;
+	void EndFrame() override;
 
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }
 
-	void AdjustRenderView( renderView_t *view );
-	void RenderStereoView( const emptyCommand_t * cmds );
+	void AdjustRenderView( renderView_t *view ) override;
+	void RenderStereoView( const emptyCommand_t * cmds ) override;
 
 private:
 	XrInstance instance = nullptr;
@@ -61,4 +62,4 @@ private:
 	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 };
 
-extern OpenXRBackend *vr;
+extern OpenXRBackend *xrBackend;
