@@ -209,6 +209,7 @@ find_package(pugixml REQUIRED)
 find_package(libpng REQUIRED)
 find_package(mbedtls REQUIRED)
 find_package(openxr REQUIRED)
+find_package(openvr REQUIRED)
 
 include_directories(
 		"${PROJECT_SOURCE_DIR}"
@@ -227,6 +228,7 @@ include_directories(
 		${libpng_INCLUDE_DIRS}
 		${mbedtls_INCLUDE_DIRS}
 		${openxr_INCLUDE_DIRS}
+		${openvr_INCLUDE_DIRS}
 )
 
 target_link_libraries(TheDarkMod
@@ -241,6 +243,7 @@ target_link_libraries(TheDarkMod
 		${libpng_LIBRARIES}
 		${mbedtls_LIBRARIES}
 		${openxr_LIBRARIES}
+		${openvr_LIBRARIES}
 )
 target_link_libraries(TheDarkMod debug ${pugixml_LIBRARIES_D} optimized ${pugixml_LIBRARIES})
 
@@ -269,7 +272,8 @@ if (COPY_EXE)
 	add_custom_command(
 			TARGET TheDarkMod POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:TheDarkMod> "${GAME_DIR}"
-			COMMAND ${CMAKE_COMMAND} -E copy "${openxr_LIBRARIES}" "${GAME_DIR}"
+			COMMAND ${CMAKE_COMMAND} -E copy "${openxr_BINARY}" "${GAME_DIR}"
+			COMMAND ${CMAKE_COMMAND} -E copy "${openvr_BINARY}" "${GAME_DIR}"
 			COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/glprogs" "${GAME_DIR}/glprogs"
 	)
 	if (UNIX)
