@@ -29,7 +29,8 @@ public:
 	XrSession Session() const { return session; }
 
 	void AdjustRenderView( renderView_t *view );
-	
+	void RenderStereoView( const emptyCommand_t * cmds );
+
 private:
 	XrInstance instance = nullptr;
 	XrSystemId system = 0;
@@ -55,6 +56,9 @@ private:
 	void ChooseSwapchainFormat();
 	void InitSwapchains();
 	void HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent );
+
+	void ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D );
+	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 };
 
 extern VrBackend *vr;

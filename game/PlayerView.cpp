@@ -492,6 +492,7 @@ void idPlayerView::SingleView( idUserInterface *hud, const renderView_t *view, b
 		portalView.vieworg = PSOrigin;	// grayman #3108 - contributed by neuro & 7318
 //		portalView.vieworg = gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetOrigin();
 		portalView.viewaxis = portalView.viewaxis * gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetAxis();
+		portalView.initialViewaxis = hackedView.initialViewaxis * gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetAxis();
 
 		// setup global fixup projection vars
 		if ( 1 ) {
