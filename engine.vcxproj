@@ -502,8 +502,8 @@
     <ClInclude Include="renderer\simplex.h" />
     <ClInclude Include="renderer\tr_local.h" />
     <ClInclude Include="renderer\VertexCache.h" />
-    <ClInclude Include="renderer\vr\VrBackend.h" />
-    <ClInclude Include="renderer\vr\VrSwapchain.h" />
+    <ClInclude Include="renderer\vr\OpenXRBackend.h" />
+    <ClInclude Include="renderer\vr\OpenXRSwapchain.h" />
     <ClInclude Include="renderer\vr\xr_loader.h" />
     <ClInclude Include="renderer\vr\xr_math.h" />
     <ClInclude Include="sound\efxlib.h" />
@@ -1099,8 +1099,8 @@
     <ClCompile Include="renderer\tr_trisurf.cpp" />
     <ClCompile Include="renderer\tr_turboshadow.cpp" />
     <ClCompile Include="renderer\VertexCache.cpp" />
-    <ClCompile Include="renderer\vr\VrBackend.cpp" />
-    <ClCompile Include="renderer\vr\VrSwapchain.cpp" />
+    <ClCompile Include="renderer\vr\OpenXRBackend.cpp" />
+    <ClCompile Include="renderer\vr\OpenXRSwapchain.cpp" />
     <ClCompile Include="renderer\vr\xr_loader.cpp" />
     <ClCompile Include="renderer\vr\xr_math.cpp" />
     <ClCompile Include="sound\snd_cache.cpp" />

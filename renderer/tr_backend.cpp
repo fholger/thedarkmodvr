@@ -23,7 +23,7 @@
 #include "Profiling.h"
 #include "BloomStage.h"
 #include "FrameBufferManager.h"
-#include "vr/VrBackend.h"
+#include "vr/OpenXRBackend.h"
 
 backEndState_t	backEnd;
 idCVarBool image_showBackgroundLoads( "image_showBackgroundLoads", "0", CVAR_RENDERER, "1 = print outstanding background loads" );
