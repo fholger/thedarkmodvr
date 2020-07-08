@@ -15,21 +15,22 @@
 #pragma once
 
 #include <openxr/openxr.h>
-#include "VrSwapchain.h"
+#include "OpenXRSwapchain.h"
+#include "VRBackend.h"
 
-class VrBackend {
+class OpenXRBackend : public VRBackend {
 public:
-	void Init();
-	void Destroy();
+	void Init() override;
+	void Destroy() override;
 
-	void BeginFrame();
-	void EndFrame();
+	void BeginFrame() override;
+	void EndFrame() override;
 
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }
 
-	void AdjustRenderView( renderView_t *view );
-	void RenderStereoView( const emptyCommand_t * cmds );
+	void AdjustRenderView( renderView_t *view ) override;
+	void RenderStereoView( const emptyCommand_t * cmds ) override;
 
 private:
 	XrInstance instance = nullptr;
@@ -40,8 +41,8 @@ private:
 	bool vrSessionActive = false;
 	bool shouldSubmitFrame = false;
 
-	VrSwapchain eyeSwapchains[2];
-	VrSwapchain uiSwapchain;
+	OpenXRSwapchain eyeSwapchains[2];
+	OpenXRSwapchain uiSwapchain;
 
 	XrSpace seatedSpace = nullptr;
 
@@ -61,4 +62,4 @@ private:
 	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 };
 
-extern VrBackend *vr;
+extern OpenXRBackend *xrBackend;
