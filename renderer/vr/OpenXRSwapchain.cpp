@@ -43,13 +43,13 @@ void OpenXRSwapchain::Init( const idStr &name, GLuint format, int width, int hei
 		1,
 		1,
 	};
-	XrResult result = xrCreateSwapchain( vr->Session(), &createInfo, &swapchain );
-	XR_CheckResult( result, "creating swapchain", vr->Instance() );
+	XrResult result = xrCreateSwapchain( xrBackend->Session(), &createInfo, &swapchain );
+	XR_CheckResult( result, "creating swapchain", xrBackend->Instance() );
 
 	// enumerate number of images in the swapchain
 	uint32_t imageCount = 0;
 	result = xrEnumerateSwapchainImages( swapchain, 0, &imageCount, nullptr );
-	XR_CheckResult( result, "enumerating swapchain images", vr->Instance() );
+	XR_CheckResult( result, "enumerating swapchain images", xrBackend->Instance() );
 	idList<XrSwapchainImageOpenGLKHR> swapchainImages;
 	swapchainImages.SetNum( imageCount );
 	for ( int i = 0; i < swapchainImages.Num(); ++i ) {
@@ -58,7 +58,7 @@ void OpenXRSwapchain::Init( const idStr &name, GLuint format, int width, int hei
 	}
 	result = xrEnumerateSwapchainImages( swapchain, swapchainImages.Num(), &imageCount,
 		reinterpret_cast<XrSwapchainImageBaseHeader *>( swapchainImages.Ptr() ) );
-	XR_CheckResult( result, "enumerating swapchain images", vr->Instance() );
+	XR_CheckResult( result, "enumerating swapchain images", xrBackend->Instance() );
 
 	// prepare framebuffer objects for images
 	images.SetNum( imageCount );
@@ -92,7 +92,7 @@ void OpenXRSwapchain::Destroy() {
 
 void OpenXRSwapchain::PrepareNextImage() {
 	XrResult result = xrAcquireSwapchainImage( swapchain, nullptr, &curIndex );
-	XR_CheckResult( result, "acquiring swapchain image", vr->Instance() );
+	XR_CheckResult( result, "acquiring swapchain image", xrBackend->Instance() );
 
 	XrSwapchainImageWaitInfo waitInfo = {
 		XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
@@ -100,7 +100,7 @@ void OpenXRSwapchain::PrepareNextImage() {
 		1000000000,
 	};
 	result = xrWaitSwapchainImage( swapchain, &waitInfo );
-	XR_CheckResult( result, "awaiting swapchain image", vr->Instance() );
+	XR_CheckResult( result, "awaiting swapchain image", xrBackend->Instance() );
 
 	currentImage.imageArrayIndex = 0;
 	currentImage.swapchain = swapchain;
@@ -109,7 +109,7 @@ void OpenXRSwapchain::PrepareNextImage() {
 
 void OpenXRSwapchain::ReleaseImage() {
 	XrResult result = xrReleaseSwapchainImage( swapchain, nullptr );
-	XR_CheckResult( result, "releasing swapchain image", vr->Instance() );
+	XR_CheckResult( result, "releasing swapchain image", xrBackend->Instance() );
 	curIndex = INVALID_INDEX;
 }
 

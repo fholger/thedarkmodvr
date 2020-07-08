@@ -22,10 +22,10 @@
 #include "../Profiling.h"
 #include "../backend/RenderBackend.h"
 
-OpenXRBackend vrImpl;
-OpenXRBackend *vr = &vrImpl;
-
 idCVar vr_uiResolution( "vr_uiResolution", "2048", CVAR_RENDERER|CVAR_ARCHIVE|CVAR_INTEGER, "Render resolution for 2D/UI overlay" );
+
+OpenXRBackend xrImpl;
+OpenXRBackend *xrBackend = &xrImpl;
 
 #ifdef WIN32
 #include "../../sys/win32/win_local.h"
