@@ -55,7 +55,7 @@ void XR_CheckResult( XrResult result, const char *description, XrInstance instan
 
 	char resultString[XR_MAX_RESULT_STRING_SIZE];
 	xrResultToString( instance, result, resultString );
-	if ( false /*fatal*/ ) {
+	if ( fatal ) {
 		common->FatalError( "OpenXR call failed - %s: %s", description, resultString );
 	} else {
 		common->Warning( "OpenXR call failed - %s: %s", description, resultString );

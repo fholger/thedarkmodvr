@@ -22,8 +22,6 @@
 #include "../Profiling.h"
 #include "../backend/RenderBackend.h"
 
-idCVar vr_uiResolution( "vr_uiResolution", "2048", CVAR_RENDERER|CVAR_ARCHIVE|CVAR_INTEGER, "Render resolution for 2D/UI overlay" );
-
 OpenXRBackend xrImpl;
 OpenXRBackend *xrBackend = &xrImpl;
 
@@ -97,7 +95,7 @@ namespace {
 		// update with new pose
 		renderView_t& eyeView = viewDef->renderView;
 		if ( !eyeView.fixedOrigin ) {
-			eyeView.vieworg += Vec3FromXr( pose.position ) * eyeView.initialViewaxis;
+			eyeView.vieworg = eyeView.initialVieworg + Vec3FromXr( pose.position ) * eyeView.initialViewaxis;
 		}
 		eyeView.viewaxis = QuatFromXr( pose.orientation ).ToMat3() * eyeView.initialViewaxis;
 
