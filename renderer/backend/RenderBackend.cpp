@@ -42,11 +42,12 @@ void RenderBackend::Init() {
 	interactionStage.Init();
 	stencilShadowStage.Init();
 
-	vr->Init();
+	SelectVRImplementation();
+	vrBackend->Init();
 }
 
 void RenderBackend::Shutdown() {
-	vr->Destroy();
+	vrBackend->Destroy();
 	
 	stencilShadowStage.Shutdown();
 	interactionStage.Shutdown();

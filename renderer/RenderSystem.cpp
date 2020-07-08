@@ -138,7 +138,7 @@ void R_IssueRenderCommands( frameData_t *frameData ) {
 	// r_skipRender is usually more usefull, because it will still
 	// draw 2D graphics
 	if ( !r_skipBackEnd.GetBool() ) {
-		vr->RenderStereoView( cmds );
+		vrBackend->RenderStereoView( cmds );
 		//RB_ExecuteBackEndCommands( cmds );
 	}
 	R_ClearCommandChain( frameData );
@@ -634,7 +634,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	try {
 		ProfilingBeginFrame();
 		common->SetErrorIndirection( true );
-		vr->BeginFrame();
+		vrBackend->BeginFrame();
 		double startLoop = Sys_GetClockTicks();
 		session->ActivateFrontend();
 		double endSignal = Sys_GetClockTicks();
