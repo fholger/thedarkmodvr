@@ -23,7 +23,7 @@
 #include "../GLSLProgram.h"
 #include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
-#include "../vr/VrBackend.h"
+#include "../vr/VRBackend.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;

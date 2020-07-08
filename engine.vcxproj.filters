@@ -1291,16 +1291,19 @@
     <ClInclude Include="renderer\backend\GpuBuffer.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\vr\VrBackend.h">
-      <Filter>Renderer\VR</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\vr\xr_loader.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\vr\VrSwapchain.h">
+    <ClInclude Include="renderer\vr\xr_math.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\vr\xr_math.h">
+    <ClInclude Include="renderer\vr\OpenXRSwapchain.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vr\OpenXRBackend.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vr\VRBackend.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
   </ItemGroup>
@@ -3037,16 +3040,19 @@
     <ClCompile Include="renderer\backend\GpuBuffer.cpp">
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\vr\VrBackend.cpp">
-      <Filter>Renderer\VR</Filter>
-    </ClCompile>
     <ClCompile Include="renderer\vr\xr_loader.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\vr\VrSwapchain.cpp">
+    <ClCompile Include="renderer\vr\xr_math.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\vr\xr_math.cpp">
+    <ClCompile Include="renderer\vr\OpenXRSwapchain.cpp">
+      <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vr\OpenXRBackend.cpp">
+      <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vr\VRBackend.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
   </ItemGroup>

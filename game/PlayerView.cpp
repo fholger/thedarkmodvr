@@ -19,7 +19,7 @@
 
 #include "../renderer/Image.h"
 #include "Game_local.h"
-#include "../renderer/vr/VrBackend.h"
+#include "../renderer/vr/VRBackend.h"
 
 static int MakePowerOfTwo( int num ) {
 	int		pot;
