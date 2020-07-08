@@ -13,7 +13,7 @@
 
 ******************************************************************************/
 #include "precompiled.h"
-#include "VrBackend.h"
+#include "OpenXRBackend.h"
 #include "xr_loader.h"
 #include "xr_math.h"
 #include "../tr_local.h"
@@ -22,8 +22,8 @@
 #include "../Profiling.h"
 #include "../backend/RenderBackend.h"
 
-VrBackend vrImpl;
-VrBackend *vr = &vrImpl;
+OpenXRBackend vrImpl;
+OpenXRBackend *vr = &vrImpl;
 
 idCVar vr_uiResolution( "vr_uiResolution", "2048", CVAR_RENDERER|CVAR_ARCHIVE|CVAR_INTEGER, "Render resolution for 2D/UI overlay" );
 
@@ -109,7 +109,7 @@ namespace {
 	}
 }
 
-void VrBackend::Init() {
+void OpenXRBackend::Init() {
 	if ( instance != nullptr ) {
 		Destroy();
 	}
@@ -166,7 +166,7 @@ void VrBackend::Init() {
 	common->Printf( "-----------------------------\n" );
 }
 
-void VrBackend::Destroy() {
+void OpenXRBackend::Destroy() {
 	if ( instance == nullptr ) {
 		return;
 	}
@@ -186,7 +186,7 @@ void VrBackend::Destroy() {
 	instance = nullptr;
 }
 
-void VrBackend::BeginFrame() {
+void OpenXRBackend::BeginFrame() {
 	GL_PROFILE("XrBeginFrame")
 	// poll xr events and react to them
 	XrEventDataBuffer event = {
@@ -244,7 +244,7 @@ void VrBackend::BeginFrame() {
 	XR_CheckResult( result, "beginning frame", instance );
 }
 
-void VrBackend::EndFrame() {
+void OpenXRBackend::EndFrame() {
 	if ( !vrSessionActive || !shouldSubmitFrame ) {
 		return;
 	}
@@ -302,7 +302,7 @@ void VrBackend::EndFrame() {
 	shouldSubmitFrame = false;
 }
 
-void VrBackend::AdjustRenderView( renderView_t *view ) {
+void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
 	XrViewLocateInfo locateInfo = {
 		XR_TYPE_VIEW_LOCATE_INFO,
 		nullptr,
@@ -343,7 +343,7 @@ void VrBackend::AdjustRenderView( renderView_t *view ) {
 	view->fov_y = RAD2DEG( Max( leftFovY, rightFovY ) ) + 5;
 }
 
-void VrBackend::RenderStereoView( const emptyCommand_t *cmds ) {
+void OpenXRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	if ( !vrSessionActive || !shouldSubmitFrame ) {
 		RB_ExecuteBackEndCommands( cmds );
 		return;
@@ -386,7 +386,7 @@ void VrBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	backEnd.glState.tmu[0].current2DMap = -1;
 }
 
-void VrBackend::SetupDebugMessenger() {
+void OpenXRBackend::SetupDebugMessenger() {
 	XrDebugUtilsMessengerCreateInfoEXT createInfo = {
 		XR_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 		nullptr,
@@ -400,7 +400,7 @@ void VrBackend::SetupDebugMessenger() {
 	common->Printf( "Enabled debug messenger\n" );
 }
 
-void VrBackend::ChooseSwapchainFormat() {
+void OpenXRBackend::ChooseSwapchainFormat() {
 	uint32_t numSupportedFormats = 0;
 	XrResult result = xrEnumerateSwapchainFormats( session, 0, &numSupportedFormats, nullptr );
 	XR_CheckResult( result, "getting supported swapchain formats", instance );
@@ -426,7 +426,7 @@ void VrBackend::ChooseSwapchainFormat() {
 	}
 }
 
-void VrBackend::InitSwapchains() {
+void OpenXRBackend::InitSwapchains() {
 	ChooseSwapchainFormat();
 
 	uint32_t numViews = 0;
@@ -451,7 +451,7 @@ void VrBackend::InitSwapchains() {
 	common->Printf( "Created swapchains\n" );
 }
 
-void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent ) {
+void OpenXRBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent ) {
 	XrSessionBeginInfo beginInfo = {
 		XR_TYPE_SESSION_BEGIN_INFO,
 		nullptr,
@@ -492,7 +492,7 @@ void VrBackend::HandleSessionStateChange( const XrEventDataSessionStateChanged &
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
 
-void VrBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D ) {
+void OpenXRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D ) {
 	RB_SetDefaultGLState();
 
 	bool isv3d = false, fboOff = false; // needs to be declared outside of switch case
@@ -548,7 +548,7 @@ void VrBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D
 	}
 }
 
-void VrBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
+void OpenXRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 	GL_PROFILE("UpdateRenderViewsForEye")
 	
 	for ( const emptyCommand_t *cmd = cmds; cmd; cmd = ( const emptyCommand_t * )cmd->next ) {
