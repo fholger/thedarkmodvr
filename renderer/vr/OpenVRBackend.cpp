@@ -81,10 +81,17 @@ void OpenVRBackend::EndFrame() {
 
 	GL_ViewportAbsolute( 0, 0, eyeTextures[0]->uploadWidth, eyeTextures[0]->uploadHeight );
 	GL_ScissorAbsolute( 0, 0, eyeTextures[0]->uploadWidth, eyeTextures[0]->uploadHeight );
-	vr::Texture_t leftEyeTexture = { (void*)eyeTextures[0]->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
-	vr::Texture_t rightEyeTexture = { (void*)eyeTextures[1]->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
-	vr::VRCompositor()->Submit( vr::Eye_Left, &leftEyeTexture );
-	vr::VRCompositor()->Submit( vr::Eye_Right, &rightEyeTexture );
+	vr::VRTextureWithPose_t leftEyeTexture, rightEyeTexture;
+	leftEyeTexture.mDeviceToAbsoluteTracking = currentPoses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+	leftEyeTexture.eColorSpace = vr::ColorSpace_Gamma;
+	leftEyeTexture.eType = vr::TextureType_OpenGL;
+	leftEyeTexture.handle = (void*)eyeTextures[0]->texnum;
+	rightEyeTexture.mDeviceToAbsoluteTracking = currentPoses[vr::k_unTrackedDeviceIndex_Hmd].mDeviceToAbsoluteTracking;
+	rightEyeTexture.eColorSpace = vr::ColorSpace_Gamma;
+	rightEyeTexture.eType = vr::TextureType_OpenGL;
+	rightEyeTexture.handle = (void*)eyeTextures[1]->texnum;
+	vr::VRCompositor()->Submit( vr::Eye_Left, &leftEyeTexture, nullptr, vr::Submit_TextureWithPose );
+	vr::VRCompositor()->Submit( vr::Eye_Right, &rightEyeTexture, nullptr, vr::Submit_TextureWithPose );
 	vr::VRCompositor()->PostPresentHandoff();
 }
 
