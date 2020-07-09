@@ -13,6 +13,9 @@
 
 ******************************************************************************/
 #pragma once
+#include "../tr_local.h"
+
+class FrameBuffer;
 
 class VRBackend {
 public:
@@ -20,10 +23,25 @@ public:
 	virtual void Destroy() = 0;
 
 	virtual void BeginFrame() = 0;
-	virtual void SubmitFrame() = 0;
  
 	virtual void AdjustRenderView( renderView_t *view ) = 0;
-	virtual void RenderStereoView( const emptyCommand_t * cmds ) = 0;
+	void RenderStereoView( const emptyCommand_t * cmds );
+
+protected:
+	enum eyeView_t {
+		LEFT_EYE = 0,
+		RIGHT_EYE = 1,
+		UI = 2,
+	};
+	void ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eyeView );
+	virtual void SubmitFrame() = 0;
+	virtual void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) = 0;
+	virtual void UpdateViewPose( viewDef_t *viewDef, int eye ) = 0;
+	virtual void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) = 0;
+
+private:
+	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
+	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
 };
 
 extern VRBackend *vrBackend;
