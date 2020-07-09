@@ -45,6 +45,16 @@ void OpenVRBackend::Init() {
 	if ( overlayError != vr::VROverlayError_None ) {
 		common->FatalError( "OpenVR overlay initialization failed: %d", overlayError );
 	}
+	vr::HmdMatrix34_t transform;
+	memset( transform.m, 0, sizeof( transform.m ) );
+	transform.m[0][0] = 1;
+	transform.m[1][1] = 1;
+	transform.m[2][2] = 1;
+	transform.m[2][3] = -2;
+	vr::VROverlay()->SetOverlayWidthInMeters( menuOverlay, 2 );
+	vr::VROverlay()->SetOverlayTexelAspect( menuOverlay, 1.5f );
+	vr::VROverlay()->SetOverlayTransformAbsolute( menuOverlay, vr::TrackingUniverseSeated, &transform );
+	vr::VROverlay()->ShowOverlay( menuOverlay );
 
 	InitParameters();
 	InitRenderTextures();
@@ -68,16 +78,6 @@ void OpenVRBackend::EndFrame() {
 	GL_PROFILE("VrSubmitFrame")
 	vr::Texture_t texture = { (void*)uiTexture->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
 	vr::VROverlay()->SetOverlayTexture( menuOverlay, &texture );
-	vr::HmdMatrix34_t transform;
-	memset( transform.m, 0, sizeof( transform.m ) );
-	transform.m[0][0] = 1;
-	transform.m[1][1] = -1;
-	transform.m[2][2] = -1;
-	transform.m[2][3] = -2;
-	vr::VROverlay()->SetOverlayWidthInMeters( menuOverlay, 2 );
-	vr::VROverlay()->SetOverlayTexelAspect( menuOverlay, 1.5f );
-	vr::VROverlay()->SetOverlayTransformAbsolute( menuOverlay, vr::TrackingUniverseSeated, &transform );
-	vr::VROverlay()->ShowOverlay( menuOverlay );
 
 	GL_ViewportAbsolute( 0, 0, eyeTextures[0]->uploadWidth, eyeTextures[0]->uploadHeight );
 	GL_ScissorAbsolute( 0, 0, eyeTextures[0]->uploadWidth, eyeTextures[0]->uploadHeight );
@@ -249,12 +249,8 @@ void OpenVRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye
 				continue;
 			}
 
-			if ( !r_ignore.GetBool() ) {
-				SetupProjectionMatrix( viewDef, eye );
-			}
-			if ( !r_ignore2.GetBool() ) {
-				UpdateViewPose( viewDef, eye );
-			}
+			SetupProjectionMatrix( viewDef, eye );
+			UpdateViewPose( viewDef, eye );
 		}
 	}
 }
@@ -318,6 +314,10 @@ void OpenVRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 	R_SetViewMatrix( *viewDef );
 	for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
+	}
+
+	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+		//vLight->scissorRect = R_CalcLightScissorRect( vLight );
 	}
 }
 
