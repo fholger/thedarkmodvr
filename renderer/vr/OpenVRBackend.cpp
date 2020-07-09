@@ -157,11 +157,11 @@ void OpenVRBackend::InitParameters() {
 	common->Printf( "OpenVR left eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[0][0], rawProjection[0][1], rawProjection[0][2], rawProjection[0][3] );
 	system->GetProjectionRaw( vr::Eye_Right, &rawProjection[1][0], &rawProjection[1][1], &rawProjection[1][2], &rawProjection[1][3] );
 	common->Printf( "OpenVR right eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[1][0], rawProjection[1][1], rawProjection[1][2], rawProjection[1][3] );
-	float combinedTanHalfFovHoriz = Max( Max( rawProjection[0][0], rawProjection[0][1] ), Max( rawProjection[1][0], rawProjection[1][1] ) );
-	float combinedTanHalfFovVert = Max( Max( rawProjection[0][2], rawProjection[0][3] ), Max( rawProjection[1][2], rawProjection[1][3] ) );
+	float combinedTanHalfFovHoriz = Max( Max( idMath::Fabs(rawProjection[0][0]), idMath::Fabs(rawProjection[0][1]) ), Max( idMath::Fabs(rawProjection[1][0]), idMath::Fabs(rawProjection[1][1]) ) );
+	float combinedTanHalfFovVert = Max( Max( idMath::Fabs(rawProjection[0][2]), idMath::Fabs(rawProjection[0][3]) ), Max( idMath::Fabs(rawProjection[1][2]), idMath::Fabs(rawProjection[1][3]) ) );
 
-	fovX = RAD2DEG( 2 * atanf( combinedTanHalfFovHoriz ) ) + 5;
-	fovY = RAD2DEG( 2 * atanf( combinedTanHalfFovVert ) ) + 5;
+	fovX = RAD2DEG( 2 * atanf( combinedTanHalfFovHoriz ) ) + 8;
+	fovY = RAD2DEG( 2 * atanf( combinedTanHalfFovVert ) ) + 8;
 
 	vr::HmdMatrix34_t eyeToHead = system->GetEyeToHeadTransform( vr::Eye_Right );
 	eyeForward = -eyeToHead.m[2][3];
