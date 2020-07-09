@@ -20,7 +20,6 @@
 #include "../FrameBuffer.h"
 #include "../FrameBufferManager.h"
 #include "../Profiling.h"
-#include "../backend/RenderBackend.h"
 
 OpenVRBackend openvrImpl;
 OpenVRBackend *openvr = &openvrImpl;
@@ -118,45 +117,23 @@ void OpenVRBackend::AdjustRenderView( renderView_t *view ) {
 	view->viewaxis = axis * view->viewaxis;
 }
 
-void OpenVRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
-	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
-
-	// render 2D UI elements
-	frameBuffers->defaultFbo = uiBuffer;
-	frameBuffers->defaultFbo->Bind();
-	qglClearColor( 0, 0, 0, 0 );
-	qglClear( GL_COLOR_BUFFER_BIT );
-	ExecuteRenderCommands( cmds, false, false );
-
-	// render stereo views
-	for ( int eye = 0; eye < 2; ++eye ) {
-		UpdateRenderViewsForEye( cmds, eye );
-		frameBuffers->defaultFbo = eyeBuffers[eye];
-		frameBuffers->defaultFbo->Bind();
-		qglClearColor( 0, 0, 0, 1 );
-		qglClear( GL_COLOR_BUFFER_BIT );
-		frameBuffers->EnterPrimary();
-		ExecuteRenderCommands( cmds, true, eye == 0 );
-		frameBuffers->LeavePrimary();
-		FB_DebugShowContents();
-	}
-
-	eyeBuffers[0]->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	uiBuffer->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	SubmitFrame();
-	GLimp_SwapBuffers();
-	frameBuffers->defaultFbo = defaultFbo;
-	// go back to the default texture so the editor doesn't mess up a bound image
-	qglBindTexture( GL_TEXTURE_2D, 0 );
-	backEnd.glState.tmu[0].current2DMap = -1;
-	
+void OpenVRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) {
+	angleLeft = projectionFov[eye][0];
+	angleRight = projectionFov[eye][1];
+	angleUp = projectionFov[eye][3];
+	angleDown = projectionFov[eye][2];
 }
 
 void OpenVRBackend::InitParameters() {
+	float rawProjection[2][4];
 	system->GetProjectionRaw( vr::Eye_Left, &rawProjection[0][0], &rawProjection[0][1], &rawProjection[0][2], &rawProjection[0][3] );
 	common->Printf( "OpenVR left eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[0][0], rawProjection[0][1], rawProjection[0][2], rawProjection[0][3] );
 	system->GetProjectionRaw( vr::Eye_Right, &rawProjection[1][0], &rawProjection[1][1], &rawProjection[1][2], &rawProjection[1][3] );
 	common->Printf( "OpenVR right eye raw projection - l: %.2f r: %.2f t: %.2f b: %.2f\n", rawProjection[1][0], rawProjection[1][1], rawProjection[1][2], rawProjection[1][3] );
+	for ( int i = 0; i < 4; ++i ) {
+		projectionFov[0][i] = idMath::ATan(rawProjection[0][i]);
+		projectionFov[1][i] = idMath::ATan(rawProjection[1][i]);
+	}
 	float combinedTanHalfFovHoriz = Max( Max( idMath::Fabs(rawProjection[0][0]), idMath::Fabs(rawProjection[0][1]) ), Max( idMath::Fabs(rawProjection[1][0]), idMath::Fabs(rawProjection[1][1]) ) );
 	float combinedTanHalfFovVert = Max( Max( idMath::Fabs(rawProjection[0][2]), idMath::Fabs(rawProjection[0][3]) ), Max( idMath::Fabs(rawProjection[1][2]), idMath::Fabs(rawProjection[1][3]) ) );
 
@@ -200,94 +177,6 @@ void OpenVRBackend::CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint3
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
-
-void OpenVRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D, bool renderLightgem ) {
-	RB_SetDefaultGLState();
-
-	bool isv3d = false; // needs to be declared outside of switch case
-
-	while ( cmds ) {
-		switch ( cmds->commandId ) {
-		case RC_NOP:
-			break;
-		case RC_DRAW_VIEW: {
-			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
-			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
-			if ( (backEnd.viewDef->IsLightGem() && renderLightgem) || (!backEnd.viewDef->IsLightGem() && isv3d == render3D) ) {
-				renderBackend->DrawView( backEnd.viewDef );
-			}
-			break;
-		}
-		case RC_SET_BUFFER:
-			// not applicable
-			break;
-		case RC_BLOOM:
-			if ( !render3D ) {
-				break;
-			}
-			RB_Tonemap( (bloomCommand_t*)cmds );
-			FB_DebugShowContents();
-			break;
-		case RC_COPY_RENDER:
-			if ( !render3D ) {
-				break;
-			}
-			RB_CopyRender( cmds );
-			break;
-		case RC_SWAP_BUFFERS:
-			// not applicable
-			break;
-		default:
-			common->Error( "VRBackend::ExecuteRenderCommands: bad commandId" );
-			break;
-		}
-		cmds = ( const emptyCommand_t * )cmds->next;
-	}
-}
-
-void OpenVRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
-	GL_PROFILE("UpdateRenderViewsForEye")
-	
-	for ( const emptyCommand_t *cmd = cmds; cmd; cmd = ( const emptyCommand_t * )cmd->next ) {
-		if ( cmd->commandId == RC_DRAW_VIEW ) {
-			viewDef_t *viewDef = ( ( const drawSurfsCommand_t * )cmd )->viewDef;
-			if ( viewDef->IsLightGem() || viewDef->viewEntitys == nullptr ) {
-				continue;
-			}
-
-			SetupProjectionMatrix( viewDef, eye );
-			UpdateViewPose( viewDef, eye );
-		}
-	}
-}
-
-void OpenVRBackend::SetupProjectionMatrix( viewDef_t *viewDef, int eye ) {
-	const float zNear = (viewDef->renderView.cramZNear) ? (r_znear.GetFloat() * 0.25f) : r_znear.GetFloat();
-	const float idx = 1.0f / (rawProjection[eye][1] - rawProjection[eye][0]);
-	const float idy = 1.0f / (rawProjection[eye][3] - rawProjection[eye][2]);
-	const float sx = rawProjection[eye][0] + rawProjection[eye][1];
-	const float sy = rawProjection[eye][2] + rawProjection[eye][3];
-
-	viewDef->projectionMatrix[0 * 4 + 0] = 2.0f * idx;
-	viewDef->projectionMatrix[1 * 4 + 0] = 0.0f;
-	viewDef->projectionMatrix[2 * 4 + 0] = sx * idx;
-	viewDef->projectionMatrix[3 * 4 + 0] = 0.0f;
-
-	viewDef->projectionMatrix[0 * 4 + 1] = 0.0f;
-	viewDef->projectionMatrix[1 * 4 + 1] = 2.0f * idy;
-	viewDef->projectionMatrix[2 * 4 + 1] = sy*idy;	
-	viewDef->projectionMatrix[3 * 4 + 1] = 0.0f;
-
-	viewDef->projectionMatrix[0 * 4 + 2] = 0.0f;
-	viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
-	viewDef->projectionMatrix[2 * 4 + 2] = -0.999f; 
-	viewDef->projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
-
-	viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
-	viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
-	viewDef->projectionMatrix[2 * 4 + 3] = -1.0f;
-	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
-}
 
 void OpenVRBackend::UpdateScissorRect( idScreenRect * scissorRect, viewDef_t * viewDef, const idMat4 &invProj, const idMat4 &invView ) const {
 	/*const float renderWidth = eyeBuffers[0]->Width();
@@ -349,16 +238,15 @@ void OpenVRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 		eyeView.vieworg = eyeView.initialVieworg + position * eyeView.initialViewaxis;
 		eyeView.vieworg -= eyeFactor[eye] * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
 	}
+}
 
-	// apply new view matrix to view and all entities
-	R_SetViewMatrix( *viewDef );
-	R_SetupViewFrustum( viewDef );
-	for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
-		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
-	}
-
-	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
-		vLight->scissorRect = R_CalcLightScissorRectangle( vLight, viewDef );
+void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {
+	if ( eye == UI ) {
+		fbo = uiBuffer;
+		texture = uiTexture;
+	} else {
+		fbo = eyeBuffers[eye];
+		texture = eyeTextures[eye];
 	}
 }
 

@@ -25,17 +25,21 @@ public:
 	void Destroy() override;
 
 	void BeginFrame() override;
-	void EndFrame() override;
 
 	void AdjustRenderView( renderView_t *view ) override;
-	void RenderStereoView( const emptyCommand_t * cmds ) override;
+
+protected:
+	void SubmitFrame() override;
+	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
+	void UpdateViewPose( viewDef_t *viewDef, int eye ) override;
+	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
 
 private:
 	vr::IVRSystem *system = nullptr;
 	vr::VROverlayHandle_t menuOverlay = 0;
 	vr::TrackedDevicePose_t currentPoses[vr::k_unMaxTrackedDeviceCount];
 	vr::TrackedDevicePose_t predictedPoses[vr::k_unMaxTrackedDeviceCount];
-	float rawProjection[2][4];
+	float projectionFov[2][4];
 	float fovX;
 	float fovY;
 	float eyeForward;
@@ -50,13 +54,8 @@ private:
 
 	void CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint32_t width, uint32_t height );
 
-	void ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D, bool renderLightgem );
-	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
-
-	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
 	void UpdateScissorRect( idScreenRect *scissorRect, viewDef_t *viewDef, const idMat4 &invProj,
 	                        const idMat4 &invView ) const;
-	void UpdateViewPose( viewDef_t *viewDef, int eye );
 
 	float GetInterPupillaryDistance() const;
 };
