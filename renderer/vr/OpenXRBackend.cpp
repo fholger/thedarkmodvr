@@ -62,49 +62,6 @@ namespace {
 		common->Printf("XR in %s: %s\n", callbackData->functionName, callbackData->message);
 		return XR_TRUE;
 	}
-
-	void SetupProjectionMatrix( viewDef_t *viewDef, XrFovf fov ) {
-		const float zNear = viewDef->renderView.cramZNear ? r_znear.GetFloat() * 0.25f : r_znear.GetFloat();
-		const float idx = 1.0f / (tan(fov.angleRight) - tan(fov.angleLeft));
-		const float idy = 1.0f / (tan(fov.angleUp) - tan(fov.angleDown));
-		const float sx = tan(fov.angleRight) + tan(fov.angleLeft);
-		const float sy = tan(fov.angleDown) + tan(fov.angleUp);
-
-		viewDef->projectionMatrix[0 * 4 + 0] = 2.0f * idx;
-		viewDef->projectionMatrix[1 * 4 + 0] = 0.0f;
-		viewDef->projectionMatrix[2 * 4 + 0] = sx * idx;
-		viewDef->projectionMatrix[3 * 4 + 0] = 0.0f;
-
-		viewDef->projectionMatrix[0 * 4 + 1] = 0.0f;
-		viewDef->projectionMatrix[1 * 4 + 1] = 2.0f * idy;
-		viewDef->projectionMatrix[2 * 4 + 1] = sy*idy;	
-		viewDef->projectionMatrix[3 * 4 + 1] = 0.0f;
-
-		viewDef->projectionMatrix[0 * 4 + 2] = 0.0f;
-		viewDef->projectionMatrix[1 * 4 + 2] = 0.0f;
-		viewDef->projectionMatrix[2 * 4 + 2] = -0.999f; 
-		viewDef->projectionMatrix[3 * 4 + 2] = -2.0f * zNear;
-
-		viewDef->projectionMatrix[0 * 4 + 3] = 0.0f;
-		viewDef->projectionMatrix[1 * 4 + 3] = 0.0f;
-		viewDef->projectionMatrix[2 * 4 + 3] = -1.0f;
-		viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
-	}
-
-	void UpdateViewPose( viewDef_t *viewDef, XrPosef pose ) {
-		// update with new pose
-		renderView_t& eyeView = viewDef->renderView;
-		if ( !eyeView.fixedOrigin ) {
-			eyeView.vieworg = eyeView.initialVieworg + Vec3FromXr( pose.position ) * eyeView.initialViewaxis;
-		}
-		eyeView.viewaxis = QuatFromXr( pose.orientation ).ToMat3() * eyeView.initialViewaxis;
-
-		// apply new view matrix to view and all entities
-		R_SetViewMatrix( *viewDef );
-		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
-			myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
-		}
-	}
 }
 
 void OpenXRBackend::Init() {
@@ -215,7 +172,6 @@ void OpenXRBackend::BeginFrame() {
 	};
 	result = xrWaitFrame( session, nullptr, &frameState );
 	XR_CheckResult( result, "awaiting frame", instance );
-	shouldSubmitFrame = frameState.shouldRender == XR_TRUE;
 	currentFrameDisplayTime = frameState.predictedDisplayTime;
 	nextFrameDisplayTime = currentFrameDisplayTime + frameState.predictedDisplayPeriod;
 
@@ -243,11 +199,15 @@ void OpenXRBackend::BeginFrame() {
 }
 
 void OpenXRBackend::SubmitFrame() {
-	if ( !vrSessionActive || !shouldSubmitFrame ) {
+	if ( !vrSessionActive ) {
 		return;
 	}
 
 	GL_PROFILE("XrSubmitFrame")
+
+	uiSwapchain.ReleaseImage();
+	eyeSwapchains[0].ReleaseImage();
+	eyeSwapchains[1].ReleaseImage();
 
 	XrCompositionLayerProjectionView projectionViews[2] = {
 		{
@@ -297,7 +257,36 @@ void OpenXRBackend::SubmitFrame() {
 	};
 	XrResult result = xrEndFrame( session, &frameEndInfo );
 	XR_CheckResult( result, "submitting frame", instance, false );
-	shouldSubmitFrame = false;
+}
+
+void OpenXRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) {
+	const XrFovf &fov = renderViews[eye].fov;
+	angleLeft = fov.angleLeft;
+	angleRight = fov.angleRight;
+	angleUp = fov.angleUp;
+	angleDown = fov.angleDown;
+}
+
+void OpenXRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
+	const XrPosef &pose = renderViews[eye].pose;
+	
+	renderView_t& eyeView = viewDef->renderView;
+	if ( !eyeView.fixedOrigin ) {
+		eyeView.vieworg = eyeView.initialVieworg + Vec3FromXr( pose.position ) * eyeView.initialViewaxis;
+	}
+	eyeView.viewaxis = QuatFromXr( pose.orientation ).ToMat3() * eyeView.initialViewaxis;
+}
+
+void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {
+	if ( eye == UI ) {
+		uiSwapchain.PrepareNextImage();
+		fbo = uiSwapchain.CurrentFrameBuffer();
+		texture = uiSwapchain.CurrentImage();
+	} else {
+		eyeSwapchains[eye].PrepareNextImage();
+		fbo = eyeSwapchains[eye].CurrentFrameBuffer();
+		texture = eyeSwapchains[eye].CurrentImage();
+	}
 }
 
 void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
@@ -339,49 +328,6 @@ void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
 	float rightFovY = 2 * Max( idMath::Fabs( views[1].fov.angleUp ), idMath::Fabs( views[1].fov.angleDown ) );
 	view->fov_x = RAD2DEG( Max( leftFovX, rightFovX ) ) + 5;
 	view->fov_y = RAD2DEG( Max( leftFovY, rightFovY ) ) + 5;
-}
-
-void OpenXRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
-	if ( !vrSessionActive || !shouldSubmitFrame ) {
-		RB_ExecuteBackEndCommands( cmds );
-		return;
-	}
-
-	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
-
-	// render lightgem and 2D UI elements
-	uiSwapchain.PrepareNextImage();
-	frameBuffers->defaultFbo = uiSwapchain.CurrentFrameBuffer();
-	frameBuffers->defaultFbo->Bind();
-	qglClearColor( 0, 0, 0, 0 );
-	qglClear( GL_COLOR_BUFFER_BIT );
-	ExecuteRenderCommands( cmds, false );
-
-	// render stereo views
-	for ( int eye = 0; eye < 2; ++eye ) {
-		UpdateRenderViewsForEye( cmds, eye );
-		eyeSwapchains[eye].PrepareNextImage();
-		frameBuffers->defaultFbo = eyeSwapchains[eye].CurrentFrameBuffer();
-		frameBuffers->defaultFbo->Bind();
-		qglClearColor( 0, 0, 0, 1 );
-		qglClear( GL_COLOR_BUFFER_BIT );
-		frameBuffers->EnterPrimary();
-		ExecuteRenderCommands( cmds, true );
-		frameBuffers->LeavePrimary();
-		FB_DebugShowContents();
-	}
-
-	eyeSwapchains[0].CurrentFrameBuffer()->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	uiSwapchain.CurrentFrameBuffer()->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	eyeSwapchains[0].ReleaseImage();
-	eyeSwapchains[1].ReleaseImage();
-	uiSwapchain.ReleaseImage();
-	SubmitFrame();
-	GLimp_SwapBuffers();
-	frameBuffers->defaultFbo = defaultFbo;
-	// go back to the default texture so the editor doesn't mess up a bound image
-	qglBindTexture( GL_TEXTURE_2D, 0 );
-	backEnd.glState.tmu[0].current2DMap = -1;
 }
 
 void OpenXRBackend::SetupDebugMessenger() {
@@ -485,83 +431,4 @@ void OpenXRBackend::HandleSessionStateChange( const XrEventDataSessionStateChang
 	case XR_SESSION_STATE_LOSS_PENDING:
 		common->FatalError( "xr Session lost" );
 	}	
-}
-
-extern void RB_Tonemap( bloomCommand_t *cmd );
-extern void RB_CopyRender( const void *data );
-
-void OpenXRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D ) {
-	RB_SetDefaultGLState();
-
-	bool isv3d = false, fboOff = false; // needs to be declared outside of switch case
-
-	while ( cmds ) {
-		switch ( cmds->commandId ) {
-		case RC_NOP:
-			break;
-		case RC_DRAW_VIEW: {
-			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
-			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
-			if ( (backEnd.viewDef->IsLightGem() && !render3D) || (!backEnd.viewDef->IsLightGem() && isv3d == render3D) ) {
-				renderBackend->DrawView( backEnd.viewDef );
-			}
-			/*if ( !backEnd.viewDef->IsLightGem() ) {					// duzenko #4425: create/switch to framebuffer object
-				if ( !fboOff ) {									// don't switch to FBO if bloom or some 2d has happened
-					if ( isv3d ) {
-						frameBuffers->EnterPrimary();
-					} else {
-						frameBuffers->LeavePrimary();	// duzenko: render 2d in default framebuffer, as well as all 3d until frame end
-						FB_DebugShowContents();
-						fboOff = true;
-					}
-				}
-			}*/
-			break;
-		}
-		case RC_SET_BUFFER:
-			// not applicable
-			break;
-		case RC_BLOOM:
-			if ( !render3D ) {
-				break;
-			}
-			RB_Tonemap( (bloomCommand_t*)cmds );
-			FB_DebugShowContents();
-			fboOff = true;
-			break;
-		case RC_COPY_RENDER:
-			if ( !render3D ) {
-				break;
-			}
-			RB_CopyRender( cmds );
-			break;
-		case RC_SWAP_BUFFERS:
-			// not applicable
-			break;
-		default:
-			common->Error( "VRBackend::ExecuteRenderCommands: bad commandId" );
-			break;
-		}
-		cmds = ( const emptyCommand_t * )cmds->next;
-	}
-}
-
-void OpenXRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
-	GL_PROFILE("UpdateRenderViewsForEye")
-	
-	for ( const emptyCommand_t *cmd = cmds; cmd; cmd = ( const emptyCommand_t * )cmd->next ) {
-		if ( cmd->commandId == RC_DRAW_VIEW ) {
-			viewDef_t *viewDef = ( ( const drawSurfsCommand_t * )cmd )->viewDef;
-			if ( viewDef->IsLightGem() || viewDef->viewEntitys == nullptr ) {
-				continue;
-			}
-
-			if ( !r_ignore.GetBool() ) {
-				SetupProjectionMatrix( viewDef, renderViews[eye].fov );
-			}
-			if ( !r_ignore2.GetBool() ) {
-				UpdateViewPose( viewDef, renderViews[eye].pose );
-			}
-		}
-	}
 }
