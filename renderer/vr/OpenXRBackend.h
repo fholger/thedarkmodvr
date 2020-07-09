@@ -24,13 +24,17 @@ public:
 	void Destroy() override;
 
 	void BeginFrame() override;
-	void SubmitFrame() override;
 
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }
 
 	void AdjustRenderView( renderView_t *view ) override;
-	void RenderStereoView( const emptyCommand_t * cmds ) override;
+
+protected:
+	void SubmitFrame() override;
+	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
+	void UpdateViewPose( viewDef_t *viewDef, int eye ) override;
+	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
 
 private:
 	XrInstance instance = nullptr;
@@ -39,7 +43,6 @@ private:
 	GLuint swapchainFormat = 0;
 	XrViewConfigurationView views[2];
 	bool vrSessionActive = false;
-	bool shouldSubmitFrame = false;
 
 	OpenXRSwapchain eyeSwapchains[2];
 	OpenXRSwapchain uiSwapchain;
@@ -57,9 +60,6 @@ private:
 	void ChooseSwapchainFormat();
 	void InitSwapchains();
 	void HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent );
-
-	void ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D );
-	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 };
 
 extern OpenXRBackend *xrBackend;
