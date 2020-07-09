@@ -24,7 +24,7 @@ public:
 	void Destroy() override;
 
 	void BeginFrame() override;
-	void EndFrame() override;
+	void SubmitFrame() override;
 
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }

@@ -659,7 +659,7 @@ drawSurf_t *R_PrepareLightSurf( const srfTriangles_t *tri, const viewEntity_t *s
 R_ClippedLightScissorRectangle
 ======================
 */
-idScreenRect R_ClippedLightScissorRectangle( viewLight_t *vLight ) {
+idScreenRect R_ClippedLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef ) {
 	const idRenderLightLocal *light = vLight->lightDef;
 	idScreenRect r;
 	idFixedWinding w;
@@ -671,19 +671,19 @@ idScreenRect R_ClippedLightScissorRectangle( viewLight_t *vLight ) {
 
 		// !ow - projected lights may have one of the frustums degenerated
 		// OR
-		// light->frustum[i].Distance( tr.viewDef->renderView.vieworg ) >= 0
+		// light->frustum[i].Distance( viewDef->renderView.vieworg ) >= 0
 		// the light frustum planes face out from the light,
 		// so the planes that have the view origin on the negative
 		// side will be the "back" faces of the light, which must have
 		// some fragment inside the portalStack to be visible
-		if ( !ow.GetNumPoints() || light->frustum[i].Distance( tr.viewDef->renderView.vieworg ) >= 0 ) {
+		if ( !ow.GetNumPoints() || light->frustum[i].Distance( viewDef->renderView.vieworg ) >= 0 ) {
 			continue;
 		}
 		w = ow;
 
 		// now check the winding against each of the frustum planes
 		for ( int j = 0; j < 5; j++ ) {
-			if ( !w.ClipInPlace( -tr.viewDef->frustum[j] ) ) {
+			if ( !w.ClipInPlace( -viewDef->frustum[j] ) ) {
 				break;
 			}
 		}
@@ -693,25 +693,25 @@ idScreenRect R_ClippedLightScissorRectangle( viewLight_t *vLight ) {
 			idPlane		eye, clip;
 			idVec3		ndc;
 
-			R_TransformModelToClip( w[j].ToVec3(), tr.viewDef->worldSpace.modelViewMatrix, tr.viewDef->projectionMatrix, eye, clip );
+			R_TransformModelToClip( w[j].ToVec3(), viewDef->worldSpace.modelViewMatrix, viewDef->projectionMatrix, eye, clip );
 
 			if ( clip[3] <= 0.01f ) {
 				clip[3] = 0.01f;
 			}
-			R_TransformClipToDevice( clip, tr.viewDef, ndc );
+			R_TransformClipToDevice( clip, viewDef, ndc );
 
-			float windowX = 0.5f * ( 1.0f + ndc[0] ) * ( tr.viewDef->viewport.x2 - tr.viewDef->viewport.x1 );
-			float windowY = 0.5f * ( 1.0f + ndc[1] ) * ( tr.viewDef->viewport.y2 - tr.viewDef->viewport.y1 );
+			float windowX = 0.5f * ( 1.0f + ndc[0] ) * ( viewDef->viewport.x2 - viewDef->viewport.x1 );
+			float windowY = 0.5f * ( 1.0f + ndc[1] ) * ( viewDef->viewport.y2 - viewDef->viewport.y1 );
 
-			if ( windowX > tr.viewDef->scissor.x2 ) {
-				windowX = tr.viewDef->scissor.x2;
-			} else if ( windowX < tr.viewDef->scissor.x1 ) {
-				windowX = tr.viewDef->scissor.x1;
+			if ( windowX > viewDef->scissor.x2 ) {
+				windowX = viewDef->scissor.x2;
+			} else if ( windowX < viewDef->scissor.x1 ) {
+				windowX = viewDef->scissor.x1;
 			}
-			if ( windowY > tr.viewDef->scissor.y2 ) {
-				windowY = tr.viewDef->scissor.y2;
-			} else if ( windowY < tr.viewDef->scissor.y1 ) {
-				windowY = tr.viewDef->scissor.y1;
+			if ( windowY > viewDef->scissor.y2 ) {
+				windowY = viewDef->scissor.y2;
+			} else if ( windowY < viewDef->scissor.y1 ) {
+				windowY = viewDef->scissor.y1;
 			}
 			r.AddPoint( windowX, windowY );
 		}
@@ -733,7 +733,7 @@ stencil clears and interaction drawing
 */
 static int c_clippedLight = 0, c_unclippedLight = 0;
 
-idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight ) {
+idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef ) {
 	idScreenRect	r;
 	idPlane			eye, clip;
 	idVec3			ndc;
@@ -741,50 +741,50 @@ idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight ) {
 	if ( vLight->lightDef->parms.pointLight ) {
 		idBounds bounds;
 		idRenderLightLocal *lightDef = vLight->lightDef;
-		if ( tr.viewDef->viewFrustum.ProjectionBounds( idBox( lightDef->parms.origin, lightDef->parms.lightRadius, lightDef->parms.axis ), bounds ) )
-			r = R_ScreenRectFromViewFrustumBounds( bounds );
+		if ( viewDef->viewFrustum.ProjectionBounds( idBox( lightDef->parms.origin, lightDef->parms.lightRadius, lightDef->parms.axis ), bounds ) )
+			r = R_ScreenRectFromViewFrustumBounds( bounds, viewDef );
 		else
 			r.Clear();
 		return r;
 	}
 
 	if ( r_useClippedLightScissors.GetInteger() == 2 ) {
-		return R_ClippedLightScissorRectangle( vLight );
+		return R_ClippedLightScissorRectangle( vLight, viewDef );
 	}
 	r.Clear();
 
 	const srfTriangles_t *tri = vLight->lightDef->frustumTris;
 
 	for ( int i = 0 ; i < tri->numVerts ; i++ ) {
-		R_TransformModelToClip( tri->verts[i].xyz, tr.viewDef->worldSpace.modelViewMatrix,
-			tr.viewDef->projectionMatrix, eye, clip );
+		R_TransformModelToClip( tri->verts[i].xyz, viewDef->worldSpace.modelViewMatrix,
+			viewDef->projectionMatrix, eye, clip );
 
 		// if it is near clipped, clip the winding polygons to the view frustum
 		if ( clip[3] <= 1 ) {
 			c_clippedLight++;
 			if ( r_useClippedLightScissors.GetInteger() ) {
-				return R_ClippedLightScissorRectangle( vLight );
+				return R_ClippedLightScissorRectangle( vLight, viewDef );
 			} else {
 				r.x1 = r.y1 = 0;
-				r.x2 = ( tr.viewDef->viewport.x2 - tr.viewDef->viewport.x1 ) - 1;
-				r.y2 = ( tr.viewDef->viewport.y2 - tr.viewDef->viewport.y1 ) - 1;
+				r.x2 = ( viewDef->viewport.x2 - viewDef->viewport.x1 ) - 1;
+				r.y2 = ( viewDef->viewport.y2 - viewDef->viewport.y1 ) - 1;
 				return r;
 			}
 		}
-		R_TransformClipToDevice( clip, tr.viewDef, ndc );
+		R_TransformClipToDevice( clip, viewDef, ndc );
 
-		float windowX = 0.5f * ( 1.0f + ndc[0] ) * ( tr.viewDef->viewport.x2 - tr.viewDef->viewport.x1 );
-		float windowY = 0.5f * ( 1.0f + ndc[1] ) * ( tr.viewDef->viewport.y2 - tr.viewDef->viewport.y1 );
+		float windowX = 0.5f * ( 1.0f + ndc[0] ) * ( viewDef->viewport.x2 - viewDef->viewport.x1 );
+		float windowY = 0.5f * ( 1.0f + ndc[1] ) * ( viewDef->viewport.y2 - viewDef->viewport.y1 );
 
-		if ( windowX > tr.viewDef->scissor.x2 ) {
-			windowX = tr.viewDef->scissor.x2;
-		} else if ( windowX < tr.viewDef->scissor.x1 ) {
-			windowX = tr.viewDef->scissor.x1;
+		if ( windowX > viewDef->scissor.x2 ) {
+			windowX = viewDef->scissor.x2;
+		} else if ( windowX < viewDef->scissor.x1 ) {
+			windowX = viewDef->scissor.x1;
 		}
-		if ( windowY > tr.viewDef->scissor.y2 ) {
-			windowY = tr.viewDef->scissor.y2;
-		} else if ( windowY < tr.viewDef->scissor.y1 ) {
-			windowY = tr.viewDef->scissor.y1;
+		if ( windowY > viewDef->scissor.y2 ) {
+			windowY = viewDef->scissor.y2;
+		} else if ( windowY < viewDef->scissor.y1 ) {
+			windowY = viewDef->scissor.y1;
 		}
 		r.AddPoint( windowX, windowY );
 	}
@@ -902,7 +902,7 @@ void R_AddLightSurfaces( void ) {
 		if ( r_useLightScissors.GetBool() ) {
 			// calculate the screen area covered by the light frustum
 			// which will be used to crop the stencil cull
-			idScreenRect scissorRect = R_CalcLightScissorRectangle( vLight );
+			idScreenRect scissorRect = R_CalcLightScissorRectangle( vLight, tr.viewDef );
 			// intersect with the portal crossing scissor rectangle
 			vLight->scissorRect.Intersect( scissorRect );
 

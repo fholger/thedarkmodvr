@@ -20,7 +20,7 @@ public:
 	virtual void Destroy() = 0;
 
 	virtual void BeginFrame() = 0;
-	virtual void EndFrame() = 0;
+	virtual void SubmitFrame() = 0;
  
 	virtual void AdjustRenderView( renderView_t *view ) = 0;
 	virtual void RenderStereoView( const emptyCommand_t * cmds ) = 0;
