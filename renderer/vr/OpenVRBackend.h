@@ -50,10 +50,12 @@ private:
 
 	void CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint32_t width, uint32_t height );
 
-	void ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D );
+	void ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D, bool renderLightgem );
 	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 
 	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
+	void UpdateScissorRect( idScreenRect *scissorRect, viewDef_t *viewDef, const idMat4 &invProj,
+	                        const idMat4 &invView ) const;
 	void UpdateViewPose( viewDef_t *viewDef, int eye );
 
 	float GetInterPupillaryDistance() const;

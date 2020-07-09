@@ -138,19 +138,23 @@ bool idScreenRect::IsEmpty() const {
 R_ScreenRectFromViewFrustumBounds
 ======================
 */
-idScreenRect R_ScreenRectFromViewFrustumBounds( const idBounds &bounds ) {
+idScreenRect R_ScreenRectFromViewFrustumBounds( const idBounds &bounds, viewDef_t *viewDef ) {
 	idScreenRect screenRect;
 
-	screenRect.x1 = idMath::FtoiFast( 0.5f * ( 1.0f - bounds[1].y ) * ( tr.viewDef->viewport.x2 - tr.viewDef->viewport.x1 ) );
-	screenRect.x2 = idMath::FtoiFast( 0.5f * ( 1.0f - bounds[0].y ) * ( tr.viewDef->viewport.x2 - tr.viewDef->viewport.x1 ) );
-	screenRect.y1 = idMath::FtoiFast( 0.5f * ( 1.0f + bounds[0].z ) * ( tr.viewDef->viewport.y2 - tr.viewDef->viewport.y1 ) );
-	screenRect.y2 = idMath::FtoiFast( 0.5f * ( 1.0f + bounds[1].z ) * ( tr.viewDef->viewport.y2 - tr.viewDef->viewport.y1 ) );
+	screenRect.x1 = idMath::FtoiFast( 0.5f * ( 1.0f - bounds[1].y ) * ( viewDef->viewport.x2 - viewDef->viewport.x1 ) );
+	screenRect.x2 = idMath::FtoiFast( 0.5f * ( 1.0f - bounds[0].y ) * ( viewDef->viewport.x2 - viewDef->viewport.x1 ) );
+	screenRect.y1 = idMath::FtoiFast( 0.5f * ( 1.0f + bounds[0].z ) * ( viewDef->viewport.y2 - viewDef->viewport.y1 ) );
+	screenRect.y2 = idMath::FtoiFast( 0.5f * ( 1.0f + bounds[1].z ) * ( viewDef->viewport.y2 - viewDef->viewport.y1 ) );
 
 	if ( r_useDepthBoundsTest.GetInteger() ) {
-		R_TransformEyeZToWin( -bounds[0].x, tr.viewDef->projectionMatrix, screenRect.zmin );
-		R_TransformEyeZToWin( -bounds[1].x, tr.viewDef->projectionMatrix, screenRect.zmax );
+		R_TransformEyeZToWin( -bounds[0].x, viewDef->projectionMatrix, screenRect.zmin );
+		R_TransformEyeZToWin( -bounds[1].x, viewDef->projectionMatrix, screenRect.zmax );
 	}
 	return screenRect;
+}
+
+idScreenRect R_ScreenRectFromViewFrustumBounds( const idBounds &bounds ) {
+	return R_ScreenRectFromViewFrustumBounds( bounds, tr.viewDef );
 }
 
 /*
@@ -938,30 +942,30 @@ Setup that culling frustum planes for the current view
 FIXME: derive from modelview matrix times projection matrix
 =================
 */
-static void R_SetupViewFrustum( void ) {
+void R_SetupViewFrustum( viewDef_t *viewDef ) {
 	int		i;
 	float	xs, xc;
 	float	ang;
 
-	ang = DEG2RAD( tr.viewDef->renderView.fov_x ) * 0.5f;
+	ang = DEG2RAD( viewDef->renderView.fov_x ) * 0.5f;
 	idMath::SinCos( ang, xs, xc );
 
-	tr.viewDef->frustum[0] = xs * tr.viewDef->renderView.viewaxis[0] + xc * tr.viewDef->renderView.viewaxis[1];
-	tr.viewDef->frustum[1] = xs * tr.viewDef->renderView.viewaxis[0] - xc * tr.viewDef->renderView.viewaxis[1];
+	viewDef->frustum[0] = xs * viewDef->renderView.viewaxis[0] + xc * viewDef->renderView.viewaxis[1];
+	viewDef->frustum[1] = xs * viewDef->renderView.viewaxis[0] - xc * viewDef->renderView.viewaxis[1];
 
-	ang = DEG2RAD( tr.viewDef->renderView.fov_y ) * 0.5f;
+	ang = DEG2RAD( viewDef->renderView.fov_y ) * 0.5f;
 	idMath::SinCos( ang, xs, xc );
 
-	tr.viewDef->frustum[2] = xs * tr.viewDef->renderView.viewaxis[0] + xc * tr.viewDef->renderView.viewaxis[2];
-	tr.viewDef->frustum[3] = xs * tr.viewDef->renderView.viewaxis[0] - xc * tr.viewDef->renderView.viewaxis[2];
+	viewDef->frustum[2] = xs * viewDef->renderView.viewaxis[0] + xc * viewDef->renderView.viewaxis[2];
+	viewDef->frustum[3] = xs * viewDef->renderView.viewaxis[0] - xc * viewDef->renderView.viewaxis[2];
 
 	// plane four is the front clipping plane
-	tr.viewDef->frustum[4] = /* vec3_origin - */ tr.viewDef->renderView.viewaxis[0];
+	viewDef->frustum[4] = /* vec3_origin - */ viewDef->renderView.viewaxis[0];
 
 	for ( i = 0; i < 5; i++ ) {
 		// flip direction so positive side faces out (FIXME: globally unify this)
-		tr.viewDef->frustum[i] = -tr.viewDef->frustum[i].Normal();
-		tr.viewDef->frustum[i][3] = -( tr.viewDef->renderView.vieworg * tr.viewDef->frustum[i].Normal() );
+		viewDef->frustum[i] = -viewDef->frustum[i].Normal();
+		viewDef->frustum[i][3] = -( viewDef->renderView.vieworg * viewDef->frustum[i].Normal() );
 	}
 
 	// eventually, plane five will be the rear clipping plane for fog
@@ -969,15 +973,15 @@ static void R_SetupViewFrustum( void ) {
 
 	dNear = r_znear.GetFloat();
 
-	if ( tr.viewDef->renderView.cramZNear ) {
+	if ( viewDef->renderView.cramZNear ) {
 		dNear *= 0.25f;
 	}
 	dFar = MAX_WORLD_SIZE;
-	dLeft = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_x * 0.5f ) );
-	dUp = dFar * tan( DEG2RAD( tr.viewDef->renderView.fov_y * 0.5f ) );
-	tr.viewDef->viewFrustum.SetOrigin( tr.viewDef->renderView.vieworg );
-	tr.viewDef->viewFrustum.SetAxis( tr.viewDef->renderView.viewaxis );
-	tr.viewDef->viewFrustum.SetSize( dNear, dFar, dLeft, dUp );
+	dLeft = dFar * tan( DEG2RAD( viewDef->renderView.fov_x * 0.5f ) );
+	dUp = dFar * tan( DEG2RAD( viewDef->renderView.fov_y * 0.5f ) );
+	viewDef->viewFrustum.SetOrigin( viewDef->renderView.vieworg );
+	viewDef->viewFrustum.SetAxis( viewDef->renderView.viewaxis );
+	viewDef->viewFrustum.SetSize( dNear, dFar, dLeft, dUp );
 }
 
 /*
@@ -1097,7 +1101,7 @@ void R_RenderView( viewDef_t &parms ) {
 
 	// the four sides of the view frustum are needed
 	// for culling and portal visibility
-	R_SetupViewFrustum();
+	R_SetupViewFrustum( tr.viewDef );
 
 	// we need to set the projection matrix before doing
 	// portal-to-screen scissor box calculations

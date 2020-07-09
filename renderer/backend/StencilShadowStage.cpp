@@ -61,6 +61,15 @@ void StencilShadowStage::DrawStencilShadows( viewLight_t *vLight, const drawSurf
 	GL_Cull( CT_TWO_SIDED );
 	stencilShadowShader->Activate();
 
+	if ( /*r_useScissor.GetBool() &&*/ !backEnd.currentScissor.Equals( vLight->scissorRect ) ) {
+		backEnd.currentScissor = vLight->scissorRect;
+		GL_ScissorVidSize( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
+		            backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
+		            backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
+		            backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
+		GL_CheckErrors();
+	}
+
 	idList<const drawSurf_t*> depthFailSurfs;
 	idList<const drawSurf_t*> depthPassSurfs;
 	for (const drawSurf_t *surf = shadowSurfs; surf; surf = surf->nextOnLight) {
