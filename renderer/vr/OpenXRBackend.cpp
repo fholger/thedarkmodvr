@@ -242,7 +242,7 @@ void OpenXRBackend::BeginFrame() {
 	XR_CheckResult( result, "beginning frame", instance );
 }
 
-void OpenXRBackend::EndFrame() {
+void OpenXRBackend::SubmitFrame() {
 	if ( !vrSessionActive || !shouldSubmitFrame ) {
 		return;
 	}
@@ -376,7 +376,7 @@ void OpenXRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	eyeSwapchains[0].ReleaseImage();
 	eyeSwapchains[1].ReleaseImage();
 	uiSwapchain.ReleaseImage();
-	EndFrame();
+	SubmitFrame();
 	GLimp_SwapBuffers();
 	frameBuffers->defaultFbo = defaultFbo;
 	// go back to the default texture so the editor doesn't mess up a bound image
