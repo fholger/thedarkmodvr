@@ -74,7 +74,7 @@ void OpenVRBackend::BeginFrame() {
 	vr::VRCompositor()->WaitGetPoses( currentPoses, vr::k_unMaxTrackedDeviceCount, predictedPoses, vr::k_unMaxTrackedDeviceCount );	
 }
 
-void OpenVRBackend::EndFrame() {
+void OpenVRBackend::SubmitFrame() {
 	GL_PROFILE("VrSubmitFrame")
 	vr::Texture_t texture = { (void*)uiTexture->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
 	vr::VROverlay()->SetOverlayTexture( menuOverlay, &texture );
@@ -121,12 +121,12 @@ void OpenVRBackend::AdjustRenderView( renderView_t *view ) {
 void OpenVRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
 
-	// render lightgem and 2D UI elements
+	// render 2D UI elements
 	frameBuffers->defaultFbo = uiBuffer;
 	frameBuffers->defaultFbo->Bind();
 	qglClearColor( 0, 0, 0, 0 );
 	qglClear( GL_COLOR_BUFFER_BIT );
-	ExecuteRenderCommands( cmds, false );
+	ExecuteRenderCommands( cmds, false, false );
 
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
@@ -136,14 +136,14 @@ void OpenVRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 		qglClearColor( 0, 0, 0, 1 );
 		qglClear( GL_COLOR_BUFFER_BIT );
 		frameBuffers->EnterPrimary();
-		ExecuteRenderCommands( cmds, true );
+		ExecuteRenderCommands( cmds, true, eye == 0 );
 		frameBuffers->LeavePrimary();
 		FB_DebugShowContents();
 	}
 
 	eyeBuffers[0]->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	uiBuffer->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	EndFrame();
+	SubmitFrame();
 	GLimp_SwapBuffers();
 	frameBuffers->defaultFbo = defaultFbo;
 	// go back to the default texture so the editor doesn't mess up a bound image
@@ -201,10 +201,10 @@ void OpenVRBackend::CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint3
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
 
-void OpenVRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D ) {
+void OpenVRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool render3D, bool renderLightgem ) {
 	RB_SetDefaultGLState();
 
-	bool isv3d = false, fboOff = false; // needs to be declared outside of switch case
+	bool isv3d = false; // needs to be declared outside of switch case
 
 	while ( cmds ) {
 		switch ( cmds->commandId ) {
@@ -213,7 +213,7 @@ void OpenVRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool rend
 		case RC_DRAW_VIEW: {
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
 			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
-			if ( (backEnd.viewDef->IsLightGem() && !render3D) || (!backEnd.viewDef->IsLightGem() && isv3d == render3D) ) {
+			if ( (backEnd.viewDef->IsLightGem() && renderLightgem) || (!backEnd.viewDef->IsLightGem() && isv3d == render3D) ) {
 				renderBackend->DrawView( backEnd.viewDef );
 			}
 			break;
@@ -227,7 +227,6 @@ void OpenVRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, bool rend
 			}
 			RB_Tonemap( (bloomCommand_t*)cmds );
 			FB_DebugShowContents();
-			fboOff = true;
 			break;
 		case RC_COPY_RENDER:
 			if ( !render3D ) {
@@ -290,6 +289,34 @@ void OpenVRBackend::SetupProjectionMatrix( viewDef_t *viewDef, int eye ) {
 	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
 }
 
+void OpenVRBackend::UpdateScissorRect( idScreenRect * scissorRect, viewDef_t * viewDef, const idMat4 &invProj, const idMat4 &invView ) const {
+	/*const float renderWidth = eyeBuffers[0]->Width();
+	const float renderHeight = eyeBuffers[0]->Height();
+
+	auto ToNdc = [=](idVec4 &vec) {
+		vec.x = 2 * vec.x / renderWidth - 1;
+		vec.y = 2 * vec.y / renderHeight - 1;
+		vec.z = 2 * vec.z - 1;
+	};
+
+	idVec4 corners[8];
+	corners[0].Set( scissorRect->x1, scissorRect->y1, scissorRect->zmin, 1 );
+	corners[0].Set( scissorRect->x2, scissorRect->y1, scissorRect->zmin, 1 );
+	corners[0].Set( scissorRect->x1, scissorRect->y2, scissorRect->zmin, 1 );
+	corners[0].Set( scissorRect->x2, scissorRect->y2, scissorRect->zmin, 1 );
+	corners[0].Set( scissorRect->x1, scissorRect->y1, scissorRect->zmax, 1 );
+	corners[0].Set( scissorRect->x2, scissorRect->y1, scissorRect->zmax, 1 );
+	corners[0].Set( scissorRect->x1, scissorRect->y2, scissorRect->zmax, 1 );
+	corners[0].Set( scissorRect->x2, scissorRect->y2, scissorRect->zmax, 1 );
+
+	for ( int i = 0; i < 8; ++i ) {
+		ToNdc( corners[i] );
+	}*/
+}
+
+extern idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef );
+extern void R_SetupViewFrustum( viewDef_t *viewDef );
+
 void OpenVRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 	const vr::TrackedDevicePose_t &hmdPose = predictedPoses[vr::k_unTrackedDeviceIndex_Hmd];
 	if ( !hmdPose.bPoseIsValid ) {
@@ -308,6 +335,12 @@ void OpenVRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 
 	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * scale;
 
+	idMat4 prevInvProj, prevInvView;
+	memcpy( prevInvProj.ToFloatPtr(), viewDef->projectionMatrix, sizeof(idMat4) );
+	memcpy( prevInvView.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4) );
+	prevInvProj.InverseSelf();
+	prevInvView.InverseSelf();
+
 	// update with new pose
 	renderView_t& eyeView = viewDef->renderView;
 	eyeView.viewaxis = axis * eyeView.initialViewaxis;
@@ -319,12 +352,13 @@ void OpenVRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 
 	// apply new view matrix to view and all entities
 	R_SetViewMatrix( *viewDef );
+	R_SetupViewFrustum( viewDef );
 	for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 		myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
 	}
 
 	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
-		//vLight->scissorRect = R_CalcLightScissorRect( vLight );
+		vLight->scissorRect = R_CalcLightScissorRectangle( vLight, viewDef );
 	}
 }
 

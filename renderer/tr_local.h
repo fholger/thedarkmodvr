@@ -74,6 +74,8 @@ public:
 };
 
 idScreenRect R_ScreenRectFromViewFrustumBounds( const idBounds &bounds );
+struct viewDef_s;
+idScreenRect R_ScreenRectFromViewFrustumBounds( const idBounds &bounds, viewDef_s *viewDef );
 void R_ShowColoredScreenRect( const idScreenRect &rect, int colorIndex );
 
 typedef enum {
