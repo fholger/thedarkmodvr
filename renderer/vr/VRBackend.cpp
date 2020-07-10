@@ -40,24 +40,22 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	AcquireFboAndTexture( LEFT_EYE, eyeBuffers[0], eyeTextures[0] );
 	AcquireFboAndTexture( RIGHT_EYE, eyeBuffers[1], eyeTextures[1] );
 
-	// render 2D UI elements
-	frameBuffers->defaultFbo = uiBuffer;
-	frameBuffers->defaultFbo->Bind();
-	qglClearColor( 0, 0, 0, 0 );
-	qglClear( GL_COLOR_BUFFER_BIT );
-	ExecuteRenderCommands( cmds, UI );
-
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
 		frameBuffers->defaultFbo = eyeBuffers[eye];
 		frameBuffers->defaultFbo->Bind();
 		qglClearColor( 0, 0, 0, 1 );
 		qglClear( GL_COLOR_BUFFER_BIT );
-		frameBuffers->EnterPrimary();
 		ExecuteRenderCommands( cmds, (eyeView_t)eye );
-		frameBuffers->LeavePrimary();
 		FB_DebugShowContents();
 	}
+
+	// render 2D UI elements
+	frameBuffers->defaultFbo = uiBuffer;
+	frameBuffers->defaultFbo->Bind();
+	qglClearColor( 0, 0, 0, 0 );
+	qglClear( GL_COLOR_BUFFER_BIT );
+	ExecuteRenderCommands( cmds, UI );
 
 	eyeBuffers[0]->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 	uiBuffer->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
@@ -88,6 +86,9 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
 			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
 			if ( (backEnd.viewDef->IsLightGem() && eyeView == LEFT_EYE) || (!backEnd.viewDef->IsLightGem() && isv3d == (eyeView != UI) ) ) {
+				if ( eyeView != UI ) {
+					frameBuffers->EnterPrimary();
+				}
 				renderBackend->DrawView( backEnd.viewDef );
 			}
 			break;
@@ -117,6 +118,8 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 		}
 		cmds = ( const emptyCommand_t * )cmds->next;
 	}
+
+	frameBuffers->LeavePrimary();
 }
 
 extern idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef );
