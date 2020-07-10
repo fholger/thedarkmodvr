@@ -8569,7 +8569,7 @@ idVec3 idPlayer::GetEyePosition( void ) const
 idPlayer::GetViewPos
 ===============
 */
-void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis ) const {
+void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool fixedPitch ) const {
 	idAngles angles;
 
 	if ( usePeekView ) // grayman #4882
@@ -8588,6 +8588,11 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis ) const {
 	} else {
 		origin = GetEyePosition() + viewBob;
 		angles = viewAngles + viewBobAngles + physicsObj.GetViewLeanAngles() + playerView.AngleOffset();
+
+		if ( fixedPitch ) {
+			// in VR, mouse pitch added to the view is confusing, so leave it out
+			angles.pitch = 0;
+		}
 
 		axis = angles.ToMat3() * physicsObj.GetGravityAxis();
 
@@ -8749,6 +8754,8 @@ void idPlayer::CalculateRenderView( void ) {
 		} else {
 			renderView->vieworg = firstPersonViewOrigin;
 			renderView->viewaxis = firstPersonViewAxis;
+
+			GetViewPos( renderView->vieworg, renderView->viewaxis, true );
 
 			// set the viewID to the clientNum + 1, so we can suppress the right player bodies and
 			// allow the right player view weapons

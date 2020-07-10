@@ -646,7 +646,7 @@ public:
 	idVec3					GetEyePosition( void ) const;
 	bool					CanGreet(); // grayman #3338
 
-	void					GetViewPos( idVec3 &origin, idMat3 &axis ) const;
+	void					GetViewPos( idVec3 &origin, idMat3 &axis, bool fixedPitch = false ) const;
 	void					OffsetThirdPersonView( float angle, float range, float height, bool clip );
 
 	bool					Give( const char *statname, const char *value );
