@@ -53,6 +53,8 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	// render 2D UI elements
 	frameBuffers->defaultFbo = uiBuffer;
 	frameBuffers->defaultFbo->Bind();
+	GL_ViewportRelative( 0, 0, 1, 1 );
+	GL_ScissorRelative( 0, 0, 1, 1 );
 	qglClearColor( 0, 0, 0, 0 );
 	qglClear( GL_COLOR_BUFFER_BIT );
 	ExecuteRenderCommands( cmds, UI );

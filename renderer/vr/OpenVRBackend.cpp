@@ -115,6 +115,9 @@ void OpenVRBackend::AdjustRenderView( renderView_t *view ) {
 
 	view->vieworg += position * view->viewaxis;
 	view->viewaxis = axis * view->viewaxis;
+
+	view->fov_x = fovX;
+	view->fov_y = fovY;
 }
 
 void OpenVRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) {
@@ -137,8 +140,8 @@ void OpenVRBackend::InitParameters() {
 	float combinedTanHalfFovHoriz = Max( Max( idMath::Fabs(rawProjection[0][0]), idMath::Fabs(rawProjection[0][1]) ), Max( idMath::Fabs(rawProjection[1][0]), idMath::Fabs(rawProjection[1][1]) ) );
 	float combinedTanHalfFovVert = Max( Max( idMath::Fabs(rawProjection[0][2]), idMath::Fabs(rawProjection[0][3]) ), Max( idMath::Fabs(rawProjection[1][2]), idMath::Fabs(rawProjection[1][3]) ) );
 
-	fovX = RAD2DEG( 2 * atanf( combinedTanHalfFovHoriz ) ) + 8;
-	fovY = RAD2DEG( 2 * atanf( combinedTanHalfFovVert ) ) + 8;
+	fovX = RAD2DEG( 2 * atanf( combinedTanHalfFovHoriz ) ) + 5;
+	fovY = RAD2DEG( 2 * atanf( combinedTanHalfFovVert ) ) + 5;
 
 	vr::HmdMatrix34_t eyeToHead = system->GetEyeToHeadTransform( vr::Eye_Right );
 	eyeForward = -eyeToHead.m[2][3];
