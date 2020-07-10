@@ -733,6 +733,47 @@ stencil clears and interaction drawing
 */
 static int c_clippedLight = 0, c_unclippedLight = 0;
 
+idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
+	// transform the bounds into view space
+	idVec3 viewOrigin;
+	R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, box.GetCenter(), viewOrigin );
+	float radius = Max(box.GetExtents().x, Max(box.GetExtents().y, box.GetExtents().z));
+	idBounds viewBounds (viewOrigin);
+	viewBounds.ExpandSelf( radius );
+
+	idVec3 points[8];
+	viewBounds.ToPoints( points );
+
+	idScreenRect scissor;
+	scissor.Clear();
+	scissor.zmin = 1.0f;
+	scissor.zmax = 0.0f;
+
+	int width = viewDef->viewport.x2 - viewDef->viewport.x1;
+	int height = viewDef->viewport.y2 - viewDef->viewport.y1;
+
+	idPlane clip[8];
+	for ( int i = 0; i < 8; ++i ) {
+		R_PointTimesMatrix( viewDef->projectionMatrix, idVec4(points[i].x, points[i].y, points[i].z, 1), clip[i].ToVec4() );
+		R_TransformClipToDevice( clip[i], viewDef, points[i] );
+		points[i].x = 0.5f * (points[i].x + 1) * width;
+		points[i].y = 0.5f * (points[i].y + 1) * height;
+		points[i].z = 0.5f * (points[i].z + 1);
+		scissor.AddPoint( points[i].x, points[i].y );
+		scissor.zmin = Min( scissor.zmin, points[i].z );
+		scissor.zmax = Max( scissor.zmax, points[i].z );
+	}
+
+	if ( r_useDepthBoundsTest.GetBool() ) {
+		R_TransformEyeZToWin( viewBounds[1].z, viewDef->projectionMatrix, scissor.zmin );
+		R_TransformEyeZToWin( viewBounds[0].z, viewDef->projectionMatrix, scissor.zmax );
+	}
+
+	scissor.Intersect( viewDef->scissor );
+
+	return scissor;
+}
+
 idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef ) {
 	idScreenRect	r;
 	idPlane			eye, clip;
@@ -741,6 +782,7 @@ idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDe
 	if ( vLight->lightDef->parms.pointLight ) {
 		idBounds bounds;
 		idRenderLightLocal *lightDef = vLight->lightDef;
+		return R_WorldBoxToScissor( idBox( lightDef->parms.origin, lightDef->parms.lightRadius, lightDef->parms.axis ), viewDef );
 		if ( viewDef->viewFrustum.ProjectionBounds( idBox( lightDef->parms.origin, lightDef->parms.lightRadius, lightDef->parms.axis ), bounds ) )
 			r = R_ScreenRectFromViewFrustumBounds( bounds, viewDef );
 		else
