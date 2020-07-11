@@ -53,7 +53,8 @@ void main() {
 	// clamp the distance so the the deformations don't get too wacky near the view
 	R1 = min(R1, vec4(0.02));                                                                           //MIN		R1, R1, 0.02;
 	
-	var_tc2 = (R1) * (u_localParam1);                                                                   //MUL		result.texcoord[2], R1, program.local[1];
+	R1 = vec4(0.005);
+    var_tc2 = (R1) * (u_localParam1);
 	
 	gl_Position = tdm_transform(attr_Position);
 }

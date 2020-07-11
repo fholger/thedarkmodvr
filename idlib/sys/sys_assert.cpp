@@ -85,7 +85,7 @@ bool AssertFailed( const char * file, int line, const char * expression ) {
 	{
 #ifdef _WIN32
 #ifdef _MSC_VER
-		__debugbreak();
+
 #else
 		// DG: mingw support
 		DebugBreak();
