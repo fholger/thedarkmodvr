@@ -24,10 +24,10 @@
 //#pragma optimize("t", off) // duzenko: used in release to enforce breakpoints in inlineable code. Please do not remove
 #endif
 
-typedef struct {
+/*typedef struct {
 	idVec3		origin;
 	idMat3		axis;
-} orientation_t;
+} orientation_t;*/
 
 
 /*
