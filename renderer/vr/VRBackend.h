@@ -36,12 +36,13 @@ protected:
 	void ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eyeView );
 	virtual void SubmitFrame() = 0;
 	virtual void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) = 0;
-	virtual void UpdateViewPose( viewDef_t *viewDef, int eye ) = 0;
+	virtual bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) = 0;
 	virtual void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) = 0;
 
 private:
 	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
+	void UpdateViewPose( viewDef_t *viewDef, int eye );
 };
 
 extern VRBackend *vrBackend;

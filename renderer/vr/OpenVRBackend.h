@@ -31,7 +31,7 @@ public:
 protected:
 	void SubmitFrame() override;
 	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
-	void UpdateViewPose( viewDef_t *viewDef, int eye ) override;
+	bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) override;
 	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
 
 private:
@@ -53,9 +53,6 @@ private:
 	void InitRenderTextures();
 
 	void CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint32_t width, uint32_t height );
-
-	void UpdateScissorRect( idScreenRect *scissorRect, viewDef_t *viewDef, const idMat4 &invProj,
-	                        const idMat4 &invView ) const;
 
 	float GetInterPupillaryDistance() const;
 };

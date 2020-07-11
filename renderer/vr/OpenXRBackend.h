@@ -33,7 +33,7 @@ public:
 protected:
 	void SubmitFrame() override;
 	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
-	void UpdateViewPose( viewDef_t *viewDef, int eye ) override;
+	bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) override;
 	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
 
 private:
