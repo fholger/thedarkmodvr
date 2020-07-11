@@ -34,6 +34,8 @@
 #include "Shop/Shop.h"
 #include <numeric>
 
+#include "../renderer/vr/OpenVRBackend.h"
+
 /*
 ===============================================================================
 
@@ -8761,7 +8763,7 @@ void idPlayer::CalculateRenderView( void ) {
 			renderView->vieworg = firstPersonViewOrigin;
 			renderView->viewaxis = firstPersonViewAxis;
 
-			GetViewPos( renderView->vieworg, renderView->viewaxis, true );
+			GetViewPos( renderView->vieworg, renderView->viewaxis, vr_lockMousePitch.GetBool() );
 
 			// set the viewID to the clientNum + 1, so we can suppress the right player bodies and
 			// allow the right player view weapons
