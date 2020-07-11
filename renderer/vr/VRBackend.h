@@ -16,6 +16,7 @@
 #include "../tr_local.h"
 
 class FrameBuffer;
+class GLSLProgram;
 
 class VRBackend {
 public:
@@ -43,6 +44,9 @@ private:
 	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
 	void UpdateViewPose( viewDef_t *viewDef, int eye );
+	void MirrorVrView( idImage *eyeTexture, idImage *uiTexture );
+
+	GLSLProgram *vrMirrorShader = nullptr;
 };
 
 extern VRBackend *vrBackend;
