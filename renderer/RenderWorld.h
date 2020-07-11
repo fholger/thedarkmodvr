@@ -255,6 +255,7 @@ typedef struct renderView_s {
 	bool					fixedOrigin;
 	orientation_t			mirrorSurface;
 	orientation_t			mirrorCamera;
+	bool					isMirror;
 } renderView_t;
 
 
