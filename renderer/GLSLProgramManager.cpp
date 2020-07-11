@@ -81,7 +81,7 @@ void GLSLProgramManager::Shutdown() {
 
 GLSLProgram * GLSLProgramManager::Load( const idStr &name, const idDict &defines ) {
 	Generator generator = [=]( GLSLProgram *program ) {
-		if( fileSystem->FindFile( idStr("glprogs/") + name + ".gs" ) != FIND_NO ) {
+		if( fileSystem->FindFile( idStr("glprogs_vr/") + name + ".gs" ) != FIND_NO ) {
 			DefaultProgramInit( program, defines, name + ".vs", name + ".fs", name + ".gs" );
 		} else {
 			DefaultProgramInit( program, defines, name + ".vs", name + ".fs", nullptr );
