@@ -27,7 +27,7 @@
 idCVar	idSessionLocal::com_showAngles( "com_showAngles", "0", CVAR_SYSTEM | CVAR_BOOL, "" );
 idCVar	idSessionLocal::com_minTics( "com_minTics", "1", CVAR_SYSTEM, "" );
 idCVar	idSessionLocal::com_showTics( "com_showTics", "0", CVAR_SYSTEM | CVAR_BOOL, "" );
-idCVar	idSessionLocal::com_fixedTic("com_fixedTic", "0", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_INTEGER,
+idCVar	idSessionLocal::com_fixedTic("com_fixedTic", "1", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_INTEGER,
 	" 0 -- game tics have fixed duration of 16 ms (stable physics but 60 FPS limit)\n"
 	" 1 -- game tics can have shorter duration (removes 60 FPS limit)",
 0, 1);
@@ -58,7 +58,7 @@ idCVar	idSessionLocal::com_numQuickSaves( "com_numQuickSaves", "2", CVAR_GAME | 
 
 // stgatilov: allow choosing format for savegame previews
 idCVar	com_savegame_preview_format( "com_savegame_preview_format", "jpg", CVAR_GAME | CVAR_ARCHIVE, "Image format used to store previews for game saves: tga/jpg." );
-idCVar	com_maxFPS( "com_maxFPS", "166", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_INTEGER, "define the maximum FPS cap (uncapped FPS only)", 2, 1000 );
+idCVar	com_maxFPS( "com_maxFPS", "200", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_INTEGER, "define the maximum FPS cap (uncapped FPS only)", 2, 1000 );
 
 idSessionLocal		sessLocal;
 idSession			*session = &sessLocal;
