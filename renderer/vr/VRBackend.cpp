@@ -28,9 +28,14 @@ VRBackend *vrBackend = nullptr;
 
 idCVar vr_backend( "vr_backend", "0", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "0 - OpenVR, 1 - OpenXR" );
 idCVar vr_uiResolution( "vr_uiResolution", "2048", CVAR_RENDERER|CVAR_ARCHIVE|CVAR_INTEGER, "Render resolution for 2D/UI overlay" );
+idCVar vr_lockMousePitch( "vr_lockMousePitch", "1", CVAR_ARCHIVE|CVAR_BOOL, "If enabled, vertical mouse movement will not be reflected in the VR view" );
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
+
+void VRBackend::Destroy() {
+	vrMirrorShader = nullptr;
+}
 
 void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
