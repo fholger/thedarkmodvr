@@ -18,6 +18,9 @@
 #include "OpenVRBackend.h"
 #include "../FrameBuffer.h"
 #include "../FrameBufferManager.h"
+#include "../GLSLProgram.h"
+#include "../GLSLProgramManager.h"
+#include "../GLSLUniforms.h"
 #include "../Profiling.h"
 #include "../backend/RenderBackend.h"
 
@@ -59,8 +62,8 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	qglClear( GL_COLOR_BUFFER_BIT );
 	ExecuteRenderCommands( cmds, UI );
 
-	eyeBuffers[0]->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
-	uiBuffer->BlitTo( defaultFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	defaultFbo->Bind();
+	MirrorVrView( eyeTextures[0], uiTexture );
 
 	SubmitFrame();
 	GLimp_SwapBuffers();
@@ -251,6 +254,34 @@ void VRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 		// can't use the calculated view scissors, and no simple way to recalculate them...
 		viewDef->scissor = viewDef->superView->scissor;
 	}
+}
+
+struct MirrorUniforms : GLSLUniformGroup {
+	UNIFORM_GROUP_DEF( MirrorUniforms )
+	DEFINE_UNIFORM( sampler, vrEye )
+	DEFINE_UNIFORM( sampler, ui)
+};
+
+void VRBackend::MirrorVrView( idImage *eyeTexture, idImage *uiTexture ) {
+	GL_PROFILE( "VrMirrorView" )
+
+	GL_ViewportRelative( 0, 0, 1, 1 );
+	GL_ScissorRelative( 0, 0, 1, 1 );
+
+	if (vrMirrorShader == nullptr) {
+		vrMirrorShader = programManager->LoadFromFiles( "vr_mirror", "vr/vr_mirror.vert.glsl", "vr/vr_mirror.frag.glsl" );
+	}
+	vrMirrorShader->Activate();
+	MirrorUniforms *uniforms = vrMirrorShader->GetUniformGroup<MirrorUniforms>();
+	uniforms->vrEye.Set( 0 );
+	uniforms->ui.Set( 1 );
+
+	GL_SelectTexture( 1 );
+	uiTexture->Bind();
+	GL_SelectTexture( 0 );
+	eyeTexture->Bind();
+
+	RB_DrawFullScreenQuad();
 }
 
 void SelectVRImplementation() {
