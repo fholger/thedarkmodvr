@@ -224,6 +224,11 @@ typedef enum {							// #define RENDERTOOLS_SKIP_ID			-1 // DARKMOD_LG_VIEWID
 } viewID_t;								// The lightgem viewid defines the viewid that is to be used for the lightgem surfacetestmodel
 										// static const int	DARKMOD_LG_VIEWID =	-1;
 
+typedef struct {
+	idVec3		origin;
+	idMat3		axis;
+} orientation_t;
+
 typedef struct renderView_s {
 	// player views will set this to a non-zero integer for model suppress / allow
 	// subviews (mirrors, cameras, etc) will always clear it to zero
@@ -248,6 +253,8 @@ typedef struct renderView_s {
 	idVec3					initialVieworg;
 	idMat3					initialViewaxis;
 	bool					fixedOrigin;
+	orientation_t			mirrorSurface;
+	orientation_t			mirrorCamera;
 } renderView_t;
 
 

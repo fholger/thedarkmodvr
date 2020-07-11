@@ -267,14 +267,14 @@ void OpenXRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float 
 	angleDown = fov.angleDown;
 }
 
-void OpenXRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
-	const XrPosef &pose = renderViews[eye].pose;
-	
-	renderView_t& eyeView = viewDef->renderView;
-	if ( !eyeView.fixedOrigin ) {
-		eyeView.vieworg = eyeView.initialVieworg + Vec3FromXr( pose.position ) * eyeView.initialViewaxis;
+bool OpenXRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) {
+	if ( !vrSessionActive ) {
+		return false;
 	}
-	eyeView.viewaxis = QuatFromXr( pose.orientation ).ToMat3() * eyeView.initialViewaxis;
+
+	const XrPosef &pose = renderViews[eye].pose;
+	origin = Vec3FromXr( pose.position );
+	axis = QuatFromXr( pose.orientation ).ToMat3();
 }
 
 void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {

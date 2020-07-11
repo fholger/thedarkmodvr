@@ -127,6 +127,28 @@ void OpenVRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float 
 	angleDown = projectionFov[eye][2];
 }
 
+bool OpenVRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) {
+	const vr::TrackedDevicePose_t &hmdPose = currentPoses[vr::k_unTrackedDeviceIndex_Hmd];
+	if ( !hmdPose.bPoseIsValid ) {
+		return false;
+	}
+
+	const float scale = 1.0f / 0.02309f;
+
+	const vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
+	origin.Set( -scale * mat.m[2][3], -scale * mat.m[0][3], scale * mat.m[1][3] );
+	axis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
+	axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
+	axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
+	origin += eyeForward * scale * axis[0];
+
+	const int eyeFactor[] = {-1, 1};
+	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * scale;
+	origin -= eyeFactor[eye] * halfEyeSeparationWorldUnits * axis[1];
+
+	return true;
+}
+
 void OpenVRBackend::InitParameters() {
 	float rawProjection[2][4];
 	system->GetProjectionRaw( vr::Eye_Left, &rawProjection[0][0], &rawProjection[0][1], &rawProjection[0][2], &rawProjection[0][3] );
@@ -178,70 +200,8 @@ void OpenVRBackend::CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint3
 	fbo->AddColorRenderTexture( 0, texture );
 }
 
-extern void RB_Tonemap( bloomCommand_t *cmd );
-extern void RB_CopyRender( const void *data );
-
-void OpenVRBackend::UpdateScissorRect( idScreenRect * scissorRect, viewDef_t * viewDef, const idMat4 &invProj, const idMat4 &invView ) const {
-	/*const float renderWidth = eyeBuffers[0]->Width();
-	const float renderHeight = eyeBuffers[0]->Height();
-
-	auto ToNdc = [=](idVec4 &vec) {
-		vec.x = 2 * vec.x / renderWidth - 1;
-		vec.y = 2 * vec.y / renderHeight - 1;
-		vec.z = 2 * vec.z - 1;
-	};
-
-	idVec4 corners[8];
-	corners[0].Set( scissorRect->x1, scissorRect->y1, scissorRect->zmin, 1 );
-	corners[0].Set( scissorRect->x2, scissorRect->y1, scissorRect->zmin, 1 );
-	corners[0].Set( scissorRect->x1, scissorRect->y2, scissorRect->zmin, 1 );
-	corners[0].Set( scissorRect->x2, scissorRect->y2, scissorRect->zmin, 1 );
-	corners[0].Set( scissorRect->x1, scissorRect->y1, scissorRect->zmax, 1 );
-	corners[0].Set( scissorRect->x2, scissorRect->y1, scissorRect->zmax, 1 );
-	corners[0].Set( scissorRect->x1, scissorRect->y2, scissorRect->zmax, 1 );
-	corners[0].Set( scissorRect->x2, scissorRect->y2, scissorRect->zmax, 1 );
-
-	for ( int i = 0; i < 8; ++i ) {
-		ToNdc( corners[i] );
-	}*/
-}
-
 extern idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef );
 extern void R_SetupViewFrustum( viewDef_t *viewDef );
-
-void OpenVRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
-	const vr::TrackedDevicePose_t &hmdPose = predictedPoses[vr::k_unTrackedDeviceIndex_Hmd];
-	if ( !hmdPose.bPoseIsValid ) {
-		return;
-	}
-
-	const float scale = 1.0f / 0.02309f;
-
-	const vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
-	idVec3 position ( -scale * mat.m[2][3], -scale * mat.m[0][3], scale * mat.m[1][3] );
-	idMat3 axis;
-	axis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
-	axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
-	axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
-	position += eyeForward * scale * axis[0];
-
-	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * scale;
-
-	idMat4 prevInvProj, prevInvView;
-	memcpy( prevInvProj.ToFloatPtr(), viewDef->projectionMatrix, sizeof(idMat4) );
-	memcpy( prevInvView.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4) );
-	prevInvProj.InverseSelf();
-	prevInvView.InverseSelf();
-
-	// update with new pose
-	renderView_t& eyeView = viewDef->renderView;
-	eyeView.viewaxis = axis * eyeView.initialViewaxis;
-	const int eyeFactor[] = {-1, 1};
-	if ( !eyeView.fixedOrigin ) {
-		eyeView.vieworg = eyeView.initialVieworg + position * eyeView.initialViewaxis;
-		eyeView.vieworg -= eyeFactor[eye] * halfEyeSeparationWorldUnits * eyeView.viewaxis[1];
-	}
-}
 
 void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {
 	if ( eye == UI ) {
