@@ -62,6 +62,7 @@ void OpenVRBackend::Init() {
 }
 
 void OpenVRBackend::Destroy() {
+	VRBackend::Destroy();
 	if ( system != nullptr ) {
 		common->Printf( "Shutting down OpenVR.\n" );
 		vr::VR_Shutdown();
