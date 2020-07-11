@@ -184,6 +184,22 @@ void VRBackend::SetupProjectionMatrix( viewDef_t *viewDef, int eye ) {
 	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
 }
 
+void VRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
+	idVec3 position;
+	idMat3 axis;
+
+	if ( !GetCurrentEyePose( eye, position, axis ) ) {
+		return;
+	}
+
+	// update with new pose
+	renderView_t& eyeView = viewDef->renderView;
+	eyeView.viewaxis = axis * eyeView.initialViewaxis;
+	if ( !eyeView.fixedOrigin ) {
+		eyeView.vieworg = eyeView.initialVieworg + position * eyeView.initialViewaxis;
+	}
+}
+
 void SelectVRImplementation() {
 	if ( vr_backend.GetInteger() == 0 ) {
 		vrBackend = openvr;
