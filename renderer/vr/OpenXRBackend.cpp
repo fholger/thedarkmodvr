@@ -275,6 +275,8 @@ bool OpenXRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) {
 	const XrPosef &pose = renderViews[eye].pose;
 	origin = Vec3FromXr( pose.position );
 	axis = QuatFromXr( pose.orientation ).ToMat3();
+
+	return true;
 }
 
 void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {

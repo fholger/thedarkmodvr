@@ -213,7 +213,7 @@ void FrameBufferManager::CopyRender( const copyRenderCommand_t &cmd ) {
 	}
 	int backEndStartTime = Sys_Milliseconds();
 
-	if ( activeFbo == defaultFbo ) { // #4425: not applicable, raises gl errors
+	if ( activeFbo->IsDefault() ) { // #4425: not applicable, raises gl errors
 		qglReadBuffer( GL_BACK );
 	}
 
