@@ -49,8 +49,9 @@ void OpenVRBackend::Init() {
 	transform.m[0][0] = 1;
 	transform.m[1][1] = 1;
 	transform.m[2][2] = 1;
-	transform.m[2][3] = -2;
-	vr::VROverlay()->SetOverlayWidthInMeters( menuOverlay, 2 );
+	transform.m[1][3] = -0.25;
+	transform.m[2][3] = -2.5;
+	vr::VROverlay()->SetOverlayWidthInMeters( menuOverlay, 3 );
 	vr::VROverlay()->SetOverlayTexelAspect( menuOverlay, 1.5f );
 	vr::VROverlay()->SetOverlayTransformAbsolute( menuOverlay, vr::TrackingUniverseSeated, &transform );
 	vr::VROverlay()->ShowOverlay( menuOverlay );
