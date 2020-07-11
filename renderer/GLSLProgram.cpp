@@ -170,7 +170,7 @@ namespace {
 
 	std::string ReadFile( const char *sourceFile ) {
 		void *buf = nullptr;
-		int len = fileSystem->ReadFile( idStr("glprogs/") + sourceFile, &buf );
+		int len = fileSystem->ReadFile( idStr("glprogs_vr/") + sourceFile, &buf );
 		if( buf == nullptr ) {
 			common->Warning( "Could not open shader file %s", sourceFile );
 			return "";
@@ -442,11 +442,11 @@ namespace {
 
 	TEST_CASE("Shader include handling") {
 		INFO( "Preparing test shaders" );
-		fileSystem->WriteFile( "glprogs/tests/basic_shader.glsl", BASIC_SHADER.c_str(), BASIC_SHADER.size(), "fs_savepath", "" );
-		fileSystem->WriteFile( "glprogs/tests/shared_common.glsl", SHARED_COMMON.c_str(), SHARED_COMMON.size(), "fs_savepath", "" );
-		fileSystem->WriteFile( "glprogs/tests/include_shader.glsl", INCLUDE_SHADER.c_str(), INCLUDE_SHADER.size(), "fs_savepath", "" );
-		fileSystem->WriteFile( "glprogs/tests/nested_include.glsl", NESTED_INCLUDE.c_str(), NESTED_INCLUDE.size(), "fs_savepath", "" );
-		fileSystem->WriteFile( "glprogs/tests/advanced_includes.glsl", ADVANCED_INCLUDES.c_str(), ADVANCED_INCLUDES.size(), "fs_savepath", "" );
+		fileSystem->WriteFile( "glprogs_vr/tests/basic_shader.glsl", BASIC_SHADER.c_str(), BASIC_SHADER.size(), "fs_savepath", "" );
+		fileSystem->WriteFile( "glprogs_vr/tests/shared_common.glsl", SHARED_COMMON.c_str(), SHARED_COMMON.size(), "fs_savepath", "" );
+		fileSystem->WriteFile( "glprogs_vr/tests/include_shader.glsl", INCLUDE_SHADER.c_str(), INCLUDE_SHADER.size(), "fs_savepath", "" );
+		fileSystem->WriteFile( "glprogs_vr/tests/nested_include.glsl", NESTED_INCLUDE.c_str(), NESTED_INCLUDE.size(), "fs_savepath", "" );
+		fileSystem->WriteFile( "glprogs_vr/tests/advanced_includes.glsl", ADVANCED_INCLUDES.c_str(), ADVANCED_INCLUDES.size(), "fs_savepath", "" );
 
 		SUBCASE( "Basic shader without includes remains unaltered" ) {
 			REQUIRE( LoadSource( "tests/basic_shader.glsl" ) == BASIC_SHADER );
