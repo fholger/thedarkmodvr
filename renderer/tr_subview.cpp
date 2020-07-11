@@ -35,7 +35,7 @@
 R_MirrorPoint
 =================
 */
-static void R_MirrorPoint( const idVec3 in, orientation_t *surface, orientation_t *camera, idVec3 &out ) {
+void R_MirrorPoint( const idVec3 in, orientation_t *surface, orientation_t *camera, idVec3 &out ) {
 	int		i;
 	idVec3	local;
 	idVec3	transformed;
@@ -57,7 +57,7 @@ static void R_MirrorPoint( const idVec3 in, orientation_t *surface, orientation_
 R_MirrorVector
 =================
 */
-static void R_MirrorVector( const idVec3 in, orientation_t *surface, orientation_t *camera, idVec3 &out ) {
+void R_MirrorVector( const idVec3 in, orientation_t *surface, orientation_t *camera, idVec3 &out ) {
 	int		i;
 	float	d;
 
@@ -230,6 +230,10 @@ static viewDef_t *R_MirrorViewBySurface( drawSurf_t *drawSurf ) {
 	camera.axis[0] = -surface.axis[0];
 	camera.axis[1] = surface.axis[1];
 	camera.axis[2] = surface.axis[2];
+
+	parms->renderView.mirrorCamera = camera;
+	parms->renderView.mirrorSurface = surface;
+	parms->renderView.isMirror = true;
 
 	// set the mirrored origin and axis
 	R_MirrorPoint( tr.viewDef->renderView.vieworg, &surface, &camera, parms->renderView.vieworg );

@@ -763,6 +763,8 @@ idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
 	scissor.Intersect( viewDef->scissor );
 	R_TransformEyeZToWin( viewBounds[1].z, viewDef->projectionMatrix, scissor.zmin );
 	R_TransformEyeZToWin( viewBounds[0].z, viewDef->projectionMatrix, scissor.zmax );
+	scissor.zmin = idMath::ClampFloat( 0, 1, scissor.zmin );
+	scissor.zmax = idMath::ClampFloat( scissor.zmin, 1, scissor.zmax );
 
 	return scissor;
 }
