@@ -55,20 +55,8 @@ void StencilShadowStage::DrawStencilShadows( viewLight_t *vLight, const drawSurf
 	GL_State( GLS_DEPTHMASK | GLS_COLORMASK | GLS_ALPHAMASK | GLS_DEPTHFUNC_LESS );
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 
-	if ( glConfig.depthBoundsTestAvailable && r_useDepthBoundsTest.GetBool() ) {
-		qglEnable( GL_DEPTH_BOUNDS_TEST_EXT );
-	}
 	GL_Cull( CT_TWO_SIDED );
 	stencilShadowShader->Activate();
-
-	if ( /*r_useScissor.GetBool() &&*/ !backEnd.currentScissor.Equals( vLight->scissorRect ) ) {
-		backEnd.currentScissor = vLight->scissorRect;
-		GL_ScissorVidSize( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
-		            backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
-		            backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
-		            backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
-		GL_CheckErrors();
-	}
 
 	idList<const drawSurf_t*> depthFailSurfs;
 	idList<const drawSurf_t*> depthPassSurfs;
@@ -98,9 +86,6 @@ void StencilShadowStage::DrawStencilShadows( viewLight_t *vLight, const drawSurf
 	GL_Cull( CT_FRONT_SIDED );
 	if ( r_shadowPolygonFactor.GetFloat() || r_shadowPolygonOffset.GetFloat() ) {
 		qglDisable( GL_POLYGON_OFFSET_FILL );
-	}
-	if ( glConfig.depthBoundsTestAvailable && r_useDepthBoundsTest.GetBool() ) {
-		qglDisable( GL_DEPTH_BOUNDS_TEST_EXT );
 	}
 	qglStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
 	// FIXME: move to interaction stage

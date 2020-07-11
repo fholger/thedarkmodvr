@@ -179,15 +179,6 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 	GL_State( GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE | GLS_DEPTHMASK | alphaMask | backEnd.depthFunc );
 	backEnd.currentSpace = NULL; // ambient/interaction shaders conflict
 
-	if ( /*r_useScissor.GetBool() &&*/ !backEnd.currentScissor.Equals( vLight->scissorRect ) ) {
-		backEnd.currentScissor = vLight->scissorRect;
-		GL_ScissorVidSize( backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
-		            backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
-		            backEnd.currentScissor.x2 + 1 - backEnd.currentScissor.x1,
-		            backEnd.currentScissor.y2 + 1 - backEnd.currentScissor.y1 );
-		GL_CheckErrors();
-	}
-
 	// bind the vertex and fragment program
 	ChooseInteractionProgram( vLight, interactionSurfs == backEnd.vLight->translucentInteractions );
 	InteractionUniforms *uniforms = interactionShader->GetUniformGroup<InteractionUniforms>();
