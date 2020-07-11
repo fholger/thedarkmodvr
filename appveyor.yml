@@ -48,11 +48,11 @@ for:
 
   after_build:
   - sh: |
-      cd ../../darkmod
+      cd ..
       EXECUTABLE="thedarkmodvr.x64"
-      tar -cSvf thedarkmodvr.tar "${EXECUTABLE}" "glprogs_vr" "*.so*"
+      tar -cSvf thedarkmodvr.tar "../darkmod/${EXECUTABLE}" "../darkmod/glprogs_vr" "../darkmod/libopenvr_api.so" "../darkmod/libopenxr_loader.so.1"
       bzip2 thedarkmodvr.tar
 
   artifacts:
-  - path: ../darkmod/thedarkmodvr.tar.bz2
+  - path: thedarkmodvr.tar.bz2
     name: TheDarkModVRLinux
