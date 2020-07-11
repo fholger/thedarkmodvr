@@ -6,7 +6,6 @@ image:
 
 configuration:
 - Release
-- Debug
 platform:
 - x64
 shallow_clone: true
@@ -23,13 +22,13 @@ for:
     verbosity: minimal
   after_build:
   - cmd: |
-      7z a -t7z TheDarkMod.7z ..\darkmod\*.exe
-      7z a -t7z TheDarkMod.7z ..\darkmod\*.dll
-      7z a -t7z TheDarkMod.7z ..\darkmod\glprogs
+      7z a -t7z TheDarkModVR.7z ..\darkmod\*.exe
+      7z a -t7z TheDarkModVR.7z ..\darkmod\*.dll
+      7z a -t7z TheDarkModVR.7z ..\darkmod\glprogs_vr
 
   artifacts:
-  - path: TheDarkMod.7z
-    name: TheDarkMod
+  - path: TheDarkModVR.7z
+    name: TheDarkModVR
 
 - matrix:
     only:
@@ -41,17 +40,19 @@ for:
 
   build_script:
   - sh: |
+      mkdir ../darkmod
       mkdir build
       cd build
-      cmake .. -DCMAKE_BUILD_TYPE="${CONFIGURATION}" -DCOPY_EXE=OFF
+      cmake .. -DCMAKE_BUILD_TYPE="${CONFIGURATION}" -DCOPY_EXE=ON
       make -j6
 
   after_build:
   - sh: |
-      EXECUTABLE="thedarkmod.x64"
-      tar -cSvf thedarkmod.tar "${EXECUTABLE}" "../glprogs"
-      bzip2 thedarkmod.tar
+      cd ../../darkmod
+      EXECUTABLE="thedarkmodvr.x64"
+      tar -cSvf thedarkmodvr.tar "${EXECUTABLE}" "glprogs_vr" "*.so*"
+      bzip2 thedarkmodvr.tar
 
   artifacts:
-  - path: build/thedarkmod.tar.bz2
-    name: TheDarkModLinux
+  - path: ../darkmod/thedarkmodvr.tar.bz2
+    name: TheDarkModVRLinux
