@@ -122,6 +122,8 @@ void OpenXRBackend::Init() {
 }
 
 void OpenXRBackend::Destroy() {
+	VRBackend::Destroy();
+
 	if ( instance == nullptr ) {
 		return;
 	}

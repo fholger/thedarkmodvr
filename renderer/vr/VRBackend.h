@@ -18,10 +18,12 @@
 class FrameBuffer;
 class GLSLProgram;
 
+extern idCVar vr_lockMousePitch;
+
 class VRBackend {
 public:
 	virtual void Init() = 0;
-	virtual void Destroy() = 0;
+	virtual void Destroy();
 
 	virtual void BeginFrame() = 0;
  
