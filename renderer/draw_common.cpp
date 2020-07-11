@@ -598,10 +598,6 @@ void RB_STD_T_RenderShaderPasses_GLSL( const shaderStage_t *pStage, const drawSu
 		return;
 
 	newShaderStage_t *newStage = pStage->newStage;
-	// hack: heatHaze causes issue in VR; until I figured out how to fix it, disable it
-	if ( newStage->glslProgram->GetName().Filter( "heatHaze*", false ) ) {
-		return;
-	}
 	GL_State( pStage->drawStateBits );
 	newStage->glslProgram->Activate();
 

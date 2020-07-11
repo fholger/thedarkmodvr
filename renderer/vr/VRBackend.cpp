@@ -246,6 +246,11 @@ void VRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 			eyeView.vieworg = eyeView.initialVieworg + position * eyeView.initialViewaxis;
 		}
 	}
+
+	if ( viewDef->isSubview ) {
+		// can't use the calculated view scissors, and no simple way to recalculate them...
+		viewDef->scissor = viewDef->superView->scissor;
+	}
 }
 
 void SelectVRImplementation() {
