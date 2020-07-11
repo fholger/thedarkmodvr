@@ -746,8 +746,6 @@ idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
 
 	idScreenRect scissor;
 	scissor.Clear();
-	scissor.zmin = 1.0f;
-	scissor.zmax = 0.0f;
 
 	int width = viewDef->viewport.x2 - viewDef->viewport.x1;
 	int height = viewDef->viewport.y2 - viewDef->viewport.y1;
@@ -760,16 +758,11 @@ idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
 		points[i].y = 0.5f * (points[i].y + 1) * height;
 		points[i].z = 0.5f * (points[i].z + 1);
 		scissor.AddPoint( points[i].x, points[i].y );
-		scissor.zmin = Min( scissor.zmin, points[i].z );
-		scissor.zmax = Max( scissor.zmax, points[i].z );
-	}
-
-	if ( r_useDepthBoundsTest.GetBool() ) {
-		R_TransformEyeZToWin( viewBounds[1].z, viewDef->projectionMatrix, scissor.zmin );
-		R_TransformEyeZToWin( viewBounds[0].z, viewDef->projectionMatrix, scissor.zmax );
 	}
 
 	scissor.Intersect( viewDef->scissor );
+	R_TransformEyeZToWin( viewBounds[1].z, viewDef->projectionMatrix, scissor.zmin );
+	R_TransformEyeZToWin( viewBounds[0].z, viewDef->projectionMatrix, scissor.zmax );
 
 	return scissor;
 }
