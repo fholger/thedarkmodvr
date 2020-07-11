@@ -60,6 +60,8 @@ public:
 
 	const char *Name() const { return name.c_str(); }
 
+	bool IsDefault() const { return fbo == 0; }
+
 	static void CreateDefaultFrameBuffer(FrameBuffer *fbo);
 
 	static const int MAX_COLOR_ATTACHMENTS = 8;

@@ -130,6 +130,7 @@ extern void R_SetupViewFrustum( viewDef_t *viewDef );
 void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 	GL_PROFILE("UpdateRenderViewsForEye")
 	
+	std::vector<viewDef_t *> views;
 	for ( const emptyCommand_t *cmd = cmds; cmd; cmd = ( const emptyCommand_t * )cmd->next ) {
 		if ( cmd->commandId == RC_DRAW_VIEW ) {
 			viewDef_t *viewDef = ( ( const drawSurfsCommand_t * )cmd )->viewDef;
@@ -137,19 +138,26 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 				continue;
 			}
 
-			SetupProjectionMatrix( viewDef, eye );
-			UpdateViewPose( viewDef, eye );
+			views.push_back( viewDef );
+		}
+	}
 
-			// apply new view matrix to view and all entities
-			R_SetViewMatrix( *viewDef );
-			R_SetupViewFrustum( viewDef );
-			for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
-				myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
-			}
+	// process views in reverse, since we need to update the main view first before any (mirrored) subviews
+	for ( auto it = views.rbegin(); it != views.rend(); ++it ) {
+		viewDef_t *viewDef = *it;
 
-			for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
-				vLight->scissorRect = R_CalcLightScissorRectangle( vLight, viewDef );
-			}
+		SetupProjectionMatrix( viewDef, eye );
+		UpdateViewPose( viewDef, eye );
+
+		// apply new view matrix to view and all entities
+		R_SetViewMatrix( *viewDef );
+		R_SetupViewFrustum( viewDef );
+		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
+			myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
+		}
+
+		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
+			vLight->scissorRect = R_CalcLightScissorRectangle( vLight, viewDef );
 		}
 	}
 }
@@ -184,19 +192,64 @@ void VRBackend::SetupProjectionMatrix( viewDef_t *viewDef, int eye ) {
 	viewDef->projectionMatrix[3 * 4 + 3] = 0.0f;
 }
 
+extern void R_MirrorPoint( const idVec3 in, orientation_t *surface, orientation_t *camera, idVec3 &out );
+extern void R_MirrorVector( const idVec3 in, orientation_t *surface, orientation_t *camera, idVec3 &out );
+
 void VRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 	idVec3 position;
 	idMat3 axis;
-
 	if ( !GetCurrentEyePose( eye, position, axis ) ) {
 		return;
 	}
 
 	// update with new pose
-	renderView_t& eyeView = viewDef->renderView;
-	eyeView.viewaxis = axis * eyeView.initialViewaxis;
-	if ( !eyeView.fixedOrigin ) {
-		eyeView.vieworg = eyeView.initialVieworg + position * eyeView.initialViewaxis;
+	if ( viewDef->isMirror ) {
+		assert( viewDef->superView != nullptr );
+		renderView_t *origRv = nullptr;
+		// find the nearest mirror info stored in this or parent views
+		for ( viewDef_t *vd = viewDef; vd; vd = vd->superView ) {
+			if ( vd->renderView.isMirror ) {
+				origRv = &vd->renderView;
+				break;
+			}
+		}
+
+		if ( origRv == nullptr ) {
+			common->Warning( "Failed to find mirror info, not adjusting view..." );
+			return;
+		}
+
+		if ( origRv == &viewDef->renderView ) {
+			// update mirror axis and origin
+			idMat3 origaxis = axis * origRv->initialViewaxis;
+			idVec3 origpos = origRv->initialVieworg + position * origRv->initialViewaxis;
+			// set the mirrored origin and axis
+			R_MirrorPoint( origpos, &origRv->mirrorSurface, &origRv->mirrorCamera, viewDef->renderView.vieworg );
+
+			R_MirrorVector( origaxis[0], &origRv->mirrorSurface, &origRv->mirrorCamera, viewDef->renderView.viewaxis[0] );
+			R_MirrorVector( origaxis[1], &origRv->mirrorSurface, &origRv->mirrorCamera, viewDef->renderView.viewaxis[1] );
+			R_MirrorVector( origaxis[2], &origRv->mirrorSurface, &origRv->mirrorCamera, viewDef->renderView.viewaxis[2] );
+		} else {
+			// recalculate mirrored axis from parent mirror view
+			idMat3 mirroredAxis = origRv->viewaxis * origRv->initialViewaxis.Inverse() * viewDef->renderView.initialViewaxis;
+			if ( !viewDef->renderView.fixedOrigin ) {
+				idVec3 mirroredPos = viewDef->renderView.initialVieworg + position * viewDef->renderView.initialViewaxis;
+			}
+		}
+
+		renderView_t &parentRv = viewDef->superView->renderView;
+		renderView_t &eyeView = viewDef->renderView;
+	} else {
+		renderView_t& eyeView = viewDef->renderView;
+		eyeView.viewaxis = axis * eyeView.initialViewaxis;
+		if ( !eyeView.fixedOrigin ) {
+			eyeView.vieworg = eyeView.initialVieworg + position * eyeView.initialViewaxis;
+		}
+	}
+
+	if ( viewDef->isSubview ) {
+		// can't use the calculated view scissors, and no simple way to recalculate them...
+		viewDef->scissor = viewDef->superView->scissor;
 	}
 }
 
