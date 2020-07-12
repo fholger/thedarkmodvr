@@ -737,7 +737,7 @@ idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
 	// transform the bounds into view space
 	idVec3 viewOrigin;
 	R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, box.GetCenter(), viewOrigin );
-	float radius = Max(box.GetExtents().x, Max(box.GetExtents().y, box.GetExtents().z));
+	float radius = box.GetExtents().Length();
 	idBounds viewBounds (viewOrigin);
 	viewBounds.ExpandSelf( radius );
 
