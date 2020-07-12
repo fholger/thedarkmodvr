@@ -21,6 +21,7 @@
 #include "FrameBuffer.h"
 #include "GLSLProgramManager.h"
 #include "backend/RenderBackend.h"
+#include "vr/OpenVRBackend.h"
 
 #if defined(_MSC_VER) && _MSC_VER >= 1800 && !defined(DEBUG)
 //#pragma optimize("t", off) // duzenko: used in release to enforce breakpoints in inlineable code. Please do not remove
@@ -646,6 +647,8 @@ void RB_BeginDrawingView( void ) {
 		qglClearStencil( 128 );
 		qglClear( GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
 		qglEnable( GL_DEPTH_TEST );
+
+		vrBackend->DrawHiddenAreaMeshToDepth();
 	} else {
 		qglDisable( GL_DEPTH_TEST );
 		qglDisable( GL_STENCIL_TEST );
