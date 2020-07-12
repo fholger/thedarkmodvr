@@ -34,7 +34,7 @@ void OpenXRSwapchain::Init( const idStr &name, GLuint format, int width, int hei
 		XR_TYPE_SWAPCHAIN_CREATE_INFO,
 		nullptr,
 		0,
-		XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
+		XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT | XR_SWAPCHAIN_USAGE_SAMPLED_BIT,
 		format,
 		1,
 		width,
