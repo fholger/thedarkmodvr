@@ -20,8 +20,6 @@
 
 class OpenXRBackend : public VRBackend {
 public:
-	void Init() override;
-	void Destroy() override;
 
 	void BeginFrame() override;
 
@@ -31,10 +29,14 @@ public:
 	void AdjustRenderView( renderView_t *view ) override;
 
 protected:
+	void InitBackend() override;
+	void DestroyBackend() override;
+
 	void SubmitFrame() override;
 	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
 	bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) override;
 	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
+	idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) override;
 
 private:
 	XrInstance instance = nullptr;

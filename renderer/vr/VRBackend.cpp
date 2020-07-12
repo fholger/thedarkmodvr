@@ -29,12 +29,22 @@ VRBackend *vrBackend = nullptr;
 idCVar vr_backend( "vr_backend", "0", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "0 - OpenVR, 1 - OpenXR" );
 idCVar vr_uiResolution( "vr_uiResolution", "2048", CVAR_RENDERER|CVAR_ARCHIVE|CVAR_INTEGER, "Render resolution for 2D/UI overlay" );
 idCVar vr_lockMousePitch( "vr_lockMousePitch", "1", CVAR_ARCHIVE|CVAR_BOOL, "If enabled, vertical mouse movement will not be reflected in the VR view" );
+idCVar vr_useHiddenAreaMesh( "vr_useHiddenAreaMesh", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If enabled, renders a hidden area mesh to depth to save on pixel rendering cost for pixels that can't be seen in the HMD" );
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
 
+void VRBackend::Init() {
+	InitBackend();
+	InitHiddenAreaMesh();
+}
+
 void VRBackend::Destroy() {
 	vrMirrorShader = nullptr;
+	qglDeleteBuffers( 1, &hiddenAreaMeshBuffer );
+	hiddenAreaMeshBuffer = 0;
+	hiddenAreaMeshShader = nullptr;
+	DestroyBackend();
 }
 
 void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
@@ -79,7 +89,25 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	backEnd.glState.tmu[0].current2DMap = -1;
 }
 
+void VRBackend::DrawHiddenAreaMeshToDepth() {
+	if ( hiddenAreaMeshBuffer == 0 || currentEye == UI || !vr_useHiddenAreaMesh.GetBool() ) {
+		return;
+	}
+
+	qglBindBuffer( GL_ARRAY_BUFFER, hiddenAreaMeshBuffer );
+	qglVertexAttribPointer( 0, 2, GL_FLOAT, false, sizeof( idVec2 ), 0 );
+	hiddenAreaMeshShader->Activate();
+	int start = currentEye == LEFT_EYE ? 0 : numVertsLeft;
+	int count = currentEye == LEFT_EYE ? numVertsLeft : numVertsRight;
+	GL_Cull( CT_TWO_SIDED );
+	qglDrawArrays( GL_TRIANGLES, start, count );
+	GL_Cull( CT_BACK_SIDED );
+	vertexCache.UnbindVertex();
+}
+
 void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eyeView ) {
+	currentEye = eyeView;
+	
 	if ( eyeView != UI ) {
 		UpdateRenderViewsForEye( cmds, eyeView );
 	}
@@ -134,6 +162,25 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 
 extern idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef );
 extern void R_SetupViewFrustum( viewDef_t *viewDef );
+
+void VRBackend::InitHiddenAreaMesh() {
+	idList<idVec2> leftEyeVerts = GetHiddenAreaMask( LEFT_EYE );
+	idList<idVec2> rightEyeVerts = GetHiddenAreaMask( RIGHT_EYE );
+	if ( leftEyeVerts.Num() == 0 || rightEyeVerts.Num() == 0 ) {
+		return;
+	}
+
+	numVertsLeft = leftEyeVerts.Num();
+	numVertsRight = rightEyeVerts.Num();
+
+	leftEyeVerts.Append( rightEyeVerts );
+
+	qglGenBuffers( 1, &hiddenAreaMeshBuffer );
+	qglBindBuffer( GL_ARRAY_BUFFER, hiddenAreaMeshBuffer );
+	qglBufferData( GL_ARRAY_BUFFER, leftEyeVerts.Size(), leftEyeVerts.Ptr(), GL_STATIC_DRAW );
+
+	hiddenAreaMeshShader = programManager->LoadFromFiles( "hidden_area_mesh", "vr/hidden_area_mesh.vert.glsl", "vr/hidden_area_mesh.frag.glsl" );
+}
 
 void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 	GL_PROFILE("UpdateRenderViewsForEye")

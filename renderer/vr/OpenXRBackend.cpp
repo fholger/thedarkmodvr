@@ -64,7 +64,7 @@ namespace {
 	}
 }
 
-void OpenXRBackend::Init() {
+void OpenXRBackend::InitBackend() {
 	if ( instance != nullptr ) {
 		Destroy();
 	}
@@ -121,9 +121,7 @@ void OpenXRBackend::Init() {
 	common->Printf( "-----------------------------\n" );
 }
 
-void OpenXRBackend::Destroy() {
-	VRBackend::Destroy();
-
+void OpenXRBackend::DestroyBackend() {
 	if ( instance == nullptr ) {
 		return;
 	}
@@ -291,6 +289,10 @@ void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 		fbo = eyeSwapchains[eye].CurrentFrameBuffer();
 		texture = eyeSwapchains[eye].CurrentImage();
 	}
+}
+
+idList<idVec2> OpenXRBackend::GetHiddenAreaMask( eyeView_t eye ) {
+	return idList<idVec2>();
 }
 
 void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
