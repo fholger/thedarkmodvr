@@ -24,7 +24,7 @@
 OpenVRBackend openvrImpl;
 OpenVRBackend *openvr = &openvrImpl;
 
-void OpenVRBackend::Init() {
+void OpenVRBackend::InitBackend() {
 	common->Printf( "-----------------------------\n" );
 	common->Printf( "Initializing OpenVR...\n");
 	
@@ -61,8 +61,7 @@ void OpenVRBackend::Init() {
 	common->Printf( "-----------------------------\n" );
 }
 
-void OpenVRBackend::Destroy() {
-	VRBackend::Destroy();
+void OpenVRBackend::DestroyBackend() {
 	if ( system != nullptr ) {
 		common->Printf( "Shutting down OpenVR.\n" );
 		vr::VR_Shutdown();
@@ -213,6 +212,17 @@ void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 		fbo = eyeBuffers[eye];
 		texture = eyeTextures[eye];
 	}
+}
+
+idList<idVec2> OpenVRBackend::GetHiddenAreaMask( eyeView_t eye ) {
+	vr::HiddenAreaMesh_t hiddenAreaMesh = system->GetHiddenAreaMesh( eye == LEFT_EYE ? vr::Eye_Left : vr::Eye_Right );
+	idList<idVec2> vertices;
+	uint32_t numVertices = hiddenAreaMesh.unTriangleCount * 3;
+	vertices.SetNum( numVertices );
+	for ( uint32_t i = 0; i < numVertices; ++i ) {
+		vertices[i].Set( -1 + 2 * hiddenAreaMesh.pVertexData[i].v[0], -1 + 2 * hiddenAreaMesh.pVertexData[i].v[1] );
+	}
+	return vertices;	
 }
 
 float OpenVRBackend::GetInterPupillaryDistance() const {

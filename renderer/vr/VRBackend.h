@@ -22,15 +22,19 @@ extern idCVar vr_lockMousePitch;
 
 class VRBackend {
 public:
-	virtual void Init() = 0;
-	virtual void Destroy();
+	void Init();
+	void Destroy();
 
 	virtual void BeginFrame() = 0;
  
 	virtual void AdjustRenderView( renderView_t *view ) = 0;
 	void RenderStereoView( const emptyCommand_t * cmds );
+	void DrawHiddenAreaMeshToDepth();
 
 protected:
+	virtual void InitBackend() = 0;
+	virtual void DestroyBackend() = 0;
+	
 	enum eyeView_t {
 		LEFT_EYE = 0,
 		RIGHT_EYE = 1,
@@ -42,13 +46,21 @@ protected:
 	virtual bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) = 0;
 	virtual void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) = 0;
 
+	virtual idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) = 0;
+
 private:
+	void InitHiddenAreaMesh();
 	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
 	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
 	void UpdateViewPose( viewDef_t *viewDef, int eye );
 	void MirrorVrView( idImage *eyeTexture, idImage *uiTexture );
 
 	GLSLProgram *vrMirrorShader = nullptr;
+	GLuint hiddenAreaMeshBuffer = 0;
+	GLuint numVertsLeft = 0;
+	GLuint numVertsRight = 0;
+	GLSLProgram *hiddenAreaMeshShader = nullptr;
+	eyeView_t currentEye;
 };
 
 extern VRBackend *vrBackend;
