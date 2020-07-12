@@ -76,6 +76,7 @@ public:
 	void			BindIndex();
 	// if you need to draw something without an indexCache, this must be called to reset GL_ELEMENT_ARRAY_BUFFER_ARB
 	void			UnbindIndex();
+	void			UnbindVertex();
 
 	// updates the counter for determining which temp space to use
 	// and which blocks can be purged

@@ -242,6 +242,11 @@ void idVertexCache::UnbindIndex() {
 	}
 }
 
+void idVertexCache::UnbindVertex() {
+	qglBindBuffer( GL_ARRAY_BUFFER, 0 );
+	currentVertexBuffer = 0;
+}
+
 //================================================================================
 
 geoBufferSet_t::geoBufferSet_t() : indexBuffer( GL_ELEMENT_ARRAY_BUFFER ), vertexBuffer( GL_ARRAY_BUFFER ) {}
