@@ -733,30 +733,22 @@ stencil clears and interaction drawing
 */
 static int c_clippedLight = 0, c_unclippedLight = 0;
 
-idCVar vr_useTightLightBounds("vr_useTightLightBounds", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If enabled, uses a tighter bounding box for light volumes");
 idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
 	// transform the bounds into view space
 	idVec3 viewOrigin;
 	R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, box.GetCenter(), viewOrigin );
 	idBounds viewBounds (viewOrigin);
 
-	if ( vr_useTightLightBounds.GetBool() ) {
-		idVec3 boxPoints[8];
-		idVec3 viewPoints[8];
-		box.ToPoints( boxPoints );
-		for (int i = 0; i < 8; ++i) {
-			R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, boxPoints[i], viewPoints[i] );
-			viewBounds.AddPoint( viewPoints[i] );
-		}
-	} else {
-		float radius = box.GetExtents().Length();
-		viewBounds.ExpandSelf( radius );
+	idVec3 boxPoints[8];
+	idVec3 viewPoints[8];
+	box.ToPoints( boxPoints );
+	for (int i = 0; i < 8; ++i) {
+		R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, boxPoints[i], viewPoints[i] );
+		viewBounds.AddPoint( viewPoints[i] );
 	}
 
 	idVec3 points[8];
 	viewBounds.ToPoints( points );
-	viewBounds[0].z = Min( -r_znear.GetFloat(), viewBounds[0].z );
-	viewBounds[1].z = Min( -r_znear.GetFloat(), viewBounds[1].z );
 
 	idScreenRect scissor;
 	scissor.Clear();
@@ -772,6 +764,11 @@ idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
 		points[i].y = 0.5f * (points[i].y + 1) * height;
 		points[i].z = 0.5f * (points[i].z + 1);
 		scissor.AddPoint( points[i].x, points[i].y );
+	}
+
+	if ( viewBounds.ContainsPoint( idVec3(0, 0, 0) ) ) {
+		// light bounds enclose the camera, so need to return the full scissor
+		scissor = viewDef->scissor;
 	}
 
 	scissor.Intersect( viewDef->scissor );

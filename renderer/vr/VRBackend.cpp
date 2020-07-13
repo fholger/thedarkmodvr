@@ -211,7 +211,6 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 
 		// apply new view matrix to view and all entities
 		R_SetViewMatrix( *viewDef );
-		R_SetupViewFrustum( viewDef );
 		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 			myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
 		}

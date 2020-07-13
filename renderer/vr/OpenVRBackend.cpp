@@ -201,9 +201,6 @@ void OpenVRBackend::CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint3
 	fbo->AddColorRenderTexture( 0, texture );
 }
 
-extern idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef );
-extern void R_SetupViewFrustum( viewDef_t *viewDef );
-
 void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {
 	if ( eye == UI ) {
 		fbo = uiBuffer;
