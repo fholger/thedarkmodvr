@@ -115,6 +115,7 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 	RB_SetDefaultGLState();
 
 	bool isv3d = false; // needs to be declared outside of switch case
+	bool lastViewWasLightgem = false;
 
 	while ( cmds ) {
 		switch ( cmds->commandId ) {
@@ -123,6 +124,7 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 		case RC_DRAW_VIEW: {
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
 			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
+			lastViewWasLightgem = backEnd.viewDef->IsLightGem();
 			if ( (backEnd.viewDef->IsLightGem() && eyeView == LEFT_EYE) || (!backEnd.viewDef->IsLightGem() && isv3d == (eyeView != UI) ) ) {
 				if ( eyeView != UI ) {
 					frameBuffers->EnterPrimary();
@@ -143,6 +145,9 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 			break;
 		case RC_COPY_RENDER:
 			if ( eyeView == UI ) {
+				break;
+			}
+			if ( lastViewWasLightgem && eyeView != LEFT_EYE ) {
 				break;
 			}
 			RB_CopyRender( cmds );
