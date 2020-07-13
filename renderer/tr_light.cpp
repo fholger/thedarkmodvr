@@ -733,16 +733,30 @@ stencil clears and interaction drawing
 */
 static int c_clippedLight = 0, c_unclippedLight = 0;
 
+idCVar vr_useTightLightBounds("vr_useTightLightBounds", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If enabled, uses a tighter bounding box for light volumes");
 idScreenRect R_WorldBoxToScissor( const idBox &box, viewDef_t *viewDef ) {
 	// transform the bounds into view space
 	idVec3 viewOrigin;
 	R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, box.GetCenter(), viewOrigin );
-	float radius = box.GetExtents().Length();
 	idBounds viewBounds (viewOrigin);
-	viewBounds.ExpandSelf( radius );
+
+	if ( vr_useTightLightBounds.GetBool() ) {
+		idVec3 boxPoints[8];
+		idVec3 viewPoints[8];
+		box.ToPoints( boxPoints );
+		for (int i = 0; i < 8; ++i) {
+			R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, boxPoints[i], viewPoints[i] );
+			viewBounds.AddPoint( viewPoints[i] );
+		}
+	} else {
+		float radius = box.GetExtents().Length();
+		viewBounds.ExpandSelf( radius );
+	}
 
 	idVec3 points[8];
 	viewBounds.ToPoints( points );
+	viewBounds[0].z = Min( -r_znear.GetFloat(), viewBounds[0].z );
+	viewBounds[1].z = Min( -r_znear.GetFloat(), viewBounds[1].z );
 
 	idScreenRect scissor;
 	scissor.Clear();
