@@ -240,8 +240,8 @@ void OpenXRBackend::SubmitFrame() {
 		seatedSpace,
 		XR_EYE_VISIBILITY_BOTH,
 		uiSwapchain.CurrentSwapchainSubImage(),
-		{ {0, 0, 0, 1}, {0, -0.25, -2.5} },
-		{ 3, 2.25f },
+		{ {0, 0, 0, 1}, {0, vr_uiOverlayVerticalOffset.GetFloat(), -vr_uiOverlayDistance.GetFloat()} },
+		{ vr_uiOverlayHeight.GetFloat() * vr_uiOverlayAspect.GetFloat(), vr_uiOverlayHeight.GetFloat() },
 	};
 	const XrCompositionLayerBaseHeader * const submittedLayers[] = {
 		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &stereoLayer ),
