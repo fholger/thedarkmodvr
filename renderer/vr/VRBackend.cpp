@@ -310,6 +310,8 @@ void VRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 
 struct MirrorUniforms : GLSLUniformGroup {
 	UNIFORM_GROUP_DEF( MirrorUniforms )
+	DEFINE_UNIFORM( float, aspectEye )
+	DEFINE_UNIFORM( float, aspectMirror )
 	DEFINE_UNIFORM( sampler, vrEye )
 	DEFINE_UNIFORM( sampler, ui)
 };
@@ -325,6 +327,8 @@ void VRBackend::MirrorVrView( idImage *eyeTexture, idImage *uiTexture ) {
 	}
 	vrMirrorShader->Activate();
 	MirrorUniforms *uniforms = vrMirrorShader->GetUniformGroup<MirrorUniforms>();
+	uniforms->aspectEye.Set( static_cast<float>(eyeTexture->uploadWidth) / eyeTexture->uploadHeight );
+	uniforms->aspectMirror.Set( static_cast<float>(glConfig.windowWidth) / glConfig.windowHeight );
 	uniforms->vrEye.Set( 0 );
 	uniforms->ui.Set( 1 );
 
