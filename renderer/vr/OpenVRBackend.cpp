@@ -78,6 +78,16 @@ void OpenVRBackend::SubmitFrame() {
 	GL_PROFILE("VrSubmitFrame")
 	vr::Texture_t texture = { (void*)uiTexture->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
 	vr::VROverlay()->SetOverlayTexture( menuOverlay, &texture );
+	vr::HmdMatrix34_t transform;
+	memset( transform.m, 0, sizeof( transform.m ) );
+	transform.m[0][0] = 1;
+	transform.m[1][1] = 1;
+	transform.m[2][2] = 1;
+	transform.m[1][3] = vr_uiOverlayVerticalOffset.GetFloat();
+	transform.m[2][3] = -vr_uiOverlayDistance.GetFloat();
+	vr::VROverlay()->SetOverlayWidthInMeters( menuOverlay, vr_uiOverlayAspect.GetFloat() * vr_uiOverlayHeight.GetFloat() );
+	vr::VROverlay()->SetOverlayTexelAspect( menuOverlay, vr_uiOverlayAspect.GetFloat() );
+	vr::VROverlay()->SetOverlayTransformAbsolute( menuOverlay, vr::TrackingUniverseSeated, &transform );
 
 	GL_ViewportAbsolute( 0, 0, eyeTextures[0]->uploadWidth, eyeTextures[0]->uploadHeight );
 	GL_ScissorAbsolute( 0, 0, eyeTextures[0]->uploadWidth, eyeTextures[0]->uploadHeight );
