@@ -195,7 +195,8 @@ void FrameBufferManager::LeaveShadowMap() {
 }
 
 void FrameBufferManager::ResolvePrimary( GLbitfield mask, GLenum filter ) {
-	primaryFbo->BlitTo( resolveFbo, mask, filter );
+	const idScreenRect &vp = backEnd.viewDef->viewport;
+	primaryFbo->BlitTo( resolveFbo, vp.x1, vp.y1, vp.x2, vp.y2, vp.x1, vp.y1, vp.x2, vp.y2, mask, filter );
 }
 
 void FrameBufferManager::UpdateCurrentRenderCopy() {
