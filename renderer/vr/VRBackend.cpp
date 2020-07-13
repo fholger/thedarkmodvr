@@ -30,6 +30,10 @@ idCVar vr_backend( "vr_backend", "0", CVAR_RENDERER|CVAR_INTEGER|CVAR_ARCHIVE, "
 idCVar vr_uiResolution( "vr_uiResolution", "2048", CVAR_RENDERER|CVAR_ARCHIVE|CVAR_INTEGER, "Render resolution for 2D/UI overlay" );
 idCVar vr_lockMousePitch( "vr_lockMousePitch", "1", CVAR_ARCHIVE|CVAR_BOOL, "If enabled, vertical mouse movement will not be reflected in the VR view" );
 idCVar vr_useHiddenAreaMesh( "vr_useHiddenAreaMesh", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If enabled, renders a hidden area mesh to depth to save on pixel rendering cost for pixels that can't be seen in the HMD" );
+idCVar vr_uiOverlayHeight( "vr_uiOverlayHeight", "2", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Height of the UI/HUD overlay in metres" );
+idCVar vr_uiOverlayAspect( "vr_uiOverlayAspect", "1.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Aspect ratio of the UI overlay" );
+idCVar vr_uiOverlayDistance( "vr_uiOverlayDistance", "2.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Distance in metres from the player position at which the UI overlay is positioned" );
+idCVar vr_uiOverlayVerticalOffset( "vr_uiOverlayVerticalOffset", "-0.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Vertical offset in metres of the UI overlay's position" );
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
