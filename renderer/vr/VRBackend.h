@@ -19,6 +19,10 @@ class FrameBuffer;
 class GLSLProgram;
 
 extern idCVar vr_lockMousePitch;
+extern idCVar vr_uiOverlayHeight;
+extern idCVar vr_uiOverlayAspect;
+extern idCVar vr_uiOverlayDistance;
+extern idCVar vr_uiOverlayVerticalOffset;
 
 class VRBackend {
 public:
