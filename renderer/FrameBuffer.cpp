@@ -156,11 +156,16 @@ void FrameBuffer::Bind() {
 }
 
 void FrameBuffer::BlitTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) {
+	BlitTo( target, 0, 0, width, height, 0, 0, target->width, target->height, mask, filter );
+}
+
+void FrameBuffer::BlitTo( FrameBuffer *target, uint srcX1, uint srcY1, uint srcX2, uint srcY2, uint dstX1, uint dstY1,
+		uint dstX2, uint dstY2, GLbitfield mask, GLenum filter ) {
 	FrameBuffer *previous = frameBuffers->activeFbo;
 	Bind();
 	qglDisable(GL_SCISSOR_TEST);
 	target->BindDraw();
-	qglBlitFramebuffer(0, 0, width, height, 0, 0, target->width, target->height, mask, filter);
+	qglBlitFramebuffer(srcX1, srcY1, srcX2, srcY2, dstX1, dstY1, dstX2, dstY2, mask, filter);
 	previous->Bind();
 	qglEnable(GL_SCISSOR_TEST);
 }
