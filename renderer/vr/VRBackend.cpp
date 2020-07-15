@@ -130,6 +130,7 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
 			lastViewWasLightgem = backEnd.viewDef->IsLightGem();
 			if ( (backEnd.viewDef->IsLightGem() && eyeView == LEFT_EYE) || (!backEnd.viewDef->IsLightGem() && isv3d == (eyeView != UI) ) ) {
+				if ( lastViewWasLightgem && r_ignore2.GetBool() ) break;
 				if ( eyeView != UI ) {
 					frameBuffers->EnterPrimary();
 				}
@@ -154,6 +155,7 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 			if ( lastViewWasLightgem && eyeView != LEFT_EYE ) {
 				break;
 			}
+			if ( lastViewWasLightgem && r_ignore2.GetBool() ) break;
 			RB_CopyRender( cmds );
 			break;
 		case RC_SWAP_BUFFERS:
@@ -169,7 +171,6 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 	frameBuffers->LeavePrimary();
 }
 
-extern idScreenRect R_CalcLightScissorRectangle( viewLight_t *vLight, viewDef_t *viewDef );
 extern void R_SetupViewFrustum( viewDef_t *viewDef );
 
 void VRBackend::InitHiddenAreaMesh() {
@@ -189,6 +190,64 @@ void VRBackend::InitHiddenAreaMesh() {
 	qglBufferData( GL_ARRAY_BUFFER, leftEyeVerts.Size(), leftEyeVerts.Ptr(), GL_STATIC_DRAW );
 
 	hiddenAreaMeshShader = programManager->LoadFromFiles( "hidden_area_mesh", "vr/hidden_area_mesh.vert.glsl", "vr/hidden_area_mesh.frag.glsl" );
+}
+
+idScreenRect VR_WorldBoundsToScissor( idBounds bounds, const viewDef_t *view ) {
+	idBounds projected;
+	idRenderMatrix::ProjectedBounds( projected, view->worldSpace.mvp, bounds );
+	
+	idScreenRect scissor;
+	scissor.Clear();
+
+	if ( projected[0][2] >= projected[1][2] ) {
+		// the light was culled to the view frustum
+		return scissor;
+	}
+
+	float screenWidth = (float)view->viewport.x2 - (float)view->viewport.x1;
+	float screenHeight = (float)view->viewport.y2 - (float)view->viewport.y1;
+
+	scissor.x1 = idMath::Ftoi( projected[0][0] * screenWidth );
+	scissor.x2 = idMath::Ftoi( projected[1][0] * screenWidth );
+	scissor.y1 = idMath::Ftoi( projected[0][1] * screenHeight );
+	scissor.y2 = idMath::Ftoi( projected[1][1] * screenHeight );
+	scissor.Expand();
+
+	scissor.zmin = projected[0][2];
+	scissor.zmax = projected[1][2];
+	return scissor;
+}
+
+idScreenRect VR_CalcLightScissorRectangle( viewLight_t *vLight, const viewDef_t *viewDef ) {
+	// Calculate the matrix that projects the zero-to-one cube to exactly cover the
+	// light frustum in clip space.
+	idRenderMatrix invProjectMVPMatrix;
+	idRenderMatrix::Multiply( viewDef->worldSpace.mvp, vLight->lightDef->inverseBaseLightProject, invProjectMVPMatrix );
+
+	// Calculate the projected bounds
+	idBounds projected;
+	idRenderMatrix::ProjectedFullyClippedBounds( projected, invProjectMVPMatrix, bounds_zeroOneCube );
+
+	idScreenRect lightScissorRect;
+	lightScissorRect.Clear();
+	
+	if ( projected[0][2] >= projected[1][2] ) {
+		// the light was culled to the view frustum
+		return lightScissorRect;
+	}
+
+	float screenWidth = (float)viewDef->viewport.x2 - (float)viewDef->viewport.x1;
+	float screenHeight = (float)viewDef->viewport.y2 - (float)viewDef->viewport.y1;
+
+	lightScissorRect.x1 = idMath::Ftoi( projected[0][0] * screenWidth );
+	lightScissorRect.x2 = idMath::Ftoi( projected[1][0] * screenWidth );
+	lightScissorRect.y1 = idMath::Ftoi( projected[0][1] * screenHeight );
+	lightScissorRect.y2 = idMath::Ftoi( projected[1][1] * screenHeight );
+	lightScissorRect.Expand();
+
+	lightScissorRect.zmin = projected[0][2];
+	lightScissorRect.zmax = projected[1][2];
+	return lightScissorRect;
 }
 
 void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
@@ -213,14 +272,16 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 		SetupProjectionMatrix( viewDef, eye );
 		UpdateViewPose( viewDef, eye );
 
-		// apply new view matrix to view and all entities
+		// setup render matrices
 		R_SetViewMatrix( *viewDef );
+		idRenderMatrix::Transpose( *(idRenderMatrix*)viewDef->projectionMatrix, viewDef->projectionRenderMatrix );
+		idRenderMatrix viewRenderMatrix;
+		idRenderMatrix::Transpose( *(idRenderMatrix*)viewDef->worldSpace.modelViewMatrix, viewRenderMatrix );
+		idRenderMatrix::Multiply( viewDef->projectionRenderMatrix, viewRenderMatrix, viewDef->worldSpace.mvp );
+
+		// apply new view matrix to view and all entities
 		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 			myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
-		}
-
-		for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
-			vLight->scissorRect = R_CalcLightScissorRectangle( vLight, viewDef );
 		}
 	}
 }
@@ -355,3 +416,13 @@ void SelectVRImplementation() {
 		vrBackend = xrBackend;	
 	}
 }
+
+void VRBackend::UpdateLightScissor( viewLight_t *vLight ) {
+	vLight->scissorRect = VR_CalcLightScissorRectangle( vLight, backEnd.viewDef );
+}
+
+void VRBackend::UpdateShadowScissor( drawSurf_t *shadowSurf ) {
+	shadowSurf->scissorRect = VR_WorldBoundsToScissor( shadowSurf->shadowBounds, backEnd.viewDef );
+	shadowSurf->scissorRect.Intersect( backEnd.vLight->scissorRect );
+}
+

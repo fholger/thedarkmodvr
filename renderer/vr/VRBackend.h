@@ -35,6 +35,9 @@ public:
 	void RenderStereoView( const emptyCommand_t * cmds );
 	void DrawHiddenAreaMeshToDepth();
 
+	void UpdateLightScissor( viewLight_t *vLight );
+	void UpdateShadowScissor( drawSurf_t *shadowSurf );
+
 protected:
 	virtual void InitBackend() = 0;
 	virtual void DestroyBackend() = 0;
