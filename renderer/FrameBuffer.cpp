@@ -232,7 +232,7 @@ void FB_RenderTexture(idImage *texture) {
 }
 
 void FB_ApplyScissor() {
-	if ( r_useScissor.GetBool() ) {
+	if ( true || r_useScissor.GetBool() ) {
 		GL_ScissorVidSize(
 			backEnd.viewDef->viewport.x1 + backEnd.currentScissor.x1,
 		    backEnd.viewDef->viewport.y1 + backEnd.currentScissor.y1,
