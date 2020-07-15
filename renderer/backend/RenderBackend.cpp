@@ -19,10 +19,12 @@
 #include "RenderBackend.h"
 
 #include "../AmbientOcclusionStage.h"
+#include "../FrameBuffer.h"
 #include "../Profiling.h"
 #include "../GLSLProgram.h"
 #include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
+#include "../GLSLProgramManager.h"
 #include "../vr/VRBackend.h"
 
 RenderBackend renderBackendImpl;
@@ -222,6 +224,9 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 	}
 
 	stencilShadowStage.DrawStencilShadows( vLight, vLight->globalShadows );
+	backEnd.currentScissor = vLight->scissorRect;
+	FB_ApplyScissor();
+
 	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
 		frameBuffers->ResolveShadowStencilAA();
 	}
@@ -236,6 +241,8 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 	}
 
 	stencilShadowStage.DrawStencilShadows( vLight, vLight->localShadows );
+	backEnd.currentScissor = vLight->scissorRect;
+	FB_ApplyScissor();
 	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
 		frameBuffers->ResolveShadowStencilAA();
 	}
@@ -278,6 +285,9 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 		// if there are no interactions, get out!
 		if ( !vLight->localInteractions && !vLight->globalInteractions && !vLight->translucentInteractions )
 			continue;
+
+		// VR: recalculate light scissor for current view
+		vrBackend->UpdateLightScissor( vLight );
 
 		backEnd.vLight = vLight;
 		if ( vLight->shadows == LS_MAPS ) {
