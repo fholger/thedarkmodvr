@@ -32,10 +32,15 @@ private:
 	DrawBatchExecutor *drawBatchExecutor;
 	GLSLProgram *depthShader = nullptr;
 	GLSLProgram *depthShaderBindless = nullptr;
+	GLSLProgram *fastDepthShader = nullptr;
 
 	uint currentIndex = 0;
 	DrawBatch<ShaderParams> drawBatch;
 
+	void PartitionSurfaces( drawSurf_t **drawSurfs, int numDrawSurfs, idList<drawSurf_t *> &subviewSurfs,
+			idList<drawSurf_t *> &opaqueSurfs, idList<drawSurf_t *> &remainingSurfs );
+	void GenericDepthPass( const idList<drawSurf_t *> drawSurfs, const viewDef_t *viewDef );
+	void FastDepthPass( const idList<drawSurf_t *> drawSurfs, const viewDef_t *viewDef );
 	bool ShouldDrawSurf( const drawSurf_t *surf ) const;
 	void DrawSurf( const drawSurf_t * drawSurf );
 	void CreateDrawCommands( const drawSurf_t *surf );
