@@ -634,7 +634,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	try {
 		ProfilingBeginFrame();
 		common->SetErrorIndirection( true );
-		vrBackend->BeginFrame();
+		vrBackend->GetFrontendPoses();
 		double startLoop = Sys_GetClockTicks();
 		session->ActivateFrontend();
 		double endSignal = Sys_GetClockTicks();

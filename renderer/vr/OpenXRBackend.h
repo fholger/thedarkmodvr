@@ -21,7 +21,7 @@
 class OpenXRBackend : public VRBackend {
 public:
 
-	void BeginFrame() override;
+	void GetFrontendPoses() override;
 
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }
@@ -32,6 +32,7 @@ protected:
 	void InitBackend() override;
 	void DestroyBackend() override;
 
+	void AwaitFrame() override;
 	void SubmitFrame() override;
 	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
 	bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) override;

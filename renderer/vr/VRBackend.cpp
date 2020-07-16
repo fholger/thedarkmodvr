@@ -34,6 +34,7 @@ idCVar vr_uiOverlayHeight( "vr_uiOverlayHeight", "2", CVAR_RENDERER|CVAR_FLOAT|C
 idCVar vr_uiOverlayAspect( "vr_uiOverlayAspect", "1.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Aspect ratio of the UI overlay" );
 idCVar vr_uiOverlayDistance( "vr_uiOverlayDistance", "2.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Distance in metres from the player position at which the UI overlay is positioned" );
 idCVar vr_uiOverlayVerticalOffset( "vr_uiOverlayVerticalOffset", "-0.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Vertical offset in metres of the UI overlay's position" );
+idCVar vr_waitPosition("vr_waitPosition", "0", CVAR_RENDERER|CVAR_INTEGER, "");
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
@@ -62,6 +63,10 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	AcquireFboAndTexture( LEFT_EYE, eyeBuffers[0], eyeTextures[0] );
 	AcquireFboAndTexture( RIGHT_EYE, eyeBuffers[1], eyeTextures[1] );
 
+	if ( vr_waitPosition.GetInteger() <= 0 ) {
+		AwaitFrame();
+	}
+
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
 		frameBuffers->defaultFbo = eyeBuffers[eye];
@@ -72,7 +77,7 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 		FB_DebugShowContents();
 	}
 
-	// render 2D UI elements
+	// render lightgem and 2D UI elements
 	frameBuffers->defaultFbo = uiBuffer;
 	frameBuffers->defaultFbo->Bind();
 	GL_ViewportRelative( 0, 0, 1, 1 );
@@ -83,14 +88,18 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 
 	defaultFbo->Bind();
 	MirrorVrView( eyeTextures[0], uiTexture );
+	GLimp_SwapBuffers();
 
 	SubmitFrame();
-	GLimp_SwapBuffers();
 
 	frameBuffers->defaultFbo = defaultFbo;
 	// go back to the default texture so the editor doesn't mess up a bound image
 	qglBindTexture( GL_TEXTURE_2D, 0 );
 	backEnd.glState.tmu[0].current2DMap = -1;
+
+	if ( vr_waitPosition.GetInteger() == 1 ) {
+		AwaitFrame();
+	}
 }
 
 void VRBackend::DrawHiddenAreaMeshToDepth() {
@@ -128,9 +137,7 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 		case RC_DRAW_VIEW: {
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
 			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
-			lastViewWasLightgem = backEnd.viewDef->IsLightGem();
-			if ( (backEnd.viewDef->IsLightGem() && eyeView == LEFT_EYE) || (!backEnd.viewDef->IsLightGem() && isv3d == (eyeView != UI) ) ) {
-				if ( lastViewWasLightgem && r_ignore2.GetBool() ) break;
+			if ( isv3d == (eyeView != UI)  ) {
 				if ( eyeView != UI ) {
 					frameBuffers->EnterPrimary();
 				}
@@ -138,6 +145,13 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 			}
 			break;
 		}
+		case RC_DRAW_LIGHTGEM:
+			if ( eyeView != UI || r_ignore2.GetBool() ) {
+				break;
+			}
+			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
+			renderBackend->DrawLightgem( backEnd.viewDef, ( ( const drawLightgemCommand_t *)cmds )->dataBuffer );
+			break;
 		case RC_SET_BUFFER:
 			// not applicable
 			break;
@@ -152,10 +166,6 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 			if ( eyeView == UI ) {
 				break;
 			}
-			if ( lastViewWasLightgem && eyeView != LEFT_EYE ) {
-				break;
-			}
-			if ( lastViewWasLightgem && r_ignore2.GetBool() ) break;
 			RB_CopyRender( cmds );
 			break;
 		case RC_SWAP_BUFFERS:
