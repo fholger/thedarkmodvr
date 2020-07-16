@@ -430,9 +430,3 @@ void SelectVRImplementation() {
 void VRBackend::UpdateLightScissor( viewLight_t *vLight ) {
 	vLight->scissorRect = VR_CalcLightScissorRectangle( vLight, backEnd.viewDef );
 }
-
-void VRBackend::UpdateShadowScissor( drawSurf_t *shadowSurf ) {
-	shadowSurf->scissorRect = VR_WorldBoundsToScissor( shadowSurf->shadowBounds, backEnd.viewDef );
-	shadowSurf->scissorRect.Intersect( backEnd.vLight->scissorRect );
-}
-
