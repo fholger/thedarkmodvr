@@ -37,7 +37,6 @@ public:
 	void DrawHiddenAreaMeshToDepth();
 
 	void UpdateLightScissor( viewLight_t *vLight );
-	void UpdateShadowScissor( drawSurf_t *shadowSurf );
 
 protected:
 	virtual void InitBackend() = 0;
