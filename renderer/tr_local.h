@@ -166,9 +166,6 @@ typedef struct drawSurf_s {
 		ambientCache = tri->ambientCache;
 		shadowCache = tri->shadowCache;
 	}
-
-	// VR support
-	idBounds shadowBounds;
 } drawSurf_t;
 
 

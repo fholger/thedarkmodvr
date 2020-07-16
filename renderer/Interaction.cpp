@@ -37,12 +37,6 @@ void idInteraction::PrepareLightSurf( linkLocation_t link, const srfTriangles_t 
 	drawSurf_t *drawSurf = R_PrepareLightSurf( tri, space, material, scissor, viewInsideShadow );
 	drawSurf->nextOnLight = surfsToLink[link];
 	surfsToLink[link] = drawSurf;
-
-	if ( link == SHADOW_LOCAL || link == SHADOW_GLOBAL ) {
-		// needed to recalculate a rough scissor rect for the shadow surf in the VR eye views
-		extern void R_ShadowBounds( const idBounds& modelBounds, const idBounds& lightBounds, const idVec3& lightOrigin, idBounds& shadowBounds );
-		R_ShadowBounds( entityDef->globalReferenceBounds, lightDef->globalLightBounds, lightDef->globalLightOrigin, drawSurf->shadowBounds );
-	}
 }
 
 /*
