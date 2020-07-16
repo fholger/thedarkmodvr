@@ -17,10 +17,8 @@
 #include "xr_loader.h"
 #include "xr_math.h"
 #include "../tr_local.h"
-#include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
 #include "../Profiling.h"
-#include "../backend/RenderBackend.h"
 
 OpenXRBackend xrImpl;
 OpenXRBackend *xrBackend = &xrImpl;
@@ -141,7 +139,11 @@ void OpenXRBackend::DestroyBackend() {
 	instance = nullptr;
 }
 
-void OpenXRBackend::BeginFrame() {
+void OpenXRBackend::AwaitFrame() {
+	
+}
+
+void OpenXRBackend::GetFrontendPoses() {
 	GL_PROFILE("XrBeginFrame")
 	// poll xr events and react to them
 	XrEventDataBuffer event = {
