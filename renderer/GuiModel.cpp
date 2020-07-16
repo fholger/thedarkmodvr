@@ -178,6 +178,8 @@ void idGuiModel::EmitSurface( guiModelSurface_t *surf, float modelMatrix[16], fl
 		return;
 	}
 
+	tri->indexCache = vertexCache.AllocIndex( tri->indexes, ALIGN( tri->numIndexes * sizeof( tri->indexes[0] ), INDEX_CACHE_ALIGN ) );
+
 	renderEntity_t renderEntity;
 	memset( &renderEntity, 0, sizeof( renderEntity ) );
 	memcpy( renderEntity.shaderParms, surf->color, sizeof( surf->color ) );
@@ -188,7 +190,7 @@ void idGuiModel::EmitSurface( guiModelSurface_t *surf, float modelMatrix[16], fl
 	guiSpace->weaponDepthHack = depthHack;
 
 	// add the surface, which might recursively create another gui
-	R_AddDrawSurf( tri, guiSpace, &renderEntity, surf->material, tr.viewDef->scissor );
+	R_AddDrawSurf( tri, guiSpace, &renderEntity, surf->material, tr.viewDef->scissor, -1, false, true );
 }
 
 /*
