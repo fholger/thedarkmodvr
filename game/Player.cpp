@@ -5087,6 +5087,10 @@ void idPlayer::BobCycle( const idVec3 &pushVelocity ) {
 	}
 	viewBobAngles.roll += delta;
 
+	// VR: don't want player bob
+	viewBobAngles.pitch = 0;
+	viewBobAngles.roll = 0;
+
 	// calculate position for view bobbing
 	viewBob.Zero();
 
@@ -5118,6 +5122,7 @@ void idPlayer::BobCycle( const idVec3 &pushVelocity ) {
 	if ( bob > 6 ) {
 		bob = 6;
 	}
+	bob = 0; // VR: don't want player bob
 	viewBob[2] += bob;
 
 	// add fall height

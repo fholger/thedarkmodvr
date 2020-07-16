@@ -71,7 +71,7 @@ idCVar r_znear( "r_znear", "3", CVAR_RENDERER | CVAR_FLOAT, "near Z clip plane d
 
 idCVar r_ignoreGLErrors( "r_ignoreGLErrors", "1", CVAR_RENDERER | CVAR_BOOL, "ignore GL errors" );
 idCVar r_finish( "r_finish", "0", CVAR_RENDERER | CVAR_BOOL, "force a call to glFinish() every frame" );
-idCVarInt r_swapInterval( "r_swapInterval", "0", CVAR_RENDERER | CVAR_ARCHIVE, "changes wglSwapIntarval" );
+idCVarInt r_swapInterval( "r_swapInterval", "0", CVAR_RENDERER | CVAR_ROM, "changes wglSwapIntarval" );
 
 idCVar r_ambientMinLevel( "r_ambientMinLevel", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "specifies minimal level of ambient light brightness, making linear change in ambient color", 0.0f, 1.0f);
 idCVar r_ambientGamma( "r_ambientGamma", "1", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_FLOAT, "specifies power of gamma correction applied solely to ambient light", 0.1f, 3.0f);
@@ -107,7 +107,7 @@ idCVar r_ignore2( "r_ignore2", "0", CVAR_RENDERER, "used for random debugging wi
 idCVar r_usePreciseTriangleInteractions( "r_usePreciseTriangleInteractions", "0", CVAR_RENDERER | CVAR_BOOL, "1 = do winding clipping to determine if each ambiguous tri should be lit" );
 idCVar r_useCulling( "r_useCulling", "2", CVAR_RENDERER | CVAR_INTEGER, "0 = none, 1 = sphere, 2 = sphere + box", 0, 2, idCmdSystem::ArgCompletion_Integer<0, 2> );
 idCVar r_useLightCulling( "r_useLightCulling", "3", CVAR_RENDERER | CVAR_INTEGER, "0 = none, 1 = box, 2 = exact clip of polyhedron faces, 3 = also areas", 0, 3, idCmdSystem::ArgCompletion_Integer<0, 3> );
-idCVar r_useLightScissors( "r_useLightScissors", "0", CVAR_RENDERER | CVAR_BOOL, "1 = use custom scissor rectangle for each light" );
+idCVar r_useLightScissors( "r_useLightScissors", "1", CVAR_RENDERER | CVAR_BOOL, "1 = use custom scissor rectangle for each light" );
 //anon begin
 idCVar r_useLightPortalCulling( "r_useLightPortalCulling", "1", CVAR_RENDERER | CVAR_INTEGER, "0 = none, 1 = cull frustum corners to plane, 2 = exact clip the frustum faces", 0, 2, idCmdSystem::ArgCompletion_Integer<0, 2> );
 idCVar r_useEntityPortalCulling( "r_useEntityPortalCulling", "1", CVAR_RENDERER | CVAR_INTEGER, "0 = none, 1 = cull frustum corners to plane, 2 = exact clip the frustum faces", 0, 2, idCmdSystem::ArgCompletion_Integer<0, 2> );
