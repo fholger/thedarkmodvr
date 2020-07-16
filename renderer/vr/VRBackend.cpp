@@ -293,6 +293,14 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {
 			myGlMultMatrix( vEntity->modelMatrix, viewDef->worldSpace.modelViewMatrix, vEntity->modelViewMatrix );
 		}
+
+		// GUI surfs are not included in the vEntity list, so need to be modified separately
+		for ( int i = 0; i < viewDef->numDrawSurfs; ++i ) {
+			drawSurf_t *surf = viewDef->drawSurfs[i];
+			if ( surf->dsFlags & DSF_GUI_SURF ) {
+				myGlMultMatrix( surf->space->modelMatrix, viewDef->worldSpace.modelViewMatrix, const_cast<viewEntity_t*>(surf->space)->modelViewMatrix );
+			}
+		}
 	}
 }
 
