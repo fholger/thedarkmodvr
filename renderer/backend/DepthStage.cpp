@@ -84,16 +84,85 @@ DepthStage::DepthStage( DrawBatchExecutor* drawBatchExecutor )
 void DepthStage::Init() {
 	uint maxShaderParamsArraySize = drawBatchExecutor->MaxShaderParamsArraySize<ShaderParams>();
 	depthShader = programManager->LoadFromGenerator( "depth", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, false); } );
-
 	if( GLAD_GL_ARB_bindless_texture ) {
 		depthShaderBindless = programManager->LoadFromGenerator( "depth_bindless", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, true); } );
 	}
+
+	idDict fastDefines;
+	fastDefines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", drawBatchExecutor->MaxShaderParamsArraySize<idMat4>() ) );
+	fastDepthShader = programManager->LoadFromFiles( "depth_fast", "stages/depth/depth_fast.vert.glsl", "stages/depth/depth_fast.frag.glsl", fastDefines );
 }
 
 void DepthStage::Shutdown() {}
 
 void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	GL_PROFILE( "DepthStage" );
+
+	idList<drawSurf_t *> subviewSurfs;
+	idList<drawSurf_t *> opaqueSurfs;
+	idList<drawSurf_t *> remainingSurfs;
+	PartitionSurfaces( drawSurfs, numDrawSurfs, subviewSurfs, opaqueSurfs, remainingSurfs );
+
+	GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
+	GenericDepthPass( subviewSurfs, viewDef );
+
+	GL_State( GLS_DEPTHFUNC_LESS );
+	FastDepthPass( opaqueSurfs, viewDef );
+	GenericDepthPass( remainingSurfs, viewDef );
+
+	// Make the early depth pass available to shaders. #3877
+	if ( !viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
+		frameBuffers->UpdateCurrentDepthCopy();
+	}
+}
+
+void DepthStage::PartitionSurfaces( drawSurf_t **drawSurfs, int numDrawSurfs, idList<drawSurf_t *> &subviewSurfs,
+		idList<drawSurf_t *> &opaqueSurfs, idList<drawSurf_t *> &remainingSurfs ) {
+	for ( int i = 0; i < numDrawSurfs; ++i ) {
+		drawSurf_t *surf = drawSurfs[i];
+		const idMaterial *material = surf->material;
+
+		if ( !ShouldDrawSurf( surf ) ) {
+			continue;
+		}
+
+		if ( material->GetSort() == SS_SUBVIEW ) {
+			// sub view surfaces need to be rendered first in a generic pass due to mirror plane clipping
+			subviewSurfs.AddGrow( surf );
+		} else if ( material->Coverage() == MC_OPAQUE ) {
+			opaqueSurfs.AddGrow( surf );
+		} else {
+			const float *regs = surf->shaderRegisters;
+			bool isOpaque = true;
+			for ( int i = 0; i < material->GetNumStages(); ++i ) {
+				const shaderStage_t *stage = material->GetStage( i );
+				if ( !stage->hasAlphaTest ) {
+					continue;
+				}
+
+				// check the stage enable condition
+				if ( regs[stage->conditionRegister] == 0 ) {
+					continue;
+				}
+
+				isOpaque = false;
+				break;
+			}
+
+			if (isOpaque) {
+				opaqueSurfs.AddGrow( surf );
+			} else {
+				// these need alpha checks in the shader and thus can't be handled by the fast pass
+				remainingSurfs.AddGrow( surf );
+			}
+		}
+	}	
+}
+
+void DepthStage::GenericDepthPass( const idList<drawSurf_t *> drawSurfs, const viewDef_t *viewDef ) {
+	if ( drawSurfs.Num() == 0 ) {
+		return;
+	}
 
 	GLSLProgram *shader = renderBackend->ShouldUseBindlessTextures() ? depthShaderBindless : depthShader;
 	shader->Activate();
@@ -130,33 +199,42 @@ void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, in
 
 	BeginDrawBatch();
 
-	bool subViewEnabled = false;
-	for ( int i = 0; i < numDrawSurfs; ++i ) {
-		const drawSurf_t *drawSurf = drawSurfs[i];
-		if ( !ShouldDrawSurf( drawSurf ) ) {
-			continue;
-		}
-
-		bool isSubView = drawSurf->material->GetSort() == SS_SUBVIEW;
-		if( isSubView != subViewEnabled ) {
-			ExecuteDrawCalls();
-			if( isSubView ) {
-				GL_State( GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ZERO | GLS_DEPTHFUNC_LESS );
-			} else {
-				GL_State( GLS_DEPTHFUNC_LESS );
-			}
-			subViewEnabled = isSubView;
-		}
-
+	for ( const drawSurf_t *drawSurf : drawSurfs ) {
 		DrawSurf( drawSurf );
 	}
-
 	ExecuteDrawCalls();
+}
 
-	// Make the early depth pass available to shaders. #3877
-	if ( !viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
-		frameBuffers->UpdateCurrentDepthCopy();
+void DepthStage::FastDepthPass( const idList<drawSurf_t *> drawSurfs, const viewDef_t *viewDef ) {
+	if ( drawSurfs.Num() == 0 ) {
+		return;
 	}
+
+	if ( r_ignore.GetBool() ) {
+		GenericDepthPass( drawSurfs, viewDef );
+		return;
+	}
+
+	fastDepthShader->Activate();
+
+	vertexCache.BindVertex();
+
+	DrawBatch<idMat4> drawBatch = drawBatchExecutor->BeginBatch<idMat4>();
+	uint batchIdx = 0;
+
+	for ( const drawSurf_t *surf : drawSurfs ) {
+		if ( batchIdx >= drawBatch.maxBatchSize ) {
+			drawBatchExecutor->ExecuteDrawVertBatch( batchIdx );
+			batchIdx = 0;
+			drawBatch = drawBatchExecutor->BeginBatch<idMat4>();
+		}
+
+		memcpy( drawBatch.shaderParams[batchIdx].ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
+		drawBatch.surfs[batchIdx] = surf;
+		++batchIdx;
+	}
+
+	drawBatchExecutor->ExecuteDrawVertBatch( batchIdx );
 }
 
 bool DepthStage::ShouldDrawSurf(const drawSurf_t *surf) const {
