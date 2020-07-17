@@ -601,7 +601,7 @@ void idPlayerView::SingleView( idUserInterface *hud, const renderView_t *view, b
 			// Tels: parm2: TODO: set here f.i. to color the material different when poisoned
 			// Tels: parm3: alpha value, depending on health
 			idVec4 color( ( player->health <= 0.0f ) ? MS2SEC( gameLocal.time ) : lastDamageTime, 1.0f, 1.0f, ( player->health <= 0.0f ) ? 0.0f : alpha );
-			R_RenderScreenQuad( tunnelMaterial, color, -1, -1, 1, 1, 0.0f, 0.0f, 1.0f, 1.0f );
+			//R_RenderScreenQuad( tunnelMaterial, color, -1, -1, 1, 1, 0.0f, 0.0f, 1.0f, 1.0f );
 		}
 	}
 
