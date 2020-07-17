@@ -19,6 +19,7 @@
 
 #include "../renderer/Image.h"
 #include "Game_local.h"
+#include "../renderer/tr_local.h"
 #include "../renderer/vr/VRBackend.h"
 
 static int MakePowerOfTwo( int num ) {
@@ -599,8 +600,8 @@ void idPlayerView::SingleView( idUserInterface *hud, const renderView_t *view, b
 			// Tels: parm1: TODO: set here f.i. to color the material different when in gas cloud
 			// Tels: parm2: TODO: set here f.i. to color the material different when poisoned
 			// Tels: parm3: alpha value, depending on health
-			renderSystem->SetColor4( ( player->health <= 0.0f ) ? MS2SEC( gameLocal.time ) : lastDamageTime, 1.0f, 1.0f, ( player->health <= 0.0f ) ? 0.0f : alpha );
-			renderSystem->DrawStretchPic( 0.0f, 0.0f, 640.0f, 480.0f, 0.0f, 0.0f, 1.0f, 1.0f, tunnelMaterial );
+			idVec4 color( ( player->health <= 0.0f ) ? MS2SEC( gameLocal.time ) : lastDamageTime, 1.0f, 1.0f, ( player->health <= 0.0f ) ? 0.0f : alpha );
+			R_RenderScreenQuad( tunnelMaterial, color, -1, -1, 1, 1, 0.0f, 0.0f, 1.0f, 1.0f );
 		}
 	}
 
@@ -805,11 +806,9 @@ void idPlayerView::DoubleVision( idUserInterface *hud, const renderView_t *view,
 	renderSystem->UnCrop();
 
 	idVec4 color(1, 1, 1, 1);
-
-	renderSystem->SetColor4( color.x, color.y, color.z, 1.0f );
-	renderSystem->DrawStretchPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, shift, 1-shift, 1, 0, dvMaterial );
-	renderSystem->SetColor4( color.x, color.y, color.z, 0.5f );
-	renderSystem->DrawStretchPic( 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 1, 1-shift, shift, dvMaterial );
+	R_RenderScreenQuad( dvMaterial, color, -1, -1, 1, 1, shift, shift, 1, 1 );
+	color.w = 0.5f;
+	R_RenderScreenQuad( dvMaterial, color, -1, -1, 1, 1, 0, 0, 1-shift, 1-shift );
 
 	// Do not post-process the HUD - JC Denton
 	// Bloom related - added by Dram
@@ -904,8 +903,7 @@ void idPlayerView::ScreenFade() {
 	}
 
 	if ( fadeColor[ 3 ] != 0.0f ) {
-		renderSystem->SetColor4( fadeColor[ 0 ], fadeColor[ 1 ], fadeColor[ 2 ], fadeColor[ 3 ] );
-		renderSystem->DrawStretchPic( 0, 0, 640, 480, 0, 0, 1, 1, declManager->FindMaterial( "_white" ) );
+		R_RenderScreenQuad( declManager->FindMaterial( "_white" ), idVec4(fadeColor[0], fadeColor[1], fadeColor[2], fadeColor[3]), -1, -1, 1, 1, 0, 0, 1, 1 );
 	}
 }
 
