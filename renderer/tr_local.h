@@ -561,6 +561,7 @@ typedef enum {
 	RC_NOP,
 	RC_DRAW_VIEW,
 	RC_DRAW_LIGHTGEM,
+	RC_DRAW_SURF,
 	RC_SET_BUFFER,
 	RC_COPY_RENDER,
 	RC_BLOOM,
@@ -591,6 +592,11 @@ struct drawSurfsCommand_t : emptyCommand_t {
 
 struct drawLightgemCommand_t : drawSurfsCommand_t {
 	byte *dataBuffer;
+};
+
+struct drawSurfCommand_t : emptyCommand_t {
+	drawSurf_t	*surf;
+	idMat4		projection;
 };
 
 struct copyRenderCommand_t : emptyCommand_t {
@@ -1283,6 +1289,7 @@ MAIN
 */
 
 void R_RenderView( viewDef_t &parms );
+void R_RenderScreenQuad( const idMaterial *material, idVec4 color, float x1, float y1, float x2, float y2, float s1, float t1, float s2, float t2 );
 
 bool R_RadiusCullLocalBox( const idBounds &bounds, const float modelMatrix[16], int numPlanes, const idPlane *planes );
 bool R_CornerCullLocalBox( const idBounds &bounds, const float modelMatrix[16], int numPlanes, const idPlane *planes );

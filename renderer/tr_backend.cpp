@@ -802,6 +802,34 @@ void RB_CopyRender( const void *data ) {
 }
 
 /*
+=================
+RB_DrawSingleSurf
+
+Draws a single surface
+=================
+ */
+void RB_DrawSingleSurface( drawSurfCommand_t *cmd ) {
+	extern void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf );
+
+	GL_PROFILE("RB_DrawSingleSurface")
+
+	// we need to setup a backEnd.viewDef, otherwise the draw command may crash or misbehave
+	viewDef_t viewDef;
+	memset( &viewDef, 0, sizeof(viewDef) );
+	viewDef.viewport.x1 = viewDef.scissor.x1 = 0;
+	viewDef.viewport.y1 = viewDef.scissor.y1 = 0;
+	viewDef.viewport.x2 = viewDef.scissor.x2 = glConfig.vidWidth - 1;
+	viewDef.viewport.y2 = viewDef.scissor.y2 = glConfig.vidHeight - 1;
+	backEnd.viewDef = &viewDef;
+
+	GL_SetProjection( cmd->projection.ToFloatPtr() );
+	GL_ViewportRelative( 0, 0, 1, 1 );
+
+	cmd->surf->scissorRect = viewDef.scissor;
+	RB_STD_T_RenderShaderPasses( cmd->surf );
+}
+
+/*
 ====================
 RB_ExecuteBackEndCommands
 
@@ -862,6 +890,9 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 			backEnd.viewDef = ( ( const drawLightgemCommand_t * )cmds )->viewDef;
 			renderBackend->DrawLightgem( backEnd.viewDef, ( ( const drawLightgemCommand_t * )cmds )->dataBuffer );
 			break;			
+		case RC_DRAW_SURF:
+			RB_DrawSingleSurface( ( drawSurfCommand_t *) cmds  );
+			break;
 		case RC_SET_BUFFER:
 			RB_SetBuffer( cmds );
 			c_setBuffers++;
