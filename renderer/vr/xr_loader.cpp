@@ -24,6 +24,7 @@ bool XR_EXT_debug_utils_available = false;
 PFN_xrGetOpenGLGraphicsRequirementsKHR qxrGetOpenGLGraphicsRequirementsKHR = nullptr;
 PFN_xrCreateDebugUtilsMessengerEXT qxrCreateDebugUtilsMessengerEXT = nullptr;
 PFN_xrDestroyDebugUtilsMessengerEXT qxrDestroyDebugUtilsMessengerEXT = nullptr;
+PFN_xrGetVisibilityMaskKHR qxrGetVisibilityMaskKHR = nullptr;
 
 // -- xr function prototype implementations for dynamically loaded extension functions
 XRAPI_ATTR XrResult XRAPI_CALL xrGetOpenGLGraphicsRequirementsKHR(
@@ -45,6 +46,16 @@ XRAPI_ATTR XrResult XRAPI_CALL xrDestroyDebugUtilsMessengerEXT(
     XrDebugUtilsMessengerEXT                    messenger) {
 
 	return qxrDestroyDebugUtilsMessengerEXT( messenger );
+}
+
+XRAPI_ATTR XrResult XRAPI_CALL xrGetVisibilityMaskKHR(
+    XrSession                                   session,
+    XrViewConfigurationType                     viewConfigurationType,
+    uint32_t                                    viewIndex,
+    XrVisibilityMaskTypeKHR                     visibilityMaskType,
+    XrVisibilityMaskKHR*                        visibilityMask) {
+
+	return qxrGetVisibilityMaskKHR( session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask );
 }
 // -----------------------------------------------------------------------------------
 
@@ -126,6 +137,12 @@ void XR_LoadExtensionDebug( XrInstance instance ) {
 	XR_CheckResult( result, "loading debug extension function", instance );
 }
 
+void XR_LoadExtensionVisibilityMask( XrInstance instance ) {
+	XrResult result;
+	result = xrGetInstanceProcAddr( instance, "xrGetVisibilityMaskKHR", (PFN_xrVoidFunction *)&qxrGetVisibilityMaskKHR );
+	XR_CheckResult( result, "loading visibility mask extension function", instance );
+}
+
 XrInstance XR_CreateInstance() {
 	XR_KHR_opengl_enable_available = false;
 	XR_KHR_visibility_mask_available = false;
@@ -180,6 +197,9 @@ XrInstance XR_CreateInstance() {
 	XR_LoadExtensionOpenGL( instance );
 	if ( XR_EXT_debug_utils_available ) {
 		XR_LoadExtensionDebug( instance );
+	}
+	if ( XR_KHR_visibility_mask_available ) {
+		XR_LoadExtensionVisibilityMask( instance );
 	}
 
 	return instance;
