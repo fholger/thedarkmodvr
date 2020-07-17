@@ -113,6 +113,15 @@ void OpenXRSwapchain::PrepareNextImage() {
 }
 
 void OpenXRSwapchain::ReleaseImage() {
+	if ( curIndex == INVALID_INDEX ) {
+		common->Printf( "Xr: Releasing swapchain that was not acquired\n" );
+		return;
+	}
+
+	// SteamVR runtime currently picks up uncleared GL errors and returns runtime errors, so make sure
+	// the GL error is empty
+	qglGetError();
+
 	XrResult result = xrReleaseSwapchainImage( swapchain, nullptr );
 	XR_CheckResult( result, "releasing swapchain image", xrBackend->Instance() );
 	curIndex = INVALID_INDEX;
