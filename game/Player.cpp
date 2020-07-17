@@ -7394,7 +7394,7 @@ void idPlayer::UpdateUnderWaterEffects()
 			}
 			else
 			{
-				underWaterGUIHandle = CreateOverlay(overlay.c_str(), LAYER_UNDERWATER);
+				//underWaterGUIHandle = CreateOverlay(overlay.c_str(), LAYER_UNDERWATER);
 			}
 			underWaterEffectsActive = true;
 		}

@@ -147,6 +147,10 @@ void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eye
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
 			renderBackend->DrawLightgem( backEnd.viewDef, ( ( const drawLightgemCommand_t *)cmds )->dataBuffer );
 			break;
+		case RC_DRAW_SURF:
+			extern void RB_DrawSingleSurface( drawSurfCommand_t *cmd );
+			RB_DrawSingleSurface( ( drawSurfCommand_t *) cmds );
+			break;
 		case RC_SET_BUFFER:
 			// not applicable
 			break;
