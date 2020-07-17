@@ -91,6 +91,11 @@ void OpenXRSwapchain::Destroy() {
 }
 
 void OpenXRSwapchain::PrepareNextImage() {
+	if ( curIndex != INVALID_INDEX ) {
+		common->Printf( "Xr: Acquiring swapchain that was not released\n" );
+		ReleaseImage();
+	}
+
 	XrResult result = xrAcquireSwapchainImage( swapchain, nullptr, &curIndex );
 	XR_CheckResult( result, "acquiring swapchain image", xrBackend->Instance() );
 

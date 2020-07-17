@@ -69,12 +69,7 @@ void OpenVRBackend::DestroyBackend() {
 	}	
 }
 
-void OpenVRBackend::AwaitFrame() {
-	GL_PROFILE("WaitGetPoses")
-	vr::VRCompositor()->WaitGetPoses( currentPoses, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
-}
-
-void OpenVRBackend::GetFrontendPoses() {
+void OpenVRBackend::PrepareFrame() {
 	// we are only predicting the next poses for the frontend here
 	float secondsSinceLastVsync;
 	system->GetTimeSinceLastVsync( &secondsSinceLastVsync, nullptr );
@@ -85,10 +80,12 @@ void OpenVRBackend::GetFrontendPoses() {
 	float predictedFrameTime = 2 * frameDuration - secondsSinceLastVsync + vsyncToPhotons;
 
 	system->GetDeviceToAbsoluteTrackingPose( vr::TrackingUniverseSeated, predictedFrameTime, predictedPoses, vr::k_unMaxTrackedDeviceCount );
+}
 
-	if ( vr_waitPosition.GetInteger() >= 2 ) {
-		AwaitFrame();
-	}
+bool OpenVRBackend::BeginFrame() {
+	GL_PROFILE("WaitGetPoses")
+	vr::VRCompositor()->WaitGetPoses( currentPoses, vr::k_unMaxTrackedDeviceCount, nullptr, 0 );
+	return true;
 }
 
 void OpenVRBackend::SubmitFrame() {
