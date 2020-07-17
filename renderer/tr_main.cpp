@@ -1159,3 +1159,81 @@ void R_RenderView( viewDef_t &parms ) {
 	// restore view in case we are a subview
 	tr.viewDef = oldView;
 }
+
+void R_RenderScreenQuad( const idMaterial *material, idVec4 color, float x1, float y1, float x2, float y2, float s1, float t1, float s2, float t2 ) {
+	if ( material == nullptr || x2 <= x1 || y2 <= y1 ) {
+		return;
+	}
+
+	uint vertSize = ALIGN( sizeof(idDrawVert) * 4, VERTEX_CACHE_ALIGN );
+	uint indexSize = ALIGN( sizeof(glIndex_t) * 6, INDEX_CACHE_ALIGN );
+	idDrawVert *verts = (idDrawVert *)Mem_Alloc16( vertSize );
+	glIndex_t *indexes = (glIndex_t *)Mem_Alloc16( indexSize );
+
+	indexes[0] = 2;
+	indexes[1] = 0;
+	indexes[2] = 3;
+	indexes[3] = 1;
+	indexes[4] = 0;
+	indexes[5] = 2;
+
+	verts[0].xyz[0] = x1;
+	verts[0].xyz[1] = y1;
+	verts[0].st[0] = s1;
+	verts[0].st[1] = t1;
+	verts[1].xyz[0] = x2;
+	verts[1].xyz[1] = y1;
+	verts[1].st[0] = s2;
+	verts[1].st[1] = t1;
+	verts[2].xyz[0] = x2;
+	verts[2].xyz[1] = y2;
+	verts[2].st[0] = s2;
+	verts[2].st[1] = t2;
+	verts[3].xyz[0] = x1;
+	verts[3].xyz[1] = y2;
+	verts[3].st[0] = s1;
+	verts[3].st[1] = t2;
+	for ( int i = 0; i < 4; ++i ) {
+		verts[i].xyz[2] = -1;
+		verts[i].normal[0] = 0;
+		verts[i].normal[1] = 0;
+		verts[i].normal[2] = 1;
+		verts[i].tangents[0][0] = 1;
+		verts[i].tangents[0][1] = 0;
+		verts[i].tangents[0][2] = 0;
+		verts[i].tangents[1][0] = 0;
+		verts[i].tangents[1][1] = 1;
+		verts[i].tangents[1][2] = 0;
+	}
+
+	viewEntity_t *space = (viewEntity_t *) R_ClearedFrameAlloc( sizeof(viewEntity_t) );
+	// setup identity model and view matrices
+	space->modelMatrix[0] = space->modelMatrix[5] = space->modelMatrix[10] = space->modelMatrix[15] = 1;
+	space->modelViewMatrix[0] = space->modelViewMatrix[5] = space->modelViewMatrix[10] = space->modelViewMatrix[15] = 1;
+
+	drawSurf_t *surf = ( drawSurf_t *) R_ClearedFrameAlloc( sizeof(drawSurf_t) );
+	surf->numIndexes = 6;
+	surf->ambientCache = vertexCache.AllocVertex( verts, vertSize );
+	surf->indexCache = vertexCache.AllocIndex( indexes, indexSize );
+	surf->material = material;
+	surf->space = space;
+
+	// set up color shader params
+	float *regs = (float *)R_FrameAlloc( material->GetNumRegisters() * sizeof( float ) );
+	surf->shaderRegisters = regs;
+	float shaderParms[MAX_ENTITY_SHADER_PARMS];
+	shaderParms[0] = color.x;
+	shaderParms[1] = color.y;
+	shaderParms[2] = color.z;
+	shaderParms[3] = color.w;
+	viewDef_t viewDef;
+	material->EvaluateRegisters( regs, shaderParms, &viewDef );
+
+	drawSurfCommand_t *cmd = (drawSurfCommand_t *) R_GetCommandBuffer( sizeof(drawSurfCommand_t) );
+	cmd->commandId = RC_DRAW_SURF;
+	cmd->surf = surf;
+	cmd->projection.Identity();
+
+	Mem_Free16( verts );
+	Mem_Free16( indexes );
+}
