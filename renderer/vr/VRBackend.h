@@ -23,14 +23,13 @@ extern idCVar vr_uiOverlayHeight;
 extern idCVar vr_uiOverlayAspect;
 extern idCVar vr_uiOverlayDistance;
 extern idCVar vr_uiOverlayVerticalOffset;
-extern idCVar vr_waitPosition;
 
 class VRBackend {
 public:
 	void Init();
 	void Destroy();
 
-	virtual void GetFrontendPoses() = 0;
+	virtual void PrepareFrame() = 0;
  
 	virtual void AdjustRenderView( renderView_t *view ) = 0;
 	void RenderStereoView( const emptyCommand_t * cmds );
@@ -48,7 +47,7 @@ protected:
 		UI = 2,
 	};
 	void ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eyeView );
-	virtual void AwaitFrame() = 0;
+	virtual bool BeginFrame() = 0;
 	virtual void SubmitFrame() = 0;
 	virtual void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) = 0;
 	virtual bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) = 0;
