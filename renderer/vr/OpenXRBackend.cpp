@@ -139,12 +139,58 @@ void OpenXRBackend::DestroyBackend() {
 	instance = nullptr;
 }
 
-void OpenXRBackend::AwaitFrame() {
-	
+bool OpenXRBackend::BeginFrame() {
+	if ( !vrSessionActive ) {
+		return false;
+	}
+
+	GL_PROFILE("XrBeginFrame")
+	// await the next frame
+	XrFrameState frameState = {
+		XR_TYPE_FRAME_STATE,
+		nullptr,
+	};
+	XrResult result = xrWaitFrame( session, nullptr, &frameState );
+	XR_CheckResult( result, "awaiting frame", instance, false );
+	if ( !XR_SUCCEEDED( result ) ) {
+		return false;
+	}
+
+	predictedFrameDisplayTime = frameState.predictedDisplayTime;
+	displayPeriod = frameState.predictedDisplayPeriod;
+
+	result = xrBeginFrame( session, nullptr );
+	XR_CheckResult( result, "beginning frame", instance, false );
+	if ( !XR_SUCCEEDED( result ) ) {
+		return false;
+	}
+
+	// predict render poses
+	XrViewLocateInfo locateInfo = {
+		XR_TYPE_VIEW_LOCATE_INFO,
+		nullptr,
+		XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
+		predictedFrameDisplayTime,
+		seatedSpace,
+	};
+	XrViewState viewState = {
+		XR_TYPE_VIEW_STATE,
+		nullptr,
+	};
+	for ( int i = 0; i < 2; ++i ) {
+		renderViews[i].type = XR_TYPE_VIEW;
+		renderViews[i].next = nullptr;
+	}
+	uint32_t viewCount = 0;
+	result = xrLocateViews( session, &locateInfo, &viewState, 2, &viewCount, renderViews );
+	XR_CheckResult( result, "locating views", instance, false );
+
+	return true;
 }
 
-void OpenXRBackend::GetFrontendPoses() {
-	GL_PROFILE("XrBeginFrame")
+void OpenXRBackend::PrepareFrame() {
+	GL_PROFILE("XrPrepareFrame")
+
 	// poll xr events and react to them
 	XrEventDataBuffer event = {
 		XR_TYPE_EVENT_DATA_BUFFER,
@@ -167,21 +213,15 @@ void OpenXRBackend::GetFrontendPoses() {
 		return;
 	}
 
-	// await and begin the frame
-	XrFrameState frameState = {
-		XR_TYPE_FRAME_STATE,
-		nullptr,
-	};
-	result = xrWaitFrame( session, nullptr, &frameState );
-	XR_CheckResult( result, "awaiting frame", instance );
-	currentFrameDisplayTime = frameState.predictedDisplayTime;
-	nextFrameDisplayTime = currentFrameDisplayTime + frameState.predictedDisplayPeriod;
-
+	// predict poses for the frontend to work with
+	// note: the predicted display time was for the frame last rendered by the backend,
+	// so we need to predict two frames into the future from there: 1 for the current backend frame,
+	// and 1 for the next frame the frontend is preparing
 	XrViewLocateInfo locateInfo = {
 		XR_TYPE_VIEW_LOCATE_INFO,
 		nullptr,
 		XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
-		currentFrameDisplayTime,
+		predictedFrameDisplayTime + 2 * displayPeriod,
 		seatedSpace,
 	};
 	XrViewState viewState = {
@@ -189,15 +229,12 @@ void OpenXRBackend::GetFrontendPoses() {
 		nullptr,
 	};
 	for ( int i = 0; i < 2; ++i ) {
-		renderViews[i].type = XR_TYPE_VIEW;
-		renderViews[i].next = nullptr;
+		predictedViews[i].type = XR_TYPE_VIEW;
+		predictedViews[i].next = nullptr;
 	}
 	uint32_t viewCount = 0;
-	result = xrLocateViews( session, &locateInfo, &viewState, 2, &viewCount, renderViews );
+	result = xrLocateViews( session, &locateInfo, &viewState, 2, &viewCount, predictedViews );
 	XR_CheckResult( result, "locating views", instance, false );
-
-	result = xrBeginFrame( session, nullptr );
-	XR_CheckResult( result, "beginning frame", instance );
 }
 
 void OpenXRBackend::SubmitFrame() {
@@ -252,7 +289,7 @@ void OpenXRBackend::SubmitFrame() {
 	XrFrameEndInfo frameEndInfo = {
 		XR_TYPE_FRAME_END_INFO,
 		nullptr,
-		currentFrameDisplayTime,
+		predictedFrameDisplayTime,
 		XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
 		sizeof(submittedLayers) / sizeof(submittedLayers[0]),
 		submittedLayers,
@@ -294,29 +331,57 @@ void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 }
 
 idList<idVec2> OpenXRBackend::GetHiddenAreaMask( eyeView_t eye ) {
-	return idList<idVec2>();
+	if ( !XR_KHR_visibility_mask_available ) {
+		return idList<idVec2>();
+	}
+	
+	XrVisibilityMaskKHR visibilityMask = {
+		XR_TYPE_VISIBILITY_MASK_KHR,
+		nullptr,
+		0,
+		0,
+		nullptr,
+		0,
+		0,
+		nullptr,
+	};
+	XrResult result = xrGetVisibilityMaskKHR( session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye,
+		XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR, &visibilityMask );
+	XR_CheckResult( result, "getting hidden area mesh", instance, false );
+	if ( !XR_SUCCEEDED(result) ) {
+		return idList<idVec2>();
+	}
+
+	idList<XrVector2f> vertices;
+	vertices.SetNum( visibilityMask.vertexCountOutput );
+	visibilityMask.vertexCapacityInput = vertices.Num();
+	visibilityMask.vertices = vertices.Ptr();
+	idList<uint32_t> indices;
+	indices.SetNum( visibilityMask.indexCountOutput );
+	visibilityMask.indexCapacityInput = indices.Num();
+	visibilityMask.indices = indices.Ptr();
+
+	result = xrGetVisibilityMaskKHR( session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye,
+		XR_VISIBILITY_MASK_TYPE_HIDDEN_TRIANGLE_MESH_KHR, &visibilityMask );
+	XR_CheckResult( result, "getting hidden area mesh", instance, false );
+	if ( !XR_SUCCEEDED(result) ) {
+		return idList<idVec2>();
+	}
+
+	idList<idVec2> hiddenAreaMask;
+	for ( uint32_t index : indices ) {
+		idVec2 v ( vertices[index].x * 2 - 1, vertices[index].y * 2 - 1 );
+		hiddenAreaMask.AddGrow( v );
+	}
+
+	return hiddenAreaMask;
 }
 
 void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
-	XrViewLocateInfo locateInfo = {
-		XR_TYPE_VIEW_LOCATE_INFO,
-		nullptr,
-		XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO,
-		nextFrameDisplayTime,
-		seatedSpace,
-	};
-	XrViewState viewState = { XR_TYPE_VIEW_STATE, nullptr };
-	XrView views[2] = { { XR_TYPE_VIEW, nullptr }, { XR_TYPE_VIEW, nullptr }};
-	uint32_t viewCount = 0;
-	XrResult result = xrLocateViews( session, &locateInfo, &viewState, 2, &viewCount, views );
-	if ( !XR_SUCCEEDED( result ) ) {
-		return;
-	}
-
 	// locate the center point of the two eye views, which we'll use in the frontend to determine the contents
 	// of the view
-	idVec3 hmdPosition = ( Vec3FromXr( views[0].pose.position ) + Vec3FromXr( views[1].pose.position ) ) * .5f;
-	idQuat hmdOrientation = ( QuatFromXr( views[0].pose.orientation ) + QuatFromXr( views[1].pose.orientation ) ) * .5f;
+	idVec3 hmdPosition = ( Vec3FromXr( predictedViews[0].pose.position ) + Vec3FromXr( predictedViews[1].pose.position ) ) * .5f;
+	idQuat hmdOrientation = ( QuatFromXr( predictedViews[0].pose.orientation ) + QuatFromXr( predictedViews[1].pose.orientation ) ) * .5f;
 	hmdOrientation.Normalize();
 
 	// adjust view axis and origin
@@ -330,10 +395,10 @@ void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
 	// for the scene collection in the frontend, we'll use a symmetric FoV, with angles slidely widened
 	// to create a bit of a buffer in the frustum, since we are going to readjust the view in the actual
 	// rendering for the eyes
-	float leftFovX = 2 * Max( idMath::Fabs( views[0].fov.angleLeft ), idMath::Fabs( views[0].fov.angleRight ) );
-	float rightFovX = 2 * Max( idMath::Fabs( views[1].fov.angleLeft ), idMath::Fabs( views[1].fov.angleRight ) );
-	float leftFovY = 2 * Max( idMath::Fabs( views[0].fov.angleUp ), idMath::Fabs( views[0].fov.angleDown ) );
-	float rightFovY = 2 * Max( idMath::Fabs( views[1].fov.angleUp ), idMath::Fabs( views[1].fov.angleDown ) );
+	float leftFovX = 2 * Max( idMath::Fabs( predictedViews[0].fov.angleLeft ), idMath::Fabs( predictedViews[0].fov.angleRight ) );
+	float rightFovX = 2 * Max( idMath::Fabs( predictedViews[1].fov.angleLeft ), idMath::Fabs( predictedViews[1].fov.angleRight ) );
+	float leftFovY = 2 * Max( idMath::Fabs( predictedViews[0].fov.angleUp ), idMath::Fabs( predictedViews[0].fov.angleDown ) );
+	float rightFovY = 2 * Max( idMath::Fabs( predictedViews[1].fov.angleUp ), idMath::Fabs( predictedViews[1].fov.angleDown ) );
 	view->fov_x = RAD2DEG( Max( leftFovX, rightFovX ) ) + 5;
 	view->fov_y = RAD2DEG( Max( leftFovY, rightFovY ) ) + 5;
 }
