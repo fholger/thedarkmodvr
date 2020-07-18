@@ -87,7 +87,9 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 		qglClearColor( 0, 0, 0, 1 );
 		qglClear( GL_COLOR_BUFFER_BIT );
 		ExecuteRenderCommands( frameData, (eyeView_t)eye );
-		DrawAimIndicator();
+		if ( !frameData->render2D ) {
+			DrawAimIndicator();
+		}
 	}
 
 	// render lightgem and 2D UI elements
@@ -128,6 +130,11 @@ void VRBackend::DrawHiddenAreaMeshToDepth() {
 }
 
 void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView ) {
+	if ( eyeView != UI && frameData->render2D ) {
+		// we are currently not rendering in stereoscopic mode
+		return;
+	}
+
 	currentEye = eyeView;
 
 	const emptyCommand_t *cmds = frameData->cmdHead;
@@ -141,6 +148,9 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 	bool isv3d = false; // needs to be declared outside of switch case
 	bool lastViewWasLightgem = false;
 
+	bool shouldRender3D = ( eyeView != UI || frameData->render2D );
+	bool shouldRender2D = eyeView == UI;
+
 	while ( cmds ) {
 		switch ( cmds->commandId ) {
 		case RC_NOP:
@@ -148,8 +158,8 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 		case RC_DRAW_VIEW: {
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
 			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
-			if ( isv3d == (eyeView != UI)  ) {
-				if ( eyeView != UI ) {
+			if ( (isv3d && shouldRender3D) || (!isv3d && shouldRender2D) ) {
+				if ( isv3d && shouldRender3D ) {
 					frameBuffers->EnterPrimary();
 				}
 				renderBackend->DrawView( backEnd.viewDef );
@@ -157,13 +167,16 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 			break;
 		}
 		case RC_DRAW_LIGHTGEM:
-			if ( eyeView != UI || r_ignore2.GetBool() ) {
+			if ( !shouldRender2D ) {
 				break;
 			}
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
 			renderBackend->DrawLightgem( backEnd.viewDef, ( ( const drawLightgemCommand_t *)cmds )->dataBuffer );
 			break;
 		case RC_DRAW_SURF:
+			if ( !shouldRender3D ) {
+				break;
+			}
 			extern void RB_DrawSingleSurface( drawSurfCommand_t *cmd );
 			RB_DrawSingleSurface( ( drawSurfCommand_t *) cmds );
 			break;
@@ -171,14 +184,14 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 			// not applicable
 			break;
 		case RC_BLOOM:
-			if ( eyeView == UI ) {
+			if ( !shouldRender3D ) {
 				break;
 			}
 			RB_Tonemap( (bloomCommand_t*)cmds );
 			FB_DebugShowContents();
 			break;
 		case RC_COPY_RENDER:
-			if ( eyeView == UI ) {
+			if ( !shouldRender3D ) {
 				break;
 			}
 			RB_CopyRender( cmds );
