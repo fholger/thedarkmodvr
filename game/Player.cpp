@@ -8582,7 +8582,7 @@ idVec3 idPlayer::GetEyePosition( void ) const
 idPlayer::GetViewPos
 ===============
 */
-void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool fixedPitch ) const {
+void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) const {
 	idAngles angles;
 
 	if ( usePeekView ) // grayman #4882
@@ -8602,9 +8602,27 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool fixedPitch ) const
 		origin = GetEyePosition() + viewBob;
 		angles = viewAngles + viewBobAngles + physicsObj.GetViewLeanAngles() + playerView.AngleOffset();
 
-		if ( fixedPitch ) {
+		if ( decoupledAngles ) {
 			// in VR, mouse pitch added to the view is confusing, so leave it out
-			angles.pitch = 0;
+			actualViewAngles.pitch = 0;
+			actualViewAngles.roll = angles.roll;
+
+			// figure out yaw adjustment:
+			// we want the player to be able to move the mouse horizontally within a certain corridor
+			// before affecting the view to have an easier time selecting and aiming with the mouse without
+			// triggering a lot of short and jittery, motion-inducing rotation on the player view
+			if ( angles.yaw - actualViewAngles.yaw > 180 ) {
+				actualViewAngles.yaw += 360;
+			} else if ( angles.yaw - actualViewAngles.yaw < -180 ) {
+				actualViewAngles.yaw -= 360;
+			}
+			float yawDiff = angles.yaw - actualViewAngles.yaw;
+			float maxYawDiff = vr_decoupledMouseYawAngle.GetFloat();
+			if ( idMath::Fabs( yawDiff ) >= maxYawDiff ) {
+				actualViewAngles.yaw = angles.yaw - idMath::ClampFloat( -maxYawDiff, maxYawDiff, yawDiff );
+			}
+
+			angles = actualViewAngles;
 		}
 
 		axis = angles.ToMat3() * physicsObj.GetGravityAxis();
@@ -8768,7 +8786,7 @@ void idPlayer::CalculateRenderView( void ) {
 			renderView->vieworg = firstPersonViewOrigin;
 			renderView->viewaxis = firstPersonViewAxis;
 
-			GetViewPos( renderView->vieworg, renderView->viewaxis, vr_lockMousePitch.GetBool() );
+			GetViewPos( renderView->vieworg, renderView->viewaxis, vr_decoupleMouseMovement.GetBool() );
 
 			// set the viewID to the clientNum + 1, so we can suppress the right player bodies and
 			// allow the right player view weapons

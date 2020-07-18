@@ -18,7 +18,8 @@
 class FrameBuffer;
 class GLSLProgram;
 
-extern idCVar vr_lockMousePitch;
+extern idCVar vr_decoupleMouseMovement;
+extern idCVar vr_decoupledMouseYawAngle;
 extern idCVar vr_uiOverlayHeight;
 extern idCVar vr_uiOverlayAspect;
 extern idCVar vr_uiOverlayDistance;
