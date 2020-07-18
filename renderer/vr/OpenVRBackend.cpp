@@ -91,6 +91,9 @@ bool OpenVRBackend::BeginFrame() {
 void OpenVRBackend::SubmitFrame() {
 	GL_PROFILE("VrSubmitFrame")
 	vr::Texture_t texture = { (void*)uiTexture->texnum, vr::TextureType_OpenGL, vr::ColorSpace_Gamma };
+	// note: the Linux SteamVR implementation seems to adhere to glViewport/glScissor when applying the overlay texture, so ensure they are correct
+	qglViewport( 0, 0, uiTexture->uploadWidth, uiTexture->uploadHeight );
+	qglScissor( 0, 0, uiTexture->uploadWidth, uiTexture->uploadHeight );
 	vr::VROverlay()->SetOverlayTexture( menuOverlay, &texture );
 	vr::HmdMatrix34_t transform;
 	memset( transform.m, 0, sizeof( transform.m ) );
