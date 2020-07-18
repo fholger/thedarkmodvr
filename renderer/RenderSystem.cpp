@@ -138,7 +138,7 @@ void R_IssueRenderCommands( frameData_t *frameData ) {
 	// r_skipRender is usually more usefull, because it will still
 	// draw 2D graphics
 	if ( !r_skipBackEnd.GetBool() ) {
-		vrBackend->RenderStereoView( cmds );
+		vrBackend->RenderStereoView( frameData );
 		//RB_ExecuteBackEndCommands( cmds );
 	}
 	R_ClearCommandChain( frameData );
