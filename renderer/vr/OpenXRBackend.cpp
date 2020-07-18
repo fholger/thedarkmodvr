@@ -377,6 +377,10 @@ idList<idVec2> OpenXRBackend::GetHiddenAreaMask( eyeView_t eye ) {
 	return hiddenAreaMask;
 }
 
+bool OpenXRBackend::UsesSrgbTextures() const {
+	return swapchainFormat == GL_SRGB8_ALPHA8;
+}
+
 void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
 	// locate the center point of the two eye views, which we'll use in the frontend to determine the contents
 	// of the view

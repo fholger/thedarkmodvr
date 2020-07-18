@@ -460,7 +460,11 @@ void VRBackend::MirrorVrView( idImage *eyeTexture, idImage *uiTexture ) {
 	GL_SelectTexture( 0 );
 	eyeTexture->Bind();
 
+	if ( UsesSrgbTextures() ) {
+		qglEnable( GL_FRAMEBUFFER_SRGB );
+	}
 	RB_DrawFullScreenQuad();
+	qglDisable( GL_FRAMEBUFFER_SRGB );
 }
 
 struct AimIndicatorUniforms : GLSLUniformGroup {
