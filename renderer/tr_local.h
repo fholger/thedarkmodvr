@@ -644,6 +644,9 @@ typedef struct {
 	// commands can be inserted at the front if needed, as for required
 	// dynamically generated textures
 	emptyCommand_t		*cmdHead, *cmdTail;		// may be of other command type based on commandId
+
+	// VR extras
+	idVec3				mouseAimPosition;
 } frameData_t;
 
 extern	frameData_t		*frameData;

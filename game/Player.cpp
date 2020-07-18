@@ -10832,14 +10832,6 @@ void idPlayer::PerformFrobCheck()
 		return;
 	}
 
-	// greebo: Don't run the frobcheck when we're dragging items around
-	if (m_bGrabberActive)
-	{
-		if (bFrobHelperActive)
-			m_FrobHelper.Hide();
-		return;
-	}
-
 	// ishtvan: Don't run if frob hilighting is disabled
 	// TODO: Should we just add this functionality to EIM_FROB and get rid of EIM_FROBHILIGHT?
 	if ( GetImmobilization() & EIM_FROB_HILIGHT )
@@ -10868,6 +10860,14 @@ void idPlayer::PerformFrobCheck()
 	gameLocal.clip.TracePoint(trace, start, end, cm, this);
 	
 	float traceDist = g_Global.m_MaxFrobDistance * trace.fraction;
+	frameData->mouseAimPosition = start + viewAngles.ToForward() * traceDist;
+
+	if (m_bGrabberActive)
+	{
+		if (bFrobHelperActive)
+			m_FrobHelper.Hide();
+		return;
+	}
 
 	bool bEntityAlreadyFrobbed = false;
 
