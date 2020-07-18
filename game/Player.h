@@ -267,6 +267,8 @@ public:
 	idAngles				spawnAngles;
 	idAngles				viewAngles;			// player view angles
 	idAngles				cmdAngles;			// player cmd angles
+	// VR support
+	mutable idAngles		actualViewAngles;
 
 	int						buttonMask;
 	int						oldButtons;
@@ -646,7 +648,7 @@ public:
 	idVec3					GetEyePosition( void ) const;
 	bool					CanGreet(); // grayman #3338
 
-	void					GetViewPos( idVec3 &origin, idMat3 &axis, bool fixedPitch = false ) const;
+	void					GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles = false ) const;
 	void					OffsetThirdPersonView( float angle, float range, float height, bool clip );
 
 	bool					Give( const char *statname, const char *value );
