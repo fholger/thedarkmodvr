@@ -84,6 +84,8 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	for ( int eye = 0; eye < 2; ++eye ) {
 		frameBuffers->defaultFbo = eyeBuffers[eye];
 		frameBuffers->defaultFbo->Bind();
+		GL_ViewportRelative( 0, 0, 1, 1 );
+		GL_ScissorRelative( 0, 0, 1, 1 );
 		qglClearColor( 0, 0, 0, 1 );
 		qglClear( GL_COLOR_BUFFER_BIT );
 		ExecuteRenderCommands( frameData, (eyeView_t)eye );
