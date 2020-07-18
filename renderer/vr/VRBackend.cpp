@@ -34,6 +34,12 @@ idCVar vr_uiOverlayHeight( "vr_uiOverlayHeight", "2", CVAR_RENDERER|CVAR_FLOAT|C
 idCVar vr_uiOverlayAspect( "vr_uiOverlayAspect", "1.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Aspect ratio of the UI overlay" );
 idCVar vr_uiOverlayDistance( "vr_uiOverlayDistance", "2.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Distance in metres from the player position at which the UI overlay is positioned" );
 idCVar vr_uiOverlayVerticalOffset( "vr_uiOverlayVerticalOffset", "-0.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Vertical offset in metres of the UI overlay's position" );
+idCVar vr_aimIndicator("vr_aimIndicator", "1", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Display an aim indicator to show where the mouse is currently aiming at");
+idCVar vr_aimIndicatorSize("vr_aimIndicatorSize", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Size of the mouse aim indicator");
+idCVar vr_aimIndicatorColorR("vr_aimIndicatorColorR", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Red component of the mouse aim indicator color");
+idCVar vr_aimIndicatorColorG("vr_aimIndicatorColorG", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Green component of the mouse aim indicator color");
+idCVar vr_aimIndicatorColorB("vr_aimIndicatorColorB", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Blue component of the mouse aim indicator color");
+idCVar vr_aimIndicatorColorA("vr_aimIndicatorColorA", "1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Alpha component of the mouse aim indicator color");
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
@@ -41,9 +47,12 @@ extern void RB_CopyRender( const void *data );
 void VRBackend::Init() {
 	InitBackend();
 	InitHiddenAreaMesh();
+
+	vrAimIndicatorShader = programManager->LoadFromFiles( "aim_indicator", "vr/aim_indicator.vert.glsl", "vr/aim_indicator.frag.glsl" );
 }
 
 void VRBackend::Destroy() {
+	vrAimIndicatorShader = nullptr;
 	vrMirrorShader = nullptr;
 	qglDeleteBuffers( 1, &hiddenAreaMeshBuffer );
 	hiddenAreaMeshBuffer = 0;
@@ -51,10 +60,12 @@ void VRBackend::Destroy() {
 	DestroyBackend();
 }
 
-void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
+void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	if ( !BeginFrame() ) {
 		return;
 	}
+
+	emptyCommand_t *cmds = frameData->cmdHead;
 
 	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
 
@@ -66,14 +77,16 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	AcquireFboAndTexture( LEFT_EYE, eyeBuffers[0], eyeTextures[0] );
 	AcquireFboAndTexture( RIGHT_EYE, eyeBuffers[1], eyeTextures[1] );
 
+	aimIndicatorPos = frameData->mouseAimPosition;
+
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
 		frameBuffers->defaultFbo = eyeBuffers[eye];
 		frameBuffers->defaultFbo->Bind();
 		qglClearColor( 0, 0, 0, 1 );
 		qglClear( GL_COLOR_BUFFER_BIT );
-		ExecuteRenderCommands( cmds, (eyeView_t)eye );
-		FB_DebugShowContents();
+		ExecuteRenderCommands( frameData, (eyeView_t)eye );
+		DrawAimIndicator();
 	}
 
 	// render lightgem and 2D UI elements
@@ -83,7 +96,7 @@ void VRBackend::RenderStereoView( const emptyCommand_t *cmds ) {
 	GL_ScissorRelative( 0, 0, 1, 1 );
 	qglClearColor( 0, 0, 0, 0 );
 	qglClear( GL_COLOR_BUFFER_BIT );
-	ExecuteRenderCommands( cmds, UI );
+	ExecuteRenderCommands( frameData, UI );
 
 	defaultFbo->Bind();
 	MirrorVrView( eyeTextures[0], uiTexture );
@@ -113,8 +126,10 @@ void VRBackend::DrawHiddenAreaMeshToDepth() {
 	vertexCache.UnbindVertex();
 }
 
-void VRBackend::ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eyeView ) {
+void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView ) {
 	currentEye = eyeView;
+
+	const emptyCommand_t *cmds = frameData->cmdHead;
 	
 	if ( eyeView != UI ) {
 		UpdateRenderViewsForEye( cmds, eyeView );
@@ -300,6 +315,14 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 				myGlMultMatrix( surf->space->modelMatrix, viewDef->worldSpace.modelViewMatrix, const_cast<viewEntity_t*>(surf->space)->modelViewMatrix );
 			}
 		}
+
+		if ( viewDef->renderView.viewID == VID_PLAYER_VIEW ) {
+			idVec3 aimViewPos;
+			R_LocalPointToGlobal( viewDef->worldSpace.modelViewMatrix, aimIndicatorPos, aimViewPos );
+			idMat4 modelView (mat3_identity, aimViewPos);
+			modelView.TransposeSelf();
+			myGlMultMatrix( modelView.ToFloatPtr(), viewDef->projectionMatrix, aimIndicatorMvp.ToFloatPtr() );
+		}
 	}
 }
 
@@ -424,6 +447,27 @@ void VRBackend::MirrorVrView( idImage *eyeTexture, idImage *uiTexture ) {
 	eyeTexture->Bind();
 
 	RB_DrawFullScreenQuad();
+}
+
+struct AimIndicatorUniforms : GLSLUniformGroup {
+	UNIFORM_GROUP_DEF( AimIndicatorUniforms )
+	DEFINE_UNIFORM( mat4, mvp )
+	DEFINE_UNIFORM( float, size )
+	DEFINE_UNIFORM( vec4, color )
+};
+
+void VRBackend::DrawAimIndicator() {
+	if ( !vr_aimIndicator.GetBool() ) {
+		return;
+	}
+
+	vrAimIndicatorShader->Activate();
+	AimIndicatorUniforms *uniforms = vrAimIndicatorShader->GetUniformGroup<AimIndicatorUniforms>();
+	uniforms->mvp.Set( aimIndicatorMvp );
+	uniforms->size.Set( vr_aimIndicatorSize.GetFloat() );
+	uniforms->color.Set( vr_aimIndicatorColorR.GetFloat(), vr_aimIndicatorColorG.GetFloat(), vr_aimIndicatorColorB.GetFloat(), vr_aimIndicatorColorA.GetFloat() );
+	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_SRCBLEND_SRC_ALPHA );
+	RB_DrawFullScreenQuad();	
 }
 
 void SelectVRImplementation() {
