@@ -56,6 +56,8 @@ protected:
 
 	virtual idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) = 0;
 
+	virtual bool UsesSrgbTextures() const = 0;
+
 private:
 	void InitHiddenAreaMesh();
 	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
