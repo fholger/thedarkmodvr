@@ -32,7 +32,7 @@ public:
 	virtual void PrepareFrame() = 0;
  
 	virtual void AdjustRenderView( renderView_t *view ) = 0;
-	void RenderStereoView( const emptyCommand_t * cmds );
+	void RenderStereoView( const frameData_t *frameData );
 	void DrawHiddenAreaMeshToDepth();
 
 	void UpdateLightScissor( viewLight_t *vLight );
@@ -46,7 +46,7 @@ protected:
 		RIGHT_EYE = 1,
 		UI = 2,
 	};
-	void ExecuteRenderCommands( const emptyCommand_t *cmds, eyeView_t eyeView );
+	void ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView );
 	virtual bool BeginFrame() = 0;
 	virtual void SubmitFrame() = 0;
 	virtual void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) = 0;
@@ -61,6 +61,7 @@ private:
 	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
 	void UpdateViewPose( viewDef_t *viewDef, int eye );
 	void MirrorVrView( idImage *eyeTexture, idImage *uiTexture );
+	void DrawAimIndicator();
 
 	GLSLProgram *vrMirrorShader = nullptr;
 	GLuint hiddenAreaMeshBuffer = 0;
@@ -68,6 +69,10 @@ private:
 	GLuint numVertsRight = 0;
 	GLSLProgram *hiddenAreaMeshShader = nullptr;
 	eyeView_t currentEye;
+
+	idVec3 aimIndicatorPos;
+	idMat4 aimIndicatorMvp;
+	GLSLProgram *vrAimIndicatorShader = nullptr;
 };
 
 extern VRBackend *vrBackend;
