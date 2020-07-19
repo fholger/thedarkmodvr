@@ -22,7 +22,7 @@ for:
     verbosity: minimal
   after_build:
   - cmd: |
-      7z a -t7z TheDarkModVR.7z ..\darkmod\*.exe
+      7z a -t7z TheDarkModVR.7z ..\darkmod\TheDarkMod*.exe
       7z a -t7z TheDarkModVR.7z ..\darkmod\*.dll
       7z a -t7z TheDarkModVR.7z ..\darkmod\glprogs_vr
 
