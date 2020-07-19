@@ -159,7 +159,7 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 			break;
 		case RC_DRAW_VIEW: {
 			backEnd.viewDef = ( ( const drawSurfsCommand_t * )cmds )->viewDef;
-			isv3d = ( backEnd.viewDef->viewEntitys != nullptr );	// view is 2d or 3d
+			isv3d = ( backEnd.viewDef->viewEntitys != nullptr && !backEnd.viewDef->renderWorld->mapName.IsEmpty() );
 			if ( (isv3d && shouldRender3D) || (!isv3d && shouldRender2D) ) {
 				if ( isv3d && shouldRender3D ) {
 					frameBuffers->EnterPrimary();
@@ -297,7 +297,7 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 	for ( const emptyCommand_t *cmd = cmds; cmd; cmd = ( const emptyCommand_t * )cmd->next ) {
 		if ( cmd->commandId == RC_DRAW_VIEW ) {
 			viewDef_t *viewDef = ( ( const drawSurfsCommand_t * )cmd )->viewDef;
-			if ( viewDef->IsLightGem() || viewDef->viewEntitys == nullptr ) {
+			if ( viewDef->IsLightGem() || viewDef->viewEntitys == nullptr || viewDef->renderWorld->mapName.IsEmpty() ) {
 				continue;
 			}
 
