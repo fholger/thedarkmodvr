@@ -217,6 +217,14 @@ void DepthStage::FastDepthPass( const idList<drawSurf_t *> drawSurfs, const view
 
 	fastDepthShader->Activate();
 
+	GL_State( GLS_DEPTHFUNC_LESS );
+
+	// Enable stencil test if we are going to be using it for shadows.
+	// If we didn't do this, it would be legal behavior to get z fighting
+	// from the ambient pass and the light passes.
+	qglEnable( GL_STENCIL_TEST );
+	qglStencilFunc( GL_ALWAYS, 1, 255 );
+
 	vertexCache.BindVertex();
 
 	DrawBatch<idMat4> drawBatch = drawBatchExecutor->BeginBatch<idMat4>();
