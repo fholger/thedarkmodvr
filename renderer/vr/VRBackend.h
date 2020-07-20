@@ -24,6 +24,7 @@ extern idCVar vr_uiOverlayHeight;
 extern idCVar vr_uiOverlayAspect;
 extern idCVar vr_uiOverlayDistance;
 extern idCVar vr_uiOverlayVerticalOffset;
+extern idCVar vr_force2DRender;
 
 class VRBackend {
 public:
