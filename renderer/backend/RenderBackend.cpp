@@ -209,7 +209,7 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 
 	// clear the stencil buffer if needed
 	if ( vLight->globalShadows || vLight->localShadows ) {
-		if ( /*r_useScissor.GetBool()*/ true ) {
+		if ( !r_ignore2.GetBool() ) {
 			backEnd.currentScissor = vLight->scissorRect;
 			GL_ScissorVidSize( viewDef->viewport.x1 + backEnd.currentScissor.x1,
 			            viewDef->viewport.y1 + backEnd.currentScissor.y1,

@@ -41,6 +41,7 @@ idCVar vr_aimIndicatorColorR("vr_aimIndicatorColorR", "0.5", CVAR_FLOAT|CVAR_REN
 idCVar vr_aimIndicatorColorG("vr_aimIndicatorColorG", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Green component of the mouse aim indicator color");
 idCVar vr_aimIndicatorColorB("vr_aimIndicatorColorB", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Blue component of the mouse aim indicator color");
 idCVar vr_aimIndicatorColorA("vr_aimIndicatorColorA", "1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Alpha component of the mouse aim indicator color");
+idCVar vr_force2DRender("vr_force2DRender", "0", CVAR_RENDERER|CVAR_INTEGER, "Force rendering to the 2D overlay instead of stereo");
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
@@ -67,6 +68,7 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	}
 
 	emptyCommand_t *cmds = frameData->cmdHead;
+	const_cast<frameData_t *>(frameData)->render2D |= vr_force2DRender.GetBool();
 
 	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
 

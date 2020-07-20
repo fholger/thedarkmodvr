@@ -592,6 +592,8 @@ bool R_Lightgem_Render() {
 		0.0f, 1.0f, 0.0f,
 		-1.0f, 0.0f, 0.0f
 	); 
+	// VR: must reset the view org, as otherwise we get the position of the headset
+	lightgemRv.vieworg = tr.viewDef->renderView.initialVieworg;
 
 	// Give the rv the current ambient light values - Not all of the other values, avoiding fancy effects.
 	lightgemRv.shaderParms[2] = gameLocal.globalShaderParms[2]; // Ambient R

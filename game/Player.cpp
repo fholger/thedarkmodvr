@@ -8770,7 +8770,7 @@ void idPlayer::CalculateRenderView( void ) {
 			gameLocal.GetCamera()->GetViewParms( renderView );
 		}
 	} else {
-		frameData->render2D = false;
+		frameData->render2D = vr_force2DRender.GetInteger() == 2;
 		if ( g_stopTime.GetBool() ) {
 			renderView->vieworg = firstPersonViewOrigin;
 			renderView->viewaxis = firstPersonViewAxis;
