@@ -17,3 +17,10 @@ If you're feeling brave, you can also download a nightly build. Head to [AppVeyo
 By default, this mod is using OpenVR as its backend, so will launch through SteamVR. There is an alternative OpenXR backend, which will eventually become the default and only backend. But right now, if you want to use it, you have to explicitly ask for it.
 
 Create a file called `autoexec_vr.cfg` in your DarkMod folder and put the line `set vr_backend 1` into it. If you want to go back to OpenVR, change the `1` into a `0`.
+
+## Calibrate seated position
+
+The game requests the seated reference position from your runtime, so it's important that you have it properly calibrated in your runtime, or else your view point will misalign with the actual player position and you may be stuck in a wall/ceiling, or the UI overlay will not be visible! To do so, once you've assumed your seating position:
+
+* SteamVR: choose "reset seated position". There's a button for it in the SteamVR overlay, alternatively on your desktop click on the settings icon for SteamVR, and the option should be available there in the menu.
+* Oculus: press and hold the Oculus button to recenter your view.
