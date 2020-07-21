@@ -31,6 +31,17 @@ for:
   - path: TheDarkModVR.7z
     name: TheDarkModVR
 
+  deploy:
+    provider: GitHub
+    description: 'The Dark Mod VR'
+    auth_token:
+      secure: jMupWwNFaEHDNRvaZX4pxtGeLa9LpAK68sdQgBoUgki2JdEdRjms7irbi1PDHbKo
+    artifact: 'TheDarkModVR'
+    draft: true
+    prerelease: true
+    on:
+      APPVEYOR_REPO_TAG: true
+
 - matrix:
     only:
     - image: Ubuntu1804
@@ -61,3 +72,14 @@ for:
   artifacts:
   - path: thedarkmodvr.tar.bz2
     name: TheDarkModVRLinux
+    
+  deploy:
+    provider: GitHub
+    description: 'The Dark Mod VR'
+    auth_token:
+      secure: jMupWwNFaEHDNRvaZX4pxtGeLa9LpAK68sdQgBoUgki2JdEdRjms7irbi1PDHbKo
+    artifact: 'TheDarkModVRLinux'
+    draft: true
+    prerelease: true
+    on:
+      APPVEYOR_REPO_TAG: true
