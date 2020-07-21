@@ -8597,9 +8597,9 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) 
 		angles = viewAngles + viewBobAngles + physicsObj.GetViewLeanAngles() + playerView.AngleOffset();
 
 		if ( decoupledAngles ) {
-			// in VR, mouse pitch added to the view is confusing, so leave it out
+			// in VR, mouse pitch and roll added to the view is confusing, so leave it out
 			actualViewAngles.pitch = 0;
-			actualViewAngles.roll = angles.roll;
+			actualViewAngles.roll = 0;
 
 			// figure out yaw adjustment:
 			// we want the player to be able to move the mouse horizontally within a certain corridor
