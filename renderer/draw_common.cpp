@@ -519,8 +519,15 @@ void RB_STD_T_RenderShaderPasses_OldStage( const shaderStage_t *pStage, const dr
 	// bind the texture
 	RB_BindVariableStageImage( &pStage->texture, regs );
 
-	// set the state
 	GL_State( pStage->drawStateBits );
+
+	// VR hack: since fonts and other things in GUIs render semi-transparently and this transparency
+	// carries on to the UI overlay, try to ensure that the alpha channel is set to full to keep stuff readable
+	if (surf->material->GetSort() == SS_DECAL && backEnd.viewDef->viewEntitys == nullptr) {
+		qglBlendColor(1, 1, 1, 1);
+		qglBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_CONSTANT_ALPHA, GL_CONSTANT_ALPHA);
+	}
+
 
 	// draw it
 	RB_DrawElementsWithCounters( surf );
