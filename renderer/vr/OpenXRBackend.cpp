@@ -330,6 +330,12 @@ void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 	}
 }
 
+float OpenXRBackend::GetHalfEyeDistance() const {
+	idVec3 leftEyePos = Vec3FromXr( renderViews[0].pose.position );
+	idVec3 rightEyePos = Vec3FromXr( renderViews[1].pose.position );
+	return 0.5f * ( leftEyePos - rightEyePos ).Length();
+}
+
 idList<idVec2> OpenXRBackend::GetHiddenAreaMask( eyeView_t eye ) {
 	if ( !XR_KHR_visibility_mask_available ) {
 		return idList<idVec2>();

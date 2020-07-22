@@ -8622,7 +8622,11 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) 
 				actualViewAngles.yaw = angles.yaw - idMath::ClampFloat( -maxYawDiff, maxYawDiff, yawDiff );
 			}
 
+			vrBackend->SetVignetteStatus( actualViewAngles != lastViewAngles || origin != lastPosition );
+
 			angles = actualViewAngles;
+			lastViewAngles = actualViewAngles;
+			lastPosition = origin;
 		}
 
 		axis = angles.ToMat3() * physicsObj.GetGravityAxis();

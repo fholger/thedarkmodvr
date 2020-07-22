@@ -43,15 +43,22 @@ idCVar vr_aimIndicatorColorB("vr_aimIndicatorColorB", "0.5", CVAR_FLOAT|CVAR_REN
 idCVar vr_aimIndicatorColorA("vr_aimIndicatorColorA", "1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Alpha component of the mouse aim indicator color");
 idCVar vr_force2DRender("vr_force2DRender", "0", CVAR_RENDERER|CVAR_INTEGER, "Force rendering to the 2D overlay instead of stereo");
 idCVar vr_disableUITransparency("vr_disableUITransparency", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Disable transparency when rendering UI elements (may have unintended side-effects)");
+idCVar vr_comfortVignette("vr_comfortVignette", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Enable a vignette effect on artificial movement");
+idCVar vr_comfortVignetteStrength("vr_comfortVignetteStrength", "0.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "The strength of the comfort vignette" );
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
+
+const float VRBackend::GameUnitsToMetres = 0.02309f;
+const float VRBackend::MetresToGameUnits = 1.0f / GameUnitsToMetres;
 
 void VRBackend::Init() {
 	InitBackend();
 	InitHiddenAreaMesh();
 
+	vrMirrorShader = programManager->LoadFromFiles( "vr_mirror", "vr/vr_mirror.vert.glsl", "vr/vr_mirror.frag.glsl" );
 	vrAimIndicatorShader = programManager->LoadFromFiles( "aim_indicator", "vr/aim_indicator.vert.glsl", "vr/aim_indicator.frag.glsl" );
+	comfortVignetteShader = programManager->LoadFromFiles( "comfort_vignette", "vr/comfort_vignette.vert.glsl", "vr/comfort_vignette.frag.glsl" );
 }
 
 void VRBackend::Destroy() {
@@ -92,6 +99,9 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 		qglClearColor( 0, 0, 0, 1 );
 		qglClear( GL_COLOR_BUFFER_BIT );
 		ExecuteRenderCommands( frameData, (eyeView_t)eye );
+		if ( vr_comfortVignette.GetBool() && vignetteEnabled ) {
+			DrawComfortVignette((eyeView_t)eye);
+		}
 		if ( !frameData->render2D ) {
 			DrawAimIndicator();
 		}
@@ -450,9 +460,6 @@ void VRBackend::MirrorVrView( idImage *eyeTexture, idImage *uiTexture ) {
 	GL_ViewportRelative( 0, 0, 1, 1 );
 	GL_ScissorRelative( 0, 0, 1, 1 );
 
-	if (vrMirrorShader == nullptr) {
-		vrMirrorShader = programManager->LoadFromFiles( "vr_mirror", "vr/vr_mirror.vert.glsl", "vr/vr_mirror.frag.glsl" );
-	}
 	vrMirrorShader->Activate();
 	MirrorUniforms *uniforms = vrMirrorShader->GetUniformGroup<MirrorUniforms>();
 	uniforms->aspectEye.Set( static_cast<float>(eyeTexture->uploadWidth) / eyeTexture->uploadHeight );
@@ -497,6 +504,36 @@ void VRBackend::DrawAimIndicator() {
 	RB_DrawFullScreenQuad();	
 }
 
+struct ComfortVignetteUniforms : GLSLUniformGroup {
+	UNIFORM_GROUP_DEF( ComfortVignetteUniforms )
+	DEFINE_UNIFORM( float, strength )
+	DEFINE_UNIFORM( vec2, center)
+};
+
+void VRBackend::DrawComfortVignette(eyeView_t eye) {
+	// draw a circular cutout
+	// the center of this circle must be placed in the center between the eyes, we then need
+	// to project its origin into the screen space of the current eye.
+	viewDef_t stubView;
+	memset( &stubView, 0, sizeof(stubView) );
+	SetupProjectionMatrix( &stubView, eye );
+
+	float offset = (eye == LEFT_EYE ? 1 : -1) * GetHalfEyeDistance();
+	idVec4 projectedVignetteCenter;
+	// place in the center of the eyes at infinite depth, then project to clip
+	R_PointTimesMatrix( stubView.projectionMatrix, idVec4(offset, 0, -10000000.f, 1), projectedVignetteCenter );
+	projectedVignetteCenter.x /= projectedVignetteCenter.w;
+	projectedVignetteCenter.y /= projectedVignetteCenter.w;
+	idVec2 uv( 0.5f * (projectedVignetteCenter.x + 1), 0.5f * (projectedVignetteCenter.y + 1) );
+	
+	comfortVignetteShader->Activate();
+	ComfortVignetteUniforms *uniforms = comfortVignetteShader->GetUniformGroup<ComfortVignetteUniforms>();
+	uniforms->strength.Set( vr_comfortVignetteStrength.GetFloat() );
+	uniforms->center.Set( uv );
+	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
+	RB_DrawFullScreenQuad();
+}
+
 void SelectVRImplementation() {
 	if ( vr_backend.GetInteger() == 0 ) {
 		vrBackend = openvr;
@@ -507,4 +544,8 @@ void SelectVRImplementation() {
 
 void VRBackend::UpdateLightScissor( viewLight_t *vLight ) {
 	vLight->scissorRect = VR_CalcLightScissorRectangle( vLight, backEnd.viewDef );
+}
+
+void VRBackend::SetVignetteStatus( bool vignetteEnabled ) {
+	this->vignetteEnabled = vignetteEnabled;
 }
