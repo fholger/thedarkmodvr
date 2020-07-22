@@ -465,6 +465,10 @@ void VRBackend::MirrorVrView( idImage *eyeTexture, idImage *uiTexture ) {
 	GL_SelectTexture( 0 );
 	eyeTexture->Bind();
 
+	qglClearColor( 0, 0, 0, 1 );
+	qglClear(GL_COLOR_BUFFER_BIT);
+	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_SRCBLEND_ONE | GLS_DSTBLEND_ZERO );
+
 	if ( UsesSrgbTextures() ) {
 		qglEnable( GL_FRAMEBUFFER_SRGB );
 	}
