@@ -269,6 +269,8 @@ public:
 	idAngles				cmdAngles;			// player cmd angles
 	// VR support
 	mutable idAngles		actualViewAngles;
+	mutable idAngles		lastViewAngles;
+	mutable idVec3			lastPosition;
 
 	int						buttonMask;
 	int						oldButtons;

@@ -128,15 +128,13 @@ void OpenVRBackend::AdjustRenderView( renderView_t *view ) {
 		return;
 	}
 
-	const float scale = 1.0f / 0.02309f;
-
 	const vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
-	idVec3 position ( -scale * mat.m[2][3], -scale * mat.m[0][3], scale * mat.m[1][3] );
+	idVec3 position ( -MetresToGameUnits * mat.m[2][3], -MetresToGameUnits * mat.m[0][3], MetresToGameUnits * mat.m[1][3] );
 	idMat3 axis;
 	axis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
 	axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
 	axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
-	position += eyeForward * scale * axis[0];
+	position += eyeForward * MetresToGameUnits * axis[0];
 
 	view->initialViewaxis = view->viewaxis;
 	view->initialVieworg = view->vieworg;
@@ -161,17 +159,15 @@ bool OpenVRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) {
 		return false;
 	}
 
-	const float scale = 1.0f / 0.02309f;
-
 	const vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
-	origin.Set( -scale * mat.m[2][3], -scale * mat.m[0][3], scale * mat.m[1][3] );
+	origin.Set( -MetresToGameUnits * mat.m[2][3], -MetresToGameUnits * mat.m[0][3], MetresToGameUnits * mat.m[1][3] );
 	axis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
 	axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
 	axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
-	origin += eyeForward * scale * axis[0];
+	origin += eyeForward * MetresToGameUnits * axis[0];
 
 	const int eyeFactor[] = {-1, 1};
-	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * scale;
+	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * MetresToGameUnits;
 	origin -= eyeFactor[eye] * halfEyeSeparationWorldUnits * axis[1];
 
 	return true;
@@ -236,6 +232,10 @@ void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 		fbo = eyeBuffers[eye];
 		texture = eyeTextures[eye];
 	}
+}
+
+float OpenVRBackend::GetHalfEyeDistance() const {
+	return 0.5f * GetInterPupillaryDistance() * MetresToGameUnits;
 }
 
 idList<idVec2> OpenVRBackend::GetHiddenAreaMask( eyeView_t eye ) {
