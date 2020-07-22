@@ -129,7 +129,7 @@ void DepthStage::PartitionSurfaces( drawSurf_t **drawSurfs, int numDrawSurfs, id
 		if ( material->GetSort() == SS_SUBVIEW ) {
 			// sub view surfaces need to be rendered first in a generic pass due to mirror plane clipping
 			subviewSurfs.AddGrow( surf );
-		} else if ( material->Coverage() == MC_OPAQUE ) {
+		} else if ( material->Coverage() == MC_OPAQUE && !surf->space->weaponDepthHack ) {
 			opaqueSurfs.AddGrow( surf );
 		} else {
 			const float *regs = surf->shaderRegisters;
@@ -149,7 +149,7 @@ void DepthStage::PartitionSurfaces( drawSurf_t **drawSurfs, int numDrawSurfs, id
 				break;
 			}
 
-			if (isOpaque) {
+			if (isOpaque && !surf->space->weaponDepthHack) {
 				opaqueSurfs.AddGrow( surf );
 			} else {
 				// these need alpha checks in the shader and thus can't be handled by the fast pass
