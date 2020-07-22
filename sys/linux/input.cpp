@@ -257,7 +257,7 @@ static void Sys_XInstallGrabs( void ) {
 
 	XWarpPointer( dpy, None, win,
 				 0, 0, 0, 0,
-				 glConfig.vidWidth / 2, glConfig.vidHeight / 2 );
+				 glConfig.windowWidth / 2, glConfig.windowHeight / 2 );
 
 	XSync( dpy, False );
 
@@ -295,8 +295,8 @@ static void Sys_XInstallGrabs( void ) {
 		XWarpPointer( dpy, None, win, 0, 0, 0, 0, 0, 0 );
 #endif
 	} else {
-		mwx = glConfig.vidWidth / 2;
-		mwy = glConfig.vidHeight / 2;
+		mwx = glConfig.windowWidth / 2;
+		mwy = glConfig.windowHeight / 2;
 		mx = my = 0;
 	}
 
@@ -338,7 +338,7 @@ void Sys_XUninstallGrabs(void) {
 	
 	XWarpPointer( dpy, None, win,
 				 0, 0, 0, 0,
-				 glConfig.vidWidth / 2, glConfig.vidHeight / 2);
+				 glConfig.windowWidth / 2, glConfig.windowHeight / 2);
 	
 	XUndefineCursor( dpy, win );
 
@@ -633,8 +633,8 @@ void Posix_PollInput() {
 						return;
 				} else if (in_nowarp.GetBool()) {
 					// stgatilov: in nowarp mode queue mouse displacement events immediately
-					static int prevX = glConfig.vidWidth / 2;
-					static int prevY = glConfig.vidHeight / 2;
+					static int prevX = glConfig.windowWidth / 2;
+					static int prevY = glConfig.windowHeight / 2;
 					dx = ((int) event.xmotion.x - prevX);
 					dy = ((int) event.xmotion.y - prevY);
 					prevX = event.xmotion.x;
@@ -647,10 +647,10 @@ void Posix_PollInput() {
 				} else {
 					// if it's a center motion, we've just returned from our warp
 					// FIXME: we generate mouse delta on wrap return, but that lags us quite a bit from the initial event..
-					if (event.xmotion.x == glConfig.vidWidth / 2 &&
-						event.xmotion.y == glConfig.vidHeight / 2) {
-						mwx = glConfig.vidWidth / 2;
-						mwy = glConfig.vidHeight / 2;
+					if (event.xmotion.x == glConfig.windowWidth / 2 &&
+						event.xmotion.y == glConfig.windowHeight / 2) {
+						mwx = glConfig.windowWidth / 2;
+						mwy = glConfig.windowHeight / 2;
 
 						Posix_QueEvent( SE_MOUSE, mx, my, 0, NULL);
 
@@ -668,7 +668,7 @@ void Posix_PollInput() {
 
 					mwx = event.xmotion.x;
 					mwy = event.xmotion.y;
-					XWarpPointer(dpy,None,win,0,0,0,0, (glConfig.vidWidth/2),(glConfig.vidHeight/2));
+					XWarpPointer(dpy,None,win,0,0,0,0, (glConfig.windowWidth/2),(glConfig.windowHeight/2));
 				}
 			break;
 		}
