@@ -1,5 +1,7 @@
 # The Dark Mod VR
 
+![The Dark Mod VR][logo]
+
 This is a VR mod for the free game "The Dark Mod", a Thief series inspired first-person stealth game.
 
 The mod is in early development. It is currently a seated keyboard+mouse experience only, without any comfort options. It is recommended to experienced VR players only, and familiarity with the base game in non-VR play is going to be helpful. A full room-scale experience is the long-term goal, but there's a long way to go :)
@@ -24,3 +26,5 @@ The game requests the seated reference position from your runtime, so it's impor
 
 * SteamVR: choose "reset seated position". There's a button for it in the SteamVR overlay, alternatively on your desktop click on the settings icon for SteamVR, and the option should be available there in the menu.
 * Oculus: press and hold the Oculus button to recenter your view.
+
+[logo]: https://github.com/fholger/thedarkmodvr/raw/master/thedarkmodvr.png
