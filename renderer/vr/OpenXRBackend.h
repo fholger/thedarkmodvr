@@ -37,7 +37,6 @@ protected:
 	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
 	bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) override;
 	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
-	float GetHalfEyeDistance() const override;
 	idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) override;
 	bool UsesSrgbTextures() const override;
 
