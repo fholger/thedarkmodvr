@@ -40,8 +40,6 @@ public:
 
 	void UpdateLightScissor( viewLight_t *vLight );
 
-	void SetVignetteStatus( bool vignetteEnabled );
-
 	static const float GameUnitsToMetres;
 	static const float MetresToGameUnits;
 protected:
@@ -72,6 +70,7 @@ private:
 	void UpdateViewPose( viewDef_t *viewDef, int eye );
 	void MirrorVrView( idImage *eyeTexture, idImage *uiTexture );
 	void DrawAimIndicator();
+	void UpdateComfortVignetteStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
 
 	GLSLProgram *vrMirrorShader = nullptr;
@@ -87,6 +86,9 @@ private:
 
 	GLSLProgram *comfortVignetteShader = nullptr;
 	bool vignetteEnabled = false;
+	idVec3 lastCameraPosition;
+	idAngles lastCameraAngles;
+	uint64_t lastCameraUpdateTime = 0;
 };
 
 extern VRBackend *vrBackend;

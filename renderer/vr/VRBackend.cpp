@@ -44,7 +44,8 @@ idCVar vr_aimIndicatorColorA("vr_aimIndicatorColorA", "1", CVAR_FLOAT|CVAR_RENDE
 idCVar vr_force2DRender("vr_force2DRender", "0", CVAR_RENDERER|CVAR_INTEGER, "Force rendering to the 2D overlay instead of stereo");
 idCVar vr_disableUITransparency("vr_disableUITransparency", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Disable transparency when rendering UI elements (may have unintended side-effects)");
 idCVar vr_comfortVignette("vr_comfortVignette", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Enable a vignette effect on artificial movement");
-idCVar vr_comfortVignetteStrength("vr_comfortVignetteStrength", "0.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "The strength of the comfort vignette" );
+idCVar vr_comfortVignetteRadius("vr_comfortVignetteRadius", "0.6", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "The radius/size of the comfort vignette" );
+idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Transition corridor width from black to visible of the comfort vignette" );
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
@@ -74,6 +75,8 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	if ( !BeginFrame() ) {
 		return;
 	}
+
+	UpdateComfortVignetteStatus( frameData );
 
 	emptyCommand_t *cmds = frameData->cmdHead;
 	const_cast<frameData_t *>(frameData)->render2D |= vr_force2DRender.GetBool();
@@ -504,9 +507,26 @@ void VRBackend::DrawAimIndicator() {
 	RB_DrawFullScreenQuad();	
 }
 
+void VRBackend::UpdateComfortVignetteStatus( const frameData_t *frameData ) {
+	float positionDifference = (lastCameraPosition - frameData->cameraPosition).LengthSqr();
+	if ( ! frameData->cameraAngles.Compare(lastCameraAngles, 0.0001f) || positionDifference > 0.0001f ) {
+		vignetteEnabled = true;
+		lastCameraUpdateTime = Sys_GetTimeMicroseconds();
+	} else {
+		if ( Sys_GetTimeMicroseconds() - lastCameraUpdateTime >= 500000 ) {
+			// disable vignette after a 0.5s delay
+			vignetteEnabled = false;
+		}
+	}
+
+	lastCameraAngles = frameData->cameraAngles;
+	lastCameraPosition = frameData->cameraPosition;
+}
+
 struct ComfortVignetteUniforms : GLSLUniformGroup {
 	UNIFORM_GROUP_DEF( ComfortVignetteUniforms )
-	DEFINE_UNIFORM( float, strength )
+	DEFINE_UNIFORM( float, radius )
+	DEFINE_UNIFORM( float, corridor )
 	DEFINE_UNIFORM( vec2, center)
 };
 
@@ -528,7 +548,8 @@ void VRBackend::DrawComfortVignette(eyeView_t eye) {
 	
 	comfortVignetteShader->Activate();
 	ComfortVignetteUniforms *uniforms = comfortVignetteShader->GetUniformGroup<ComfortVignetteUniforms>();
-	uniforms->strength.Set( vr_comfortVignetteStrength.GetFloat() );
+	uniforms->radius.Set( vr_comfortVignetteRadius.GetFloat() );
+	uniforms->corridor.Set( vr_comfortVignetteCorridor.GetFloat() );
 	uniforms->center.Set( uv );
 	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 	RB_DrawFullScreenQuad();
@@ -544,8 +565,4 @@ void SelectVRImplementation() {
 
 void VRBackend::UpdateLightScissor( viewLight_t *vLight ) {
 	vLight->scissorRect = VR_CalcLightScissorRectangle( vLight, backEnd.viewDef );
-}
-
-void VRBackend::SetVignetteStatus( bool vignetteEnabled ) {
-	this->vignetteEnabled = vignetteEnabled;
 }

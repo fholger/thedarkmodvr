@@ -8622,11 +8622,7 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) 
 				actualViewAngles.yaw = angles.yaw - idMath::ClampFloat( -maxYawDiff, maxYawDiff, yawDiff );
 			}
 
-			vrBackend->SetVignetteStatus( actualViewAngles != lastViewAngles || origin != lastPosition );
-
 			angles = actualViewAngles;
-			lastViewAngles = actualViewAngles;
-			lastPosition = origin;
 		}
 
 		axis = angles.ToMat3() * physicsObj.GetGravityAxis();
@@ -8634,6 +8630,9 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) 
 		// adjust the origin based on the camera nodal distance (eye distance from neck)
 		origin += physicsObj.GetGravityNormal() * g_viewNodalZ.GetFloat();
 		origin += axis[0] * g_viewNodalX.GetFloat() + axis[2] * g_viewNodalZ.GetFloat();
+
+		frameData->cameraPosition = origin;
+		frameData->cameraAngles = angles;
 	}
 }
 

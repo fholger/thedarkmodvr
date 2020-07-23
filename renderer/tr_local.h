@@ -648,6 +648,8 @@ typedef struct {
 	// VR extras
 	idVec3				mouseAimPosition;
 	bool				render2D;  // if set, do not render in stereoscopic mode, but only to 2D overlay (e.g. cutscenes)
+	idVec3				cameraPosition;
+	idAngles			cameraAngles;
 } frameData_t;
 
 extern	frameData_t		*frameData;
