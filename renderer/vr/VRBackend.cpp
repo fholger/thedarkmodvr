@@ -532,16 +532,14 @@ struct ComfortVignetteUniforms : GLSLUniformGroup {
 
 void VRBackend::DrawComfortVignette(eyeView_t eye) {
 	// draw a circular cutout
-	// the center of this circle must be placed in the center between the eyes, we then need
-	// to project its origin into the screen space of the current eye.
+	// since we are dealing with an asymmetrical projection, we need to figure out the projection center
+	// see: https://developer.oculus.com/blog/tech-note-asymmetric-field-of-view-faq/
 	viewDef_t stubView;
 	memset( &stubView, 0, sizeof(stubView) );
 	SetupProjectionMatrix( &stubView, eye );
 
-	float offset = (eye == LEFT_EYE ? 1 : -1) * GetHalfEyeDistance();
 	idVec4 projectedVignetteCenter;
-	// place in the center of the eyes at infinite depth, then project to clip
-	R_PointTimesMatrix( stubView.projectionMatrix, idVec4(offset, 0, -10000000.f, 1), projectedVignetteCenter );
+	R_PointTimesMatrix( stubView.projectionMatrix, idVec4(0, 0, -r_znear.GetFloat(), 1), projectedVignetteCenter );
 	projectedVignetteCenter.x /= projectedVignetteCenter.w;
 	projectedVignetteCenter.y /= projectedVignetteCenter.w;
 	idVec2 uv( 0.5f * (projectedVignetteCenter.x + 1), 0.5f * (projectedVignetteCenter.y + 1) );

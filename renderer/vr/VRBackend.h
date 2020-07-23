@@ -57,7 +57,6 @@ protected:
 	virtual void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) = 0;
 	virtual bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) = 0;
 	virtual void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) = 0;
-	virtual float GetHalfEyeDistance() const = 0;
 
 	virtual idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) = 0;
 

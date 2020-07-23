@@ -10882,7 +10882,7 @@ void idPlayer::PerformFrobCheck()
 	trace_t trace;
 	gameLocal.clip.TracePoint(trace, start, end, cm, this);
 	
-	float traceDist = g_Global.m_MaxFrobDistance * trace.fraction;
+	float traceDist = maxFrobDistance * trace.fraction;
 	frameData->mouseAimPosition = start + viewAngles.ToForward() * traceDist;
 
 	if (m_bGrabberActive)

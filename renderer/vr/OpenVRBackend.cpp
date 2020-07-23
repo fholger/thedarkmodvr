@@ -234,10 +234,6 @@ void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 	}
 }
 
-float OpenVRBackend::GetHalfEyeDistance() const {
-	return 0.5f * GetInterPupillaryDistance() * MetresToGameUnits;
-}
-
 idList<idVec2> OpenVRBackend::GetHiddenAreaMask( eyeView_t eye ) {
 	vr::HiddenAreaMesh_t hiddenAreaMesh = system->GetHiddenAreaMesh( eye == LEFT_EYE ? vr::Eye_Left : vr::Eye_Right );
 	idList<idVec2> vertices;
