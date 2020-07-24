@@ -26,6 +26,9 @@ extern idCVar vr_uiOverlayDistance;
 extern idCVar vr_uiOverlayVerticalOffset;
 extern idCVar vr_force2DRender;
 extern idCVar vr_disableUITransparency;
+extern idCVar vr_aimIndicatorSize;
+extern idCVar vr_aimIndicatorRangedSize;
+extern idCVar vr_aimIndicatorRangedMultiplier;
 
 class VRBackend {
 public:
@@ -68,7 +71,7 @@ private:
 	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
 	void UpdateViewPose( viewDef_t *viewDef, int eye );
 	void MirrorVrView( idImage *eyeTexture, idImage *uiTexture );
-	void DrawAimIndicator();
+	void DrawAimIndicator( float size );
 	void UpdateComfortVignetteStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
 
