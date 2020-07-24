@@ -8773,7 +8773,8 @@ void idPlayer::CalculateRenderView( void ) {
 			gameLocal.GetCamera()->GetViewParms( renderView );
 		}
 	} else {
-		frameData->render2D = vr_force2DRender.GetInteger() == 2;
+		bool spyglassInUse = m_immobilization.GetInt( "spyglass" ) != 0;
+		frameData->render2D = vr_force2DRender.GetInteger() == 2 || spyglassInUse;
 		if ( g_stopTime.GetBool() ) {
 			renderView->vieworg = firstPersonViewOrigin;
 			renderView->viewaxis = firstPersonViewAxis;
@@ -8791,7 +8792,7 @@ void idPlayer::CalculateRenderView( void ) {
 			renderView->vieworg = firstPersonViewOrigin;
 			renderView->viewaxis = firstPersonViewAxis;
 
-			GetViewPos( renderView->vieworg, renderView->viewaxis, vr_decoupleMouseMovement.GetBool() );
+			GetViewPos( renderView->vieworg, renderView->viewaxis, vr_decoupleMouseMovement.GetBool() && !spyglassInUse );
 
 			// set the viewID to the clientNum + 1, so we can suppress the right player bodies and
 			// allow the right player view weapons
