@@ -41,6 +41,8 @@ idCVar vr_aimIndicatorColorR("vr_aimIndicatorColorR", "0.5", CVAR_FLOAT|CVAR_REN
 idCVar vr_aimIndicatorColorG("vr_aimIndicatorColorG", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Green component of the mouse aim indicator color");
 idCVar vr_aimIndicatorColorB("vr_aimIndicatorColorB", "0.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Blue component of the mouse aim indicator color");
 idCVar vr_aimIndicatorColorA("vr_aimIndicatorColorA", "1", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Alpha component of the mouse aim indicator color");
+idCVar vr_aimIndicatorRangedMultiplier("vr_aimIndicatorRangedMultiplier", "4", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "A multiplier for the maximum depth the aim indicator can reach when using the bow");
+idCVar vr_aimIndicatorRangedSize("vr_aimIndicatorRangedSize", "1.5", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Size of the aim indicator when using a ranged weapon");
 idCVar vr_force2DRender("vr_force2DRender", "0", CVAR_RENDERER|CVAR_INTEGER, "Force rendering to the 2D overlay instead of stereo");
 idCVar vr_disableUITransparency("vr_disableUITransparency", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Disable transparency when rendering UI elements (may have unintended side-effects)");
 idCVar vr_comfortVignette("vr_comfortVignette", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Enable a vignette effect on artificial movement");
@@ -106,7 +108,7 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 			DrawComfortVignette((eyeView_t)eye);
 		}
 		if ( !frameData->render2D ) {
-			DrawAimIndicator();
+			DrawAimIndicator( frameData->mouseAimSize );
 		}
 	}
 
@@ -493,7 +495,7 @@ struct AimIndicatorUniforms : GLSLUniformGroup {
 	DEFINE_UNIFORM( vec4, color )
 };
 
-void VRBackend::DrawAimIndicator() {
+void VRBackend::DrawAimIndicator( float size ) {
 	if ( !vr_aimIndicator.GetBool() ) {
 		return;
 	}
@@ -501,7 +503,7 @@ void VRBackend::DrawAimIndicator() {
 	vrAimIndicatorShader->Activate();
 	AimIndicatorUniforms *uniforms = vrAimIndicatorShader->GetUniformGroup<AimIndicatorUniforms>();
 	uniforms->mvp.Set( aimIndicatorMvp );
-	uniforms->size.Set( vr_aimIndicatorSize.GetFloat() );
+	uniforms->size.Set( size );
 	uniforms->color.Set( vr_aimIndicatorColorR.GetFloat(), vr_aimIndicatorColorG.GetFloat(), vr_aimIndicatorColorB.GetFloat(), vr_aimIndicatorColorA.GetFloat() );
 	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_SRCBLEND_SRC_ALPHA );
 	RB_DrawFullScreenQuad();	
