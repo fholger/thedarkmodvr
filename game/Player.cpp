@@ -10822,6 +10822,9 @@ void idPlayer::Event_WasDamaged( void )
 
 void idPlayer::Event_StartZoom(float duration, float startFOV, float endFOV)
 {
+	if ( vr_disableZoomAnimations.GetBool() ) {
+		startFOV = endFOV;
+	}
 	// greebo: Start the new transition from startFOV >> endFOV, this enables the idInterpolate
 	zoomFov.Init(gameLocal.time, duration, startFOV, endFOV);
 }
@@ -10830,6 +10833,10 @@ void idPlayer::Event_EndZoom(float duration)
 {
 	// greebo: Make a transition from the current FOV back to the default FOV, this enables the idInterpolate
 	zoomFov.Init(gameLocal.time, duration, zoomFov.GetCurrentValue(gameLocal.time), DefaultFov());
+
+	if ( vr_disableZoomAnimations.GetBool() ) {
+		zoomFov.SetStartValue( DefaultFov() );
+	}
 }
 
 void idPlayer::Event_ResetZoom()

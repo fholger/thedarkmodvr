@@ -29,6 +29,7 @@ extern idCVar vr_disableUITransparency;
 extern idCVar vr_aimIndicatorSize;
 extern idCVar vr_aimIndicatorRangedSize;
 extern idCVar vr_aimIndicatorRangedMultiplier;
+extern idCVar vr_disableZoomAnimations;
 
 class VRBackend {
 public:
