@@ -148,6 +148,9 @@ public:
 
 								// De-allocates a list gui
 	virtual void				FreeListGUI( idListGUI *listgui ) = 0;
+
+								// hack: needed for gamepad support
+	virtual bool				IsBindHandlerActive() const = 0;
 };
 
 extern idUserInterfaceManager *	uiManager;

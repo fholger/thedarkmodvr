@@ -125,6 +125,7 @@ public:
 	virtual idUserInterface *	FindDemoGui( const char *qpath );
 	virtual	idListGUI *			AllocListGUI( void ) const;
 	virtual void				FreeListGUI( idListGUI *listgui );
+	bool						IsBindHandlerActive() const override;
 
 private:
 	idRectangle					screenRect;

@@ -362,6 +362,8 @@ public:
 	void				SetModsMenuGuiVars( void );
 	void				SetMainMenuSkin( void );
 	void				SetPbMenuGuiVars( void );
+
+	void				ToggleMenu( void );
 	
 private:
 	bool				BoxDialogSanityCheck( void );

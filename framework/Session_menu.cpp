@@ -277,6 +277,15 @@ idSessionLocal::SetPbMenuGuiVars
 void idSessionLocal::SetPbMenuGuiVars( void ) {
 }
 
+void idSessionLocal::ToggleMenu() {
+	if ( guiActive != guiMainMenu ) {
+		console->Close();
+		StartMenu();
+	} else if ( mapSpawned ) {
+		ExitMenu();
+	}
+}
+
 /*
 ===============
 idSessionLocal::SetMainMenuGuiVars

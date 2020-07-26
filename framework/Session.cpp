@@ -1787,6 +1787,15 @@ void Session_Hitch_f( const idCmdArgs &args ) {
 }
 
 /*
+====================
+Session_ToggleMenu_f
+====================
+*/
+void Session_ToggleMenu_f( const idCmdArgs &args ) {
+	sessLocal.ToggleMenu();
+}
+
+/*
 ===============
 idSessionLocal::ScrubSaveGameFileName
 
@@ -3345,6 +3354,8 @@ void idSessionLocal::Init() {
 	cmdSystem->AddCommand( "rescanSI", Session_RescanSI_f, CMD_FL_SYSTEM, "internal - rescan serverinfo cvars and tell game" );
 
 	cmdSystem->AddCommand( "hitch", Session_Hitch_f, CMD_FL_SYSTEM|CMD_FL_CHEAT, "hitches the game" );
+
+	cmdSystem->AddCommand( "togglemenu", Session_ToggleMenu_f, CMD_FL_GAME, "toggles the main menu" );
 
 	// the same idRenderWorld will be used for all games
 	// and demos, insuring that level specific models
