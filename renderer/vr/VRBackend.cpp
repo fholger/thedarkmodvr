@@ -49,6 +49,7 @@ idCVar vr_comfortVignette("vr_comfortVignette", "0", CVAR_RENDERER|CVAR_BOOL|CVA
 idCVar vr_comfortVignetteRadius("vr_comfortVignetteRadius", "0.6", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "The radius/size of the comfort vignette" );
 idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Transition corridor width from black to visible of the comfort vignette" );
 idCVar vr_disableZoomAnimations("vr_disableZoomAnimations", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If set to 1, any zoom effect will be instant without transitioning animation");
+idCVar vr_useLightScissors("vr_useLightScissors", "1", CVAR_RENDERER|CVAR_BOOL, "Use individual scissor rects per light (helps performance, might lead to incorrect shadows in border cases)");
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
@@ -578,5 +579,11 @@ void SelectVRImplementation() {
 }
 
 void VRBackend::UpdateLightScissor( viewLight_t *vLight ) {
-	vLight->scissorRect = VR_CalcLightScissorRectangle( vLight, backEnd.viewDef );
+	if ( vr_useLightScissors.GetBool() ) {
+		vLight->scissorRect = VR_CalcLightScissorRectangle( vLight, backEnd.viewDef );
+	} else {
+		vLight->scissorRect = backEnd.viewDef->scissor;
+		vLight->scissorRect.zmin = 0;
+		vLight->scissorRect.zmax = 1;
+	}
 }
