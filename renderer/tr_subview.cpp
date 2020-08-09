@@ -237,6 +237,8 @@ static viewDef_t *R_MirrorViewBySurface( drawSurf_t *drawSurf ) {
 
 	// set the mirrored origin and axis
 	R_MirrorPoint( tr.viewDef->renderView.vieworg, &surface, &camera, parms->renderView.vieworg );
+	R_MirrorPoint( tr.viewDef->renderView.eyeorg[0], &surface, &camera, parms->renderView.eyeorg[0] );
+	R_MirrorPoint( tr.viewDef->renderView.eyeorg[1], &surface, &camera, parms->renderView.eyeorg[1] );
 
 	R_MirrorVector( tr.viewDef->renderView.viewaxis[0], &surface, &camera, parms->renderView.viewaxis[0] );
 	R_MirrorVector( tr.viewDef->renderView.viewaxis[1], &surface, &camera, parms->renderView.viewaxis[1] );
@@ -439,6 +441,8 @@ void R_PortalRender( drawSurf_t *surf, textureStage_t *stage, idScreenRect& scis
 		// end neuro & 7318
 
 		parms->renderView.vieworg = PSOrigin;	// grayman #3108 - contributed by neuro & 7318
+		parms->renderView.eyeorg[0] = PSOrigin;
+		parms->renderView.eyeorg[1] = PSOrigin;
 		parms->renderView.viewaxis = tr.viewDef->renderView.viewaxis * gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetAxis();
 		parms->renderView.initialVieworg = PSOrigin;
 		parms->renderView.initialViewaxis = tr.viewDef->renderView.initialViewaxis * gameLocal.portalSkyEnt.GetEntity()->GetPhysics()->GetAxis();
@@ -594,6 +598,8 @@ bool R_Lightgem_Render() {
 	); 
 	// VR: must reset the view org, as otherwise we get the position of the headset
 	lightgemRv.vieworg = tr.viewDef->renderView.initialVieworg;
+	lightgemRv.eyeorg[0] = tr.viewDef->renderView.initialVieworg;
+	lightgemRv.eyeorg[1] = tr.viewDef->renderView.initialVieworg;
 
 	// Give the rv the current ambient light values - Not all of the other values, avoiding fancy effects.
 	lightgemRv.shaderParms[2] = gameLocal.globalShaderParms[2]; // Ambient R

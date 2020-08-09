@@ -142,6 +142,10 @@ void OpenVRBackend::AdjustRenderView( renderView_t *view ) {
 	view->vieworg += position * view->viewaxis;
 	view->viewaxis = axis * view->viewaxis;
 
+	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * MetresToGameUnits;
+	view->eyeorg[0] = view->initialVieworg + ( position + halfEyeSeparationWorldUnits * axis[1] ) * view->initialViewaxis;
+	view->eyeorg[1] = view->initialVieworg + ( position - halfEyeSeparationWorldUnits * axis[1] ) * view->initialViewaxis;
+
 	view->fov_x = fovX;
 	view->fov_y = fovY;
 }

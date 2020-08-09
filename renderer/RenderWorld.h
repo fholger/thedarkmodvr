@@ -241,6 +241,9 @@ typedef struct renderView_s {
 	idVec3					vieworg;
 	idMat3					viewaxis;			// transformation matrix, view looks down the positive X axis
 
+	// VR: eye positions
+	idVec3					eyeorg[2];
+
 	bool					cramZNear;			// for cinematics, we want to set ZNear much lower
 	bool					forceUpdate;		// for an update 
 
