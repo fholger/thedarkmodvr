@@ -377,6 +377,56 @@ idList<idVec2> OpenXRBackend::GetHiddenAreaMask( eyeView_t eye ) {
 	return hiddenAreaMask;
 }
 
+idVec4 OpenXRBackend::GetVisibleAreaBounds( eyeView_t eye ) {
+	if ( !XR_KHR_visibility_mask_available ) {
+		return idVec4( 0, 0, 1, 1 );
+	}
+	
+	XrVisibilityMaskKHR visibilityMask = {
+		XR_TYPE_VISIBILITY_MASK_KHR,
+		nullptr,
+		0,
+		0,
+		nullptr,
+		0,
+		0,
+		nullptr,
+	};
+	XrResult result = xrGetVisibilityMaskKHR( session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye,
+		XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR, &visibilityMask );
+	XR_CheckResult( result, "getting visible area mesh", instance, false );
+	if ( !XR_SUCCEEDED(result) ) {
+		return idVec4( 0, 0, 1, 1 );
+	}
+
+	idList<XrVector2f> vertices;
+	vertices.SetNum( visibilityMask.vertexCountOutput );
+	visibilityMask.vertexCapacityInput = vertices.Num();
+	visibilityMask.vertices = vertices.Ptr();
+	idList<uint32_t> indices;
+	indices.SetNum( visibilityMask.indexCountOutput );
+	visibilityMask.indexCapacityInput = indices.Num();
+	visibilityMask.indices = indices.Ptr();
+
+	result = xrGetVisibilityMaskKHR( session, XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO, eye,
+		XR_VISIBILITY_MASK_TYPE_VISIBLE_TRIANGLE_MESH_KHR, &visibilityMask );
+	XR_CheckResult( result, "getting visible area mesh", instance, false );
+	if ( !XR_SUCCEEDED(result) ) {
+		return idVec4( 0, 0, 1, 1 );
+	}
+
+	idVec4 bounds (1, 1, 0, 0);
+	for ( uint32_t index : indices ) {
+		bounds[0] = Min( bounds[0], vertices[index].x );
+		bounds[1] = Min( bounds[1], vertices[index].y );
+		bounds[2] = Max( bounds[2], vertices[index].x );
+		bounds[3] = Max( bounds[3], vertices[index].y );
+	}
+
+	return bounds;
+	
+}
+
 bool OpenXRBackend::UsesSrgbTextures() const {
 	return swapchainFormat == GL_SRGB8_ALPHA8;
 }

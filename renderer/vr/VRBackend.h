@@ -63,6 +63,7 @@ protected:
 	virtual void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) = 0;
 
 	virtual idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) = 0;
+	virtual idVec4 GetVisibleAreaBounds( eyeView_t eye ) = 0;
 
 	virtual bool UsesSrgbTextures() const = 0;
 
@@ -76,12 +77,14 @@ private:
 	void UpdateComfortVignetteStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
 
+	eyeView_t currentEye;
 	GLSLProgram *vrMirrorShader = nullptr;
+
 	GLuint hiddenAreaMeshBuffer = 0;
 	GLuint numVertsLeft = 0;
 	GLuint numVertsRight = 0;
 	GLSLProgram *hiddenAreaMeshShader = nullptr;
-	eyeView_t currentEye;
+	idVec4 visibleAreaBounds[2];
 
 	idVec3 aimIndicatorPos;
 	idMat4 aimIndicatorMvp;

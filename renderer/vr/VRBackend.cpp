@@ -233,6 +233,9 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 extern void R_SetupViewFrustum( viewDef_t *viewDef );
 
 void VRBackend::InitHiddenAreaMesh() {
+	visibleAreaBounds[LEFT_EYE] = GetVisibleAreaBounds( LEFT_EYE );
+	visibleAreaBounds[RIGHT_EYE] = GetVisibleAreaBounds( RIGHT_EYE );
+	
 	idList<idVec2> leftEyeVerts = GetHiddenAreaMask( LEFT_EYE );
 	idList<idVec2> rightEyeVerts = GetHiddenAreaMask( RIGHT_EYE );
 	if ( leftEyeVerts.Num() == 0 || rightEyeVerts.Num() == 0 ) {
@@ -303,6 +306,7 @@ idScreenRect VR_CalcLightScissorRectangle( viewLight_t *vLight, const viewDef_t 
 	lightScissorRect.y1 = idMath::Ftoi( projected[0][1] * screenHeight );
 	lightScissorRect.y2 = idMath::Ftoi( projected[1][1] * screenHeight );
 	lightScissorRect.Expand();
+	lightScissorRect.Intersect( viewDef->scissor );
 
 	lightScissorRect.zmin = projected[0][2];
 	lightScissorRect.zmax = projected[1][2];
@@ -357,6 +361,15 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 			idMat4 modelView (mat3_identity, aimViewPos);
 			modelView.TransposeSelf();
 			myGlMultMatrix( modelView.ToFloatPtr(), viewDef->projectionMatrix, aimIndicatorMvp.ToFloatPtr() );
+		}
+
+		if ( vr_useHiddenAreaMesh.GetBool() ) {
+			idScreenRect visibleAreaScissor;
+			visibleAreaScissor.x1 = visibleAreaBounds[eye][0] * glConfig.vidWidth;
+			visibleAreaScissor.y1 = visibleAreaBounds[eye][1] * glConfig.vidHeight;
+			visibleAreaScissor.x2 = visibleAreaBounds[eye][2] * glConfig.vidWidth;
+			visibleAreaScissor.y2 = visibleAreaBounds[eye][3] * glConfig.vidHeight;
+			viewDef->scissor.Intersect( visibleAreaScissor );
 		}
 	}
 }

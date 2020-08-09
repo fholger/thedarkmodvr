@@ -245,6 +245,20 @@ idList<idVec2> OpenVRBackend::GetHiddenAreaMask( eyeView_t eye ) {
 	return vertices;	
 }
 
+idVec4 OpenVRBackend::GetVisibleAreaBounds( eyeView_t eye ) {
+	vr::HiddenAreaMesh_t visibleAreaMesh = system->GetHiddenAreaMesh( eye == LEFT_EYE ? vr::Eye_Left : vr::Eye_Right, vr::k_eHiddenAreaMesh_Inverse );
+	idVec4 bounds ( 1, 1, 0, 0 );
+	uint32_t numVertices = visibleAreaMesh.unTriangleCount * 3;
+	for ( uint32_t i = 0; i < numVertices; ++i ) {
+		const float *v = visibleAreaMesh.pVertexData[i].v;
+		bounds[0] = Min( bounds[0], v[0] );
+		bounds[1] = Min( bounds[1], v[1] );
+		bounds[2] = Max( bounds[2], v[0] );
+		bounds[3] = Max( bounds[3], v[1] );
+	}
+	return bounds;
+}
+
 float OpenVRBackend::GetInterPupillaryDistance() const {
 	return system->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_UserIpdMeters_Float );
 }
