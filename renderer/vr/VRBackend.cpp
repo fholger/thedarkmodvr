@@ -309,8 +309,8 @@ idScreenRect VR_CalcLightScissorRectangle( viewLight_t *vLight, const viewDef_t 
 	lightScissorRect.Expand();
 	lightScissorRect.Intersect( viewDef->scissor );
 
-	lightScissorRect.zmin = projected[0][2];
-	lightScissorRect.zmax = projected[1][2];
+	lightScissorRect.zmin = idMath::ClampFloat(0, 1, projected[0][2] - 0.005f);
+	lightScissorRect.zmax = idMath::ClampFloat(0, 1, projected[1][2] + 0.005f);
 	return lightScissorRect;
 }
 
