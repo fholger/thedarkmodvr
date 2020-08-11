@@ -77,6 +77,7 @@ private:
 	void DrawAimIndicator( float size );
 	void UpdateComfortVignetteStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
+	void PrepareVariableRateShading();
 
 	eyeView_t currentEye;
 	GLSLProgram *vrMirrorShader = nullptr;
@@ -96,6 +97,8 @@ private:
 	idVec3 lastCameraPosition;
 	idAngles lastCameraAngles;
 	uint64_t lastCameraUpdateTime = 0;
+
+	idImage *variableRateShadingImage = nullptr;
 };
 
 extern VRBackend *vrBackend;

@@ -23,6 +23,7 @@
 #include "../GLSLUniforms.h"
 #include "../Profiling.h"
 #include "../backend/RenderBackend.h"
+#include "../glad.h"
 
 VRBackend *vrBackend = nullptr;
 
@@ -50,6 +51,7 @@ idCVar vr_comfortVignetteRadius("vr_comfortVignetteRadius", "0.6", CVAR_RENDERER
 idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Transition corridor width from black to visible of the comfort vignette" );
 idCVar vr_disableZoomAnimations("vr_disableZoomAnimations", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If set to 1, any zoom effect will be instant without transitioning animation");
 idCVar vr_useLightScissors("vr_useLightScissors", "1", CVAR_RENDERER|CVAR_BOOL, "Use individual scissor rects per light (helps performance, might lead to incorrect shadows in border cases)");
+idCVar vr_useVariableRateShading("vr_useVariableRateShading", "0", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Enable variable rate shading on NVIDIA Turing hardware (fixed-foveated rendering: 1 - low / 2 - medium / 3 - high)");
 
 extern void RB_Tonemap();
 extern void RB_Bloom( bloomCommand_t *cmd );
@@ -58,6 +60,64 @@ extern void RB_CopyRender( const void *data );
 const float VRBackend::GameUnitsToMetres = 0.02309f;
 const float VRBackend::MetresToGameUnits = 1.0f / GameUnitsToMetres;
 
+namespace {
+	void VR_CreateVariableRateShadingImage( idImage *image ) {
+		image->type = TT_2D;
+		image->uploadWidth = frameBuffers->renderWidth;
+		image->uploadHeight = frameBuffers->renderHeight;
+		qglGenTextures( 1, &image->texnum );
+		qglBindTexture( GL_TEXTURE_2D, image->texnum );
+
+		GLint texelW, texelH;
+		qglGetIntegerv( GL_SHADING_RATE_IMAGE_TEXEL_WIDTH_NV, &texelW );
+		qglGetIntegerv( GL_SHADING_RATE_IMAGE_TEXEL_HEIGHT_NV, &texelH );
+		GLsizei imageWidth = image->uploadWidth / texelW;
+		GLsizei imageHeight = image->uploadHeight / texelH;
+		GLsizei centerX = imageWidth / 2;
+		GLsizei centerY = imageHeight / 2;
+		float outerRadius = imageHeight;
+		float midRadius = imageHeight;
+		float innerRadius = imageHeight;
+		switch ( vr_useVariableRateShading.GetInteger() ) {
+		case 1:
+			midRadius = 0.7f * 0.5f * imageHeight;
+			innerRadius = 0.4f * 0.5f * imageHeight;
+			break;
+		case 2:
+			outerRadius = 0.8f * 0.5f * imageHeight;
+			midRadius = 0.5f * 0.5f * imageHeight;
+			innerRadius = 0.25f * 0.5f * imageHeight;
+			break;
+		case 3:
+			outerRadius = 0.7f * 0.5f * imageHeight;
+			midRadius = 0.4f * 0.5f * imageHeight;
+			innerRadius = 0.15f * 0.5f * imageHeight;
+		}
+
+		idList<byte> vrsData;
+		vrsData.SetNum( imageWidth * imageHeight );
+		for ( int y = 0; y < imageHeight; ++y ) {
+			for ( int x = 0; x < imageWidth; ++x ) {
+				float distFromCenter = idMath::Sqrt( (x-centerX)*(x-centerX) + (y-centerY)*(y-centerY));
+				if ( distFromCenter >= outerRadius) {
+					vrsData[y*imageWidth + x] = 3;
+				} else if ( distFromCenter >= midRadius) {
+					vrsData[y*imageWidth + x] = 2;
+				} else if ( distFromCenter >= innerRadius) {
+					vrsData[y*imageWidth + x] = 1;
+				} else {
+					vrsData[y*imageWidth + x] = 0;
+				}
+			}
+		}
+
+		qglTexStorage2D( GL_TEXTURE_2D, 1, GL_R8UI, imageWidth, imageHeight );
+		qglTexSubImage2D( GL_TEXTURE_2D, 0, 0, 0, imageWidth, imageHeight, GL_RED_INTEGER, GL_UNSIGNED_BYTE, vrsData.Ptr() );
+		
+		GL_SetDebugLabel( GL_TEXTURE, image->texnum, image->imgName );
+	}
+}
+
 void VRBackend::Init() {
 	InitBackend();
 	InitHiddenAreaMesh();
@@ -65,6 +125,10 @@ void VRBackend::Init() {
 	vrMirrorShader = programManager->LoadFromFiles( "vr_mirror", "vr/vr_mirror.vert.glsl", "vr/vr_mirror.frag.glsl" );
 	vrAimIndicatorShader = programManager->LoadFromFiles( "aim_indicator", "vr/aim_indicator.vert.glsl", "vr/aim_indicator.frag.glsl" );
 	comfortVignetteShader = programManager->LoadFromFiles( "comfort_vignette", "vr/comfort_vignette.vert.glsl", "vr/comfort_vignette.frag.glsl" );
+
+	if ( GLAD_GL_NV_shading_rate_image ) {
+		variableRateShadingImage = globalImages->ImageFromFunction( "vrsImage", VR_CreateVariableRateShadingImage );
+	}
 }
 
 void VRBackend::Destroy() {
@@ -73,6 +137,10 @@ void VRBackend::Destroy() {
 	qglDeleteBuffers( 1, &hiddenAreaMeshBuffer );
 	hiddenAreaMeshBuffer = 0;
 	hiddenAreaMeshShader = nullptr;
+	if ( variableRateShadingImage != nullptr ) {
+		variableRateShadingImage->PurgeImage();
+		variableRateShadingImage = nullptr;
+	}
 	DestroyBackend();
 }
 
@@ -148,6 +216,8 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	AcquireFboAndTexture( RIGHT_EYE, eyeBuffers[1], eyeTextures[1] );
 
 	aimIndicatorPos = frameData->mouseAimPosition;
+
+	PrepareVariableRateShading();
 
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
@@ -235,6 +305,9 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 			if ( (isv3d && shouldRender3D) || (!isv3d && shouldRender2D) ) {
 				if ( isv3d && shouldRender3D ) {
 					frameBuffers->EnterPrimary();
+					if ( eyeView != UI && vr_useVariableRateShading.GetBool() && GLAD_GL_NV_shading_rate_image ) {
+						qglEnable( GL_SHADING_RATE_IMAGE_NV );						
+					}
 				}
 				const_cast<viewDef_t*>(backEnd.viewDef)->updateShadowMap = eyeView == UI || eyeView == LEFT_EYE;
 				renderBackend->DrawView( backEnd.viewDef );
@@ -284,6 +357,9 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 	frameBuffers->LeavePrimary();
 	if ( shouldRender3D ) {
 		RB_Tonemap();
+	}
+	if ( eyeView != UI && vr_useVariableRateShading.GetBool() && GLAD_GL_NV_shading_rate_image ) {
+		qglDisable( GL_SHADING_RATE_IMAGE_NV );
 	}
 }
 
@@ -622,6 +698,37 @@ void VRBackend::DrawComfortVignette(eyeView_t eye) {
 	uniforms->center.Set( uv );
 	GL_State( GLS_DEPTHFUNC_ALWAYS | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
 	RB_DrawFullScreenQuad();
+}
+
+void VRBackend::PrepareVariableRateShading() {
+	if ( !GLAD_GL_NV_shading_rate_image ) {
+		return;
+	}
+
+	if ( vr_useVariableRateShading.IsModified() ) {
+		// ensure VRS image is up to date
+		variableRateShadingImage->PurgeImage();
+		vr_useVariableRateShading.ClearModified();
+	}
+
+	if ( vr_useVariableRateShading.GetInteger() == 0 ) {
+		return;
+	}
+
+	if ( variableRateShadingImage->uploadWidth != frameBuffers->renderWidth
+			|| variableRateShadingImage->uploadHeight != frameBuffers->renderHeight ) {
+		variableRateShadingImage->PurgeImage();
+	}
+
+	// ensure image is constructed
+	variableRateShadingImage->Bind();
+	qglBindShadingRateImageNV( variableRateShadingImage->texnum );
+	GLenum palette[3];
+	palette[0] = GL_SHADING_RATE_1_INVOCATION_PER_PIXEL_NV;
+	palette[1] = GL_SHADING_RATE_1_INVOCATION_PER_1X2_PIXELS_NV;
+	palette[2] = GL_SHADING_RATE_1_INVOCATION_PER_2X2_PIXELS_NV;
+	palette[3] = GL_SHADING_RATE_1_INVOCATION_PER_4X4_PIXELS_NV;
+	qglShadingRateImagePaletteNV( 0, 0, sizeof(palette)/sizeof(GLenum), palette );
 }
 
 void SelectVRImplementation() {
