@@ -38,7 +38,7 @@ public:
 
 	virtual void PrepareFrame() = 0;
  
-	virtual void AdjustRenderView( renderView_t *view ) = 0;
+	void AdjustRenderView( renderView_t *view );
 	void RenderStereoView( const frameData_t *frameData );
 	void DrawHiddenAreaMeshToDepth();
 
@@ -59,7 +59,8 @@ protected:
 	virtual bool BeginFrame() = 0;
 	virtual void SubmitFrame() = 0;
 	virtual void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) = 0;
-	virtual bool GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) = 0;
+	virtual bool GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation ) = 0;
+	virtual bool GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) = 0;
 	virtual void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) = 0;
 
 	virtual idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) = 0;

@@ -122,34 +122,6 @@ void OpenVRBackend::SubmitFrame() {
 	vr::VRCompositor()->PostPresentHandoff();
 }
 
-void OpenVRBackend::AdjustRenderView( renderView_t *view ) {
-	const vr::TrackedDevicePose_t &hmdPose = predictedPoses[vr::k_unTrackedDeviceIndex_Hmd];
-	if ( !hmdPose.bPoseIsValid ) {
-		return;
-	}
-
-	const vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
-	idVec3 position ( -MetresToGameUnits * mat.m[2][3], -MetresToGameUnits * mat.m[0][3], MetresToGameUnits * mat.m[1][3] );
-	idMat3 axis;
-	axis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
-	axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
-	axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
-	position += eyeForward * MetresToGameUnits * axis[0];
-
-	view->initialViewaxis = view->viewaxis;
-	view->initialVieworg = view->vieworg;
-
-	view->vieworg += position * view->viewaxis;
-	view->viewaxis = axis * view->viewaxis;
-
-	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * MetresToGameUnits;
-	view->eyeorg[0] = view->initialVieworg + ( position + halfEyeSeparationWorldUnits * axis[1] ) * view->initialViewaxis;
-	view->eyeorg[1] = view->initialVieworg + ( position - halfEyeSeparationWorldUnits * axis[1] ) * view->initialViewaxis;
-
-	view->fov_x = fovX;
-	view->fov_y = fovY;
-}
-
 void OpenVRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) {
 	angleLeft = projectionFov[eye][0];
 	angleRight = projectionFov[eye][1];
@@ -157,23 +129,21 @@ void OpenVRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float 
 	angleDown = projectionFov[eye][2];
 }
 
-bool OpenVRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) {
+bool OpenVRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) {
 	const vr::TrackedDevicePose_t &hmdPose = currentPoses[vr::k_unTrackedDeviceIndex_Hmd];
 	if ( !hmdPose.bPoseIsValid ) {
 		return false;
 	}
+	CalcEyePose( hmdPose.mDeviceToAbsoluteTracking, eye, origin, orientation );
+	return true;
+}
 
-	const vr::HmdMatrix34_t &mat = hmdPose.mDeviceToAbsoluteTracking;
-	origin.Set( -MetresToGameUnits * mat.m[2][3], -MetresToGameUnits * mat.m[0][3], MetresToGameUnits * mat.m[1][3] );
-	axis[0].Set( mat.m[2][2], mat.m[0][2], -mat.m[1][2] );
-	axis[1].Set( mat.m[2][0], mat.m[0][0], -mat.m[1][0] );
-	axis[2].Set( -mat.m[2][1], -mat.m[0][1], mat.m[1][1] );
-	origin += eyeForward * MetresToGameUnits * axis[0];
-
-	const int eyeFactor[] = {-1, 1};
-	float halfEyeSeparationWorldUnits = 0.5f * GetInterPupillaryDistance() * MetresToGameUnits;
-	origin -= eyeFactor[eye] * halfEyeSeparationWorldUnits * axis[1];
-
+bool OpenVRBackend::GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation ) {
+	const vr::TrackedDevicePose_t &hmdPose = predictedPoses[vr::k_unTrackedDeviceIndex_Hmd];
+	if ( !hmdPose.bPoseIsValid ) {
+		return false;
+	}
+	CalcEyePose( hmdPose.mDeviceToAbsoluteTracking, eye, origin, orientation );
 	return true;
 }
 
@@ -265,4 +235,22 @@ idVec4 OpenVRBackend::GetVisibleAreaBounds( eyeView_t eye ) {
 
 float OpenVRBackend::GetInterPupillaryDistance() const {
 	return system->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_UserIpdMeters_Float );
+}
+
+void OpenVRBackend::CalcEyePose( const vr::HmdMatrix34_t &headPose, int eye, idVec3 &origin, idQuat &orientation ) {
+	idVec3 viewPos ( -MetresToGameUnits * headPose.m[2][3], -MetresToGameUnits * headPose.m[0][3], MetresToGameUnits * headPose.m[1][3] );
+	idMat3 viewRot;
+	viewRot[0].Set( headPose.m[2][2], headPose.m[0][2], -headPose.m[1][2] );
+	viewRot[1].Set( headPose.m[2][0], headPose.m[0][0], -headPose.m[1][0] );
+	viewRot[2].Set( -headPose.m[2][1], -headPose.m[0][1], headPose.m[1][1] );
+
+	vr::HmdMatrix34_t eyeMat = system->GetEyeToHeadTransform( eye == LEFT_EYE ? vr::Eye_Left : vr::Eye_Right );
+	idVec3 eyePos ( -MetresToGameUnits * eyeMat.m[2][3], -MetresToGameUnits * eyeMat.m[0][3], MetresToGameUnits * eyeMat.m[1][3] );
+	idMat3 eyeRot;
+	eyeRot[0].Set( eyeMat.m[2][2], eyeMat.m[0][2], -eyeMat.m[1][2] );
+	eyeRot[1].Set( eyeMat.m[2][0], eyeMat.m[0][0], -eyeMat.m[1][0] );
+	eyeRot[2].Set( -eyeMat.m[2][1], -eyeMat.m[0][1], eyeMat.m[1][1] );
+
+	orientation = (viewRot * eyeRot).ToQuat();
+	origin = viewPos + eyePos * viewRot;
 }

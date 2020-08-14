@@ -75,6 +75,34 @@ void VRBackend::Destroy() {
 	DestroyBackend();
 }
 
+void VRBackend::AdjustRenderView( renderView_t *view ) {
+	idVec3 leftEyePos, rightEyePos;
+	idQuat leftEyeRot, rightEyeRot;
+	if ( !GetPredictedEyePose( LEFT_EYE, leftEyePos, leftEyeRot ) || !GetPredictedEyePose( RIGHT_EYE, rightEyePos, rightEyeRot ) ) {
+		return;
+	}
+
+	float fov[2][4];
+	GetFov( LEFT_EYE, fov[0][0], fov[0][1], fov[0][2], fov[0][3] );
+	GetFov( RIGHT_EYE, fov[1][0], fov[1][1], fov[1][2], fov[1][3] );
+
+	idVec3 viewOrigin = .5f * ( leftEyePos + rightEyePos );
+	idQuat viewOrientation = .5f * ( leftEyeRot + rightEyeRot );
+	viewOrientation.Normalize();
+	// TODO: determine better origin and adjust FOV for combined camera frustum
+
+	view->initialViewaxis = view->viewaxis;
+	view->initialVieworg = view->vieworg;
+	view->fixedOrigin = false;
+	view->vieworg += viewOrigin * view->viewaxis;
+	view->viewaxis = viewOrientation.ToMat3() * view->viewaxis;
+	view->fov_x = 2 * RAD2DEG( Max( idMath::Fabs(fov[0][0]), idMath::Fabs(fov[1][1]) ) ) + 5;
+	view->fov_y = 2 * RAD2DEG( Max( idMath::Fabs(fov[0][2]), idMath::Fabs(fov[0][3]) ) ) + 5;
+
+	view->eyeorg[0] = view->initialVieworg + leftEyePos * view->initialViewaxis;
+	view->eyeorg[1] = view->initialVieworg + rightEyePos * view->initialViewaxis;
+}
+
 void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	if ( !BeginFrame() ) {
 		return;
@@ -410,10 +438,11 @@ extern void R_MirrorVector( const idVec3 in, orientation_t *surface, orientation
 
 void VRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 	idVec3 position;
-	idMat3 axis;
-	if ( !GetCurrentEyePose( eye, position, axis ) ) {
+	idQuat orientation;
+	if ( !GetCurrentEyePose( eye, position, orientation ) ) {
 		return;
 	}
+	idMat3 axis = orientation.ToMat3();
 
 	// update with new pose
 	if ( viewDef->isMirror ) {

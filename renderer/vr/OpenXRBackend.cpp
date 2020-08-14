@@ -306,14 +306,26 @@ void OpenXRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float 
 	angleDown = fov.angleDown;
 }
 
-bool OpenXRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idMat3 &axis ) {
+bool OpenXRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) {
 	if ( !vrSessionActive ) {
 		return false;
 	}
 
 	const XrPosef &pose = renderViews[eye].pose;
 	origin = Vec3FromXr( pose.position );
-	axis = QuatFromXr( pose.orientation ).ToMat3();
+	orientation = QuatFromXr( pose.orientation );
+
+	return true;
+}
+
+bool OpenXRBackend::GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation ) {
+	if ( !vrSessionActive ) {
+		return false;
+	}
+
+	const XrPosef &pose = predictedViews[eye].pose;
+	origin = Vec3FromXr( pose.position );
+	orientation = QuatFromXr( pose.orientation );
 
 	return true;
 }
@@ -429,32 +441,6 @@ idVec4 OpenXRBackend::GetVisibleAreaBounds( eyeView_t eye ) {
 
 bool OpenXRBackend::UsesSrgbTextures() const {
 	return swapchainFormat == GL_SRGB8_ALPHA8;
-}
-
-void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
-	// locate the center point of the two eye views, which we'll use in the frontend to determine the contents
-	// of the view
-	idVec3 hmdPosition = ( Vec3FromXr( predictedViews[0].pose.position ) + Vec3FromXr( predictedViews[1].pose.position ) ) * .5f;
-	idQuat hmdOrientation = ( QuatFromXr( predictedViews[0].pose.orientation ) + QuatFromXr( predictedViews[1].pose.orientation ) ) * .5f;
-	hmdOrientation.Normalize();
-
-	// adjust view axis and origin
-	view->initialVieworg = view->vieworg;
-	view->initialViewaxis = view->viewaxis;
-	view->fixedOrigin = false;
-	view->vieworg += hmdPosition * view->viewaxis;
-	view->viewaxis = hmdOrientation.ToMat3() * view->viewaxis;
-
-	// set horizontal and vertical fov
-	// for the scene collection in the frontend, we'll use a symmetric FoV, with angles slidely widened
-	// to create a bit of a buffer in the frustum, since we are going to readjust the view in the actual
-	// rendering for the eyes
-	float leftFovX = 2 * Max( idMath::Fabs( predictedViews[0].fov.angleLeft ), idMath::Fabs( predictedViews[0].fov.angleRight ) );
-	float rightFovX = 2 * Max( idMath::Fabs( predictedViews[1].fov.angleLeft ), idMath::Fabs( predictedViews[1].fov.angleRight ) );
-	float leftFovY = 2 * Max( idMath::Fabs( predictedViews[0].fov.angleUp ), idMath::Fabs( predictedViews[0].fov.angleDown ) );
-	float rightFovY = 2 * Max( idMath::Fabs( predictedViews[1].fov.angleUp ), idMath::Fabs( predictedViews[1].fov.angleDown ) );
-	view->fov_x = RAD2DEG( Max( leftFovX, rightFovX ) ) + 5;
-	view->fov_y = RAD2DEG( Max( leftFovY, rightFovY ) ) + 5;
 }
 
 void OpenXRBackend::SetupDebugMessenger() {
