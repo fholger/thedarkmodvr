@@ -1196,7 +1196,6 @@ void idInteraction::AddActiveInteraction( void ) {
 	viewEntity_t *	vEntity;
 	idScreenRect	lightScissor;
 	idVec3			localLightOrigin;
-	idVec3			localViewOrigin;
 
 	vLight = lightDef->viewLight;
 	vEntity = entityDef->viewEntity;
@@ -1229,7 +1228,6 @@ void idInteraction::AddActiveInteraction( void ) {
 		CreateInteraction( model );
 	}
 	R_GlobalPointToLocal( vEntity->modelMatrix, lightDef->globalLightOrigin, localLightOrigin );
-	R_GlobalPointToLocal( vEntity->modelMatrix, tr.viewDef->renderView.vieworg, localViewOrigin );
 
 	// calculate the scissor as the intersection of the light and model rects
 	// this is used for light triangles, but not for shadow triangles
@@ -1356,7 +1354,14 @@ void idInteraction::AddActiveInteraction( void ) {
 			}
 
 			// see if we can avoid using the shadow volume caps
-			bool inside = R_PotentiallyInsideInfiniteShadow( sint->ambientTris, localViewOrigin, localLightOrigin );
+			idVec3 localViewOrigin, localLeftEyeOrigin, localRightEyeOrigin;
+			R_GlobalPointToLocal( vEntity->modelMatrix, tr.viewDef->renderView.vieworg, localViewOrigin );
+			R_GlobalPointToLocal( vEntity->modelMatrix, tr.viewDef->renderView.eyeorg[0], localLeftEyeOrigin );
+			R_GlobalPointToLocal( vEntity->modelMatrix, tr.viewDef->renderView.eyeorg[1], localRightEyeOrigin );
+			bool inside = R_PotentiallyInsideInfiniteShadow( sint->ambientTris, localViewOrigin, localLightOrigin )
+				|| R_PotentiallyInsideInfiniteShadow( sint->ambientTris, localLeftEyeOrigin, localLightOrigin )
+				|| R_PotentiallyInsideInfiniteShadow( sint->ambientTris, localRightEyeOrigin, localLightOrigin );
+			inside = true;
 
 			if ( sint->shader->TestMaterialFlag( MF_NOSELFSHADOW ) ) {
 				PrepareLightSurf( SHADOW_LOCAL,
