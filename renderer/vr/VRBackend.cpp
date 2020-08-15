@@ -85,13 +85,15 @@ void VRBackend::AdjustRenderView( renderView_t *view ) {
 	float fov[2][4];
 	GetFov( LEFT_EYE, fov[0][0], fov[0][1], fov[0][2], fov[0][3] );
 	GetFov( RIGHT_EYE, fov[1][0], fov[1][1], fov[1][2], fov[1][3] );
+	float maxHorizFov = Max( Max( idMath::Fabs(fov[0][0]), idMath::Fabs(fov[0][1])), Max( idMath::Fabs(fov[1][0]), idMath::Fabs(fov[1][1])) );
+	float maxVertFov = Max( Max( idMath::Fabs(fov[0][2]), idMath::Fabs(fov[0][3])), Max( idMath::Fabs(fov[1][2]), idMath::Fabs(fov[1][3])) );
 	// Some headsets have canted lenses. We determine the angle between the forward vectors (x axes) of the eyes
 	// and add that to the horizontal FOV to ensure we are not clipping visible objects
 	idVec3 leftEyeForward = leftEyeRot.ToMat3()[0];
 	idVec3 rightEyeForward = rightEyeRot.ToMat3()[0];
 	float cantedAngle = idMath::Fabs( idMath::ACos( leftEyeForward * rightEyeForward ) );
-	view->fov_x = RAD2DEG( cantedAngle + 2 * Max( idMath::Fabs(fov[0][0]), idMath::Fabs(fov[1][1]) ) );
-	view->fov_y = RAD2DEG( 2 * Max( idMath::Fabs(fov[0][2]), idMath::Fabs(fov[0][3]) ) );
+	view->fov_x = RAD2DEG( cantedAngle + 2 * maxHorizFov );
+	view->fov_y = RAD2DEG( 2 * maxVertFov );
 	// add a bit extra to the FOV since the view may have moved slightly when we actually render,
 	// but ensure not to reach 180° or more, as the math breaks down at that point
 	view->fov_x = Min( 178.f, view->fov_x + 5 );
@@ -104,7 +106,7 @@ void VRBackend::AdjustRenderView( renderView_t *view ) {
 	// move the origin slightly back to ensure both eye frustums are contained within our combined frustum
 	float eyeDistance = ( rightEyePos - leftEyePos ).Length();
 	float offset = 0.5f * eyeDistance / idMath::Tan( DEG2RAD( view->fov_x / 2 ) );
-	viewOrigin -= viewAxis[0] * offset;
+	//viewOrigin -= viewAxis[0] * offset;
 
 	view->initialViewaxis = view->viewaxis;
 	view->initialVieworg = view->vieworg;
@@ -491,9 +493,6 @@ void VRBackend::UpdateViewPose( viewDef_t *viewDef, int eye ) {
 				idVec3 mirroredPos = viewDef->renderView.initialVieworg + position * viewDef->renderView.initialViewaxis;
 			}
 		}
-
-		renderView_t &parentRv = viewDef->superView->renderView;
-		renderView_t &eyeView = viewDef->renderView;
 	} else {
 		renderView_t& eyeView = viewDef->renderView;
 		eyeView.viewaxis = axis * eyeView.initialViewaxis;

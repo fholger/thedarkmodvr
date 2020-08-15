@@ -251,6 +251,6 @@ void OpenVRBackend::CalcEyePose( const vr::HmdMatrix34_t &headPose, int eye, idV
 	eyeRot[1].Set( eyeMat.m[2][0], eyeMat.m[0][0], -eyeMat.m[1][0] );
 	eyeRot[2].Set( -eyeMat.m[2][1], -eyeMat.m[0][1], eyeMat.m[1][1] );
 
-	orientation = (viewRot * eyeRot).ToQuat();
+	orientation = (eyeRot * viewRot).ToQuat();
 	origin = viewPos + eyePos * viewRot;
 }
