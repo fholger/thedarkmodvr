@@ -85,19 +85,32 @@ void VRBackend::AdjustRenderView( renderView_t *view ) {
 	float fov[2][4];
 	GetFov( LEFT_EYE, fov[0][0], fov[0][1], fov[0][2], fov[0][3] );
 	GetFov( RIGHT_EYE, fov[1][0], fov[1][1], fov[1][2], fov[1][3] );
+	// Some headsets have canted lenses. We determine the angle between the forward vectors (x axes) of the eyes
+	// and add that to the horizontal FOV to ensure we are not clipping visible objects
+	idVec3 leftEyeForward = leftEyeRot.ToMat3()[0];
+	idVec3 rightEyeForward = rightEyeRot.ToMat3()[0];
+	float cantedAngle = idMath::Fabs( idMath::ACos( leftEyeForward * rightEyeForward ) );
+	view->fov_x = RAD2DEG( cantedAngle + 2 * Max( idMath::Fabs(fov[0][0]), idMath::Fabs(fov[1][1]) ) );
+	view->fov_y = RAD2DEG( 2 * Max( idMath::Fabs(fov[0][2]), idMath::Fabs(fov[0][3]) ) );
+	// add a bit extra to the FOV since the view may have moved slightly when we actually render,
+	// but ensure not to reach 180° or more, as the math breaks down at that point
+	view->fov_x = Min( 178.f, view->fov_x + 5 );
+	view->fov_y = Min( 178.f, view->fov_y + 5 );
 
-	idVec3 viewOrigin = .5f * ( leftEyePos + rightEyePos );
 	idQuat viewOrientation = .5f * ( leftEyeRot + rightEyeRot );
 	viewOrientation.Normalize();
-	// TODO: determine better origin and adjust FOV for combined camera frustum
+	idMat3 viewAxis = viewOrientation.ToMat3();
+	idVec3 viewOrigin = .5f * ( leftEyePos + rightEyePos );
+	// move the origin slightly back to ensure both eye frustums are contained within our combined frustum
+	float eyeDistance = ( rightEyePos - leftEyePos ).Length();
+	float offset = 0.5f * eyeDistance / idMath::Tan( DEG2RAD( view->fov_x / 2 ) );
+	viewOrigin -= viewAxis[0] * offset;
 
 	view->initialViewaxis = view->viewaxis;
 	view->initialVieworg = view->vieworg;
 	view->fixedOrigin = false;
 	view->vieworg += viewOrigin * view->viewaxis;
-	view->viewaxis = viewOrientation.ToMat3() * view->viewaxis;
-	view->fov_x = 2 * RAD2DEG( Max( idMath::Fabs(fov[0][0]), idMath::Fabs(fov[1][1]) ) ) + 5;
-	view->fov_y = 2 * RAD2DEG( Max( idMath::Fabs(fov[0][2]), idMath::Fabs(fov[0][3]) ) ) + 5;
+	view->viewaxis = viewAxis * view->viewaxis;
 
 	view->eyeorg[0] = view->initialVieworg + leftEyePos * view->initialViewaxis;
 	view->eyeorg[1] = view->initialVieworg + rightEyePos * view->initialViewaxis;
