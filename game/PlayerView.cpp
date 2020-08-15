@@ -948,6 +948,8 @@ void idPlayerView::RenderPlayerView( idUserInterface *hud )
 	renderView_t playerRenderView = *player->GetRenderView();
 	if ( !frameData->render2D ) {
 		vrBackend->AdjustRenderView( &playerRenderView );
+	} else {
+		playerRenderView.eyeorg[0] = playerRenderView.eyeorg[1] = playerRenderView.vieworg;
 	}
 	const renderView_t *view = &playerRenderView;
 
