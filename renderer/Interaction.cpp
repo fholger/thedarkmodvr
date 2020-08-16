@@ -1005,7 +1005,7 @@ static bool R_PotentiallyInsideInfiniteShadow( const srfTriangles_t *occluder,
 	// expand the bounds to account for the near clip plane, because the
 	// view could be mathematically outside, but if the near clip plane
 	// chops a volume edge, the zpass rendering would fail.
-	float	znear = r_znear.GetFloat();
+	float	znear = r_znear.GetFloat() + tr.viewDef->renderView.nearZOffset;
 	if ( tr.viewDef->renderView.cramZNear ) {
 		znear *= 0.25f;
 	}

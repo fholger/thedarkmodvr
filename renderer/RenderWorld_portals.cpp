@@ -977,8 +977,16 @@ void idRenderWorldLocal::FindViewLightsAndEntities( void ) {
 		// note that the center of projection for flowing through portals may
 		// be a different point than initialViewAreaOrigin for subviews that
 		// may have the viewOrigin in a solid/invalid area
-		FlowViewThroughPortals( tr.viewDef->renderView.eyeorg[0], 5, tr.viewDef->frustum );
-		FlowViewThroughPortals( tr.viewDef->renderView.eyeorg[1], 5, tr.viewDef->frustum );
+		FlowViewThroughPortals( tr.viewDef->renderView.vieworg, 5, tr.viewDef->frustum );
+		if ( tr.viewDef->renderView.eyeorg[0] != tr.viewDef->renderView.vieworg ) {
+			for ( int i = 0; i < 2; ++i ) {
+				if ( tr.viewDef->initialViewAreaOrigin == tr.viewDef->renderView.vieworg ) {
+					tr.viewDef->areaNum = PointInArea( tr.viewDef->renderView.eyeorg[i] );
+					BuildConnectedAreas();
+				}
+				FlowViewThroughPortals( tr.viewDef->renderView.eyeorg[i], 5, tr.viewDef->frustum );
+			}
+		}
 	}
 }
 

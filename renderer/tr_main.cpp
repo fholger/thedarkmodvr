@@ -883,7 +883,7 @@ void R_SetupProjection( void ) {
 	//
 	// set up projection matrix
 	//
-	zNear	= r_znear.GetFloat();
+	zNear	= r_znear.GetFloat() + tr.viewDef->renderView.nearZOffset;
 	if ( tr.viewDef->renderView.cramZNear ) {
 		zNear *= 0.25;
 	}
@@ -971,7 +971,7 @@ void R_SetupViewFrustum( viewDef_t *viewDef ) {
 	// eventually, plane five will be the rear clipping plane for fog
 	float dNear, dFar, dLeft, dUp;
 
-	dNear = r_znear.GetFloat();
+	dNear = r_znear.GetFloat() + viewDef->renderView.nearZOffset;
 
 	if ( viewDef->renderView.cramZNear ) {
 		dNear *= 0.25f;

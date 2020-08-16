@@ -89,8 +89,10 @@ void VRBackend::AdjustRenderView( renderView_t *view ) {
 	float maxVertFov = Max( Max( idMath::Fabs(fov[0][2]), idMath::Fabs(fov[0][3])), Max( idMath::Fabs(fov[1][2]), idMath::Fabs(fov[1][3])) );
 	// Some headsets have canted lenses. We determine the angle between the forward vectors (x axes) of the eyes
 	// and add that to the horizontal FOV to ensure we are not clipping visible objects
-	idVec3 leftEyeForward = leftEyeRot.ToMat3()[0];
-	idVec3 rightEyeForward = rightEyeRot.ToMat3()[0];
+	idMat3 leftEyeMat = leftEyeRot.ToMat3();
+	idMat3 rightEyeMat = rightEyeRot.ToMat3();
+	idVec3 leftEyeForward = leftEyeMat[0];
+	idVec3 rightEyeForward = rightEyeMat[0];
 	float cantedAngle = idMath::Fabs( idMath::ACos( leftEyeForward * rightEyeForward ) );
 	view->fov_x = RAD2DEG( cantedAngle + 2 * maxHorizFov );
 	view->fov_y = RAD2DEG( 2 * maxVertFov );
@@ -106,7 +108,7 @@ void VRBackend::AdjustRenderView( renderView_t *view ) {
 	// move the origin slightly back to ensure both eye frustums are contained within our combined frustum
 	float eyeDistance = ( rightEyePos - leftEyePos ).Length();
 	float offset = 0.5f * eyeDistance / idMath::Tan( DEG2RAD( view->fov_x / 2 ) );
-	//viewOrigin -= viewAxis[0] * offset;
+	viewOrigin -= viewAxis[0] * offset;
 
 	view->initialViewaxis = view->viewaxis;
 	view->initialVieworg = view->vieworg;
@@ -116,6 +118,12 @@ void VRBackend::AdjustRenderView( renderView_t *view ) {
 
 	view->eyeorg[0] = view->initialVieworg + leftEyePos * view->initialViewaxis;
 	view->eyeorg[1] = view->initialVieworg + rightEyePos * view->initialViewaxis;
+
+	// calculate the appropriate near z value for our view origin to contain both eye frustums
+	idVec3 leftNearZ = leftEyePos + idMath::Cos( fov[0][0] ) * leftEyeMat[0] - idMath::Sin( fov[0][0] ) * leftEyeMat[1];
+	idVec3 rightNearZ = rightEyePos + idMath::Cos( fov[1][1] ) * rightEyeMat[0] - idMath::Sin( fov[1][1] ) * rightEyeMat[1];
+	float nearZ = ( .5f * ( leftNearZ + rightNearZ ) - viewOrigin ).Length();
+	view->nearZOffset = nearZ - r_znear.GetFloat();
 }
 
 void VRBackend::RenderStereoView( const frameData_t *frameData ) {

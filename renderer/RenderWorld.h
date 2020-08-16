@@ -259,6 +259,7 @@ typedef struct renderView_s {
 	orientation_t			mirrorSurface;
 	orientation_t			mirrorCamera;
 	bool					isMirror;
+	float					nearZOffset;
 } renderView_t;
 
 
