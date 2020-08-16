@@ -57,7 +57,6 @@ private:
 
 	void CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint32_t width, uint32_t height );
 
-	float GetInterPupillaryDistance() const;
 	void CalcEyePose( const vr::HmdMatrix34_t &headPose, int eye, idVec3 &origin, idQuat &orientation );
 };
 

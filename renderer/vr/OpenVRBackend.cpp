@@ -125,8 +125,8 @@ void OpenVRBackend::SubmitFrame() {
 void OpenVRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) {
 	angleLeft = projectionFov[eye][0];
 	angleRight = projectionFov[eye][1];
-	angleUp = projectionFov[eye][3];
-	angleDown = projectionFov[eye][2];
+	angleUp = -projectionFov[eye][2];
+	angleDown = -projectionFov[eye][3];
 }
 
 bool OpenVRBackend::GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) {
@@ -231,10 +231,6 @@ idVec4 OpenVRBackend::GetVisibleAreaBounds( eyeView_t eye ) {
 		bounds[3] = Max( bounds[3], v[1] );
 	}
 	return bounds;
-}
-
-float OpenVRBackend::GetInterPupillaryDistance() const {
-	return system->GetFloatTrackedDeviceProperty( vr::k_unTrackedDeviceIndex_Hmd, vr::Prop_UserIpdMeters_Float );
 }
 
 void OpenVRBackend::CalcEyePose( const vr::HmdMatrix34_t &headPose, int eye, idVec3 &origin, idQuat &orientation ) {
