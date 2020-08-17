@@ -894,15 +894,20 @@ If ref isn't specified, the full session UpdateScreen will be done.
 */
 void R_ReadTiledPixels( int width, int height, byte *buffer, renderView_t *ref = NULL ) {
 	// include extra space for OpenGL padding to word boundaries
-	byte *temp = ( byte * )R_StaticAlloc( ( glConfig.vidWidth + 3 ) * glConfig.vidHeight * 3 );
+	int maxWidth = Max( glConfig.vidWidth, glConfig.windowWidth );
+	int maxHeight = Max( glConfig.vidHeight, glConfig.windowHeight );
+	byte *temp = ( byte * )R_StaticAlloc( ( maxWidth + 3 ) * maxHeight * 3 );
 
 	const int oldWidth = glConfig.vidWidth;
 	const int oldHeight = glConfig.vidHeight;
 
-	tr.tiledViewport[0] = width;
-	tr.tiledViewport[1] = height;
+	if ( ref != nullptr ) {
+		tr.tiledViewport[0] = width;
+		tr.tiledViewport[1] = height;
+	}
 
 	// disable scissor, so we don't need to adjust all those rects
+	bool oldScissor = r_useScissor.GetBool();
 	r_useScissor.SetBool( false );
 
 	for ( int xo = 0 ; xo < width ; xo += oldWidth ) {
@@ -911,6 +916,7 @@ void R_ReadTiledPixels( int width, int height, byte *buffer, renderView_t *ref =
 			tr.viewportOffset[1] = -yo;
 			int w = ( xo + oldWidth > width ) ? ( width - xo ) : oldWidth;
 			int h = ( yo + oldHeight > height ) ? ( height - yo ) : oldHeight;
+			int	row = ( oldWidth * 3 + 3 ) & ~3;		// OpenGL pads to dword boundaries
 
 			if ( ref ) {
 				tr.BeginFrame( oldWidth, oldHeight );
@@ -930,16 +936,16 @@ void R_ReadTiledPixels( int width, int height, byte *buffer, renderView_t *ref =
 			} else {
 				session->UpdateScreen( false );
 				qglReadBuffer( GL_FRONT );
-				qglReadPixels( 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, temp );
+				qglReadPixels( 0, 0, glConfig.windowWidth, glConfig.windowHeight, GL_RGB, GL_UNSIGNED_BYTE, temp );
+				row = ( glConfig.windowWidth * 3 + 3 ) & ~3;
 			}
-			int	row = ( oldWidth * 3 + 3 ) & ~3;		// OpenGL pads to dword boundaries
 
 			for ( int y = 0 ; y < h ; y++ ) {
 				memcpy( buffer + ( ( yo + y )* width + xo ) * 3, temp + y * row, w * 3 );
 			}
 		}
 	}
-	r_useScissor.SetBool( true );
+	r_useScissor.SetBool( oldScissor );
 
 	tr.viewportOffset[0] = 0;
 	tr.viewportOffset[1] = 0;
@@ -1114,13 +1120,13 @@ void R_ScreenShot_f( const idCmdArgs &args ) {
 
 	switch ( args.Argc() ) {
 	case 1:
-		width = glConfig.vidWidth;
-		height = glConfig.vidHeight;
+		width = glConfig.windowWidth;
+		height = glConfig.windowHeight;
 		blends = 1;
 		break;
 	case 2:
-		width = glConfig.vidWidth;
-		height = glConfig.vidHeight;
+		width = glConfig.windowWidth;
+		height = glConfig.windowHeight;
 		blends = 1;
 		checkname = args.Argv( 1 );
 		break;
