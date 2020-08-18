@@ -34,6 +34,7 @@
 #include "Shop/Shop.h"
 #include <numeric>
 
+#include "../sys/sys_padinput.h"
 #include "../renderer/vr/OpenVRBackend.h"
 
 /*
@@ -3341,10 +3342,12 @@ void idPlayer::UpdateConditions( void )
 	
 	// DarkMod: Catch the creep modifier
 	if (cv_tdm_creep_toggle.GetBool()){
-	AI_CREEP = true;
+		AI_CREEP = true;
 	}
 	else {
-	AI_CREEP		= ( usercmd.buttons & BUTTON_5 ) && true;
+		int creepLimit = cv_pm_creepmod.GetFloat() * 127;
+		AI_CREEP = (usercmd.buttons & BUTTON_CREEP) ||
+			(idMath::Abs(usercmd.forwardmove) <= creepLimit && idMath::Abs(usercmd.rightmove <= creepLimit));
 	}
 }
 
@@ -4563,7 +4566,7 @@ bool idPlayer::HandleSingleGuiCommand( idEntity *entityGui, idLexer *src ) {
 	}
 
 	if ( token.Icmp( "ready" ) == 0 ) {
-		PerformImpulse( IMPULSE_17 );
+		PerformImpulse( IMPULSE_READY );
 		return true;
 	}
 
@@ -5027,7 +5030,7 @@ void idPlayer::BobCycle( const idVec3 &pushVelocity ) {
 		}
 
 		// greebo: is the player creeping? (Only kicks in when not running, run key cancels out creep key)
-		if ( (cv_tdm_creep_toggle.GetBool() || (usercmd.buttons & BUTTON_5)) && !(usercmd.buttons & BUTTON_RUN)) 
+		if ( (cv_tdm_creep_toggle.GetBool() || (usercmd.buttons & BUTTON_CREEP)) && !(usercmd.buttons & BUTTON_RUN)) 
 		{
 			bobmove *= 0.5f * (1 - bobFrac);
 		}
@@ -5707,7 +5710,7 @@ idPlayer::PerformImpulse
 */
 void idPlayer::PerformImpulse( int impulse ) {
 
-	if ( impulse >= IMPULSE_0 && impulse <= IMPULSE_12 ) 
+	if ( impulse >= IMPULSE_WEAPON0 && impulse <= IMPULSE_WEAPON12 ) 
 	{
 		// Prevent the player from choosing to switch weapons.
 		if ( GetImmobilization() & EIM_WEAPON_SELECT ) 
@@ -5721,13 +5724,13 @@ void idPlayer::PerformImpulse( int impulse ) {
 
 	switch( impulse )
 	{
-		case IMPULSE_13:
+		case IMPULSE_RELOAD:
 		{
 			Reload();
 			break;
 		}
 
-		case IMPULSE_14:		// Next weapon
+		case IMPULSE_WEAPON_NEXT:		// Next weapon
 		{
 			// If the grabber is active, next weapon modifies the distance based on the CVAR setting
 			if (m_bGrabberActive)
@@ -5753,7 +5756,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 			NextWeapon();
 			break;
 		}
-		case IMPULSE_15:		// Previous Weapon
+		case IMPULSE_WEAPON_PREV:		// Previous Weapon
 		{
 			// If the grabber is active, previous weapon  modifies the distance based on the CVAR setting
 			if (m_bGrabberActive)
@@ -5780,18 +5783,18 @@ void idPlayer::PerformImpulse( int impulse ) {
 			break;
 		}
 
-		case IMPULSE_18:
+		case IMPULSE_CENTER_VIEW:
 		{
 			centerView.Init(gameLocal.time, 200, viewAngles.pitch, 0);
 			break;
 		}
-		case IMPULSE_19: // Toggle Objectives GUI (was previously assigned to the PDA)
+		case IMPULSE_OBJECTIVES: // Toggle Objectives GUI (was previously assigned to the PDA)
 		{
 			ToggleObjectivesGUI();
 			break;
 		}
 
-		case IMPULSE_23:		// Crouch
+		case IMPULSE_CROUCH:		// Crouch
 		{
 			if (!cv_tdm_crouch_toggle.GetBool())
 			{
@@ -5802,7 +5805,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_24:
+		case IMPULSE_MANTLE:
 		{
 			if ( entityNumber == gameLocal.localClientNum )
 			{
@@ -5873,7 +5876,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 			}
 			break;
 
-		case IMPULSE_30:		// Toggle Inventory Grid GUI #4286
+		case IMPULSE_INVENTORY_GRID:		// Toggle Inventory Grid GUI #4286
 		{
 			ToggleInventoryGridGUI();
 			break;
@@ -5894,7 +5897,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_41:		// TDM Use/Frob
+		case IMPULSE_FROB:		// TDM Use/Frob
 		{
 			// grayman #3746 - If a readable gui is currently displayed
 			// we need to ask for it to be closed.
@@ -5916,7 +5919,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		/*!
 		* Lean forward is impulse 44
 		*/
-		case IMPULSE_44:		// Lean forward
+		case IMPULSE_LEAN_FORWARD:		// Lean forward
 		{
 			m_ButtonStateTracker.StartTracking(impulse);
 			if ( entityNumber == gameLocal.localClientNum )
@@ -5927,7 +5930,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		/*!
 		* Lean left is impulse 45
 		*/
-		case IMPULSE_45:		// Lean left
+		case IMPULSE_LEAN_LEFT:		// Lean left
 		{
 			m_ButtonStateTracker.StartTracking(impulse);
 			DM_LOG(LC_SYSTEM, LT_DEBUG)LOGSTRING("Left lean impulse pressed\r");
@@ -5943,7 +5946,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		/*!
 		* Lean right is impulse 46
 		*/
-		case IMPULSE_46:		// Lean right
+		case IMPULSE_LEAN_RIGHT:		// Lean right
 		{
 			m_ButtonStateTracker.StartTracking(impulse);
 			DM_LOG(LC_SYSTEM, LT_DEBUG)LOGSTRING("Right lean impulse pressed\r");
@@ -5952,7 +5955,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_47:	// Inventory previous item
+		case IMPULSE_INVENTORY_PREV:	// Inventory previous item
 		{
 			// If the grabber is active, prev item modifies the distance based on the CVAR setting
 			if (m_bGrabberActive)
@@ -5976,7 +5979,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_48:	// Inventory next item
+		case IMPULSE_INVENTORY_NEXT:	// Inventory next item
 		{
 			// If the grabber is active, next item modifies the distance based on the CVAR setting
 			if (m_bGrabberActive)
@@ -6000,7 +6003,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_49:	// Inventory previous group
+		case IMPULSE_INVENTORY_GROUP_PREV:	// Inventory previous group
 		{
 			// Check for a held grabber entity, which should be put back into the inventory
 			if (AddGrabberEntityToInventory())
@@ -6022,7 +6025,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_50:	// Inventory next group
+		case IMPULSE_INVENTORY_GROUP_NEXT:	// Inventory next group
 		{
 			// Check for a held grabber entity, which should be put back into the inventory
 			if (AddGrabberEntityToInventory())
@@ -6044,7 +6047,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_51:	// Inventory use item
+		case IMPULSE_INVENTORY_USE:	// Inventory use item
 		{
 			// Use key has "hold down" functions
 			m_ButtonStateTracker.StartTracking(impulse);
@@ -6053,7 +6056,7 @@ void idPlayer::PerformImpulse( int impulse ) {
 		}
 		break;
 
-		case IMPULSE_52:	// Inventory drop item
+		case IMPULSE_INVENTORY_DROP:	// Inventory drop item
 		{
 			// Pass the "inventoryDropItem" event to the GUIs
 			m_overlays.broadcastNamedEvent("inventoryDropItem");
@@ -6073,7 +6076,7 @@ void idPlayer::PerformKeyRepeat(int impulse, int holdTime)
 {
 	switch (impulse)
 	{
-		case IMPULSE_23:		// TDM Crouch
+		case IMPULSE_CROUCH:		// TDM Crouch
 		{
 			if (holdTime > cv_tdm_crouch_toggle_hold_time.GetFloat())
 			{
@@ -6092,13 +6095,13 @@ void idPlayer::PerformKeyRepeat(int impulse, int holdTime)
 		}
 		break;
 
-		case IMPULSE_41:		// TDM Use/Frob
+		case IMPULSE_FROB:		// TDM Use/Frob
 		{
 			PerformFrobKeyRepeat(holdTime);
 		}
 		break;
 
-		case IMPULSE_51:		// Inventory Use Item
+		case IMPULSE_INVENTORY_USE:		// Inventory Use Item
 		{
 			const CInventoryCursorPtr& crsr = InventoryCursor();
 			CInventoryItemPtr it = crsr->GetCurrentItem();
@@ -6119,7 +6122,7 @@ void idPlayer::PerformKeyRelease(int impulse, int holdTime)
 
 	switch (impulse)
 	{
-		case IMPULSE_23:		// TDM crouch
+		case IMPULSE_CROUCH:		// TDM crouch
 			if (cv_tdm_crouch_toggle.GetBool())
 			{
 				if ( entityNumber == gameLocal.localClientNum )
@@ -6137,7 +6140,7 @@ void idPlayer::PerformKeyRelease(int impulse, int holdTime)
 
 		break;
 
-		case IMPULSE_41:		// TDM Use/Frob
+		case IMPULSE_FROB:		// TDM Use/Frob
 		{
 			PerformFrobKeyRelease(holdTime);
 		}
@@ -6145,28 +6148,28 @@ void idPlayer::PerformKeyRelease(int impulse, int holdTime)
 
 
 
-		case IMPULSE_44:
+		case IMPULSE_LEAN_FORWARD:
 			if ( !cv_pm_lean_toggle.GetBool() && physicsObj.IsLeaning() )
 			{
 				physicsObj.ToggleLean(90.0);
 			}
 		break;
 
-		case IMPULSE_45:
+		case IMPULSE_LEAN_LEFT:
 			if ( !cv_pm_lean_toggle.GetBool() && physicsObj.IsLeaning() )
 			{
 				physicsObj.ToggleLean(180.0);
 			}
 		break;
 
-		case IMPULSE_46:
+		case IMPULSE_LEAN_RIGHT:
 			if ( !cv_pm_lean_toggle.GetBool() && physicsObj.IsLeaning() )
 			{
 				physicsObj.ToggleLean(0.0);
 			}
 		break;
 
-		case IMPULSE_51:		// Inventory Use item
+		case IMPULSE_INVENTORY_USE:		// Inventory Use item
 		{
 			InventoryUseKeyRelease(holdTime);
 		}
@@ -6362,8 +6365,8 @@ void idPlayer::UpdateMouseGesture( void )
 	float mag(0.0f);
 	EMouseDir CurrentDir;
 
-	m_MouseGesture.motion.x += usercmd.mx - m_MouseGesture.StartPos.x;
-	m_MouseGesture.motion.y += usercmd.my - m_MouseGesture.StartPos.y;
+	m_MouseGesture.motion.x += usercmd.mx - m_MouseGesture.StartPos.x + usercmd.jx;
+	m_MouseGesture.motion.y += usercmd.my - m_MouseGesture.StartPos.y + usercmd.jy;
 	if( m_MouseGesture.bInverted )
 		m_MouseGesture.motion = -m_MouseGesture.motion;
 
@@ -6556,7 +6559,7 @@ void idPlayer::AdjustSpeed( void )
 			speed = pm_noclipspeed.GetFloat() * cv_pm_runmod.GetFloat();
 			bobFrac = 0.0f;
 		} 
-		else if ((usercmd.buttons & BUTTON_5) || cv_tdm_creep_toggle.GetBool())
+		else if ((usercmd.buttons & BUTTON_CREEP) || cv_tdm_creep_toggle.GetBool())
 		{
 			// slow "creep" noclip
 			speed = pm_noclipspeed.GetFloat() * cv_pm_creepmod.GetFloat();
@@ -6577,7 +6580,7 @@ void idPlayer::AdjustSpeed( void )
 
 		speed = walkSpeed * cv_pm_runmod.GetFloat();
 		// apply creep modifier; creep is on button_5
-		const bool bCreeping = (usercmd.buttons & BUTTON_5) || cv_tdm_creep_toggle.GetBool();
+		const bool bCreeping = (usercmd.buttons & BUTTON_CREEP) || cv_tdm_creep_toggle.GetBool();
 		if (bCreeping)
 		{
 			speed *= (cv_pm_running_creepmod.GetFloat());
@@ -6617,7 +6620,7 @@ void idPlayer::AdjustSpeed( void )
 		bobFrac = 0.0f;
 
 		// apply creep modifier; creep is on button_5
-		const bool bCreeping = (usercmd.buttons & BUTTON_5) || cv_tdm_creep_toggle.GetBool();
+		const bool bCreeping = (usercmd.buttons & BUTTON_CREEP) || cv_tdm_creep_toggle.GetBool();
 		if(bCreeping)
 		{
 			speed *= cv_pm_creepmod.GetFloat();
@@ -7758,6 +7761,15 @@ void idPlayer::RouteGuiMouse( idUserInterface *gui ) {
 		command = gui->HandleEvent( &ev, gameLocal.time );
 		oldMouseX = usercmd.mx;
 		oldMouseY = usercmd.my;
+	}
+	if ( usercmd.jx != 0 || usercmd.jy != 0 ) {
+		extern idCVar in_padMouseSpeed;
+		float speed = in_padMouseSpeed.GetFloat() / 640.f * renderSystem->GetScreenWidth();
+		// hack: we want the original axis deflection, without inversed axes if enabled
+		int x, y;
+		Sys_GetCombinedAxisDeflection( x, y );
+		ev = sys->GenerateMouseMoveEvent( speed * x / 64.f, -speed * y / 64.f );
+		command = gui->HandleEvent( &ev, gameLocal.time );
 	}
 }
 

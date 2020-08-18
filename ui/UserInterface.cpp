@@ -214,6 +214,15 @@ void idUserInterfaceManagerLocal::FreeListGUI( idListGUI *listgui ) {
 	delete listgui;
 }
 
+bool idUserInterfaceManagerLocal::IsBindHandlerActive() const {
+	for ( idUserInterfaceLocal *gui : guis ) {
+		if ( gui->bindHandler != nullptr ) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /*
 ===============================================================================
 

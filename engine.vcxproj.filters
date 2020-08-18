@@ -1291,8 +1291,14 @@
     <ClInclude Include="renderer\backend\GpuBuffer.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
+    <ClInclude Include="framework\GamepadInput.h">
+      <Filter>Framework</Filter>
+    </ClInclude>
     <ClInclude Include="renderer\vr\xr_loader.h">
       <Filter>Renderer\VR</Filter>
+    </ClInclude>
+    <ClInclude Include="sys\sys_padinput.h">
+      <Filter>Sys</Filter>
     </ClInclude>
     <ClInclude Include="renderer\vr\xr_math.h">
       <Filter>Renderer\VR</Filter>
@@ -3043,8 +3049,14 @@
     <ClCompile Include="renderer\backend\GpuBuffer.cpp">
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
+    <ClCompile Include="framework\GamepadInput.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
     <ClCompile Include="renderer\vr\xr_loader.cpp">
       <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="sys\sys_padinput.cpp">
+      <Filter>Sys</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\xr_math.cpp">
       <Filter>Renderer\VR</Filter>

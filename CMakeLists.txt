@@ -105,7 +105,7 @@ ucm_add_dirs(
 		"tools/compilers"
 		TO TDM_SOURCE_FILES RECURSIVE
 )
-ucm_add_files("sys/sys_local.cpp" "sys/sys_local.h" "sys/sys_public.h" TO TDM_SOURCE_FILES)
+ucm_add_files("sys/sys_local.cpp" "sys/sys_local.h" "sys/sys_public.h" "sys/sys_padinput.cpp" "sys/sys_padinput.h" TO TDM_SOURCE_FILES)
 
 if (WITH_TOOLS)
 	ucm_add_dirs("tools" TO TDM_SOURCE_FILES RECURSIVE)
@@ -208,6 +208,7 @@ find_package(ffmpeg REQUIRED)
 find_package(pugixml REQUIRED)
 find_package(libpng REQUIRED)
 find_package(mbedtls REQUIRED)
+find_package(glfw REQUIRED)
 find_package(openxr REQUIRED)
 find_package(openvr REQUIRED)
 
@@ -227,6 +228,7 @@ include_directories(
 		${pugixml_INCLUDE_DIRS}
 		${libpng_INCLUDE_DIRS}
 		${mbedtls_INCLUDE_DIRS}
+		${glfw_INCLUDE_DIRS}
 		${openxr_INCLUDE_DIRS}
 		${openvr_INCLUDE_DIRS}
 )
@@ -242,6 +244,7 @@ target_link_libraries(TheDarkMod
 		${ffmpeg_LIBRARIES}
 		${libpng_LIBRARIES}
 		${mbedtls_LIBRARIES}
+		${glfw_LIBRARIES}
 		${openxr_LIBRARIES}
 		${openvr_LIBRARIES}
 )
