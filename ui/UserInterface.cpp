@@ -296,6 +296,14 @@ bool idUserInterfaceLocal::InitFromFile( const char *qpath, bool rebuild, bool c
 		}
 
 		state.Set( "name", qpath );
+
+		//stgatilov: make custom defines by mapper visible in C++
+		idStrList defNames = src.GetAllDefineNames();
+		for (int i = 0; i < defNames.Num(); i++) {
+			const char *name = defNames[i];
+			idStr value = src.GetDefineValueString(name);
+			defines.Set(name, value);
+		}
 	} else {
 		desktop->SetDC( &uiManagerLocal.dc );
 		desktop->SetFlag( WIN_DESKTOP );
@@ -424,18 +432,26 @@ void idUserInterfaceLocal::SetStateFloat( const char *varName, const float value
 }
 
 const char* idUserInterfaceLocal::GetStateString( const char *varName, const char* defaultString ) const {
+	if (varName[0] == '#')
+		return defines.GetString(varName + 1, defaultString);
 	return state.GetString(varName, defaultString);
 }
 
 bool idUserInterfaceLocal::GetStateBool( const char *varName, const char* defaultString ) const {
+	if (varName[0] == '#')
+		return defines.GetBool(varName + 1, defaultString);
 	return state.GetBool(varName, defaultString); 
 }
 
 int idUserInterfaceLocal::GetStateInt( const char *varName, const char* defaultString ) const {
+	if (varName[0] == '#')
+		return defines.GetInt(varName + 1, defaultString);
 	return state.GetInt(varName, defaultString);
 }
 
 float idUserInterfaceLocal::GetStateFloat( const char *varName, const char* defaultString ) const {
+	if (varName[0] == '#')
+		return defines.GetFloat(varName + 1, defaultString);
 	return state.GetFloat(varName, defaultString);
 }
 
@@ -664,4 +680,16 @@ const char *idUserInterfaceLocal::RunGuiScript(const char *windowName, int scrip
 	if (!ok)
 		return NULL;
 	return dw->win->cmd.c_str();
+}
+
+bool idUserInterfaceLocal::ResetWindowTime(const char *windowName, int startTime) {
+	idWindow *rootWin = GetDesktop();
+	if (!rootWin)
+		return false;
+	drawWin_t *dw = rootWin->FindChildByName(windowName);
+	if (!dw || !dw->win)
+		return false;
+	dw->win->ResetTime(startTime);
+	dw->win->EvalRegs(-1, true);
+	return true;
 }

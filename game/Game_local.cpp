@@ -3780,6 +3780,7 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 		
 		In the following examples, there is usually another call to this routine with ";"
 		as the "menuCommand" param. But sometimes it does not appear, depending on whoknows.
+		(stgatilov 2.09: outer code breaks full cmd string into tokens and passes every token here)
 
 		The following will cause this routine called twice (!), once with "mainmenu_heartbeat"
 		and once with ";" as command (if you add ";" before the last double quote, it will
@@ -3807,8 +3808,13 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 		To work around this issue, we call ExecuteCommandBuffer( void ) whenever we see an
 		initChoice command, in the hopes that the buffer won't overflow until the next one.
 
+		(stgatilov 2.09: the sporadic words contatentation was caused by a bug in cmd merging code.
+		Among several places which merge command strings, most put a semicolon and spaces in-between.
+		But one piece of code did not have it --- end of idWindow::Time)
+
 		The old code simply watched for certain words, and then issued the command. It was not
 		able to distinguish between commands and arguments.
+		(stgatilov 2.09: unfortunately, the outer code still does it now for builtin keywords)
 
 		This routine now watches for the first command, ignoring any stray ";". If it sees
 		a command, it deduces the number of following arguments, and then collects them until
@@ -3992,6 +3998,162 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 			gui->HandleNamedEvent("OnMenuMusicSettingChanged");
 
 			cv_tdm_menu_music.ClearModified();
+		}
+	}
+	else if (cmd == "mainmenumodeselect")
+	{
+		struct MainMenuStateInfo {
+			idStr name;				//e.g. BRIEFING   (MM_STATE_ is prepended)
+			idStr constructor;		//e.g. BriefingStateInit
+			idStr destructor;		//e.g. BriefingStateEnd
+		};
+		struct MainMenuTransition {
+			idStr from;				//e.g. BRIEFING
+			idStr action;			//e.g. FORWARD
+			idStr to;				//e.g. DIFF_SELECT
+		};
+		static const MainMenuStateInfo STATES[] = {
+			{"NONE", NULL, NULL},
+			{"MAINMENU", NULL, NULL},
+			{"START_GAME", NULL, NULL},
+			{"END_GAME", NULL, NULL},
+			{"FORWARD", NULL, NULL},
+			{"BACKWARD", NULL, NULL},
+			{"MAINMENU_INGAME", "MainMenuInGameStateInit", "MainMenuInGameStateEnd"},
+			{"MAINMENU_NOTINGAME", "MainMenuStateInit", "MainMenuStateEnd"},
+			{"QUITGAME", "QuitGameStateInit", "QuitGameStateEnd"},
+			{"CREDITS", "CreditsMenuStateInit", "CreditsMenuStateEnd"},
+			{"LOAD_SAVE_GAME", "LoadSaveGameMenuStateInit", "LoadSaveGameMenuStateEnd"},
+			{"SUCCESS", "SuccessScreenStateInit", "SuccessScreenStateEnd"},
+			{"BRIEFING", "BriefingStateInit", "BriefingStateEnd"},
+			{"BRIEFING_VIDEO", "BriefingVidStateInit", "BriefingVidStateEnd"},
+			{"OBJECTIVES", "ObjectivesStateInit", "ObjectivesStateEnd"},
+			{"SHOP", "ShopMenuStateInit", "ShopMenuStateEnd"},
+			{"SETTINGS", "SettingsMenuStateInit", "SettingsMenuStateEnd"},
+			{"SELECT_LANGUAGE", "SelectLanguageStateInit", "SelectLanguageStateEnd"},
+			{"DOWNLOAD", "DownloadMissionsMenuStateInit", "DownloadMissionsMenuStateEnd"},
+			{"DEBRIEFING_VIDEO", "DebriefingVideoStateInit", "DebriefingVideoStateEnd"},
+			{"GUISIZE", "SettingsGuiSizeInit", "GuiSizeMenuStateEnd"},
+			{"MOD_SELECT", "NewGameMenuStateInit", "NewGameMenuStateEnd"},
+			{"DIFF_SELECT", "ObjectivesStateInit", "ObjectivesStateEnd"},
+		};
+		static const MainMenuTransition TRANSITIONS[] = {
+			//standard FM-customized sequence: starting new game
+			{"MOD_SELECT", "FORWARD", "BRIEFING_VIDEO"},	{"BRIEFING_VIDEO", "BACKWARD", "MOD_SELECT"},
+			{"BRIEFING_VIDEO", "FORWARD", "BRIEFING"},		{"BRIEFING", "BACKWARD", "MOD_SELECT"},
+			{"BRIEFING", "FORWARD", "DIFF_SELECT"},			{"DIFF_SELECT", "BACKWARD", "BRIEFING"},
+			{"DIFF_SELECT", "FORWARD", "SHOP"},				{"SHOP", "BACKWARD", "DIFF_SELECT"},
+			{"SHOP", "FORWARD", "START_GAME"},
+			//standard FM-customized sequence: game finished successfully
+			{"DEBRIEFING_VIDEO", "FORWARD", "SUCCESS"},		{"SUCCESS", "BACKWARD", "DEBRIEFING_VIDEO"},
+			{"SUCCESS", "FORWARD", "MAINMENU"},
+		};
+
+		static const int STATENUM = sizeof(STATES) / sizeof(STATES[0]);
+		static const int TRANSITIONNUM = sizeof(TRANSITIONS) / sizeof(TRANSITIONS[0]);
+		auto FindStateByValue = [gui](int value) -> const MainMenuStateInfo* {
+			for (int i = 0; i < STATENUM; i++) {
+				idStr name = "#MM_STATE_" + STATES[i].name;
+				if (value == gui->GetStateInt(name))
+					return &STATES[i];
+			}
+			return nullptr;
+		};
+		auto FindStateByName = [gui](const char *name) -> const MainMenuStateInfo* {
+			for (int i = 0; i < STATENUM; i++) {
+				if (STATES[i].name == name)
+					return &STATES[i];
+			}
+			return nullptr;
+		};
+		auto ShouldSkipState = [gui](const char *name) -> bool {
+			idStr defName = idStr("#ENABLE_MAINMENU_") + name;
+			int value = gui->GetStateInt(defName, "-1");
+			if (value == 0)
+				return true;		//#define ENABLE_MAINMENU_SHOP 0  (set by mapper)
+			if (idStr::Icmp(name, "SHOP") == 0 && gui->GetStateInt("SkipShop") != 0)
+				return true;		//gui::SkipShop = 1    (set by C++ code)
+			return false;
+		};
+		auto FindTransition = [&](const char *from, const char *action) -> const char* {
+			for (int i = 0; i < TRANSITIONNUM; i++) {
+				if (TRANSITIONS[i].from == from && TRANSITIONS[i].action == action)
+					return TRANSITIONS[i].to.c_str();
+			}
+			return nullptr;
+		};
+
+		int modeValue = gui->GetStateInt("mode");
+		int targetValue = gui->GetStateInt("targetmode");
+		auto modeState = FindStateByValue(modeValue);
+		auto targetState = FindStateByValue(targetValue);
+		if (!modeState) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Unknown current state %d, setting NONE", modeValue);
+			modeState = &STATES[0];
+		}
+		if (!targetState) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Unknown target state %d, setting NONE", modeValue);
+			targetState = &STATES[0];
+		}
+
+		if (const char *dest = FindTransition(modeState->name, targetState->name)) {
+			//this is "action" of transition, i.e. not a "target" state, but more like a "direction" of movement
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Detected transition %s from %s", targetState->name.c_str(), modeState->name.c_str());
+			while (dest && ShouldSkipState(dest)) {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Skipped disabled state %s", dest);
+				dest = FindTransition(dest, targetState->name);
+			}
+			if (dest) {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Transition ends at %s", dest);
+			} else {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("All states in transition chain are disabled, redirect to MAINMENU");
+				dest = "MAINMENU";
+			}
+			targetState = FindStateByName(dest);
+		}
+
+		auto Redirect = [&](const char *newTargetState) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Target state %s, redirecting to %s", targetState->name.c_str(), newTargetState);
+			targetState = FindStateByName(newTargetState);
+			assert(targetState);
+		};
+
+		if (ShouldSkipState(targetState->name)) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Target state %s is disabled, redirecting to MAINMENU", targetState->name.c_str());
+			targetState = FindStateByName("MAINMENU");
+		}
+		if (targetState->name == "NONE")
+			Redirect("MAINMENU");
+		if (targetState->name == "MAINMENU") {
+			if (gui->GetStateInt("inGame"))
+				Redirect("MAINMENU_INGAME");
+			else
+				Redirect("MAINMENU_NOTINGAME");
+		}
+
+		if (targetState != modeState) {
+			if (targetState->name == "START_GAME") {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Starting game");
+				idStr mapname = m_MissionManager->GetCurrentStartingMap();
+				cmdSystem->BufferCommandText( CMD_EXEC_APPEND, va("map %s\n", mapname.c_str()) );
+				//note: it seems that target state does not matter
+				//map start resets "mode" to NONE anyway (not sure about exact mechanism)
+			}
+			if (targetState->name == "END_GAME") {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Ending game");
+				cmdSystem->BufferCommandText( CMD_EXEC_APPEND, va("disconnect\n") );
+				Redirect("MAINMENU_NOTINGAME");
+			}
+
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Ending state %s", modeState->name.c_str() );
+			if (modeState->destructor)
+				gui->ResetWindowTime(modeState->destructor, 0);
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Starting state %s", targetState->name.c_str() );
+			if (targetState->constructor)
+				gui->ResetWindowTime(targetState->constructor, 0);
+
+			targetValue = gui->GetStateInt("#MM_STATE_" + targetState->name);
+			gui->SetStateInt("mode", targetValue);
 		}
 	}
 	else if (cmd == "setvideoreswidescreen")
@@ -4474,6 +4636,10 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 		// First mission to be started, reset index
 		m_MissionManager->SetCurrentMissionIndex(0);
 		gui->SetStateInt("CurrentMission", 1);
+
+		// Let the GUI know which map to load
+		idStr mapToStart = m_MissionManager->GetCurrentStartingMap();
+		gui->SetStateString("mapStartCmd", va("exec 'map %s'", mapToStart.c_str()));
 
 		ClearPersistentInfo();
 	}
