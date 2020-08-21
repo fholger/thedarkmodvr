@@ -933,6 +933,7 @@ void idRenderSystemLocal::CaptureRenderToBuffer( unsigned char *buffer, bool use
 	cmd.imageWidth = rc.width;
 	cmd.imageHeight = rc.height;
 
+	frameData->render2D = true;
 	R_IssueRenderCommands( frameData );
 }
 
