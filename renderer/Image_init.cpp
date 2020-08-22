@@ -20,7 +20,6 @@
 #include "BloomStage.h"
 #include "AmbientOcclusionStage.h"
 #include "FrameBufferManager.h"
-#include "LoadStack.h"
 
 #define	DEFAULT_SIZE		16
 #define	NORMAL_MAP_SIZE		32
@@ -243,7 +242,6 @@ idImage::idImage() {
 	textureHandle = 0;
 	lastNeededInFrame = -1;
 	isImmutable = false;
-	loadStack = nullptr;
 }
 
 /*
@@ -1233,7 +1231,6 @@ idImage *idImageManager::AllocImage( const char *name ) {
 	idImage *image = new idImage;
 
 	images.Append( image );
-	image->loadStack = new LoadStack(declManager->GetLoadStack());
 
 	//common->Printf("AllocImage added image '%s'\n",name);
 

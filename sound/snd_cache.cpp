@@ -19,7 +19,6 @@
 
 #include "snd_local.h"
 #include <limits.h>
-#include "LoadStack.h"
 
 #define USE_SOUND_CACHE_ALLOCATOR
 
@@ -470,7 +469,6 @@ void idSoundSample::Load( void ) {
 
 	if ( timestamp == FILE_NOT_FOUND_TIMESTAMP ) {
 		common->Warning( "Couldn't load sound '%s' using default", name.c_str() );
-		declManager->GetLoadStack().PrintStack(2, LoadStack::LevelOf(this));
 		MakeDefault();
 		return;
 	}

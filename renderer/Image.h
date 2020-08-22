@@ -16,6 +16,8 @@
 #ifndef __R_IMAGE_H__
 #define __R_IMAGE_H__
 
+#include <stack>
+
 /*
 ====================================================================
 
@@ -157,7 +159,6 @@ typedef struct imageBlock_s {
 	void Purge();
 } imageBlock_t;
 
-class LoadStack;
 
 class idImage {
 public:
@@ -258,9 +259,6 @@ public:
 	imageBlock_t		cpuData;				// CPU-side usable image data (usually absent)
 	imageResidency_t	residency;				// determines whether cpuData and/or texnum should be valid
 	imageLoadState_t	backgroundLoadState;	// state of background loading (usually disabled)
-
-	//stgatilov: information about why and how this image was loaded (may be missing)
-	LoadStack *			loadStack;
 
 	// START bindless texture support
 private:

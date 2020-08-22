@@ -1291,9 +1291,6 @@
     <ClInclude Include="renderer\backend\GpuBuffer.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
-    <ClInclude Include="framework\LoadStack.h">
-      <Filter>Framework</Filter>
-    </ClInclude>
     <ClInclude Include="framework\GamepadInput.h">
       <Filter>Framework</Filter>
     </ClInclude>
@@ -3052,8 +3049,6 @@
     <ClCompile Include="renderer\backend\GpuBuffer.cpp">
       <Filter>Renderer\Backend</Filter>
     </ClCompile>
-    <ClCompile Include="framework\LoadStack.cpp">
-      <Filter>Framework</Filter>
     </ClCompile>
     <ClCompile Include="framework\GamepadInput.cpp">
       <Filter>Framework</Filter>
@@ -3078,7 +3073,6 @@
     </ClCompile>
     <ClCompile Include="renderer\vr\OpenVRBackend.cpp">
       <Filter>Renderer\VR</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="sys\win32\rc\res\BEVEL.BMP">

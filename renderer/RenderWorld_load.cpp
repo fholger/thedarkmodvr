@@ -94,7 +94,6 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src ) {
 
 	model = renderModelManager->AllocModel();
 	model->InitEmpty( token );
-	declManager->BeginModelLoad(model);
 
 	int numSurfaces = src->ParseInt();
 	if ( numSurfaces < 0 ) {
@@ -156,7 +155,6 @@ idRenderModel *idRenderWorldLocal::ParseModel( idLexer *src ) {
 	src->ExpectTokenString( "}" );
 
 	model->FinishSurfaces();
-	declManager->EndModelLoad(model);
 
 	return model;
 }
@@ -180,7 +178,6 @@ idRenderModel *idRenderWorldLocal::ParseShadowModel( idLexer *src ) {
 
 	model = renderModelManager->AllocModel();
 	model->InitEmpty( token );
-	declManager->BeginModelLoad(model);
 
 	surf.material = tr.defaultMaterial;
 
@@ -219,7 +216,6 @@ idRenderModel *idRenderWorldLocal::ParseShadowModel( idLexer *src ) {
 
 	// we do NOT do a model->FinishSurfaceces, because we don't need sil edges, planes, tangents, etc.
 //	model->FinishSurfaces();
-	declManager->EndModelLoad(model);
 
 	return model;
 }
