@@ -709,8 +709,8 @@ void idUsercmdGenLocal::MouseMove( void ) {
 idUsercmdGenLocal::JoystickMove
 =================
 */
-idCVar in_invertYawAxis( "in_invertYawAxis", "0", CVAR_GAME|CVAR_BOOL|CVAR_ARCHIVE, "Invert gamepad yaw axis" );
-idCVar in_invertPitchAxis( "in_invertPitchAxis", "0", CVAR_GAME|CVAR_BOOL|CVAR_ARCHIVE, "Invert gamepad pitch axis" );
+idCVar in_padInvertYawAxis( "in_padInvertYawAxis", "0", CVAR_GAME|CVAR_BOOL|CVAR_ARCHIVE, "Invert gamepad yaw axis" );
+idCVar in_padInvertPitchAxis( "in_padInvertPitchAxis", "0", CVAR_GAME|CVAR_BOOL|CVAR_ARCHIVE, "Invert gamepad pitch axis" );
 void idUsercmdGenLocal::JoystickMove( void ) {
 	float	anglespeed;
 
@@ -720,8 +720,8 @@ void idUsercmdGenLocal::JoystickMove( void ) {
 		anglespeed = idMath::M_MS2SEC * USERCMD_MSEC;
 	}
 
-	float yawAngleSpeed = anglespeed * ( in_invertYawAxis.GetBool() ? 1 : -1 );
-	float pitchAngleSpeed = anglespeed * ( in_invertPitchAxis.GetBool() ? 1 : -1 );
+	float yawAngleSpeed = anglespeed * ( in_padInvertYawAxis.GetBool() ? 1 : -1 );
+	float pitchAngleSpeed = anglespeed * ( in_padInvertPitchAxis.GetBool() ? 1 : -1 );
 	viewangles[YAW] += yawAngleSpeed * in_yawSpeed.GetFloat() * joystickAxis[AXIS_YAW] / 127.f;
 	viewangles[PITCH] += pitchAngleSpeed * in_pitchSpeed.GetFloat() * joystickAxis[AXIS_PITCH] / 127.f;
 	cmd.rightmove = idMath::ClampChar( cmd.rightmove + joystickAxis[AXIS_SIDE] );

@@ -7771,6 +7771,15 @@ void idPlayer::RouteGuiMouse( idUserInterface *gui ) {
 		ev = sys->GenerateMouseMoveEvent( speed * x / 64.f, -speed * y / 64.f );
 		command = gui->HandleEvent( &ev, gameLocal.time );
 	}
+	if ( usercmd.jx != 0 || usercmd.jy != 0 ) {
+		extern idCVar in_padMouseSpeed;
+		float speed = in_padMouseSpeed.GetFloat() / 640.f * renderSystem->GetScreenWidth();
+		// hack: we want the original axis deflection, without inversed axes if enabled
+		int x, y;
+		Sys_GetCombinedAxisDeflection( x, y );
+		ev = sys->GenerateMouseMoveEvent( speed * x / 64.f, -speed * y / 64.f );
+		command = gui->HandleEvent( &ev, gameLocal.time );
+	}
 }
 
 /*

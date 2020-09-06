@@ -67,6 +67,24 @@ void idSessionLocal::StartMenu( bool playIntro ) {
 
 /*
 =================
+idSessionLocal::GetGUI
+=================
+*/
+idUserInterface *idSessionLocal::GetGui(GuiType type) const {
+	if (type == gtActive)
+		return guiActive;
+	if (type == gtMainMenu)
+		return guiMainMenu;
+	if (type == gtRestart)
+		return guiRestartMenu;
+	if (type == gtLoading)
+		return guiLoading;
+	//TODO: do we ever need other cases?
+	return NULL;
+}
+
+/*
+=================
 idSessionLocal::SetGUI
 =================
 */
@@ -1154,7 +1172,8 @@ const char* idSessionLocal::MessageBox( msgBoxType_t type, const char *message, 
 	msgFireBack[ 1 ] = fire_no ? fire_no : "";
 	guiMsgRestore = guiActive;
 	// 4725: Hide the cursor behind the prompt (Obsttorte)
-	guiMsgRestore->SetCursor(325,290);
+	if (guiMsgRestore)
+		guiMsgRestore->SetCursor(325,290);
 
 	guiActive = guiMsg;
 	guiMsg->SetCursor( 325, 290 );

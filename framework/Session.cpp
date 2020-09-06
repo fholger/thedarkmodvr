@@ -1188,6 +1188,9 @@ void idSessionLocal::WriteCmdDemo( const char *demoName, bool save ) {
 		common->Printf( "idSessionLocal::WriteCmdDemo: no name specified\n" );
 		return;
 	}
+	if (com_fixedTic.GetInteger()) {
+		common->Error( "Cmd demo is not compatible with uncapped FPS" );
+	}
 
 	idStr statsName;
 	if (save) {
@@ -1236,6 +1239,9 @@ idSessionLocal::StartPlayingCmdDemo
 ===============
 */
 void idSessionLocal::StartPlayingCmdDemo(const char *demoName) {
+	if (com_fixedTic.GetInteger()) {
+		common->Error( "Cmd demo is not compatible with uncapped FPS" );
+	}
 	// exit any current game
 	Stop();
 
@@ -1788,11 +1794,11 @@ void Session_Hitch_f( const idCmdArgs &args ) {
 
 /*
 ====================
-Session_ToggleMenu_f
+SimulateEscape_f
 ====================
 */
-void Session_ToggleMenu_f( const idCmdArgs &args ) {
-	sessLocal.ToggleMenu();
+void SimulateEscape_f( const idCmdArgs & ) {
+	Sys_QueEvent( 0, SE_KEY, K_ESCAPE, 1, 0, nullptr );
 }
 
 /*
@@ -3355,7 +3361,7 @@ void idSessionLocal::Init() {
 
 	cmdSystem->AddCommand( "hitch", Session_Hitch_f, CMD_FL_SYSTEM|CMD_FL_CHEAT, "hitches the game" );
 
-	cmdSystem->AddCommand( "togglemenu", Session_ToggleMenu_f, CMD_FL_GAME, "toggles the main menu" );
+	cmdSystem->AddCommand( "escape", SimulateEscape_f, CMD_FL_GAME, "simulate a press of the ESC key" );
 
 	// the same idRenderWorld will be used for all games
 	// and demos, insuring that level specific models

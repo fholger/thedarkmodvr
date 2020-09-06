@@ -42,7 +42,7 @@ namespace {
 		STATUS_RELEASED,
 	};
 
-	struct padState_t {
+	struct padButtonState_t {
 		padStatus_t status;
 		uint64_t lastPressed;
 		uint64_t lastReleased;
@@ -50,14 +50,14 @@ namespace {
 		padCmd_t bindings[BIND_NUM];
 		int activeBinding;
 
-		padState_t() : status(STATUS_NONE), lastPressed(0), lastReleased(0), activeBinding(-1) {
+		padButtonState_t() : status(STATUS_NONE), lastPressed(0), lastReleased(0), activeBinding(-1) {
 			for ( int i = 0; i < BIND_NUM; ++i ) {
 				bindings[i].action = -1;
 			}
 		}
 	};
 
-	padState_t *buttonState = nullptr;
+	padButtonState_t buttonState[PAD_NUM_BUTTONS] = {};
 	int modifierButton;
 
 	int axisState[PAD_NUM_AXES];
@@ -100,8 +100,8 @@ namespace {
 		if ( modifierButton == -1 ) {
 			return false;
 		}
-		const padState_t &ms = buttonState[modifierButton];
-		const padState_t &bs = buttonState[button];
+		const padButtonState_t &ms = buttonState[modifierButton];
+		const padButtonState_t &bs = buttonState[button];
 		return ms.lastPressed <= bs.lastPressed && (ms.status == STATUS_PRESSED || ms.lastReleased >= bs.lastPressed);
 	}
 
@@ -111,8 +111,6 @@ namespace {
 }
 
 void Gamepad_BindButton_f( const idCmdArgs &args ) {
-	idStr cmd;
-	
 	int numArgs = args.Argc();
 
 	if ( numArgs < 3 ) {
@@ -132,6 +130,7 @@ void Gamepad_BindButton_f( const idCmdArgs &args ) {
 	}
 
 	// copy the rest of the command line
+	idStr cmd;
 	for ( int i = 3; i < numArgs; i++ ) {
 		cmd += args.Argv( i );
 		if ( i != (numArgs-1) ) {
@@ -149,7 +148,6 @@ void ArgCompletion_PadButtonName( const idCmdArgs &args, void(*callback)( const 
 }
 
 void idGamepadInput::Init() {
-	buttonState = new padState_t[PAD_NUM_BUTTONS];
 	memset(axisState, 0, sizeof(axisState));
 	modifierButton = -1;
 	leanLeftPressed = 0;
@@ -159,10 +157,7 @@ void idGamepadInput::Init() {
 	cmdSystem->AddCommand( "bindPadButton", Gamepad_BindButton_f, CMD_FL_SYSTEM, "binds a command to a gamepad button", ArgCompletion_PadButtonName );
 }
 
-void idGamepadInput::Shutdown() {
-	delete[] buttonState;
-	buttonState = nullptr;
-}
+void idGamepadInput::Shutdown() {}
 
 int idGamepadInput::StringToButton( const idStr &str ) {
 	for ( nameMapping_t *n = buttonNames; n->name; n++ ) {
@@ -225,7 +220,7 @@ void idGamepadInput::SetButtonState( int button, bool pressed ) {
 		return;
 	}
 
-	padState_t &st = buttonState[button];
+	padButtonState_t &st = buttonState[button];
 
 	if ( pressed ) {
 		st.status = STATUS_PRESSED;
@@ -262,22 +257,19 @@ idList<padActionChange_t> idGamepadInput::GetActionStateChange() {
 	// double-lean hack
 	if ( !forwardLeanActive ) {
 		if ( leanLeftPressed > 0 && leanRightPressed > 0 ) {
-			common->Printf("Forward lean activated.\n");
 			actionChanges.AddGrow( { UB_LEAN_FORWARD, "", true } );
 			forwardLeanActive = true;
 		} else if ( leanLeftPressed > 0 && currentTime - leanLeftPressed >= twoButtonTime ) {
-			common->Printf("Left lean activated.\n");
 			actionChanges.AddGrow( { UB_LEAN_LEFT, "", true } );
 			leanLeftPressed = 0;
 		} else if ( leanRightPressed > 0 && currentTime - leanRightPressed >= twoButtonTime ) {
-			common->Printf("Right lean activated.\n");
 			actionChanges.AddGrow( { UB_LEAN_RIGHT, "", true } );
 			leanRightPressed = 0;
 		}
 	}
 	
 	for ( int btn = 0; btn < PAD_NUM_BUTTONS; ++btn ) {
-		padState_t &bs = buttonState[btn];
+		padButtonState_t &bs = buttonState[btn];
 		if ( btn == modifierButton ) {
 			continue;
 		}
@@ -294,7 +286,6 @@ idList<padActionChange_t> idGamepadInput::GetActionStateChange() {
 				}
 				if ( (bind.action == UB_LEAN_LEFT || bind.action == UB_LEAN_RIGHT) && forwardLeanActive ) {
 					// hack for forward lean
-					common->Printf("Forward lean deactivated.\n");
 					actionChanges.AddGrow( { UB_LEAN_FORWARD, "", false } );
 				} else {
 					actionChanges.AddGrow( { bind.action, bind.cmd, false } );
@@ -303,7 +294,6 @@ idList<padActionChange_t> idGamepadInput::GetActionStateChange() {
 				bs.status = STATUS_NONE;
 
 				if ( bind.action == UB_LEAN_LEFT || bind.action == UB_LEAN_RIGHT ) {
-					common->Printf("Resetting lean vars.\n");
 					leanLeftPressed = 0;
 					leanRightPressed = 0;
 					forwardLeanActive = false;
