@@ -2121,6 +2121,7 @@ int GLAD_GL_OML_resample = 0;
 int GLAD_GL_OML_subsample = 0;
 int GLAD_GL_OVR_multiview = 0;
 int GLAD_GL_OVR_multiview2 = 0;
+int GLAD_GL_EXT_multiview_texture_multisample = 0;
 int GLAD_GL_PGI_misc_hints = 0;
 int GLAD_GL_PGI_vertex_hints = 0;
 int GLAD_GL_REND_screen_coordinates = 0;
@@ -9123,6 +9124,7 @@ static int find_extensionsGL(void) {
 	GLAD_GL_OML_subsample = has_ext("GL_OML_subsample");
 	GLAD_GL_OVR_multiview = has_ext("GL_OVR_multiview");
 	GLAD_GL_OVR_multiview2 = has_ext("GL_OVR_multiview2");
+	GLAD_GL_EXT_multiview_texture_multisample = has_ext("GL_EXT_multiview_texture_multisample");
 	GLAD_GL_PGI_misc_hints = has_ext("GL_PGI_misc_hints");
 	GLAD_GL_PGI_vertex_hints = has_ext("GL_PGI_vertex_hints");
 	GLAD_GL_REND_screen_coordinates = has_ext("GL_REND_screen_coordinates");

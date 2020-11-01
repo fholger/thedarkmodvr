@@ -50,6 +50,7 @@ idCVar vr_comfortVignetteRadius("vr_comfortVignetteRadius", "0.6", CVAR_RENDERER
 idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Transition corridor width from black to visible of the comfort vignette" );
 idCVar vr_disableZoomAnimations("vr_disableZoomAnimations", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If set to 1, any zoom effect will be instant without transitioning animation");
 idCVar vr_useLightScissors("vr_useLightScissors", "1", CVAR_RENDERER|CVAR_BOOL, "Use individual scissor rects per light (helps performance, might lead to incorrect shadows in border cases)");
+idCVar vr_stereoRenderingMode("vr_stereoRenderingMode", "0", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Use stereo rendering techniques. 0 - disabled (eye views are rendered separately), 1 - instanced, 2 - multiview (only supported on NVIDIA cards)");
 
 extern void RB_Tonemap( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
@@ -137,19 +138,25 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	const_cast<frameData_t *>(frameData)->render2D |= vr_force2DRender.GetBool();
 
 	FrameBuffer *defaultFbo = frameBuffers->defaultFbo;
+	FrameBuffer *primaryFbo = frameBuffers->primaryFbo;
 
 	FrameBuffer *uiBuffer;
 	FrameBuffer *eyeBuffers[2];
 	idImage *uiTexture;
 	idImage *eyeTextures[2];
+	FrameBuffer *stereoFbo;
+	FrameBuffer *renderEyeFbos[2];
 	AcquireFboAndTexture( UI, uiBuffer, uiTexture );
 	AcquireFboAndTexture( LEFT_EYE, eyeBuffers[0], eyeTextures[0] );
 	AcquireFboAndTexture( RIGHT_EYE, eyeBuffers[1], eyeTextures[1] );
+	AcquireRenderFbos( stereoFbo, renderEyeFbos[0], renderEyeFbos[1] );
+	stereoFbo->Bind();
 
 	aimIndicatorPos = frameData->mouseAimPosition;
 
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
+		frameBuffers->primaryFbo = renderEyeFbos[eye];
 		frameBuffers->defaultFbo = eyeBuffers[eye];
 		frameBuffers->defaultFbo->Bind();
 		GL_ViewportRelative( 0, 0, 1, 1 );
@@ -166,6 +173,7 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	}
 
 	// render lightgem and 2D UI elements
+	frameBuffers->primaryFbo = primaryFbo;
 	frameBuffers->defaultFbo = uiBuffer;
 	frameBuffers->defaultFbo->Bind();
 	GL_ViewportRelative( 0, 0, 1, 1 );
@@ -635,4 +643,12 @@ void VRBackend::UpdateLightScissor( viewLight_t *vLight ) {
 		vLight->scissorRect.zmin = 0;
 		vLight->scissorRect.zmax = 1;
 	}
+}
+
+bool VRBackend::UseInstancedStereoRendering() const {
+	return vr_stereoRenderingMode.GetInteger() > 0 && !UseMultiviewStereoRendering();
+}
+
+bool VRBackend::UseMultiviewStereoRendering() const {
+return vr_stereoRenderingMode.GetInteger() == 2 && GLAD_GL_OVR_multiview2 && (r_multiSamples.GetInteger() <= 1 || GLAD_GL_EXT_multiview_texture_multisample );
 }

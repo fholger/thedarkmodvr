@@ -342,6 +342,10 @@ void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 	}
 }
 
+void OpenXRBackend::AcquireRenderFbos( FrameBuffer *&stereoFbo, FrameBuffer *&leftFbo, FrameBuffer *&rightFbo ) {
+	// TODO
+}
+
 idList<idVec2> OpenXRBackend::GetHiddenAreaMask( eyeView_t eye ) {
 	if ( !XR_KHR_visibility_mask_available ) {
 		return idList<idVec2>();

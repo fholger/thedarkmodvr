@@ -15836,6 +15836,7 @@ GLAPI PFNGLFRAMEBUFFERTEXTUREMULTIVIEWOVRPROC glad_glFramebufferTextureMultiview
 #endif
 #if defined(GLAD_COMPILE_LOADER) || GL_OVR_multiview2
 GLAPI int GLAD_GL_OVR_multiview2;
+GLAPI int GLAD_GL_EXT_multiview_texture_multisample;
 #endif
 #if defined(GLAD_COMPILE_LOADER) || GL_PGI_misc_hints
 GLAPI int GLAD_GL_PGI_misc_hints;

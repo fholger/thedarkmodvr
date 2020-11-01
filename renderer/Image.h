@@ -120,6 +120,7 @@ typedef enum {
 	TT_DISABLED,
 	TT_2D,
 	TT_CUBIC,
+	TT_2D_ARRAY,
 } textureType_t;
 
 typedef enum {

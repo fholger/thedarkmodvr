@@ -30,6 +30,7 @@ extern idCVar vr_aimIndicatorSize;
 extern idCVar vr_aimIndicatorRangedSize;
 extern idCVar vr_aimIndicatorRangedMultiplier;
 extern idCVar vr_disableZoomAnimations;
+extern idCVar vr_stereoRenderingMode;
 
 class VRBackend {
 public:
@@ -43,6 +44,9 @@ public:
 	void DrawHiddenAreaMeshToDepth();
 
 	void UpdateLightScissor( viewLight_t *vLight );
+
+	bool UseInstancedStereoRendering() const;
+	bool UseMultiviewStereoRendering() const;
 
 	static const float GameUnitsToMetres;
 	static const float MetresToGameUnits;
@@ -62,6 +66,7 @@ protected:
 	virtual bool GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation ) = 0;
 	virtual bool GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) = 0;
 	virtual void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) = 0;
+	virtual void AcquireRenderFbos( FrameBuffer *&stereoFbo, FrameBuffer *&leftFbo, FrameBuffer *&rightFbo ) = 0;
 
 	virtual idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) = 0;
 	virtual idVec4 GetVisibleAreaBounds( eyeView_t eye ) = 0;

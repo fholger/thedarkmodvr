@@ -190,12 +190,87 @@ void OpenVRBackend::InitRenderTextures() {
 	eyeBuffers[1] = frameBuffers->CreateFromGenerator( "vr_right", [=](FrameBuffer *fbo) {
 		CreateFrameBuffer( fbo, eyeTextures[1], width, height );
 	} );
+
+	stereoColorArray = globalImages->ImageFromFunction( "vr_stereo_color", FB_RenderTexture );
+	stereoDepthStencilArray = globalImages->ImageFromFunction( "vr_stereo_depth", FB_RenderTexture );
+	stereoRenderBuffer = frameBuffers->CreateFromGenerator( "vr_stereo", [=](FrameBuffer *fbo) {
+		CreateStereoFrameBuffer( fbo, width, height );
+	} );
+	stereoEyeBuffers[0] = frameBuffers->CreateFromGenerator( "vr_stereo_left", [=](FrameBuffer *fbo) {
+		CreateStereoEyeBuffer( fbo, 0, width, height );
+	} );
+	stereoEyeBuffers[1] = frameBuffers->CreateFromGenerator( "vr_stereo_right", [=](FrameBuffer *fbo) {
+		CreateStereoEyeBuffer( fbo, 1, width, height );
+	} );
 }
 
 void OpenVRBackend::CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint32_t width, uint32_t height ) {
 	texture->GenerateAttachment( width, height, GL_RGBA8, GL_LINEAR );
 	fbo->Init( width, height );
 	fbo->AddColorRenderTexture( 0, texture );
+}
+
+void OpenVRBackend::CreateStereoFrameBuffer( FrameBuffer *fbo, uint32_t width, uint32_t height ) {
+	if (fbo->MultiSamples() != r_multiSamples.GetInteger() || fbo->Width() != width || fbo->Height() != height) {
+		stereoColorArray->PurgeImage();
+		stereoDepthStencilArray->PurgeImage();
+	}
+	CreateStereoColorArray( stereoColorArray, width, height );
+	CreateStereoDepthStencilArray( stereoDepthStencilArray, width, height );
+	fbo->Init( width, height, r_multiSamples.GetInteger() );
+	if ( UseMultiviewStereoRendering() ) {
+		common->Printf("Generating multiview stereo attachments...");
+		qglFramebufferTextureMultiviewOVR( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereoColorArray->texnum, 0, 0, 2 );
+		qglFramebufferTextureMultiviewOVR( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, stereoDepthStencilArray->texnum, 0, 0, 2 );
+	} else {
+		qglFramebufferTexture( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereoColorArray->texnum, 0 );
+		qglFramebufferTexture( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, stereoDepthStencilArray->texnum, 0 );
+	}
+}
+
+void OpenVRBackend::CreateStereoEyeBuffer( FrameBuffer *fbo, int eye, uint32_t width, uint32_t height ) {
+	CreateStereoColorArray( stereoColorArray, width, height );
+	CreateStereoDepthStencilArray( stereoDepthStencilArray, width, height );
+	fbo->Init( width, height, r_multiSamples.GetInteger() );
+	qglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, stereoColorArray->texnum, 0, eye );	
+	qglFramebufferTextureLayer( GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, stereoDepthStencilArray->texnum, 0, eye );	
+}
+
+void OpenVRBackend::CreateStereoColorArray( idImage *texture, uint32_t width, uint32_t height ) {
+	if ( texture->texnum != idImage::TEXTURE_NOT_LOADED ) {
+		return;
+	}
+	texture->type = TT_2D_ARRAY;
+	qglGenTextures( 1, &texture->texnum );
+	GLenum format = r_fboColorBits.GetInteger() == 64 ? GL_RGBA16F : GL_RGBA8;
+	if ( r_multiSamples.GetInteger() > 1 ) {
+		qglBindTexture( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, texture->texnum );
+		qglTexImage3DMultisample( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, r_multiSamples.GetInteger(), format, width, height, 2, true );
+	} else {
+		qglBindTexture( GL_TEXTURE_2D_ARRAY, texture->texnum );
+		qglTexImage3D( GL_TEXTURE_2D_ARRAY, 0, format, width, height, 2, 0, GL_RGBA, GL_BYTE, nullptr );		
+	}
+	qglBindTexture( GL_TEXTURE_2D_ARRAY, 0 );
+	qglBindTexture( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, 0 );
+}
+
+void OpenVRBackend::CreateStereoDepthStencilArray( idImage *texture, uint32_t width, uint32_t height ) {
+	if ( texture->texnum != idImage::TEXTURE_NOT_LOADED ) {
+		return;
+	}
+	texture->type = TT_2D_ARRAY;
+	qglGenTextures( 1, &texture->texnum );
+	GLenum format = r_fboDepthBits.GetInteger() == 32 ? GL_DEPTH24_STENCIL8 : GL_DEPTH32F_STENCIL8;
+	GLenum dataType = r_fboDepthBits.GetInteger() == 32 ? GL_FLOAT_32_UNSIGNED_INT_24_8_REV : GL_UNSIGNED_INT_24_8;
+	if ( r_multiSamples.GetInteger() > 1 ) {
+		qglBindTexture( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, texture->texnum );
+		qglTexImage3DMultisample( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, r_multiSamples.GetInteger(), format, width, height, 2, true );
+	} else {
+		qglBindTexture( GL_TEXTURE_2D_ARRAY, texture->texnum );
+		qglTexImage3D( GL_TEXTURE_2D_ARRAY, 0, format, width, height, 2, 0, GL_DEPTH_STENCIL, dataType, nullptr );		
+	}
+	qglBindTexture( GL_TEXTURE_2D_ARRAY, 0 );
+	qglBindTexture( GL_TEXTURE_2D_MULTISAMPLE_ARRAY, 0 );
 }
 
 void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {
@@ -206,6 +281,12 @@ void OpenVRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idIm
 		fbo = eyeBuffers[eye];
 		texture = eyeTextures[eye];
 	}
+}
+
+void OpenVRBackend::AcquireRenderFbos( FrameBuffer *&stereoFbo, FrameBuffer *&leftFbo, FrameBuffer *&rightFbo ) {
+	stereoFbo = stereoRenderBuffer;
+	leftFbo = stereoEyeBuffers[0];
+	rightFbo = stereoEyeBuffers[1];
 }
 
 idList<idVec2> OpenVRBackend::GetHiddenAreaMask( eyeView_t eye ) {

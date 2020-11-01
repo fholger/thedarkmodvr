@@ -36,6 +36,7 @@ protected:
 	bool GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) override;
 	bool GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation ) override;
 	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
+	void AcquireRenderFbos( FrameBuffer *&stereoFbo, FrameBuffer *&leftFbo, FrameBuffer *&rightFbo ) override;
 	idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) override;
 	idVec4 GetVisibleAreaBounds( eyeView_t eye ) override;
 	bool UsesSrgbTextures() const override;

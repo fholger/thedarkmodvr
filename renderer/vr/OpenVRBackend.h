@@ -33,6 +33,7 @@ protected:
 	bool GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) override;
 	bool GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation ) override;
 	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
+	void AcquireRenderFbos( FrameBuffer *&stereoFbo, FrameBuffer *&leftFbo, FrameBuffer *&rightFbo ) override;
 	idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) override;
 	idVec4 GetVisibleAreaBounds( eyeView_t eye ) override;
 	bool UsesSrgbTextures() const override { return false; }
@@ -51,11 +52,19 @@ private:
 	FrameBuffer *eyeBuffers[2];
 	idImage *uiTexture;
 	FrameBuffer *uiBuffer;
+	idImage *stereoColorArray;
+	idImage *stereoDepthStencilArray;
+	FrameBuffer *stereoRenderBuffer;
+	FrameBuffer *stereoEyeBuffers[2];
 
 	void InitParameters();
 	void InitRenderTextures();
 
 	void CreateFrameBuffer( FrameBuffer *fbo, idImage *texture, uint32_t width, uint32_t height );
+	void CreateStereoFrameBuffer( FrameBuffer *fbo, uint32_t width, uint32_t height );
+	void CreateStereoEyeBuffer( FrameBuffer *fbo, int eye, uint32_t width, uint32_t height );
+	void CreateStereoColorArray( idImage *texture, uint32_t width, uint32_t height );
+	void CreateStereoDepthStencilArray( idImage *texture, uint32_t width, uint32_t height );
 
 	void CalcEyePose( const vr::HmdMatrix34_t &headPose, int eye, idVec3 &origin, idQuat &orientation );
 };

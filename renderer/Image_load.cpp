@@ -1444,6 +1444,9 @@ void idImage::Bind() {
 			qglBindTexture( GL_TEXTURE_CUBE_MAP, texnum );
 		}
 	}
+	else if ( type == TT_2D_ARRAY ) {
+		qglBindTexture( GL_TEXTURE_2D_ARRAY, texnum );
+	}
 }
 
 bool idImage::IsBound( int textureUnit ) const {
