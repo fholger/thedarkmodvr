@@ -44,14 +44,18 @@ namespace {
 RenderBackend::RenderBackend()
 	: depthStage( &drawBatchExecutor ),
 	  interactionStage( &drawBatchExecutor ),
-	  stencilShadowStage( &drawBatchExecutor )
+	  manyLightStage( &drawBatchExecutor ),
+	  stencilShadowStage( &drawBatchExecutor ),
+	  shadowMapStage( &drawBatchExecutor )
 {}
 
 void RenderBackend::Init() {
 	drawBatchExecutor.Init();
 	depthStage.Init();
 	interactionStage.Init();
+	manyLightStage.Init();
 	stencilShadowStage.Init();
+	shadowMapStage.Init();
 
 	lightgemFbo = frameBuffers->CreateFromGenerator( "lightgem", CreateLightgemFbo );
 	qglGenBuffers( 3, lightgemPbos );
@@ -68,7 +72,9 @@ void RenderBackend::Shutdown() {
 	vrBackend->Destroy();
 
 	qglDeleteBuffers( 3, lightgemPbos );
+	shadowMapStage.Shutdown();
 	stencilShadowStage.Shutdown();
+	manyLightStage.Shutdown();
 	interactionStage.Shutdown();
 	depthStage.Shutdown();
 	drawBatchExecutor.Destroy();
@@ -187,7 +193,7 @@ void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
 
 	GL_PROFILE( "DrawLight_ShadowMap" );
 
-	if ( vLight->lightShader->LightCastsShadows() ) {
+	if ( vLight->lightShader->LightCastsShadows() && !r_shadowMapSinglePass ) {
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->globalInteractions, true );
 		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->localInteractions, false );
@@ -268,20 +274,22 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 
 	if ( r_shadows.GetInteger() == 2 ) {
 		if ( r_shadowMapSinglePass.GetBool() ) {
-			extern void RB_ShadowMap_RenderAllLights();
-			RB_ShadowMap_RenderAllLights();
+			shadowMapStage.DrawShadowMap( viewDef );
 		}
 	}
 
-	if ( r_shadows.GetInteger() != 1 && r_interactionProgram.GetInteger() == 2 ) {
-		extern void RB_GLSL_DrawInteractions_MultiLight();
-		RB_GLSL_DrawInteractions_MultiLight();
-		return;
+	if ( r_shadows.GetInteger() != 1 && r_shadowMapSinglePass.GetInteger() == 2 ) {
+		manyLightStage.DrawInteractions( viewDef );
 	}
 
 	// for each light, perform adding and shadowing
 	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
 		if ( vLight->lightShader->IsFogLight() || vLight->lightShader->IsBlendLight() ) {
+			continue;
+		}
+
+		if ( r_shadows.GetInteger() != 1 && r_shadowMapSinglePass.GetInteger() == 2 && (vLight->shadows == LS_MAPS || vLight->shadows == LS_NONE || vLight->noShadows || vLight->lightShader->IsAmbientLight() ) ) {
+			// already handled in the many light stage
 			continue;
 		}
 

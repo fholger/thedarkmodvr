@@ -1306,8 +1306,14 @@
     <ClInclude Include="renderer\vr\xr_math.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\backend\ShadowMapStage.h">
+      <Filter>Renderer\Backend</Filter>
+    </ClInclude>
     <ClInclude Include="renderer\vr\OpenXRSwapchain.h">
       <Filter>Renderer\VR</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\backend\ManyLightInteractionStage.h">
+      <Filter>Renderer\Backend</Filter>
     </ClInclude>
     <ClInclude Include="renderer\vr\OpenXRBackend.h">
       <Filter>Renderer\VR</Filter>
@@ -3067,8 +3073,14 @@
     <ClCompile Include="renderer\vr\xr_math.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\backend\ShadowMapStage.cpp">
+      <Filter>Renderer\Backend</Filter>
+    </ClCompile>
     <ClCompile Include="renderer\vr\OpenXRSwapchain.cpp">
       <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\backend\ManyLightInteractionStage.cpp">
+      <Filter>Renderer\Backend</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\OpenXRBackend.cpp">
       <Filter>Renderer\VR</Filter>

@@ -400,6 +400,8 @@ typedef struct viewLight_s {
 	/*const */struct drawSurf_s	*localShadows;				// don't shadow local Surfaces
 	/*const */struct drawSurf_s	*globalInteractions;		// get shadows from everything
 	/*const */struct drawSurf_s	*translucentInteractions;	// get shadows from everything
+
+	uint32_t				lightMask;
 } viewLight_t;
 
 struct preparedSurf_t {
@@ -578,7 +580,6 @@ struct emptyCommand_t : baseCommand_t {
 };
 
 struct bloomCommand_t : emptyCommand_t {
-	idScreenRect screenRect;
 };
 
 struct setBufferCommand_t : emptyCommand_t {
@@ -1100,7 +1101,7 @@ extern idCVar r_softShadowsRadius;
 extern idCVar r_useBumpmapLightTogglingFix;
 
 extern idCVar r_useAnonreclaimer;
-extern idCVarBool r_shadowMapSinglePass;
+extern idCVarInt r_shadowMapSinglePass;
 
 // stgatilov ROQ
 extern idCVar r_cinematic_legacyRoq;
