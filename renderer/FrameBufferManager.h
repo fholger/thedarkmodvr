@@ -93,6 +93,9 @@ public:
 
 	FrameBuffer *activeFbo = nullptr;
 	FrameBuffer *activeDrawFbo = nullptr;
+
+	FrameBuffer *primaryStereo = nullptr;
+	FrameBuffer *primaryEye[2] = {};
 };
 
 extern FrameBufferManager *frameBuffers;

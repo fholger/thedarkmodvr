@@ -153,6 +153,9 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 	stereoFbo->Bind();
 
 	aimIndicatorPos = frameData->mouseAimPosition;
+	frameBuffers->primaryStereo = stereoFbo;
+	frameBuffers->primaryEye[0] = renderEyeFbos[0];
+	frameBuffers->primaryEye[1] = renderEyeFbos[1];
 
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
