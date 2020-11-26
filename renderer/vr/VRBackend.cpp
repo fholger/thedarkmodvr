@@ -51,7 +51,8 @@ idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_REND
 idCVar vr_disableZoomAnimations("vr_disableZoomAnimations", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If set to 1, any zoom effect will be instant without transitioning animation");
 idCVar vr_useLightScissors("vr_useLightScissors", "1", CVAR_RENDERER|CVAR_BOOL, "Use individual scissor rects per light (helps performance, might lead to incorrect shadows in border cases)");
 
-extern void RB_Tonemap( bloomCommand_t *cmd );
+extern void RB_Tonemap();
+extern void RB_Bloom( bloomCommand_t *cmd );
 extern void RB_CopyRender( const void *data );
 
 const float VRBackend::GameUnitsToMetres = 0.02309f;
@@ -235,6 +236,7 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 				if ( isv3d && shouldRender3D ) {
 					frameBuffers->EnterPrimary();
 				}
+				const_cast<viewDef_t*>(backEnd.viewDef)->updateShadowMap = eyeView == UI || eyeView == LEFT_EYE;
 				renderBackend->DrawView( backEnd.viewDef );
 			}
 			break;
@@ -260,7 +262,7 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 			if ( !shouldRender3D ) {
 				break;
 			}
-			RB_Tonemap( (bloomCommand_t*)cmds );
+			RB_Bloom( (bloomCommand_t*)cmds );
 			FB_DebugShowContents();
 			break;
 		case RC_COPY_RENDER:
@@ -280,6 +282,9 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 	}
 
 	frameBuffers->LeavePrimary();
+	if ( shouldRender3D ) {
+		RB_Tonemap();
+	}
 }
 
 extern void R_SetupViewFrustum( viewDef_t *viewDef );

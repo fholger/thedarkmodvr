@@ -515,6 +515,8 @@ typedef struct viewDef_s {
 	bool				IsLightGem() const {
 		return renderView.viewID < 0;
 	}
+
+	bool				updateShadowMap;
 } viewDef_t;
 
 

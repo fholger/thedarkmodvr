@@ -68,6 +68,10 @@ void ShadowMapStage::DrawShadowMap( const viewDef_t *viewDef ) {
 		qglEnable( GL_CLIP_PLANE0 + i );
 	}
 
+	GL_ViewportRelative( 0, 0, 1, 1 );
+	GL_ScissorRelative( 0, 0, 1, 1 );
+	qglClear( GL_DEPTH_BUFFER_BIT );
+
 	ShadowMapUniforms *shadowMapUniforms = shadowMapShader->GetUniformGroup<ShadowMapUniforms>();
 
 	for ( viewLight_t *vLight = viewDef->viewLights; vLight; vLight = vLight->next ) {
@@ -84,10 +88,7 @@ void ShadowMapStage::DrawShadowMap( const viewDef_t *viewDef ) {
 
 		auto &page = ShadowAtlasPages[vLight->shadowMapIndex-1];
 		qglViewport( page.x, page.y, 6*page.width, page.width );
-		if ( r_useScissor.GetBool() ) {
-			qglScissor( page.x, page.y, 6*page.width, page.width );
-		}
-		qglClear( GL_DEPTH_BUFFER_BIT );
+		qglScissor( page.x, page.y, 6*page.width, page.width );
 		BeginDrawBatch();
 		for ( drawSurf_t *surf = vLight->globalInteractions; surf; surf = surf->nextOnLight ) {
 			if ( !ShouldDrawSurf( surf ) ) {
@@ -112,6 +113,8 @@ void ShadowMapStage::DrawShadowMap( const viewDef_t *viewDef ) {
 	GL_Cull( CT_FRONT_SIDED );
 
 	frameBuffers->LeaveShadowMap();
+	GL_ViewportRelative( 0, 0, 1, 1 );
+	GL_ScissorRelative( 0, 0, 1, 1 );
 }
 
 float ShadowMapStage::GetEffectiveLightRadius( viewLight_t *vLight ) {

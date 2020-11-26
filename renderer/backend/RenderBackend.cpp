@@ -126,7 +126,7 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 		}
 		DrawShadowsAndInteractions( viewDef );
 	}
-		
+
 	// now draw any non-light dependent shading passes
 	int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs );
 	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
@@ -193,7 +193,7 @@ void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
 
 	GL_PROFILE( "DrawLight_ShadowMap" );
 
-	if ( vLight->lightShader->LightCastsShadows() && !r_shadowMapSinglePass ) {
+	if ( vLight->lightShader->LightCastsShadows() && !r_shadowMapSinglePass && backEnd.viewDef->updateShadowMap ) {
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->globalInteractions, true );
 		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->localInteractions, false );
@@ -273,7 +273,7 @@ void RenderBackend::DrawShadowsAndInteractions( const viewDef_t *viewDef ) {
 	GL_PROFILE( "LightInteractions" );
 
 	if ( r_shadows.GetInteger() == 2 ) {
-		if ( r_shadowMapSinglePass.GetBool() ) {
+		if ( r_shadowMapSinglePass.GetBool() && viewDef->updateShadowMap ) {
 			shadowMapStage.DrawShadowMap( viewDef );
 		}
 	}

@@ -341,7 +341,7 @@ viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *light ) {
 	if ( !r_shadows.GetInteger() || !shader->LightCastsShadows() )
 		vLight->shadows = LS_NONE;
 	else
-		if ( r_shadows.GetInteger() == 1 || tooBigForShadowMaps )
+		if ( r_shadows.GetInteger() == 1 || tooBigForShadowMaps || tr.viewDef->IsLightGem() || tr.viewDef->isSubview )
 			vLight->shadows = LS_STENCIL;
 		else
 			vLight->shadows = LS_MAPS;
