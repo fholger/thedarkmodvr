@@ -193,7 +193,7 @@ void RenderBackend::DrawInteractionsWithShadowMapping(viewLight_t *vLight) {
 
 	GL_PROFILE( "DrawLight_ShadowMap" );
 
-	if ( vLight->lightShader->LightCastsShadows() && !r_shadowMapSinglePass && backEnd.viewDef->updateShadowMap ) {
+	if ( vLight->lightShader->LightCastsShadows() && !r_shadowMapSinglePass ) {
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->globalInteractions, true );
 		interactionStage.DrawInteractions( vLight, vLight->localInteractions );
 		RB_GLSL_DrawInteractions_ShadowMap( vLight->localInteractions, false );
