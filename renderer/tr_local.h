@@ -517,6 +517,8 @@ typedef struct viewDef_s {
 	}
 
 	bool				updateShadowMap;
+	idMat4				headView;
+	idMat4				eyeToHead;
 } viewDef_t;
 
 

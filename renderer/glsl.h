@@ -192,6 +192,8 @@ namespace Uniforms {
 
 		GLSLUniform_sampler *textures[8] = { &texture0, &texture1, &texture2, &texture3, &texture4, &texture5, &texture6, &texture7 };
 
+		DEFINE_UNIFORM( mat4, eyeToHead )
+
 		//note: also binds fragmentProgramImages to texture units
 		void Set( const shaderStage_t *pStage, const drawSurf_t *surf );
 	};

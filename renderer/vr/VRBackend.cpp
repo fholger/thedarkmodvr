@@ -465,6 +465,10 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 	for ( auto it = views.rbegin(); it != views.rend(); ++it ) {
 		viewDef_t *viewDef = *it;
 
+		if ( eye == LEFT_EYE ) {
+			memcpy( viewDef->headView.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4) );
+		}
+
 		SetupProjectionMatrix( viewDef, eye );
 		UpdateViewPose( viewDef, eye );
 
@@ -474,6 +478,10 @@ void VRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
 		idRenderMatrix viewRenderMatrix;
 		idRenderMatrix::Transpose( *(idRenderMatrix*)viewDef->worldSpace.modelViewMatrix, viewRenderMatrix );
 		idRenderMatrix::Multiply( viewDef->projectionRenderMatrix, viewRenderMatrix, viewDef->worldSpace.mvp );
+
+		memcpy( viewDef->eyeToHead.ToFloatPtr(), viewDef->worldSpace.modelViewMatrix, sizeof(idMat4) );
+		viewDef->eyeToHead.InverseSelf();
+		viewDef->eyeToHead = viewDef->eyeToHead * viewDef->headView;
 
 		// apply new view matrix to view and all entities
 		for ( viewEntity_t *vEntity = viewDef->viewEntitys; vEntity; vEntity = vEntity->next ) {

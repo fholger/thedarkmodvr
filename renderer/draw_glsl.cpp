@@ -775,6 +775,7 @@ void Uniforms::MaterialStage::Set(const shaderStage_t *pStage, const drawSurf_t 
 			parm[2] = regs[newStage->vertexParms[i][2]];
 			parm[3] = regs[newStage->vertexParms[i][3]];
 	 		localParams[ i ]->Set( parm );
+			eyeToHead.Set( backEnd.viewDef->eyeToHead.ToFloatPtr() );
 		}
 
 		//setting textures
