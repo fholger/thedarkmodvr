@@ -458,14 +458,8 @@ void GL_ByteColor( byte r, byte g, byte b, byte a ) {
 }
 
 void GL_SetProjection( float* matrix ) {
-	if ( !r_uniformTransforms.GetBool() ) {
-		qglMatrixMode( GL_PROJECTION );
-		qglLoadMatrixf( matrix );
-		qglMatrixMode( GL_MODELVIEW );
-	} else {
-		qglBindBuffer( GL_UNIFORM_BUFFER, programManager->uboHandle );
-		qglBufferData( GL_UNIFORM_BUFFER, sizeof( backEnd.viewDef->projectionMatrix ), matrix, GL_DYNAMIC_DRAW );
-	}
+	qglBindBuffer( GL_UNIFORM_BUFFER, programManager->uboHandle );
+	qglBufferData( GL_UNIFORM_BUFFER, sizeof( backEnd.viewDef->projectionMatrix ), matrix, GL_DYNAMIC_DRAW );
 }
 
 /*
@@ -672,7 +666,7 @@ void RB_Bloom( bloomCommand_t *cmd ) {
 	bloom->ApplyBloom();
 }
 
-idCVar r_postprocess_sharpen( "r_postprocess_sharpen", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Use contrast-adaptive sharpening in tonemapping" );
+idCVar r_postprocess_sharpen( "r_postprocess_sharpen", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Use contrast-adaptive sharpening in tonemapping" );
 idCVar r_postprocess_sharpness( "r_postprocess_sharpness", "0.5", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Sharpening amount" );
 
 void RB_Tonemap() {

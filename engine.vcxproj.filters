@@ -1306,6 +1306,15 @@
     <ClInclude Include="renderer\vr\xr_math.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\ParticleSystem_decl.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\ParticleSystem_def.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\ParticleSystem.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="renderer\backend\ShadowMapStage.h">
       <Filter>Renderer\Backend</Filter>
     </ClInclude>
@@ -1414,9 +1423,6 @@
       <Filter>Framework</Filter>
     </ClCompile>
     <ClCompile Include="renderer\Cinematic.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\draw_arb2.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\draw_common.cpp">
@@ -3084,6 +3090,9 @@
     </ClCompile>
     <ClCompile Include="renderer\vr\OpenXRBackend.cpp">
       <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\ParticleSystem.cpp">
+      <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\VRBackend.cpp">
       <Filter>Renderer\VR</Filter>

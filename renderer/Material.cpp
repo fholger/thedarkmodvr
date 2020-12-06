@@ -1506,66 +1506,22 @@ void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
 			if ( src.ReadTokenOnLine( &token ) ) {
 				idStr fileExt;
 				token.ExtractFileExtension( fileExt );
-				newStage.GLSL = fileExt.Icmp( "vfp" ) != 0;// || r_forceGlslPrograms.GetBool();
-#if 0
-				if ( newStage.GLSL ) {
-					token.StripFileExtension();
-					newStage.glslProgram = GLSL_LoadMaterialStageProgram( token );
-					newStage.vertexProgram = newStage.fragmentProgram = INT_MAX;
-					//newStage.vertexProgram = newStage.fragmentProgram =	R_FindGLSLProgram( token );
-				}
-				else {
-					newStage.vertexProgram = R_FindARBProgram( GL_VERTEX_PROGRAM_ARB, token.c_str() );
-					newStage.fragmentProgram = R_FindARBProgram( GL_FRAGMENT_PROGRAM_ARB, token.c_str() );
-				}
-#else // debug: allow switch on the fly
-				newStage.vertexProgram = R_FindARBProgram( GL_VERTEX_PROGRAM_ARB, token.c_str() );
-				newStage.fragmentProgram = R_FindARBProgram( GL_FRAGMENT_PROGRAM_ARB, token.c_str() );
 				token.StripFileExtension();
 				newStage.glslProgram = GLSL_LoadMaterialStageProgram( token );
-#endif
 			}
 			continue;
 		}
 		else if ( !token.Icmp( "fragmentProgram" ) ) {
 			if ( src.ReadTokenOnLine( &token ) ) {
-#if 0
-				if (r_forceGlslPrograms.GetBool()) {
-					newStage.GLSL = true;
-					token.StripFileExtension();
-					newStage.glslProgram = GLSL_LoadMaterialStageProgram( token );
-					newStage.fragmentProgram = INT_MAX;
-					//newStage.fragmentProgram = R_FindGLSLProgram( token );
-				}
-				else {
-					newStage.fragmentProgram = R_FindARBProgram( GL_FRAGMENT_PROGRAM_ARB, token.c_str() );
-				}
-#else // debug: allow switch on the fly
-				newStage.fragmentProgram = R_FindARBProgram( GL_FRAGMENT_PROGRAM_ARB, token.c_str() );
 				token.StripFileExtension();
 				newStage.glslProgram = GLSL_LoadMaterialStageProgram( token );
-#endif
 			}
 			continue;
 		}
 		else if ( !token.Icmp( "vertexProgram" ) ) {
 			if ( src.ReadTokenOnLine( &token ) ) {
-#if 0
-				if (r_forceGlslPrograms.GetBool()) {
-					newStage.GLSL = true;
-					token.StripFileExtension();
-					newStage.glslProgram = GLSL_LoadMaterialStageProgram( token );
-					newStage.vertexProgram = INT_MAX;
-					//newStage.vertexProgram = R_FindGLSLProgram( token );
-				}
-				else {
-					newStage.vertexProgram = R_FindARBProgram( GL_VERTEX_PROGRAM_ARB, token.c_str() );
-				}
-#else // debug: allow switch on the fly
-				newStage.vertexProgram = R_FindARBProgram( GL_VERTEX_PROGRAM_ARB, token.c_str() );
 				token.StripFileExtension();
 				newStage.glslProgram = GLSL_LoadMaterialStageProgram( token );
-#endif	
 			}
 			continue;
 		}
@@ -1599,7 +1555,7 @@ void idMaterial::ParseStage( idLexer &src, const textureRepeat_t trpDefault ) {
 	}
 
 	// if we are using newStage, allocate a copy of it
-	if ( newStage.fragmentProgram || newStage.vertexProgram || newStage.glslProgram ) {
+	if ( newStage.glslProgram ) {
 		ss->newStage = (newShaderStage_t *)Mem_Alloc( sizeof( newStage ) );
 		*(ss->newStage) = newStage;
 	}

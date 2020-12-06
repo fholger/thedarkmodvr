@@ -52,7 +52,7 @@ void DrawBatchExecutor::Init() {
 	uint shaderParamsBufferSize = MAX_DRAWS_PER_FRAME * MAX_SHADER_PARAMS_SIZE;
 	shaderParamsBuffer.Init( GL_UNIFORM_BUFFER, shaderParamsBufferSize, uboAlignment );
 
-	if (GLAD_GL_ARB_multi_draw_indirect) {
+	if (GLAD_GL_ARB_multi_draw_indirect && GLAD_GL_ARB_vertex_attrib_binding) {
 		InitDrawIdBuffer();	
 		uint drawCommandBufferSize = MAX_DRAWS_PER_FRAME * sizeof(DrawElementsIndirectCommand);
 		drawCommandBuffer.Init( GL_DRAW_INDIRECT_BUFFER, drawCommandBufferSize, 16 );
@@ -117,7 +117,7 @@ void DrawBatchExecutor::EndFrame() {
 }
 
 bool DrawBatchExecutor::ShouldUseMultiDraw() const {
-	return GLAD_GL_ARB_multi_draw_indirect && r_useMultiDrawIndirect;
+	return GLAD_GL_ARB_multi_draw_indirect && GLAD_GL_ARB_vertex_attrib_binding && r_useMultiDrawIndirect;
 }
 
 void DrawBatchExecutor::InitDrawIdBuffer() {
@@ -171,6 +171,36 @@ void DrawBatchExecutor::ExecuteBatch( int numDrawSurfs, int numInstances, GLuint
 	uint shaderParamsCommitSize = numDrawSurfs * shaderParamsSize;
 	shaderParamsBuffer.Commit( shaderParamsCommitSize );
 	shaderParamsBuffer.BindRangeToIndexTarget( uboIndex, shaderParamsContents, shaderParamsCommitSize );
+
+	if (r_glDebugOutput.GetInteger()) {
+		//check DrawParams for layout inconsistencies (e.g. from driver bugs)
+		int progname = -1;
+		qglGetIntegerv(GL_CURRENT_PROGRAM, &progname);
+		int blocksCnt = -1;
+		qglGetProgramiv(progname, GL_ACTIVE_UNIFORM_BLOCKS, &blocksCnt);
+		int glSize = -1;
+		for (int i = 0; i < blocksCnt; i++) {
+			int bind = -1;
+			qglGetActiveUniformBlockiv(progname, i, GL_UNIFORM_BLOCK_BINDING, &bind);
+			if (bind != uboIndex)
+				continue;
+			qglGetActiveUniformBlockiv(progname, i, GL_UNIFORM_BLOCK_DATA_SIZE, &glSize);
+		}
+		int arrNum = MaxShaderParamsArraySize(shaderParamsSize);
+		int expSize = arrNum * shaderParamsSize;
+		if (glSize != expSize) {
+			static int lastFrameDisplayed = 0;
+			if (backEnd.frameCount - lastFrameDisplayed > 20) {
+				if (glSize % arrNum)
+					common->Warning("Draw parameters size mismatch: OpenGL has %d bytes, not divisible by %d", glSize, arrNum);
+				else if (expSize % arrNum)
+					common->Warning("Draw parameters size mismatch: host has %d bytes, not divisible by %d", expSize, arrNum);
+				else
+					common->Warning("Draw parameters size mismatch: OpenGL has %d bytes, while host has %d", glSize/arrNum, expSize/arrNum);
+				backEnd.frameCount = lastFrameDisplayed;
+			}
+		}
+	}
 
 	vertexCache.BindVertex( attribBind );
 	vertexCache.BindIndex();

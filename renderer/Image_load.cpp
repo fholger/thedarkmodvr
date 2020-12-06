@@ -133,7 +133,7 @@ GLenum idImage::SelectInternalFormat( const byte **dataPtrs, int numDataPtrs, in
 	const byte	*scan;
 	int			rgbOr, aOr, aAnd;
 	int			rgbDiffer, rgbaDiffer;
-	const bool allowCompress = globalImages->image_useCompression.GetBool() && glConfig.textureCompressionAvailable;//&& globalImages->image_preload.GetBool();
+	const bool allowCompress = globalImages->image_useCompression.GetBool();//&& globalImages->image_preload.GetBool();
 
 	// determine if the rgb channels are all the same
 	// and if either all rgb or all alpha are 255
@@ -1006,7 +1006,7 @@ If fullLoad is false, only the small mip levels of the image will be loaded
 ================
 */
 bool idImage::CheckPrecompressedImage( bool fullLoad ) {
-	if ( !glConfig.isInitialized || !glConfig.textureCompressionAvailable ) {
+	if ( !glConfig.isInitialized ) {
 		return false;
 	}
 
@@ -1216,6 +1216,15 @@ void idImage::UploadPrecompressedImage( byte *data, int len ) {
 			uh = 1;
 		}
 	}
+
+	// ensure mip levels are properly set or generated if missing
+	int actualMips = numMipmaps - skipMip;
+	if ( actualMips > 1 ) {
+		qglTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, actualMips - 1 );
+	} else {
+		qglGenerateMipmap( GL_TEXTURE_2D );
+	}
+
 	SetImageFilterAndRepeat();
 }
 

@@ -967,6 +967,7 @@ idEntity::idEntity()
 	thinkFlags		= 0;
 	dormantStart	= 0;
 	cinematic		= false;
+	fromMapFile		= false;
 	renderView		= NULL;
 	cameraTarget	= NULL;
 	health			= 0;
@@ -2085,6 +2086,7 @@ void idEntity::Save( idSaveGame *savefile ) const
 	savefile->WriteInt( thinkFlags );
 	savefile->WriteInt( dormantStart );
 	savefile->WriteBool( cinematic );
+	savefile->WriteBool( fromMapFile );
 
 	savefile->WriteObject( cameraTarget );
 
@@ -2352,6 +2354,7 @@ void idEntity::Restore( idRestoreGame *savefile )
 	savefile->ReadInt( thinkFlags );
 	savefile->ReadInt( dormantStart );
 	savefile->ReadBool( cinematic );
+	savefile->ReadBool( fromMapFile );
 
 	savefile->ReadObject( reinterpret_cast<idClass *&>( cameraTarget ) ); 
 
@@ -5510,8 +5513,8 @@ void idEntity::BreakBindToMaster( void ) {
 	}
 
 	idEntity *oldBindMaster = bindMaster;
-	bindJoint = INVALID_JOINT;
-	bindBody = -1;
+	//note: bindJoint and bindBody should be saved
+	//they are already new if we are rebinding to other entity
 	bindMaster = NULL;
 
 	assert(ValidateBindTeam());
@@ -5551,6 +5554,8 @@ void idEntity::Unbind( void ) {
 	}
 
 	if (g_entityBindNew.GetBool()) {
+		bindJoint = INVALID_JOINT;
+		bindBody = -1;
 		BreakBindToMaster();
 	}
 	else {
@@ -13082,8 +13087,11 @@ void idEntity::ParseAttachmentSpawnargs( idList<idDict> *argsList, idDict *from 
 
 				if (PosSpace == -1)
 				{
-					gameLocal.Warning( "%s: Spawnarg '%s' (value '%s') w/o attachment name. Applying to to all attachments.",
-						GetName(), kv_set->GetKey().c_str(), kv_set->GetValue().c_str() );
+					gameLocal.Warning(
+						"%s of class %s: Spawnarg '%s' (value '%s') w/o attachment name. Applying to to all attachments.",
+						from->GetString("name", "[unknown]"), from->GetString("classname", "[unknown]"),
+						kv_set->GetKey().c_str(), kv_set->GetValue().c_str()
+					);
 					//kv_set = from->MatchPrefix( "set ", kv_set );
 					//continue;		
 					// pretend "set _color" "0.1 0.2 0.3" means "set _color on BAR" where BAR is the

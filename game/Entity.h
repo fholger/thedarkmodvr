@@ -262,6 +262,7 @@ public:
 	int						thinkFlags;				// TH_? flags
 	int						dormantStart;			// time that the entity was first closed off from player
 	bool					cinematic;				// during cinematics, entity will only think if cinematic is set
+	bool					fromMapFile;			// true iff this entity was spawned from description in .map file
 
 	renderView_t *			renderView;				// for camera views from this entity
 	idEntity *				cameraTarget;			// any remoteRenderMap shaders will use this
@@ -862,7 +863,7 @@ public:
 	/**
 	* Parses spawnarg list of attachments and puts them into the list.
 	**/
-	void ParseAttachmentSpawnargs( idList<idDict> *argsList, idDict *from );
+	static void ParseAttachmentSpawnargs( idList<idDict> *argsList, idDict *from );
 
 	/**
 	 * Frobaction will determine what a particular item should do when an entity is highlighted.
