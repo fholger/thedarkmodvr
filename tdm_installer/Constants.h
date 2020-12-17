@@ -1,6 +1,6 @@
 #pragma once
 
-#define TDM_INSTALLER_VERSION "0.21"
+#define TDM_INSTALLER_VERSION "0.22"
 
 #define TDM_INSTALLER_LOG_FILENAME "tdm_installer.log"
 #define TDM_INSTALLER_CONFIG_FILENAME "tdm_installer.ini"
@@ -19,6 +19,7 @@
 #define TDM_INSTALLER_FREESPACE_RECOMMENDED (5<<10)		//5 GB --- enough for any update, since it is larger than size of TDM
 
 #define TDM_DARKMOD_CFG_FILENAME "darkmod.cfg"
+#define TDM_DARKMOD_CFG_OLD_FORMAT "darkmod_%y%m%d_%H%M%S.cfg"
 #define TDM_DARKMOD_SHORTCUT_NAME "TheDarkMod"
 #define TDM_DARKMOD_SHORTCUT_ICON "TDM_icon.ico"
 #define TDM_DARKMOD_SHORTCUT_COMMENT "TheDarkMod: Stealth Gaming in a Gothic Steampunk World"
@@ -27,3 +28,5 @@
 #else
 #define TDM_DARKMOD_SHORTCUT_EXECUTABLES {"thedarkmod.x64", "thedarkmod.x86"}
 #endif
+
+#define TDM_INSTALLER_USERAGENT "tdm_installer/" TDM_INSTALLER_VERSION
