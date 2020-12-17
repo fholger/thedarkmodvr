@@ -624,6 +624,7 @@ void RB_BeginDrawingView( void ) {
 		qglEnable( GL_DEPTH_TEST );
 
 		vrBackend->DrawHiddenAreaMeshToDepth();
+		vrBackend->DrawRadialDensityMaskToDepth();
 	} else {
 		qglDisable( GL_DEPTH_TEST );
 		qglDisable( GL_STENCIL_TEST );

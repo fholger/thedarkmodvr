@@ -41,6 +41,7 @@ public:
 	void AdjustRenderView( renderView_t *view );
 	void RenderStereoView( const frameData_t *frameData );
 	void DrawHiddenAreaMeshToDepth();
+	void DrawRadialDensityMaskToDepth();
 
 	void UpdateLightScissor( viewLight_t *vLight );
 
@@ -86,6 +87,7 @@ private:
 	GLuint numVertsLeft = 0;
 	GLuint numVertsRight = 0;
 	GLSLProgram *hiddenAreaMeshShader = nullptr;
+	GLSLProgram *radialDensityMaskShader = nullptr;
 	idVec4 visibleAreaBounds[2];
 
 	idVec3 aimIndicatorPos;

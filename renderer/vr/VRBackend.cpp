@@ -51,7 +51,11 @@ idCVar vr_comfortVignetteRadius("vr_comfortVignetteRadius", "0.6", CVAR_RENDERER
 idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Transition corridor width from black to visible of the comfort vignette" );
 idCVar vr_disableZoomAnimations("vr_disableZoomAnimations", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If set to 1, any zoom effect will be instant without transitioning animation");
 idCVar vr_useLightScissors("vr_useLightScissors", "1", CVAR_RENDERER|CVAR_BOOL, "Use individual scissor rects per light (helps performance, might lead to incorrect shadows in border cases)");
+idCVar vr_useFixedFoveatedRendering("vr_useFixedFoveatedRendering", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Enable fixed foveated rendering.");
 idCVar vr_useVariableRateShading("vr_useVariableRateShading", "0", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Enable variable rate shading on NVIDIA Turing hardware (fixed-foveated rendering: 1 - low / 2 - medium / 3 - high)");
+idCVar vr_foveatedInnerRadius("vr_foveatedInnerRadius", "0.3", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Inner foveated radius to render at full resolution");
+idCVar vr_foveatedMidRadius("vr_foveatedMidRadius", "0.75", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Middle foveated radius to render at half resolution");
+idCVar vr_foveatedOuterRadius("vr_foveatedOuterRadius", "0.85", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Outer foveated radius to render at quarter resolution - anything outside is rendered at 1/16th resolution");
 
 extern void RB_Tonemap();
 extern void RB_Bloom( bloomCommand_t *cmd );
@@ -116,6 +120,13 @@ namespace {
 		
 		GL_SetDebugLabel( GL_TEXTURE, image->texnum, image->imgName );
 	}
+
+	struct RadialDensityMaskUniforms : GLSLUniformGroup {
+		UNIFORM_GROUP_DEF( RadialDensityMaskUniforms )
+		
+		DEFINE_UNIFORM( vec3, radius )
+		DEFINE_UNIFORM( vec2, invClusterResolution )
+	};
 }
 
 void VRBackend::Init() {
@@ -137,6 +148,7 @@ void VRBackend::Destroy() {
 	qglDeleteBuffers( 1, &hiddenAreaMeshBuffer );
 	hiddenAreaMeshBuffer = 0;
 	hiddenAreaMeshShader = nullptr;
+	radialDensityMaskShader = nullptr;
 	if ( variableRateShadingImage != nullptr ) {
 		variableRateShadingImage->PurgeImage();
 		variableRateShadingImage = nullptr;
@@ -269,8 +281,21 @@ void VRBackend::DrawHiddenAreaMeshToDepth() {
 	int count = currentEye == LEFT_EYE ? numVertsLeft : numVertsRight;
 	GL_Cull( CT_TWO_SIDED );
 	qglDrawArrays( GL_TRIANGLES, start, count );
-	GL_Cull( CT_BACK_SIDED );
+	GL_Cull( CT_FRONT_SIDED );
 	vertexCache.UnbindVertex();
+}
+
+void VRBackend::DrawRadialDensityMaskToDepth() {
+	if ( currentEye == UI || !vr_useFixedFoveatedRendering.GetBool() || vr_useVariableRateShading.GetBool() ) {
+		return;
+	}
+
+	radialDensityMaskShader->Activate();
+	auto uniforms = radialDensityMaskShader->GetUniformGroup<RadialDensityMaskUniforms>();
+	uniforms->radius.Set( vr_foveatedInnerRadius.GetFloat(), vr_foveatedMidRadius.GetFloat(), vr_foveatedOuterRadius.GetFloat() );
+	uniforms->invClusterResolution.Set( 8.f / frameBuffers->primaryFbo->Width(), 8.f / frameBuffers->primaryFbo->Height() );
+
+	RB_DrawFullScreenQuad();
 }
 
 void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView ) {
@@ -384,7 +409,8 @@ void VRBackend::InitHiddenAreaMesh() {
 	qglBindBuffer( GL_ARRAY_BUFFER, hiddenAreaMeshBuffer );
 	qglBufferData( GL_ARRAY_BUFFER, leftEyeVerts.Size(), leftEyeVerts.Ptr(), GL_STATIC_DRAW );
 
-	hiddenAreaMeshShader = programManager->LoadFromFiles( "hidden_area_mesh", "vr/hidden_area_mesh.vert.glsl", "vr/hidden_area_mesh.frag.glsl" );
+	hiddenAreaMeshShader = programManager->LoadFromFiles( "hidden_area_mesh", "vr/depth_mask.vert.glsl", "vr/hidden_area_mesh.frag.glsl" );
+	radialDensityMaskShader = programManager->LoadFromFiles( "radial_density_mask", "vr/depth_mask.vert.glsl", "vr/radial_density_mask.frag.glsl" );
 }
 
 idScreenRect VR_WorldBoundsToScissor( idBounds bounds, const viewDef_t *view ) {
