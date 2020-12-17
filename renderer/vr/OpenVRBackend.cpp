@@ -250,3 +250,49 @@ void OpenVRBackend::CalcEyePose( const vr::HmdMatrix34_t &headPose, int eye, idV
 	orientation = (eyeRot * viewRot).ToQuat();
 	origin = viewPos + eyePos * viewRot;
 }
+
+bool OpenVRBackend::LoadControllerMesh( int hand, idList<idDrawVert> &vertices, idList<glIndex_t> &indices ) {
+	char buf[vr::k_unMaxPropertyStringSize] = { 0 };
+	vr::TrackedDeviceIndex_t controllerId = system->GetTrackedDeviceIndexForControllerRole( hand == LEFT_HAND ? vr::TrackedControllerRole_LeftHand : vr::TrackedControllerRole_RightHand );
+	uint32_t len = system->GetStringTrackedDeviceProperty( controllerId, vr::Prop_RenderModelName_String, buf, vr::k_unMaxPropertyStringSize );
+	if ( len == 0 ) {
+		return false;
+	}
+
+	vr::RenderModel_t *renderModel = nullptr;
+	vr::EVRRenderModelError error;
+	while ( ( error = vr::VRRenderModels()->LoadRenderModel_Async( buf, &renderModel ) ) == vr::VRRenderModelError_Loading ) {
+		// FIXME: actually implement async loading?
+		Sys_Yield();
+	}
+	if ( error != vr::VRRenderModelError_None ) {
+		common->Warning( "Could not load controller render model." );
+		return false;
+	}
+
+	for ( uint32_t i = 0; i < 3 * renderModel->unTriangleCount; ++i ) {
+		indices.AddGrow( renderModel->rIndexData[i] );
+	}
+	for ( uint32_t i = 0; i < renderModel->unVertexCount; ++i ) {
+		const vr::RenderModel_Vertex_t &sv = renderModel->rVertexData[i];
+		idDrawVert vert;
+		vert.xyz = idVec3( sv.vPosition.v[0], sv.vPosition.v[1], sv.vPosition.v[2] );
+		vert.normal = idVec3( sv.vNormal.v[0], sv.vNormal.v[1], sv.vNormal.v[2] );
+		vert.st = idVec2( sv.rfTextureCoord[0], sv.rfTextureCoord[1] );
+		vertices.AddGrow( vert );
+	}
+	vr::TextureID_t textureId = renderModel->diffuseTextureId;
+	vr::VRRenderModels()->FreeRenderModel( renderModel );
+
+	vr::RenderModel_TextureMap_t *texture = nullptr;
+	while ( ( error = vr::VRRenderModels()->LoadTexture_Async( textureId, &texture ) ) == vr::VRRenderModelError_Loading ) {
+		Sys_Yield();
+	}
+	if ( error != vr::VRRenderModelError_None ) {
+		common->Warning( "Could not load controller texture data." );
+		return false;
+	}
+
+	vr::VRRenderModels()->FreeTexture( texture );
+	return true;
+}

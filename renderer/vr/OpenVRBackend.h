@@ -37,6 +37,8 @@ protected:
 	idVec4 GetVisibleAreaBounds( eyeView_t eye ) override;
 	bool UsesSrgbTextures() const override { return false; }
 
+	bool LoadControllerMesh( int hand, idList<idDrawVert> &vertices, idList<glIndex_t> &indices );
+
 private:
 	vr::IVRSystem *system = nullptr;
 	vr::VROverlayHandle_t menuOverlay = 0;

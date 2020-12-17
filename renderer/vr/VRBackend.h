@@ -55,6 +55,10 @@ protected:
 		RIGHT_EYE = 1,
 		UI = 2,
 	};
+	enum hand_t {
+		LEFT_HAND = 0,
+		RIGHT_HAND = 1,
+	};
 	void ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView );
 	virtual bool BeginFrame() = 0;
 	virtual void SubmitFrame() = 0;
