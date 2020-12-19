@@ -52,7 +52,7 @@ idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_REND
 idCVar vr_disableZoomAnimations("vr_disableZoomAnimations", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If set to 1, any zoom effect will be instant without transitioning animation");
 idCVar vr_useLightScissors("vr_useLightScissors", "1", CVAR_RENDERER|CVAR_BOOL, "Use individual scissor rects per light (helps performance, might lead to incorrect shadows in border cases)");
 idCVar vr_useFixedFoveatedRendering("vr_useFixedFoveatedRendering", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Enable fixed foveated rendering.");
-idCVar vr_useVariableRateShading("vr_useVariableRateShading", "0", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Enable variable rate shading on NVIDIA Turing hardware (fixed-foveated rendering: 1 - low / 2 - medium / 3 - high)");
+idCVar vr_useVariableRateShading("vr_useVariableRateShading", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Enable variable rate shading on NVIDIA Turing hardware (fixed-foveated rendering: 1 - low / 2 - medium / 3 - high)");
 idCVar vr_foveatedInnerRadius("vr_foveatedInnerRadius", "0.3", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Inner foveated radius to render at full resolution");
 idCVar vr_foveatedMidRadius("vr_foveatedMidRadius", "0.75", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Middle foveated radius to render at half resolution");
 idCVar vr_foveatedOuterRadius("vr_foveatedOuterRadius", "0.85", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Outer foveated radius to render at quarter resolution - anything outside is rendered at 1/16th resolution");
@@ -79,24 +79,9 @@ namespace {
 		GLsizei imageHeight = image->uploadHeight / texelH;
 		GLsizei centerX = imageWidth / 2;
 		GLsizei centerY = imageHeight / 2;
-		float outerRadius = imageHeight;
-		float midRadius = imageHeight;
-		float innerRadius = imageHeight;
-		switch ( vr_useVariableRateShading.GetInteger() ) {
-		case 1:
-			midRadius = 0.7f * 0.5f * imageHeight;
-			innerRadius = 0.4f * 0.5f * imageHeight;
-			break;
-		case 2:
-			outerRadius = 0.8f * 0.5f * imageHeight;
-			midRadius = 0.5f * 0.5f * imageHeight;
-			innerRadius = 0.25f * 0.5f * imageHeight;
-			break;
-		case 3:
-			outerRadius = 0.7f * 0.5f * imageHeight;
-			midRadius = 0.4f * 0.5f * imageHeight;
-			innerRadius = 0.15f * 0.5f * imageHeight;
-		}
+		float outerRadius = vr_foveatedOuterRadius.GetFloat() * 0.5f * imageHeight;
+		float midRadius = vr_foveatedMidRadius.GetFloat() * 0.5f * imageHeight;
+		float innerRadius = vr_foveatedInnerRadius.GetFloat() * 0.5f * imageHeight;
 
 		idList<byte> vrsData;
 		vrsData.SetNum( imageWidth * imageHeight );
