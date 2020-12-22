@@ -51,11 +51,11 @@ idCVar vr_comfortVignetteRadius("vr_comfortVignetteRadius", "0.6", CVAR_RENDERER
 idCVar vr_comfortVignetteCorridor("vr_comfortVignetteCorridor", "0.1", CVAR_RENDERER|CVAR_FLOAT|CVAR_ARCHIVE, "Transition corridor width from black to visible of the comfort vignette" );
 idCVar vr_disableZoomAnimations("vr_disableZoomAnimations", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "If set to 1, any zoom effect will be instant without transitioning animation");
 idCVar vr_useLightScissors("vr_useLightScissors", "1", CVAR_RENDERER|CVAR_BOOL, "Use individual scissor rects per light (helps performance, might lead to incorrect shadows in border cases)");
-idCVar vr_useFixedFoveatedRendering("vr_useFixedFoveatedRendering", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Enable fixed foveated rendering.");
-idCVar vr_useVariableRateShading("vr_useVariableRateShading", "0", CVAR_BOOL|CVAR_RENDERER|CVAR_ARCHIVE, "Enable variable rate shading on NVIDIA Turing hardware (fixed-foveated rendering: 1 - low / 2 - medium / 3 - high)");
+idCVar vr_useFixedFoveatedRendering("vr_useFixedFoveatedRendering", "0", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Enable fixed foveated rendering.");
 idCVar vr_foveatedInnerRadius("vr_foveatedInnerRadius", "0.3", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Inner foveated radius to render at full resolution");
 idCVar vr_foveatedMidRadius("vr_foveatedMidRadius", "0.75", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Middle foveated radius to render at half resolution");
 idCVar vr_foveatedOuterRadius("vr_foveatedOuterRadius", "0.85", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Outer foveated radius to render at quarter resolution - anything outside is rendered at 1/16th resolution");
+idCVar vr_foveatedReconstructionQuality("vr_foveatedReconstructionQuality", "2", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "The quality of the reconstruction for foveated rendering");
 
 extern void RB_Tonemap();
 extern void RB_Bloom( bloomCommand_t *cmd );
@@ -121,10 +121,20 @@ void VRBackend::Init() {
 	vrMirrorShader = programManager->LoadFromFiles( "vr_mirror", "vr/vr_mirror.vert.glsl", "vr/vr_mirror.frag.glsl" );
 	vrAimIndicatorShader = programManager->LoadFromFiles( "aim_indicator", "vr/aim_indicator.vert.glsl", "vr/aim_indicator.frag.glsl" );
 	comfortVignetteShader = programManager->LoadFromFiles( "comfort_vignette", "vr/comfort_vignette.vert.glsl", "vr/comfort_vignette.frag.glsl" );
+	radialDensityMaskShader = programManager->LoadFromFiles( "radial_density_mask", "vr/depth_mask.vert.glsl", "vr/radial_density_mask.frag.glsl" );
+	rdmReconstructShader = programManager->LoadComputeShader( "rdm_reconstruct", "vr/radial_density_mask_reconstruct.compute.glsl" );
 
 	if ( GLAD_GL_NV_shading_rate_image ) {
 		variableRateShadingImage = globalImages->ImageFromFunction( "vrsImage", VR_CreateVariableRateShadingImage );
 	}
+	rdmReconstructionImage = globalImages->ImageFromFunction( "rdm_reconstruct", FB_RenderTexture );
+	rdmReconstructionFbo = frameBuffers->CreateFromGenerator( "rdm_reconstruction_fbo", [this](FrameBuffer *fbo) {
+		int width = frameBuffers->renderWidth;
+		int height = frameBuffers->renderHeight;
+		rdmReconstructionImage->GenerateAttachment( width, height, GL_RGBA8, GL_LINEAR );
+		fbo->Init( width, height );
+		fbo->AddColorRenderTexture( 0, rdmReconstructionImage );
+	} );
 }
 
 void VRBackend::Destroy() {
@@ -134,6 +144,7 @@ void VRBackend::Destroy() {
 	hiddenAreaMeshBuffer = 0;
 	hiddenAreaMeshShader = nullptr;
 	radialDensityMaskShader = nullptr;
+	rdmReconstructShader = nullptr;
 	if ( variableRateShadingImage != nullptr ) {
 		variableRateShadingImage->PurgeImage();
 		variableRateShadingImage = nullptr;
@@ -218,7 +229,8 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
-		frameBuffers->defaultFbo = eyeBuffers[eye];
+		eyeBuffers[eye]->Bind(); // ensure fbo and textures are fully constructed
+		frameBuffers->defaultFbo = UseRadialDensityMask() ? rdmReconstructionFbo : eyeBuffers[eye];
 		frameBuffers->defaultFbo->Bind();
 		GL_ViewportRelative( 0, 0, 1, 1 );
 		GL_ScissorRelative( 0, 0, 1, 1 );
@@ -230,6 +242,10 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 		}
 		if ( !frameData->render2D ) {
 			DrawAimIndicator( frameData->mouseAimSize );
+		}
+
+		if ( UseRadialDensityMask() ) {
+			ReconstructImageFromRdm( eyeTextures[eye] );
 		}
 	}
 
@@ -271,7 +287,7 @@ void VRBackend::DrawHiddenAreaMeshToDepth() {
 }
 
 void VRBackend::DrawRadialDensityMaskToDepth() {
-	if ( currentEye == UI || !vr_useFixedFoveatedRendering.GetBool() || vr_useVariableRateShading.GetBool() ) {
+	if ( currentEye == UI || !UseRadialDensityMask() ) {
 		return;
 	}
 
@@ -315,7 +331,7 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 			if ( (isv3d && shouldRender3D) || (!isv3d && shouldRender2D) ) {
 				if ( isv3d && shouldRender3D ) {
 					frameBuffers->EnterPrimary();
-					if ( eyeView != UI && vr_useVariableRateShading.GetBool() && GLAD_GL_NV_shading_rate_image ) {
+					if ( eyeView != UI && vr_useFixedFoveatedRendering.GetInteger() == 1 && GLAD_GL_NV_shading_rate_image ) {
 						qglEnable( GL_SHADING_RATE_IMAGE_NV );						
 					}
 				}
@@ -368,7 +384,7 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 	if ( shouldRender3D ) {
 		RB_Tonemap();
 	}
-	if ( eyeView != UI && vr_useVariableRateShading.GetBool() && GLAD_GL_NV_shading_rate_image ) {
+	if ( eyeView != UI && vr_useFixedFoveatedRendering.GetInteger() == 1 && GLAD_GL_NV_shading_rate_image ) {
 		qglDisable( GL_SHADING_RATE_IMAGE_NV );
 	}
 }
@@ -395,7 +411,6 @@ void VRBackend::InitHiddenAreaMesh() {
 	qglBufferData( GL_ARRAY_BUFFER, leftEyeVerts.Size(), leftEyeVerts.Ptr(), GL_STATIC_DRAW );
 
 	hiddenAreaMeshShader = programManager->LoadFromFiles( "hidden_area_mesh", "vr/depth_mask.vert.glsl", "vr/hidden_area_mesh.frag.glsl" );
-	radialDensityMaskShader = programManager->LoadFromFiles( "radial_density_mask", "vr/depth_mask.vert.glsl", "vr/radial_density_mask.frag.glsl" );
 }
 
 idScreenRect VR_WorldBoundsToScissor( idBounds bounds, const viewDef_t *view ) {
@@ -724,13 +739,16 @@ void VRBackend::PrepareVariableRateShading() {
 		return;
 	}
 
-	if ( vr_useVariableRateShading.IsModified() ) {
+	if ( vr_useFixedFoveatedRendering.IsModified() || vr_foveatedInnerRadius.IsModified() || vr_foveatedMidRadius.IsModified() || vr_foveatedOuterRadius.IsModified() ) {
 		// ensure VRS image is up to date
 		variableRateShadingImage->PurgeImage();
-		vr_useVariableRateShading.ClearModified();
+		vr_useFixedFoveatedRendering.ClearModified();
+		vr_foveatedInnerRadius.ClearModified();
+		vr_foveatedMidRadius.ClearModified();
+		vr_foveatedOuterRadius.ClearModified();
 	}
 
-	if ( vr_useVariableRateShading.GetInteger() == 0 ) {
+	if ( vr_useFixedFoveatedRendering.GetInteger() != 1 ) {
 		return;
 	}
 
@@ -767,3 +785,43 @@ void VRBackend::UpdateLightScissor( viewLight_t *vLight ) {
 		vLight->scissorRect.zmax = 1;
 	}
 }
+
+bool VRBackend::UseRadialDensityMask() {
+	return vr_useFixedFoveatedRendering.GetInteger() == 2
+		|| (vr_useFixedFoveatedRendering.GetInteger() == 1 && !GLAD_GL_NV_shading_rate_image);
+}
+
+struct RdmReconstructUniforms : GLSLUniformGroup {
+	UNIFORM_GROUP_DEF( RdmReconstructUniforms )
+
+	DEFINE_UNIFORM( sampler, srcTex )
+	DEFINE_UNIFORM( sampler, dstTex )
+	DEFINE_UNIFORM( vec2, invClusterResolution )
+	DEFINE_UNIFORM( vec2, invResolution )
+	DEFINE_UNIFORM( vec3, radius )
+	DEFINE_UNIFORM( int, quality )
+};
+
+void VRBackend::ReconstructImageFromRdm( idImage *destination ) {
+	GL_PROFILE("RdmReconstruction")
+
+	int width = rdmReconstructionImage->uploadWidth;
+	int height = rdmReconstructionImage->uploadHeight;
+	rdmReconstructShader->Activate();
+	auto uniforms = rdmReconstructShader->GetUniformGroup<RdmReconstructUniforms>();
+	uniforms->srcTex.Set( 0 );
+	uniforms->dstTex.Set( 0 );
+	uniforms->invClusterResolution.Set( 8.f/width, 8.f/height );
+	uniforms->invResolution.Set( 1.f/width, 1.f/height );
+	uniforms->radius.Set( vr_foveatedInnerRadius.GetFloat(), vr_foveatedMidRadius.GetFloat(), vr_foveatedOuterRadius.GetFloat() );
+	uniforms->quality.Set( vr_foveatedReconstructionQuality.GetInteger() );
+
+	GL_SelectTexture( 0 );
+	destination->Bind();
+	qglBindImageTexture( 0, destination->texnum, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8 );
+	rdmReconstructionImage->Bind();
+	
+	qglDispatchCompute( (width + 7) / 8, (height + 7) / 8, 1 );
+	qglMemoryBarrier( GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT );
+}
+

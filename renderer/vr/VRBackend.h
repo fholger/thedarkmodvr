@@ -79,6 +79,8 @@ private:
 	void UpdateComfortVignetteStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
 	void PrepareVariableRateShading();
+	bool UseRadialDensityMask();
+	void ReconstructImageFromRdm( idImage * destination );
 
 	eyeView_t currentEye;
 	GLSLProgram *vrMirrorShader = nullptr;
@@ -88,6 +90,7 @@ private:
 	GLuint numVertsRight = 0;
 	GLSLProgram *hiddenAreaMeshShader = nullptr;
 	GLSLProgram *radialDensityMaskShader = nullptr;
+	GLSLProgram *rdmReconstructShader = nullptr;
 	idVec4 visibleAreaBounds[2];
 
 	idVec3 aimIndicatorPos;
@@ -101,6 +104,8 @@ private:
 	uint64_t lastCameraUpdateTime = 0;
 
 	idImage *variableRateShadingImage = nullptr;
+	idImage *rdmReconstructionImage = nullptr;
+	FrameBuffer *rdmReconstructionFbo = nullptr;
 };
 
 extern VRBackend *vrBackend;

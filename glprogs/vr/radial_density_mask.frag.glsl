@@ -1,3 +1,6 @@
+/**
+ * Adapted from Ogre: https://github.com/OGRECave/ogre-next under the MIT license
+ */
 #version 330 core
 
 out vec4 FragColor;
@@ -7,7 +10,7 @@ uniform vec2 u_invClusterResolution;
 
 void main() {
     vec2 clusterUV = trunc(gl_FragCoord.xy * 0.125f) * u_invClusterResolution;
-    float distToCenter = length(clusterUV - vec2(0.5f));
+    float distToCenter = 2 * length(clusterUV - vec2(0.5f));
     
     uvec2 fragCoordHalf = uvec2(gl_FragCoord.xy * 0.5f);
     // everything in the inner radius is preserved
