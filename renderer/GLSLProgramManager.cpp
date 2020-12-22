@@ -107,6 +107,15 @@ GLSLProgram * GLSLProgramManager::LoadFromFiles( const idStr &name, const idStr 
 	return LoadFromGenerator( name, generator );
 }
 
+GLSLProgram * GLSLProgramManager::LoadComputeShader( const idStr &name, const idStr &computeSource, const idDict &defines ) {
+	Generator generator = [=]( GLSLProgram *program ) {
+		program->Init();
+		program->AttachComputeShader( computeSource, defines );
+		program->Link();
+	};
+	return LoadFromGenerator( name, generator );
+}
+
 GLSLProgram * GLSLProgramManager::LoadFromGenerator( const char *name, const Generator &generator ) {
 	programWithGenerator_t *entry = FindEntry( name );
 	if( entry != nullptr ) {

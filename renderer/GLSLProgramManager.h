@@ -36,6 +36,7 @@ public:
 	GLSLProgram *LoadFromFiles( const idStr &name, const idStr &vertexSource, const idDict &defines = idDict() );
 	GLSLProgram *LoadFromFiles( const idStr &name, const idStr &vertexSource, const idStr &fragmentSource, const idDict &defines = idDict() );
 	GLSLProgram *LoadFromFiles( const idStr &name, const idStr &vertexSource, const idStr &fragmentSource, const idStr &geometrySource, const idDict &defines = idDict() );
+	GLSLProgram *LoadComputeShader( const idStr &name, const idStr &computeSource, const idDict &defines = idDict() );
 
 	// Register a GLSLProgram with a generating function.
 	GLSLProgram *LoadFromGenerator( const char *name, const Generator &generator );

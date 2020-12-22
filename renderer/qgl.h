@@ -29,6 +29,7 @@
 #define GL_ARB_bindless_texture					1
 #define GL_NV_shading_rate_image				1
 #define GL_ARB_texture_storage					1
+#define GL_ARB_compute_shader					1	//core since 4.3
 #include "glad.h"
 
 #ifdef _WIN32

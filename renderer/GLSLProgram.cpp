@@ -67,6 +67,10 @@ void GLSLProgram::AttachFragmentShader( const char *sourceFile, const idDict &de
 	LoadAndAttachShader( GL_FRAGMENT_SHADER, sourceFile, defines );
 }
 
+void GLSLProgram::AttachComputeShader( const char *sourceFile, const idDict &defines ) {
+	LoadAndAttachShader( GL_COMPUTE_SHADER, sourceFile, defines );
+}
+
 void GLSLProgram::BindAttribLocation( unsigned location, const char *attribName ) {
 	qglBindAttribLocation( program, location, attribName );
 }

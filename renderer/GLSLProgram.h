@@ -33,6 +33,7 @@ public:
 	void AttachVertexShader( const char *sourceFile, const idDict &defines = idDict() );
 	void AttachGeometryShader( const char *sourceFile, const idDict &defines = idDict() );
 	void AttachFragmentShader( const char *sourceFile, const idDict &defines = idDict() );
+	void AttachComputeShader( const char *sourceFile, const idDict &defines = idDict() );
 
 	void BindAttribLocation( unsigned int location, const char *attribName );
 	void BindDefaultAttribLocations();
