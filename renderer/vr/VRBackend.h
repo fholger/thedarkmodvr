@@ -68,6 +68,7 @@ protected:
 	virtual idVec4 GetVisibleAreaBounds( eyeView_t eye ) = 0;
 
 	virtual bool UsesSrgbTextures() const = 0;
+	bool frameDiscontinuity = false;
 
 private:
 	void InitHiddenAreaMesh();
@@ -76,7 +77,7 @@ private:
 	void UpdateViewPose( viewDef_t *viewDef, int eye );
 	void MirrorVrView( idImage *eyeTexture, idImage *uiTexture );
 	void DrawAimIndicator( float size );
-	void UpdateComfortVignetteStatus( const frameData_t *frameData );
+	void UpdateFrameStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
 	void PrepareVariableRateShading();
 	bool UseRadialDensityMask();

@@ -208,7 +208,7 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 		return;
 	}
 
-	UpdateComfortVignetteStatus( frameData );
+	UpdateFrameStatus( frameData );
 
 	emptyCommand_t *cmds = frameData->cmdHead;
 	const_cast<frameData_t *>(frameData)->render2D |= vr_force2DRender.GetBool();
@@ -688,12 +688,14 @@ void VRBackend::DrawAimIndicator( float size ) {
 	RB_DrawFullScreenQuad();	
 }
 
-void VRBackend::UpdateComfortVignetteStatus( const frameData_t *frameData ) {
+void VRBackend::UpdateFrameStatus( const frameData_t *frameData ) {
 	float positionDifference = (lastCameraPosition - frameData->cameraPosition).LengthSqr();
 	if ( ! frameData->cameraAngles.Compare(lastCameraAngles, 0.0001f) || positionDifference > 0.0001f ) {
+		frameDiscontinuity = true;
 		vignetteEnabled = true;
 		lastCameraUpdateTime = Sys_GetTimeMicroseconds();
 	} else {
+		frameDiscontinuity = false;
 		if ( Sys_GetTimeMicroseconds() - lastCameraUpdateTime >= 500000 ) {
 			// disable vignette after a 0.5s delay
 			vignetteEnabled = false;

@@ -117,8 +117,9 @@ void OpenVRBackend::SubmitFrame() {
 	rightEyeTexture.eColorSpace = vr::ColorSpace_Gamma;
 	rightEyeTexture.eType = vr::TextureType_OpenGL;
 	rightEyeTexture.handle = (void*)eyeTextures[1]->texnum;
-	vr::VRCompositor()->Submit( vr::Eye_Left, &leftEyeTexture, nullptr, vr::Submit_TextureWithPose );
-	vr::VRCompositor()->Submit( vr::Eye_Right, &rightEyeTexture, nullptr, vr::Submit_TextureWithPose );
+	int flags = vr::Submit_TextureWithPose | ( frameDiscontinuity ? vr::Submit_FrameDiscontinuty : 0 );
+	vr::VRCompositor()->Submit( vr::Eye_Left, &leftEyeTexture, nullptr, (vr::EVRSubmitFlags)flags );
+	vr::VRCompositor()->Submit( vr::Eye_Right, &rightEyeTexture, nullptr, (vr::EVRSubmitFlags)flags );
 	vr::VRCompositor()->PostPresentHandoff();
 }
 
