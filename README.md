@@ -4,7 +4,7 @@
 
 This is a VR mod for the free game "The Dark Mod", a Thief series inspired first-person stealth game.
 
-The mod is in early development. It is currently a seated keyboard+mouse experience only, without any comfort options. It is recommended to experienced VR players only, and familiarity with the base game in non-VR play is going to be helpful. A full room-scale experience is the long-term goal, but there's a long way to go :)
+The mod is in early development. It is currently a seated keyboard+mouse (or [Gamepad](https://github.com/fholger/thedarkmodvr/wiki/Gamepad-support)) experience only, without any comfort options. It is recommended to experienced VR players only, and familiarity with the base game in non-VR play is going to be helpful. A full room-scale experience is the long-term goal, but there's a long way to go :)
 
 Please have a look at the [Wiki](https://github.com/fholger/thedarkmodvr/wiki) for more information and advanced settings.
 
