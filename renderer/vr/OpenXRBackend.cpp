@@ -14,6 +14,7 @@
 ******************************************************************************/
 #include "precompiled.h"
 #include "OpenXRBackend.h"
+
 #include "xr_loader.h"
 #include "xr_math.h"
 #include "../tr_local.h"
@@ -23,9 +24,13 @@
 OpenXRBackend xrImpl;
 OpenXRBackend *xrBackend = &xrImpl;
 
+idCVar xr_useD3D11 ( "xr_useD3D11", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Use D3D11 for OpenXR session to work around a performance issue with SteamVR's OpenXR implementation" );
+
 #ifdef WIN32
+#include "OpenXRSwapchainDX.h"
 #include "../../sys/win32/win_local.h"
-XrGraphicsBindingOpenGLWin32KHR Sys_CreateGraphicsBinding() {
+typedef XrGraphicsBindingOpenGLWin32KHR XrGraphicsBindingGL;
+XrGraphicsBindingOpenGLWin32KHR Sys_CreateGraphicsBindingGL() {
 	return {
 		XR_TYPE_GRAPHICS_BINDING_OPENGL_WIN32_KHR,
 		nullptr,
@@ -33,11 +38,64 @@ XrGraphicsBindingOpenGLWin32KHR Sys_CreateGraphicsBinding() {
 		win32.hGLRC,
 	};
 }
+
+#include <dxgi1_4.h>
+using Microsoft::WRL::ComPtr;
+namespace {
+	ComPtr<ID3D11Device> d3d11Device;
+	HANDLE glDeviceHandle;
+
+	void InitD3D11Device( XrGraphicsRequirementsD3D11KHR &d3d11Reqs ) {
+		d3d11Device.Reset();
+
+		IDXGIFactory4 *dxgiFactory;
+		if ( FAILED ( CreateDXGIFactory( __uuidof(IDXGIFactory4), (void**)&dxgiFactory ) ) ) {
+			common->Error( "Failed to create DXGI factory" );
+		}
+		IDXGIAdapter *adapter;
+		if ( FAILED ( dxgiFactory->EnumAdapterByLuid( d3d11Reqs.adapterLuid, __uuidof(IDXGIAdapter), (void**)&adapter ) ) ) {
+			common->Error( "Failed to find DXGI adapter" );
+		}
+
+		HRESULT result = D3D11CreateDevice( adapter,
+				D3D_DRIVER_TYPE_UNKNOWN, 
+				nullptr,
+				0,
+				&d3d11Reqs.minFeatureLevel,
+				1,
+				D3D11_SDK_VERSION,
+				d3d11Device.GetAddressOf(),
+				nullptr,
+				nullptr );
+		if ( FAILED( result ) ) {
+			common->Error( "Failed to create D3D11 device: %08x", (unsigned)result );
+		}
+
+		glDeviceHandle = qwglDXOpenDeviceNV(d3d11Device.Get());
+		if ( glDeviceHandle == nullptr ) {
+			common->Error( "Failed to open GL interop to DX device" );
+		}
+	}
+
+	void DestroyD3D11Device() {
+		d3d11Device.Reset();
+	}
+}
+
+XrGraphicsBindingD3D11KHR Sys_CreateGraphicsBindingDX() {
+	ID3D11Device *device = d3d11Device.Get();
+	return {
+		XR_TYPE_GRAPHICS_BINDING_D3D11_KHR,
+		nullptr,
+		device,
+	};	
+}
 #endif
 
 #ifdef __linux__
 #include "../../sys/linux/local.h"
-XrGraphicsBindingOpenGLXlibKHR Sys_CreateGraphicsBinding() {
+typedef XrGraphicsBindingOpenGLXlibKHR XrGraphicsBindingGL;
+XrGraphicsBindingOpenGLXlibKHR Sys_CreateGraphicsBindingGL() {
     uint32_t visualId = XVisualIDFromVisual(visinfo->visual);
     return {
         XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR,
@@ -84,19 +142,46 @@ void OpenXRBackend::InitBackend() {
 	XrResult result = xrGetSystem( instance, &systemGetInfo, &system );
 	XR_CheckResult( result, "acquiring the system id", instance );
 
-	// must call graphicsRequirements before opening a session, although the results are not
-	// that interesting for us
-	XrGraphicsRequirementsOpenGLKHR openglReqs = {
-		XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR,
-		nullptr,
-	};
-	result = xrGetOpenGLGraphicsRequirementsKHR( instance, system, &openglReqs );
-	XR_CheckResult( result, "calling OpenGL graphics requirements", instance );
+	XrGraphicsBindingGL glGraphicsBinding;
+	const void *graphicsBinding;
+#ifdef WIN32
+	XrGraphicsBindingD3D11KHR dxGraphicsBinding;
+	if ( xr_useD3D11.GetBool() ) {
+		XrGraphicsRequirementsD3D11KHR d3d11Reqs = {
+			XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR,
+			nullptr,
+		};
+		result = xrGetD3D11GraphicsRequirementsKHR( instance, system, &d3d11Reqs );
+		XR_CheckResult( result, "calling D3D11 graphics requirements", instance );
+		InitD3D11Device( d3d11Reqs );
+		dxGraphicsBinding = Sys_CreateGraphicsBindingDX();
+		graphicsBinding = &dxGraphicsBinding;
 
-	auto graphicsBinding = Sys_CreateGraphicsBinding();
+		uiSwapchain = new OpenXRSwapchainDX( glDeviceHandle );
+		eyeSwapchains[0] = new OpenXRSwapchainDX( glDeviceHandle );
+		eyeSwapchains[1] = new OpenXRSwapchainDX( glDeviceHandle );
+	} else
+#endif
+	{
+		// must call graphicsRequirements before opening a session, although the results are not
+		// that interesting for us
+		XrGraphicsRequirementsOpenGLKHR openglReqs = {
+			XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_KHR,
+			nullptr,
+		};
+		result = xrGetOpenGLGraphicsRequirementsKHR( instance, system, &openglReqs );
+		XR_CheckResult( result, "calling OpenGL graphics requirements", instance );
+
+		glGraphicsBinding = Sys_CreateGraphicsBindingGL();
+		graphicsBinding = &glGraphicsBinding;
+
+		uiSwapchain = new OpenXRSwapchainGL;
+		eyeSwapchains[0] = new OpenXRSwapchainGL;
+		eyeSwapchains[1] = new OpenXRSwapchainGL;
+	}
 	XrSessionCreateInfo sessionCreateInfo = {
 		XR_TYPE_SESSION_CREATE_INFO,
-		&graphicsBinding,
+		graphicsBinding,
 		0,
 		system,
 	};
@@ -124,9 +209,12 @@ void OpenXRBackend::DestroyBackend() {
 		return;
 	}
 
-	uiSwapchain.Destroy();
-	eyeSwapchains[0].Destroy();
-	eyeSwapchains[1].Destroy();
+	uiSwapchain->Destroy();
+	eyeSwapchains[0]->Destroy();
+	eyeSwapchains[1]->Destroy();
+	delete uiSwapchain;
+	delete eyeSwapchains[0];
+	delete eyeSwapchains[1];
 
 	xrDestroySession( session );
 	session = nullptr;
@@ -244,9 +332,9 @@ void OpenXRBackend::SubmitFrame() {
 
 	GL_PROFILE("XrSubmitFrame")
 
-	uiSwapchain.ReleaseImage();
-	eyeSwapchains[0].ReleaseImage();
-	eyeSwapchains[1].ReleaseImage();
+	uiSwapchain->ReleaseImage();
+	eyeSwapchains[0]->ReleaseImage();
+	eyeSwapchains[1]->ReleaseImage();
 
 	XrCompositionLayerProjectionView projectionViews[2] = {
 		{
@@ -254,14 +342,14 @@ void OpenXRBackend::SubmitFrame() {
 			nullptr,
 			renderViews[0].pose,
 			renderViews[0].fov,
-			eyeSwapchains[0].CurrentSwapchainSubImage(),
+			eyeSwapchains[0]->CurrentSwapchainSubImage(),
 		},
 		{
 			XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
 			nullptr,
 			renderViews[1].pose,
 			renderViews[1].fov,
-			eyeSwapchains[1].CurrentSwapchainSubImage(),
+			eyeSwapchains[1]->CurrentSwapchainSubImage(),
 		},
 	};
 	XrCompositionLayerProjection stereoLayer = {
@@ -278,7 +366,7 @@ void OpenXRBackend::SubmitFrame() {
 		XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT,
 		seatedSpace,
 		XR_EYE_VISIBILITY_BOTH,
-		uiSwapchain.CurrentSwapchainSubImage(),
+		uiSwapchain->CurrentSwapchainSubImage(),
 		{ {0, 0, 0, 1}, {0, vr_uiOverlayVerticalOffset.GetFloat(), -vr_uiOverlayDistance.GetFloat()} },
 		{ vr_uiOverlayHeight.GetFloat() * vr_uiOverlayAspect.GetFloat(), vr_uiOverlayHeight.GetFloat() },
 	};
@@ -332,13 +420,13 @@ bool OpenXRBackend::GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orient
 
 void OpenXRBackend::AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) {
 	if ( eye == UI ) {
-		uiSwapchain.PrepareNextImage();
-		fbo = uiSwapchain.CurrentFrameBuffer();
-		texture = uiSwapchain.CurrentImage();
+		uiSwapchain->PrepareNextImage();
+		fbo = uiSwapchain->CurrentFrameBuffer();
+		texture = uiSwapchain->CurrentImage();
 	} else {
-		eyeSwapchains[eye].PrepareNextImage();
-		fbo = eyeSwapchains[eye].CurrentFrameBuffer();
-		texture = eyeSwapchains[eye].CurrentImage();
+		eyeSwapchains[eye]->PrepareNextImage();
+		fbo = eyeSwapchains[eye]->CurrentFrameBuffer();
+		texture = eyeSwapchains[eye]->CurrentImage();
 	}
 }
 
@@ -440,7 +528,11 @@ idVec4 OpenXRBackend::GetVisibleAreaBounds( eyeView_t eye ) {
 }
 
 bool OpenXRBackend::UsesSrgbTextures() const {
+#ifdef WIN32
+	return swapchainFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || swapchainFormat == GL_SRGB8_ALPHA8;
+#else
 	return swapchainFormat == GL_SRGB8_ALPHA8;
+#endif
 }
 
 void OpenXRBackend::SetupDebugMessenger() {
@@ -469,8 +561,18 @@ void OpenXRBackend::ChooseSwapchainFormat() {
 	// find first matching desired swapchain format
 	swapchainFormat = 0;
 	std::set<int64_t> supportedFormats (swapchainFormats.begin(), swapchainFormats.end());
-	idList<int64_t> desiredFormats = { GL_SRGB8_ALPHA8, GL_RGBA8, GL_RGBA16F };
-	idList<idStr> formatNames = { "GL_SRGB8_ALPHA8", "GL_RGBA8", "GL_RGBA16F" };
+	idList<int64_t> desiredFormats;
+	idList<idStr> formatNames;
+#ifdef WIN32
+	if ( xr_useD3D11.GetInteger() ) {
+		desiredFormats = { DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R16G16B16A16_FLOAT };
+		formatNames = { "DXGI_FORMAT_R8G8B8A8_UNORM_SRGB", "DXGI_FORMAT_R8G8B8A8_UNORM", "DXGI_FORMAT_R16G16B16A16_FLOAT" };
+	} else
+#endif
+	{
+		 desiredFormats = { GL_SRGB8_ALPHA8, GL_RGBA8, GL_RGBA16F };
+		 formatNames = { "GL_SRGB8_ALPHA8", "GL_RGBA8", "GL_RGBA16F" };
+	}
 	for ( int i = 0; i < desiredFormats.Num(); ++i ) {
 		if ( supportedFormats.find( desiredFormats[i] ) != supportedFormats.end() ) {
 			swapchainFormat = desiredFormats[i];
@@ -501,9 +603,9 @@ void OpenXRBackend::InitSwapchains() {
 	glConfig.vidHeight = views[0].recommendedImageRectHeight;
 	r_fboResolution.SetModified();
 	
-	eyeSwapchains[0].Init( "leftEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
-	eyeSwapchains[1].Init( "rightEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
-	uiSwapchain.Init( "ui", swapchainFormat, vr_uiResolution.GetInteger(), vr_uiResolution.GetInteger() );
+	eyeSwapchains[0]->Init( "leftEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
+	eyeSwapchains[1]->Init( "rightEye", swapchainFormat, views[0].recommendedImageRectWidth, views[0].recommendedImageRectHeight );
+	uiSwapchain->Init( "ui", swapchainFormat, vr_uiResolution.GetInteger(), vr_uiResolution.GetInteger() );
 
 	common->Printf( "Created swapchains\n" );
 }

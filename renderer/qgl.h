@@ -42,6 +42,8 @@
 #define WGL_ARB_pixel_format					1
 // Optional extensions:
 #define WGL_EXT_swap_control					1
+#define WGL_NV_DX_interop						1
+#define WGL_NV_DX_interop2						1
 #include "glad_wgl.h"
 #endif
 

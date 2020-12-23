@@ -18,6 +18,7 @@
 idCVar vr_useDebug( "vr_useDebug", "0", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Enable OpenXR debug functionality" );
 
 bool XR_KHR_opengl_enable_available = false;
+bool XR_KHR_D3D11_enable_available = false;
 bool XR_KHR_visibility_mask_available = false;
 bool XR_EXT_debug_utils_available = false;
 
@@ -33,6 +34,16 @@ XRAPI_ATTR XrResult XRAPI_CALL xrGetOpenGLGraphicsRequirementsKHR(
     XrGraphicsRequirementsOpenGLKHR*            graphicsRequirements) {
 	return qxrGetOpenGLGraphicsRequirementsKHR( instance, systemId, graphicsRequirements );	
 }
+
+#ifdef WIN32
+PFN_xrGetD3D11GraphicsRequirementsKHR qxrGetD3D11GraphicsRequirementsKHR = nullptr;
+XRAPI_ATTR XrResult XRAPI_CALL xrGetD3D11GraphicsRequirementsKHR(
+    XrInstance                                  instance,
+    XrSystemId                                  systemId,
+    XrGraphicsRequirementsD3D11KHR*             graphicsRequirements) {
+	return qxrGetD3D11GraphicsRequirementsKHR( instance, systemId, graphicsRequirements );	
+}
+#endif
 
 XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
     XrInstance                                  instance,
@@ -94,6 +105,9 @@ void XR_CheckAvailableExtensions() {
 		if ( strcmp( ext.extensionName, XR_KHR_OPENGL_ENABLE_EXTENSION_NAME ) == 0 ) {
 			XR_KHR_opengl_enable_available = true;
 		}
+		if ( strcmp( ext.extensionName, XR_KHR_D3D11_ENABLE_EXTENSION_NAME ) == 0 ) {
+			XR_KHR_D3D11_enable_available = true;
+		}
 		if ( strcmp( ext.extensionName, XR_KHR_VISIBILITY_MASK_EXTENSION_NAME ) == 0 ) {
 			XR_KHR_visibility_mask_available = true;
 		}
@@ -129,6 +143,14 @@ void XR_LoadExtensionOpenGL( XrInstance instance ) {
 	XR_CheckResult( result, "loading OpenGL extension function", instance );
 }
 
+#ifdef WIN32
+void XR_LoadExtensionD3D11( XrInstance instance ) {
+	XrResult result;
+	result = xrGetInstanceProcAddr( instance, "xrGetD3D11GraphicsRequirementsKHR", (PFN_xrVoidFunction *)&qxrGetD3D11GraphicsRequirementsKHR );
+	XR_CheckResult( result, "loading D3D11 extension function", instance );
+}
+#endif
+
 void XR_LoadExtensionDebug( XrInstance instance ) {
 	XrResult result;
 	result = xrGetInstanceProcAddr( instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction *)&qxrCreateDebugUtilsMessengerEXT );
@@ -157,6 +179,11 @@ XrInstance XR_CreateInstance() {
 	}
 
 	idList<const char *> enabledExtensions = { XR_KHR_OPENGL_ENABLE_EXTENSION_NAME };
+#ifdef WIN32
+	if ( XR_KHR_D3D11_enable_available ) {
+		enabledExtensions.AddGrow( XR_KHR_D3D11_ENABLE_EXTENSION_NAME );
+	}
+#endif
 	if ( XR_KHR_visibility_mask_available ) {
 		enabledExtensions.AddGrow( XR_KHR_VISIBILITY_MASK_EXTENSION_NAME );
 	}
@@ -195,6 +222,11 @@ XrInstance XR_CreateInstance() {
 		XR_VERSION_PATCH( instanceProperties.runtimeVersion ) );
 
 	XR_LoadExtensionOpenGL( instance );
+#ifdef WIN32
+	if ( XR_KHR_D3D11_enable_available ) {
+		XR_LoadExtensionD3D11( instance );
+	}
+#endif
 	if ( XR_EXT_debug_utils_available ) {
 		XR_LoadExtensionDebug( instance );
 	}

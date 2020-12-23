@@ -17,6 +17,9 @@
 #define XR_USE_GRAPHICS_API_OPENGL 1
 #ifdef WIN32
 #define XR_USE_PLATFORM_WIN32 1
+#define XR_USE_GRAPHICS_API_D3D11 1
+#include <d3d11.h>
+#include <wrl/client.h>
 #endif
 #ifdef __linux__
 #define XR_USE_PLATFORM_XLIB 1
@@ -24,6 +27,7 @@
 #include <openxr/openxr_platform.h>
 
 extern bool XR_KHR_opengl_enable_available;
+extern bool XR_KHR_D3D11_enable_available;
 extern bool XR_KHR_visibility_mask_available;
 extern bool XR_EXT_debug_utils_available;
 

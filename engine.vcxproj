@@ -512,6 +512,8 @@
     <ClInclude Include="renderer\vr\OpenVRBackend.h" />
     <ClInclude Include="renderer\vr\OpenXRBackend.h" />
     <ClInclude Include="renderer\vr\OpenXRSwapchain.h" />
+    <ClInclude Include="renderer\vr\OpenXRSwapchainDX.h" />
+    <ClInclude Include="renderer\vr\OpenXRSwapchainGL.h" />
     <ClInclude Include="renderer\vr\VRBackend.h" />
     <ClInclude Include="renderer\vr\xr_loader.h" />
     <ClInclude Include="renderer\vr\xr_math.h" />
@@ -1115,7 +1117,8 @@
     <ClCompile Include="renderer\VertexCache.cpp" />
     <ClCompile Include="renderer\vr\OpenVRBackend.cpp" />
     <ClCompile Include="renderer\vr\OpenXRBackend.cpp" />
-    <ClCompile Include="renderer\vr\OpenXRSwapchain.cpp" />
+    <ClCompile Include="renderer\vr\OpenXRSwapchainDX.cpp" />
+    <ClCompile Include="renderer\vr\OpenXRSwapchainGL.cpp" />
     <ClCompile Include="renderer\vr\VRBackend.cpp" />
     <ClCompile Include="renderer\vr\xr_loader.cpp" />
     <ClCompile Include="renderer\vr\xr_math.cpp" />

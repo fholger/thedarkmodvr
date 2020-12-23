@@ -16,39 +16,27 @@
 #include <openxr/openxr.h>
 
 class FrameBuffer;
-class idImage;
 
 class OpenXRSwapchain {
 public:
-	void Init( const idStr &name, GLuint format, int width, int height );
-	void Destroy();
+	virtual void Init( const idStr &name, int64_t format, int width, int height ) = 0;
+	virtual void Destroy() = 0;
+
+	virtual ~OpenXRSwapchain() {}
 
 	/* Must call this before rendering to a framebuffer of this swapchain.
 	 * Will acquire and wait for the next image in the swapchain to be ready
 	 * for rendering.
 	 */
-	void PrepareNextImage();
+	virtual void PrepareNextImage() = 0;
 
 	// call when rendering is done to release the image
-	void ReleaseImage();
+	virtual void ReleaseImage() = 0;
 
 	// returns the currently acquired FrameBuffer for rendering
-	FrameBuffer *CurrentFrameBuffer() const;
+	virtual FrameBuffer *CurrentFrameBuffer() const = 0;
 	// returns the currently acquired Image for rendering
-	idImage *CurrentImage() const;
+	virtual idImage *CurrentImage() const = 0;
 
-	const XrSwapchainSubImage &CurrentSwapchainSubImage() const { return currentImage; }
-
-private:
-	static const uint32_t INVALID_INDEX = 0xffffffff;
-	
-	int width;
-	int height;
-	XrSwapchain swapchain = nullptr;
-	idList<idImage *> images;
-	idList<FrameBuffer *> frameBuffers;
-	uint32_t curIndex = INVALID_INDEX;
-	XrSwapchainSubImage currentImage;
-
-	void InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texnum, int width, int height );
+	virtual const XrSwapchainSubImage &CurrentSwapchainSubImage() const = 0;
 };

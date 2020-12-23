@@ -13,7 +13,7 @@
 
 ******************************************************************************/
 #include "precompiled.h"
-#include "OpenXRSwapchain.h"
+#include "OpenXRSwapchainGL.h"
 
 #include "OpenXRBackend.h"
 #include "xr_loader.h"
@@ -22,7 +22,7 @@
 #include "../Image.h"
 #include "../Profiling.h"
 
-void OpenXRSwapchain::Init( const idStr &name, GLuint format, int width, int height ) {
+void OpenXRSwapchainGL::Init( const idStr &name, int64_t format, int width, int height ) {
 	if ( swapchain != nullptr ) {
 		Destroy();
 	}
@@ -70,7 +70,7 @@ void OpenXRSwapchain::Init( const idStr &name, GLuint format, int width, int hei
 	}
 }
 
-void OpenXRSwapchain::Destroy() {
+void OpenXRSwapchainGL::Destroy() {
 	if ( swapchain == nullptr ) {
 		return;
 	}
@@ -90,7 +90,7 @@ void OpenXRSwapchain::Destroy() {
 	curIndex = INVALID_INDEX;
 }
 
-void OpenXRSwapchain::PrepareNextImage() {
+void OpenXRSwapchainGL::PrepareNextImage() {
 	if ( curIndex != INVALID_INDEX ) {
 		common->Printf( "Xr: Acquiring swapchain that was not released\n" );
 		ReleaseImage();
@@ -112,7 +112,7 @@ void OpenXRSwapchain::PrepareNextImage() {
 	currentImage.imageRect = { {0, 0}, {width, height} };
 }
 
-void OpenXRSwapchain::ReleaseImage() {
+void OpenXRSwapchainGL::ReleaseImage() {
 	if ( curIndex == INVALID_INDEX ) {
 		common->Printf( "Xr: Releasing swapchain that was not acquired\n" );
 		return;
@@ -127,7 +127,7 @@ void OpenXRSwapchain::ReleaseImage() {
 	curIndex = INVALID_INDEX;
 }
 
-FrameBuffer * OpenXRSwapchain::CurrentFrameBuffer() const {
+FrameBuffer * OpenXRSwapchainGL::CurrentFrameBuffer() const {
 	if ( curIndex == INVALID_INDEX ) {
 		common->Error( "OpenXRSwapchain: no image currently acquired when attempting to access framebuffer" );
 	}
@@ -135,7 +135,7 @@ FrameBuffer * OpenXRSwapchain::CurrentFrameBuffer() const {
 	return frameBuffers[curIndex];
 }
 
-idImage * OpenXRSwapchain::CurrentImage() const {
+idImage * OpenXRSwapchainGL::CurrentImage() const {
 	if ( curIndex == INVALID_INDEX ) {
 		common->Error( "OpenXRSwapchain: no image currently acquired when attempting to access image" );
 	}
@@ -143,7 +143,7 @@ idImage * OpenXRSwapchain::CurrentImage() const {
 	return images[curIndex];
 }
 
-void OpenXRSwapchain::InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texnum, int width, int height ) {
+void OpenXRSwapchainGL::InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texnum, int width, int height ) {
 	image->texnum = texnum;
 	image->uploadWidth = width;
 	image->uploadHeight = height;
