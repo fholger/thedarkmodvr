@@ -10,9 +10,9 @@ Please have a look at the [Wiki](https://github.com/fholger/thedarkmodvr/wiki) f
 
 ## Installation
 
-You need to install v2.08 of the base game. Head over to [The Dark Mod website](https://www.thedarkmod.com/downloads/) and download the TDM updater for your platform. Create a new directory for TDM, extract the updater into that directory and run it. The directory must be user-writable, so it's recommended to place it somewhere in your user home. Do *not* use "C:\Program Files"!
+TheDarkMod has a new installer that allows you to directly install the VR version. Follow the instructions in the Wiki page: [Installation](https://github.com/fholger/thedarkmodvr/wiki/Installation)
 
-Then head over to the [releases](https://github.com/fholger/thedarkmodvr/releases) and grab the latest version of the VR build. Extract it to your Dark Mod directory and run the VR executable.
+If you already have the current [2.09 beta](https://forums.thedarkmod.com/index.php?/topic/20691-beta-testing-209/) of the base game installed, you can also head over to the [releases](https://github.com/fholger/thedarkmodvr/releases) and grab the latest version of the VR build. Extract it to your Dark Mod directory and run the VR executable.
 
 If you're feeling brave, you can also download a nightly build. Head to [AppVeyor](https://ci.appveyor.com/project/fholger/thedarkmodvr), select either the Visual Studio 2019 (for Windows) or Ubuntu 18.04 (for Linux) job, then go to the Artifacts tab and download the build.
 
