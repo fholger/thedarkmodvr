@@ -56,7 +56,7 @@ struct ShadowMapUniforms : GLSLUniformGroup {
 
 GLSLProgram *currrentInteractionShader; // dynamic, either pointInteractionShader or ambientInteractionShader
 
-idCVarInt r_shadowMapSinglePass( "r_shadowMapSinglePass", "0", CVAR_ARCHIVE | CVAR_RENDERER, "1 - render shadow maps for all lights in a single pass; 2 - also render all light interactions in a single pass" );
+idCVarInt r_shadowMapSinglePass( "r_shadowMapSinglePass", "1", CVAR_ARCHIVE | CVAR_RENDERER, "1 - render shadow maps for all lights in a single pass; 2 - also render all light interactions in a single pass" );
 
 static void ChooseInteractionProgram() {
 	if ( backEnd.vLight->lightShader->IsAmbientLight() ) {
