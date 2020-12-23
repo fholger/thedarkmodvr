@@ -17,6 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "tr_local.h"
 #include "FrameBufferManager.h"
 #include "FrameBuffer.h"
+#include "vr/OpenVRBackend.h"
 
 FrameBufferManager frameBuffersImpl;
 FrameBufferManager *frameBuffers = &frameBuffersImpl;
@@ -134,6 +135,9 @@ void FrameBufferManager::LeavePrimary(bool copyToDefault) {
 	// if we want to do tonemapping later, we need to continue to render to a texture,
 	// otherwise we can render the remaining UI views straight to the back buffer
 	FrameBuffer *targetFbo = r_tonemap ? guiFbo : defaultFbo;
+	if ( vrBackend->UseRadialDensityMask() ) {
+		targetFbo = resolveFbo;
+	}
 	if (currentRenderFbo == targetFbo) return;
 
 	currentRenderFbo = targetFbo;

@@ -161,6 +161,10 @@ void FrameBuffer::BlitTo( FrameBuffer *target, GLbitfield mask, GLenum filter ) 
 
 void FrameBuffer::BlitTo( FrameBuffer *target, uint srcX1, uint srcY1, uint srcX2, uint srcY2, uint dstX1, uint dstY1,
 		uint dstX2, uint dstY2, GLbitfield mask, GLenum filter ) {
+	if (target == this) {
+		return;
+	}
+
 	FrameBuffer *previous = frameBuffers->activeFbo;
 	Bind();
 	qglDisable(GL_SCISSOR_TEST);

@@ -229,8 +229,7 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
-		eyeBuffers[eye]->Bind(); // ensure fbo and textures are fully constructed
-		frameBuffers->defaultFbo = UseRadialDensityMask() ? rdmReconstructionFbo : eyeBuffers[eye];
+		frameBuffers->defaultFbo = eyeBuffers[eye];
 		frameBuffers->defaultFbo->Bind();
 		GL_ViewportRelative( 0, 0, 1, 1 );
 		GL_ScissorRelative( 0, 0, 1, 1 );
@@ -242,10 +241,6 @@ void VRBackend::RenderStereoView( const frameData_t *frameData ) {
 		}
 		if ( !frameData->render2D ) {
 			DrawAimIndicator( frameData->mouseAimSize );
-		}
-
-		if ( UseRadialDensityMask() ) {
-			ReconstructImageFromRdm( eyeTextures[eye] );
 		}
 	}
 
@@ -382,6 +377,9 @@ void VRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t e
 
 	frameBuffers->LeavePrimary();
 	if ( shouldRender3D ) {
+		if ( UseRadialDensityMask() ) {
+			ReconstructImageFromRdm();
+		}
 		RB_Tonemap();
 	}
 	if ( eyeView != UI && vr_useFixedFoveatedRendering.GetInteger() == 1 && GLAD_GL_NV_shading_rate_image ) {
@@ -804,8 +802,10 @@ struct RdmReconstructUniforms : GLSLUniformGroup {
 	DEFINE_UNIFORM( int, quality )
 };
 
-void VRBackend::ReconstructImageFromRdm( idImage *destination ) {
+void VRBackend::ReconstructImageFromRdm() {
 	GL_PROFILE("RdmReconstruction")
+
+	rdmReconstructionFbo->Bind();
 
 	int width = rdmReconstructionImage->uploadWidth;
 	int height = rdmReconstructionImage->uploadHeight;
@@ -819,11 +819,14 @@ void VRBackend::ReconstructImageFromRdm( idImage *destination ) {
 	uniforms->quality.Set( vr_foveatedReconstructionQuality.GetInteger() );
 
 	GL_SelectTexture( 0 );
-	destination->Bind();
-	qglBindImageTexture( 0, destination->texnum, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8 );
-	rdmReconstructionImage->Bind();
+	globalImages->currentRenderImage->Bind();
+	qglBindImageTexture( 0, rdmReconstructionImage->texnum, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA8 );
 	
 	qglDispatchCompute( (width + 7) / 8, (height + 7) / 8, 1 );
-	qglMemoryBarrier( GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT );
+	qglMemoryBarrier( GL_FRAMEBUFFER_BARRIER_BIT );
+
+	FrameBuffer *targetFbo = r_tonemap ? frameBuffers->guiFbo : frameBuffers->defaultFbo;
+	rdmReconstructionFbo->BlitTo( targetFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+	targetFbo->Bind();
 }
 

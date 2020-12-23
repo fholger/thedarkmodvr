@@ -45,6 +45,8 @@ public:
 
 	void UpdateLightScissor( viewLight_t *vLight );
 
+	bool UseRadialDensityMask();
+
 	static const float GameUnitsToMetres;
 	static const float MetresToGameUnits;
 protected:
@@ -80,8 +82,7 @@ private:
 	void UpdateFrameStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
 	void PrepareVariableRateShading();
-	bool UseRadialDensityMask();
-	void ReconstructImageFromRdm( idImage * destination );
+	void ReconstructImageFromRdm();
 
 	eyeView_t currentEye;
 	GLSLProgram *vrMirrorShader = nullptr;
