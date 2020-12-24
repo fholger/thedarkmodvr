@@ -14,6 +14,8 @@
 ******************************************************************************/
 #pragma once
 #include "OpenXRSwapchain.h"
+#include <d3d11.h>
+#include <wrl/client.h>
 
 #ifdef WIN32
 
@@ -25,7 +27,7 @@
  */
 class OpenXRSwapchainDX : public OpenXRSwapchain {
 public:
-	OpenXRSwapchainDX( HANDLE glDeviceHandle ) : glDeviceHandle( glDeviceHandle ) {}
+	OpenXRSwapchainDX( ID3D11Device *device, ID3D11DeviceContext *context, HANDLE glDeviceHandle ) : device( device ), context( context ), glDeviceHandle( glDeviceHandle ) {}
 
 	void Init( const idStr &name, int64_t format, int width, int height ) override;
 	void Destroy() override;
@@ -42,14 +44,18 @@ public:
 private:
 	static const uint32_t INVALID_INDEX = 0xffffffff;
 
+	ID3D11Device *device;
+	ID3D11DeviceContext *context;
 	HANDLE glDeviceHandle;
 
 	int width;
 	int height;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+	idImage * image;
+	FrameBuffer * frameBuffer;
+	HANDLE handle;
 	XrSwapchain swapchain = nullptr;
-	idList<idImage *> images;
-	idList<FrameBuffer *> frameBuffers;
-	idList<HANDLE> handles;
+	idList<ID3D11Texture2D*> swapchainTextures;
 	uint32_t curIndex = INVALID_INDEX;
 	XrSwapchainSubImage currentImage;
 

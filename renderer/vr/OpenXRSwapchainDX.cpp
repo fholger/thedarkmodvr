@@ -31,6 +31,34 @@ void OpenXRSwapchainDX::Init( const idStr &name, int64_t format, int width, int 
 	this->width = width;
 	this->height = height;
 
+	D3D11_TEXTURE2D_DESC td;
+	td.Width = width;
+	td.Height = height;
+	td.Usage = D3D11_USAGE_DEFAULT;
+	td.ArraySize = 1;
+	td.Format = (DXGI_FORMAT)format;
+	td.MipLevels = 1;
+	td.BindFlags = D3D11_BIND_RENDER_TARGET;
+	td.CPUAccessFlags = 0;
+	td.MiscFlags = 0; // TODO: shared?
+	td.SampleDesc.Count = 1;
+	td.SampleDesc.Quality = 0;
+	if ( FAILED ( device->CreateTexture2D( &td, nullptr, texture.GetAddressOf() ) ) ) {
+		common->Error( "Failed to create DX texture" );
+	}
+
+	GLuint texnum;
+	qglGenTextures( 1, &texnum );
+	handle = qwglDXRegisterObjectNV( glDeviceHandle, texture.Get(), texnum, GL_TEXTURE_2D, WGL_ACCESS_READ_WRITE_NV );
+	if ( handle == nullptr ) {
+		GLenum error = qglGetError();
+		common->Error( "Could not acquire handle for DX texture: %d", error );
+	}
+
+	image = globalImages->ImageFromFunction( idStr::Fmt( "%s, image", name.c_str()), FB_RenderTexture );
+	frameBuffer = ::frameBuffers->CreateFromGenerator( idStr::Fmt( "%s fb", name.c_str() ), 
+		[=](FrameBuffer *fbo) { InitFrameBuffer( fbo, image, texnum, width, height ); }  );
+
 	XrSwapchainCreateInfo createInfo = {
 		XR_TYPE_SWAPCHAIN_CREATE_INFO,
 		nullptr,
@@ -61,21 +89,9 @@ void OpenXRSwapchainDX::Init( const idStr &name, int64_t format, int width, int 
 		reinterpret_cast<XrSwapchainImageBaseHeader *>( swapchainImages.Ptr() ) );
 	XR_CheckResult( result, "enumerating swapchain images", xrBackend->Instance() );
 
-	// prepare framebuffer objects for images
-	images.SetNum( imageCount );
-	frameBuffers.SetNum( imageCount );
-	handles.SetNum( imageCount );
+	swapchainTextures.SetNum( imageCount );
 	for ( int i = 0; i < imageCount; ++i ) {
-		GLuint texnum;
-		qglGenTextures( 1, &texnum );
-		handles[i] = qwglDXRegisterObjectNV( glDeviceHandle, swapchainImages[i].texture, texnum, GL_TEXTURE_2D, WGL_ACCESS_WRITE_DISCARD_NV );
-		if ( handles[i] == nullptr ) {
-			GLenum error = qglGetError();
-			common->Error( "Could not acquire handle for DX texture: %d", error );
-		}
-		images[i] = globalImages->ImageFromFunction( idStr::Fmt( "%s, image %d", name.c_str(), i), FB_RenderTexture );
-		frameBuffers[i] = ::frameBuffers->CreateFromGenerator( idStr::Fmt( "%s fb %d", name.c_str(), i ), 
-			[=](FrameBuffer *fbo) { InitFrameBuffer( fbo, images[i], texnum, width, height ); }  );
+		swapchainTextures[i] = swapchainImages[i].texture;
 	}
 }
 
@@ -84,19 +100,14 @@ void OpenXRSwapchainDX::Destroy() {
 		return;
 	}
 
-	for ( FrameBuffer *fbo : frameBuffers ) {
-		fbo->Destroy();
-	}
-	frameBuffers.Clear();
-	for ( idImage *image : images ) {
-		image->texnum = idImage::TEXTURE_NOT_LOADED;
-		image->PurgeImage();
-	}
-	images.Clear();
-	for ( HANDLE handle : handles ) {
-		qwglDXUnregisterObjectNV( glDeviceHandle, handle );
-	}
-	handles.Clear();
+	frameBuffer->Destroy();
+	frameBuffer = nullptr;
+	image->texnum = idImage::TEXTURE_NOT_LOADED;
+	image->PurgeImage();
+	image = nullptr;
+	qwglDXUnregisterObjectNV( glDeviceHandle, handle );
+	handle = nullptr;
+	texture.Reset();
 
 	xrDestroySwapchain( swapchain );
 	swapchain = nullptr;
@@ -124,8 +135,8 @@ void OpenXRSwapchainDX::PrepareNextImage() {
 	currentImage.swapchain = swapchain;
 	currentImage.imageRect = { {0, 0}, {width, height} };
 
-	if ( !qwglDXLockObjectsNV( glDeviceHandle, 1, &handles[curIndex] ) ) {
-		common->Error( "Could not lock DX swapchain texture" );
+	if ( !qwglDXLockObjectsNV( glDeviceHandle, 1, &handle ) ) {
+		common->Error( "Could not lock DX texture" );
 	}
 }
 
@@ -135,9 +146,11 @@ void OpenXRSwapchainDX::ReleaseImage() {
 		return;
 	}
 
-	if ( !qwglDXUnlockObjectsNV( glDeviceHandle, 1, &handles[curIndex] ) ) {
-		common->Error( "Could not unlock DX swapchain texture" );
+	if ( !qwglDXUnlockObjectsNV( glDeviceHandle, 1, &handle ) ) {
+		common->Error( "Could not unlock DX texture" );
 	}
+
+	context->CopySubresourceRegion( swapchainTextures[curIndex], 0, 0, 0, 0, texture.Get(), 0, nullptr );
 
 	XrResult result = xrReleaseSwapchainImage( swapchain, nullptr );
 	XR_CheckResult( result, "releasing swapchain image", xrBackend->Instance() );
@@ -149,7 +162,7 @@ FrameBuffer * OpenXRSwapchainDX::CurrentFrameBuffer() const {
 		common->Error( "OpenXRSwapchain: no image currently acquired when attempting to access framebuffer" );
 	}
 
-	return frameBuffers[curIndex];
+	return frameBuffer;
 }
 
 idImage * OpenXRSwapchainDX::CurrentImage() const {
@@ -157,7 +170,7 @@ idImage * OpenXRSwapchainDX::CurrentImage() const {
 		common->Error( "OpenXRSwapchain: no image currently acquired when attempting to access image" );
 	}
 
-	return images[curIndex];
+	return image;
 }
 
 void OpenXRSwapchainDX::InitFrameBuffer( FrameBuffer *fbo, idImage *image, GLuint texnum, int width, int height ) {

@@ -43,6 +43,7 @@ XrGraphicsBindingOpenGLWin32KHR Sys_CreateGraphicsBindingGL() {
 using Microsoft::WRL::ComPtr;
 namespace {
 	ComPtr<ID3D11Device> d3d11Device;
+	ComPtr<ID3D11DeviceContext> d3d11Context;
 	HANDLE glDeviceHandle;
 
 	void InitD3D11Device( XrGraphicsRequirementsD3D11KHR &d3d11Reqs ) {
@@ -66,7 +67,7 @@ namespace {
 				D3D11_SDK_VERSION,
 				d3d11Device.GetAddressOf(),
 				nullptr,
-				nullptr );
+				d3d11Context.GetAddressOf() );
 		if ( FAILED( result ) ) {
 			common->Error( "Failed to create D3D11 device: %08x", (unsigned)result );
 		}
@@ -157,9 +158,9 @@ void OpenXRBackend::InitBackend() {
 		dxGraphicsBinding = Sys_CreateGraphicsBindingDX();
 		graphicsBinding = &dxGraphicsBinding;
 
-		uiSwapchain = new OpenXRSwapchainDX( glDeviceHandle );
-		eyeSwapchains[0] = new OpenXRSwapchainDX( glDeviceHandle );
-		eyeSwapchains[1] = new OpenXRSwapchainDX( glDeviceHandle );
+		uiSwapchain = new OpenXRSwapchainDX( d3d11Device.Get(), d3d11Context.Get(), glDeviceHandle );
+		eyeSwapchains[0] = new OpenXRSwapchainDX( d3d11Device.Get(), d3d11Context.Get(), glDeviceHandle );
+		eyeSwapchains[1] = new OpenXRSwapchainDX( d3d11Device.Get(), d3d11Context.Get(), glDeviceHandle );
 	} else
 #endif
 	{
