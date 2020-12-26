@@ -38,25 +38,34 @@ void OpenXRSwapchainDX::Init( const idStr &name, int64_t format, int width, int 
 	td.ArraySize = 1;
 	td.Format = (DXGI_FORMAT)format;
 	td.MipLevels = 1;
-	td.BindFlags = D3D11_BIND_RENDER_TARGET;
+	td.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
 	td.CPUAccessFlags = 0;
-	td.MiscFlags = 0; // TODO: shared?
+	td.MiscFlags = 0;
 	td.SampleDesc.Count = 1;
 	td.SampleDesc.Quality = 0;
-	if ( FAILED ( device->CreateTexture2D( &td, nullptr, texture.GetAddressOf() ) ) ) {
+	if ( FAILED ( d3d11Helper->device->CreateTexture2D( &td, nullptr, texture.GetAddressOf() ) ) ) {
 		common->Error( "Failed to create DX texture" );
+	}
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srv;
+	srv.Format = td.Format;
+	srv.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srv.Texture2D.MipLevels = 1;
+	srv.Texture2D.MostDetailedMip = 0;
+	if ( FAILED( d3d11Helper->device->CreateShaderResourceView( texture.Get(), &srv, shaderResourceView.GetAddressOf() ) ) ) {
+		common->Error( "Could not create shader resource view" );
 	}
 
 	GLuint texnum;
 	qglGenTextures( 1, &texnum );
-	handle = qwglDXRegisterObjectNV( glDeviceHandle, texture.Get(), texnum, GL_TEXTURE_2D, WGL_ACCESS_READ_WRITE_NV );
+	handle = qwglDXRegisterObjectNV( d3d11Helper->glDeviceHandle, texture.Get(), texnum, GL_TEXTURE_2D, WGL_ACCESS_READ_WRITE_NV );
 	if ( handle == nullptr ) {
 		GLenum error = qglGetError();
 		common->Error( "Could not acquire handle for DX texture: %d", error );
 	}
 
 	image = globalImages->ImageFromFunction( idStr::Fmt( "%s, image", name.c_str()), FB_RenderTexture );
-	frameBuffer = ::frameBuffers->CreateFromGenerator( idStr::Fmt( "%s fb", name.c_str() ), 
+	frameBuffer = frameBuffers->CreateFromGenerator( idStr::Fmt( "%s fb", name.c_str() ), 
 		[=](FrameBuffer *fbo) { InitFrameBuffer( fbo, image, texnum, width, height ); }  );
 
 	XrSwapchainCreateInfo createInfo = {
@@ -90,8 +99,16 @@ void OpenXRSwapchainDX::Init( const idStr &name, int64_t format, int width, int 
 	XR_CheckResult( result, "enumerating swapchain images", xrBackend->Instance() );
 
 	swapchainTextures.SetNum( imageCount );
+	renderTargetViews.SetNum( imageCount );
 	for ( int i = 0; i < imageCount; ++i ) {
 		swapchainTextures[i] = swapchainImages[i].texture;
+		D3D11_RENDER_TARGET_VIEW_DESC rtv;
+		rtv.Format = (DXGI_FORMAT)format;
+		rtv.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		rtv.Texture2D.MipSlice = 0;
+		if ( FAILED ( d3d11Helper->device->CreateRenderTargetView( swapchainTextures[i], &rtv, renderTargetViews[i].GetAddressOf() ) ) ) {
+			common->Error( "Failed to create render target view for texture" );
+		}
 	}
 }
 
@@ -102,12 +119,15 @@ void OpenXRSwapchainDX::Destroy() {
 
 	frameBuffer->Destroy();
 	frameBuffer = nullptr;
-	image->texnum = idImage::TEXTURE_NOT_LOADED;
 	image->PurgeImage();
+	image->texnum = idImage::TEXTURE_NOT_LOADED;
 	image = nullptr;
-	qwglDXUnregisterObjectNV( glDeviceHandle, handle );
+	qwglDXUnregisterObjectNV( d3d11Helper->glDeviceHandle, handle );
 	handle = nullptr;
+	shaderResourceView.Reset();
 	texture.Reset();
+	renderTargetViews.Clear();
+	swapchainTextures.Clear();
 
 	xrDestroySwapchain( swapchain );
 	swapchain = nullptr;
@@ -135,7 +155,7 @@ void OpenXRSwapchainDX::PrepareNextImage() {
 	currentImage.swapchain = swapchain;
 	currentImage.imageRect = { {0, 0}, {width, height} };
 
-	if ( !qwglDXLockObjectsNV( glDeviceHandle, 1, &handle ) ) {
+	if ( !qwglDXLockObjectsNV( d3d11Helper->glDeviceHandle, 1, &handle ) ) {
 		common->Error( "Could not lock DX texture" );
 	}
 }
@@ -146,11 +166,11 @@ void OpenXRSwapchainDX::ReleaseImage() {
 		return;
 	}
 
-	if ( !qwglDXUnlockObjectsNV( glDeviceHandle, 1, &handle ) ) {
+	if ( !qwglDXUnlockObjectsNV( d3d11Helper->glDeviceHandle, 1, &handle ) ) {
 		common->Error( "Could not unlock DX texture" );
 	}
 
-	context->CopySubresourceRegion( swapchainTextures[curIndex], 0, 0, 0, 0, texture.Get(), 0, nullptr );
+	d3d11Helper->RenderTextureFlipped( shaderResourceView.Get(), renderTargetViews[curIndex].Get(), width, height );
 
 	XrResult result = xrReleaseSwapchainImage( swapchain, nullptr );
 	XR_CheckResult( result, "releasing swapchain image", xrBackend->Instance() );

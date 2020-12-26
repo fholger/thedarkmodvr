@@ -145,6 +145,9 @@
     <Filter Include="Renderer\VR">
       <UniqueIdentifier>{5b341bd6-6338-44a1-8fd6-6107d376be26}</UniqueIdentifier>
     </Filter>
+    <Filter Include="hlprogs">
+      <UniqueIdentifier>{ef664ff5-2c6b-4623-a225-5e7ed9f8f34d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1337,6 +1340,9 @@
       <Filter>Renderer\VR</Filter>
     </ClInclude>
     <ClInclude Include="renderer\vr\OpenXRSwapchainDX.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vr\D3D11Helper.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
   </ItemGroup>
@@ -3109,6 +3115,9 @@
     <ClCompile Include="renderer\vr\OpenXRSwapchainDX.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\vr\D3D11Helper.cpp">
+      <Filter>Renderer\VR</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="sys\win32\rc\res\BEVEL.BMP">
@@ -3790,5 +3799,13 @@
     <ClInclude Include="tools\script\DialogScriptEditor.h">
       <Filter>Tools\Script</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="hlprogs\flip.ps.hlsl">
+      <Filter>hlprogs</Filter>
+    </FxCompile>
+    <FxCompile Include="hlprogs\flip.vs.hlsl">
+      <Filter>hlprogs</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

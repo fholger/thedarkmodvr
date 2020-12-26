@@ -509,6 +509,7 @@
     <ClInclude Include="renderer\simplex.h" />
     <ClInclude Include="renderer\tr_local.h" />
     <ClInclude Include="renderer\VertexCache.h" />
+    <ClInclude Include="renderer\vr\D3D11Helper.h" />
     <ClInclude Include="renderer\vr\OpenVRBackend.h" />
     <ClInclude Include="renderer\vr\OpenXRBackend.h" />
     <ClInclude Include="renderer\vr\OpenXRSwapchain.h" />
@@ -1115,6 +1116,7 @@
     <ClCompile Include="renderer\tr_trisurf.cpp" />
     <ClCompile Include="renderer\tr_turboshadow.cpp" />
     <ClCompile Include="renderer\VertexCache.cpp" />
+    <ClCompile Include="renderer\vr\D3D11Helper.cpp" />
     <ClCompile Include="renderer\vr\OpenVRBackend.cpp" />
     <ClCompile Include="renderer\vr\OpenXRBackend.cpp" />
     <ClCompile Include="renderer\vr\OpenXRSwapchainDX.cpp" />
@@ -1512,6 +1514,20 @@
       <Project>{6ea6406f-3e65-47d9-8246-d6660a81606f}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="hlprogs\flip.ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">PS_Flip</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">hlprogs/PS_Flip.h</HeaderFileOutput>
+    </FxCompile>
+    <FxCompile Include="hlprogs\flip.vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">VS_Flip</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">hlprogs/VS_Flip.h</HeaderFileOutput>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

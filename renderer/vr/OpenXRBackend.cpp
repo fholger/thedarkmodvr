@@ -39,57 +39,9 @@ XrGraphicsBindingOpenGLWin32KHR Sys_CreateGraphicsBindingGL() {
 	};
 }
 
-#include <dxgi1_4.h>
-using Microsoft::WRL::ComPtr;
+#include "D3D11Helper.h"
 namespace {
-	ComPtr<ID3D11Device> d3d11Device;
-	ComPtr<ID3D11DeviceContext> d3d11Context;
-	HANDLE glDeviceHandle;
-
-	void InitD3D11Device( XrGraphicsRequirementsD3D11KHR &d3d11Reqs ) {
-		d3d11Device.Reset();
-
-		IDXGIFactory4 *dxgiFactory;
-		if ( FAILED ( CreateDXGIFactory( __uuidof(IDXGIFactory4), (void**)&dxgiFactory ) ) ) {
-			common->Error( "Failed to create DXGI factory" );
-		}
-		IDXGIAdapter *adapter;
-		if ( FAILED ( dxgiFactory->EnumAdapterByLuid( d3d11Reqs.adapterLuid, __uuidof(IDXGIAdapter), (void**)&adapter ) ) ) {
-			common->Error( "Failed to find DXGI adapter" );
-		}
-
-		HRESULT result = D3D11CreateDevice( adapter,
-				D3D_DRIVER_TYPE_UNKNOWN, 
-				nullptr,
-				0,
-				&d3d11Reqs.minFeatureLevel,
-				1,
-				D3D11_SDK_VERSION,
-				d3d11Device.GetAddressOf(),
-				nullptr,
-				d3d11Context.GetAddressOf() );
-		if ( FAILED( result ) ) {
-			common->Error( "Failed to create D3D11 device: %08x", (unsigned)result );
-		}
-
-		glDeviceHandle = qwglDXOpenDeviceNV(d3d11Device.Get());
-		if ( glDeviceHandle == nullptr ) {
-			common->Error( "Failed to open GL interop to DX device" );
-		}
-	}
-
-	void DestroyD3D11Device() {
-		d3d11Device.Reset();
-	}
-}
-
-XrGraphicsBindingD3D11KHR Sys_CreateGraphicsBindingDX() {
-	ID3D11Device *device = d3d11Device.Get();
-	return {
-		XR_TYPE_GRAPHICS_BINDING_D3D11_KHR,
-		nullptr,
-		device,
-	};	
+	D3D11Helper d3d11Helper;
 }
 #endif
 
@@ -154,13 +106,13 @@ void OpenXRBackend::InitBackend() {
 		};
 		result = xrGetD3D11GraphicsRequirementsKHR( instance, system, &d3d11Reqs );
 		XR_CheckResult( result, "calling D3D11 graphics requirements", instance );
-		InitD3D11Device( d3d11Reqs );
-		dxGraphicsBinding = Sys_CreateGraphicsBindingDX();
+		d3d11Helper.Init( d3d11Reqs );
+		dxGraphicsBinding = d3d11Helper.CreateGraphicsBinding();
 		graphicsBinding = &dxGraphicsBinding;
 
-		uiSwapchain = new OpenXRSwapchainDX( d3d11Device.Get(), d3d11Context.Get(), glDeviceHandle );
-		eyeSwapchains[0] = new OpenXRSwapchainDX( d3d11Device.Get(), d3d11Context.Get(), glDeviceHandle );
-		eyeSwapchains[1] = new OpenXRSwapchainDX( d3d11Device.Get(), d3d11Context.Get(), glDeviceHandle );
+		uiSwapchain = new OpenXRSwapchainDX( &d3d11Helper );
+		eyeSwapchains[0] = new OpenXRSwapchainDX( &d3d11Helper );
+		eyeSwapchains[1] = new OpenXRSwapchainDX( &d3d11Helper );
 	} else
 #endif
 	{

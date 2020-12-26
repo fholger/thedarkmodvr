@@ -103,7 +103,7 @@ void XR_CheckAvailableExtensions() {
 		common->Printf( "- %s\n", ext.extensionName );
 
 		if ( strcmp( ext.extensionName, XR_KHR_OPENGL_ENABLE_EXTENSION_NAME ) == 0 ) {
-			XR_KHR_opengl_enable_available = true;
+			//XR_KHR_opengl_enable_available = true;
 		}
 		if ( strcmp( ext.extensionName, XR_KHR_D3D11_ENABLE_EXTENSION_NAME ) == 0 ) {
 			XR_KHR_D3D11_enable_available = true;
@@ -171,14 +171,14 @@ XrInstance XR_CreateInstance() {
 	XR_EXT_debug_utils_available = false;
 	XR_CheckAvailableExtensions();
 	XR_CheckAvailableApiLayers();
-	if ( !XR_KHR_opengl_enable_available ) {
-		common->FatalError( "XR_KHR_opengl_enable extension is required, but not supported" );
+	idList<const char *> enabledExtensions;
+	if ( XR_KHR_opengl_enable_available ) {
+		enabledExtensions.AddGrow( XR_KHR_OPENGL_ENABLE_EXTENSION_NAME );
 	}
 	if ( !vr_useDebug.GetBool() ) {
 		XR_EXT_debug_utils_available = false;
 	}
 
-	idList<const char *> enabledExtensions = { XR_KHR_OPENGL_ENABLE_EXTENSION_NAME };
 #ifdef WIN32
 	if ( XR_KHR_D3D11_enable_available ) {
 		enabledExtensions.AddGrow( XR_KHR_D3D11_ENABLE_EXTENSION_NAME );
@@ -221,7 +221,9 @@ XrInstance XR_CreateInstance() {
 		XR_VERSION_MINOR( instanceProperties.runtimeVersion ),
 		XR_VERSION_PATCH( instanceProperties.runtimeVersion ) );
 
-	XR_LoadExtensionOpenGL( instance );
+	if ( XR_KHR_opengl_enable_available ) {
+		XR_LoadExtensionOpenGL( instance );
+	}
 #ifdef WIN32
 	if ( XR_KHR_D3D11_enable_available ) {
 		XR_LoadExtensionD3D11( instance );

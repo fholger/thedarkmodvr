@@ -14,10 +14,9 @@
 ******************************************************************************/
 #pragma once
 #include "OpenXRSwapchain.h"
-#include <d3d11.h>
-#include <wrl/client.h>
 
 #ifdef WIN32
+#include "D3D11Helper.h"
 
 /*
  * Unfortunately, SteamVR's OpenXR implementation's OpenGL support is not ideal.
@@ -27,7 +26,7 @@
  */
 class OpenXRSwapchainDX : public OpenXRSwapchain {
 public:
-	OpenXRSwapchainDX( ID3D11Device *device, ID3D11DeviceContext *context, HANDLE glDeviceHandle ) : device( device ), context( context ), glDeviceHandle( glDeviceHandle ) {}
+	OpenXRSwapchainDX( D3D11Helper *d3d11Helper ) : d3d11Helper( d3d11Helper ) {}
 
 	void Init( const idStr &name, int64_t format, int width, int height ) override;
 	void Destroy() override;
@@ -42,20 +41,22 @@ public:
 	const XrSwapchainSubImage &CurrentSwapchainSubImage() const override { return currentImage; }
 
 private:
+	template<typename T> using ComPtr = Microsoft::WRL::ComPtr<T>;
+	
 	static const uint32_t INVALID_INDEX = 0xffffffff;
 
-	ID3D11Device *device;
-	ID3D11DeviceContext *context;
-	HANDLE glDeviceHandle;
+	D3D11Helper *d3d11Helper;
 
 	int width;
 	int height;
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+	ComPtr<ID3D11Texture2D> texture;
+	ComPtr<ID3D11ShaderResourceView> shaderResourceView;
 	idImage * image;
 	FrameBuffer * frameBuffer;
 	HANDLE handle;
 	XrSwapchain swapchain = nullptr;
 	idList<ID3D11Texture2D*> swapchainTextures;
+	idList<ComPtr<ID3D11RenderTargetView>> renderTargetViews;
 	uint32_t curIndex = INVALID_INDEX;
 	XrSwapchainSubImage currentImage;
 
