@@ -199,6 +199,9 @@ bool OpenXRBackend::BeginFrame() {
 
 	predictedFrameDisplayTime = frameState.predictedDisplayTime;
 	displayPeriod = frameState.predictedDisplayPeriod;
+	if ( !frameState.shouldRender ) {
+		common->Printf( "Should not render current frame...\n" );
+	}
 
 	result = xrBeginFrame( session, nullptr );
 	XR_CheckResult( result, "beginning frame", instance, false );
@@ -323,17 +326,17 @@ void OpenXRBackend::SubmitFrame() {
 		{ {0, 0, 0, 1}, {0, vr_uiOverlayVerticalOffset.GetFloat(), -vr_uiOverlayDistance.GetFloat()} },
 		{ vr_uiOverlayHeight.GetFloat() * vr_uiOverlayAspect.GetFloat(), vr_uiOverlayHeight.GetFloat() },
 	};
-	const XrCompositionLayerBaseHeader * const submittedLayers[] = {
-		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &stereoLayer ),
-		reinterpret_cast< const XrCompositionLayerBaseHeader* const >( &uiLayer ),
+	idList<const XrCompositionLayerBaseHeader *> submittedLayers = {
+		reinterpret_cast< const XrCompositionLayerBaseHeader* >( &stereoLayer ),
+		reinterpret_cast< const XrCompositionLayerBaseHeader* >( &uiLayer ),
 	};
 	XrFrameEndInfo frameEndInfo = {
 		XR_TYPE_FRAME_END_INFO,
 		nullptr,
 		predictedFrameDisplayTime,
 		XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-		sizeof(submittedLayers) / sizeof(submittedLayers[0]),
-		submittedLayers,
+		submittedLayers.Num(),
+		submittedLayers.Ptr(),
 	};
 	XrResult result = xrEndFrame( session, &frameEndInfo );
 	XR_CheckResult( result, "submitting frame", instance, false );

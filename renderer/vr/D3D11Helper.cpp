@@ -24,7 +24,7 @@ void D3D11Helper::Init( XrGraphicsRequirementsD3D11KHR &reqs ) {
 	device.Reset();
 
 	IDXGIFactory4 *dxgiFactory;
-	if ( FAILED ( CreateDXGIFactory( __uuidof(IDXGIFactory4), (void**)&dxgiFactory ) ) ) {
+	if ( FAILED ( CreateDXGIFactory1( __uuidof(IDXGIFactory4), (void**)&dxgiFactory ) ) ) {
 		common->Error( "Failed to create DXGI factory" );
 	}
 	IDXGIAdapter *adapter;
@@ -91,6 +91,9 @@ void D3D11Helper::RenderTextureFlipped( ID3D11ShaderResourceView *sourceTexture,
 	context->RSSetState( state.Get() );
 
 	context->Draw( 3, 0 );
+
+	context->OMSetRenderTargets( 0, nullptr, nullptr );
+	context->PSSetShaderResources( 0, 0, nullptr );
 }
 
 void D3D11Helper::InitFlipShader() {

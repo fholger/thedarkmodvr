@@ -103,7 +103,7 @@ void XR_CheckAvailableExtensions() {
 		common->Printf( "- %s\n", ext.extensionName );
 
 		if ( strcmp( ext.extensionName, XR_KHR_OPENGL_ENABLE_EXTENSION_NAME ) == 0 ) {
-			//XR_KHR_opengl_enable_available = true;
+			XR_KHR_opengl_enable_available = true;
 		}
 		if ( strcmp( ext.extensionName, XR_KHR_D3D11_ENABLE_EXTENSION_NAME ) == 0 ) {
 			XR_KHR_D3D11_enable_available = true;
