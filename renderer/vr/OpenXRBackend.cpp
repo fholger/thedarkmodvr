@@ -24,7 +24,7 @@
 OpenXRBackend xrImpl;
 OpenXRBackend *xrBackend = &xrImpl;
 
-idCVar xr_useD3D11 ( "xr_useD3D11", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Use D3D11 for OpenXR session to work around a performance issue with SteamVR's OpenXR implementation" );
+idCVar xr_preferD3D11 ( "xr_preferD3D11", "1", CVAR_RENDERER|CVAR_BOOL|CVAR_ARCHIVE, "Use D3D11 for OpenXR session to work around a performance issue with SteamVR's OpenXR implementation" );
 
 #ifdef WIN32
 #include "OpenXRSwapchainDX.h"
@@ -99,7 +99,8 @@ void OpenXRBackend::InitBackend() {
 	const void *graphicsBinding;
 #ifdef WIN32
 	XrGraphicsBindingD3D11KHR dxGraphicsBinding;
-	if ( xr_useD3D11.GetBool() ) {
+	if ( xr_preferD3D11.GetBool() && XR_KHR_D3D11_enable_available ) {
+		usingD3D11 = true;
 		XrGraphicsRequirementsD3D11KHR d3d11Reqs = {
 			XR_TYPE_GRAPHICS_REQUIREMENTS_D3D11_KHR,
 			nullptr,
@@ -116,6 +117,7 @@ void OpenXRBackend::InitBackend() {
 	} else
 #endif
 	{
+		usingD3D11 = true;
 		// must call graphicsRequirements before opening a session, although the results are not
 		// that interesting for us
 		XrGraphicsRequirementsOpenGLKHR openglReqs = {
@@ -178,6 +180,12 @@ void OpenXRBackend::DestroyBackend() {
 
 	xrDestroyInstance( instance );
 	instance = nullptr;
+
+#ifdef WIN32
+	if ( usingD3D11 ) {
+		d3d11Helper.Shutdown();
+	}
+#endif
 }
 
 bool OpenXRBackend::BeginFrame() {
@@ -485,7 +493,7 @@ idVec4 OpenXRBackend::GetVisibleAreaBounds( eyeView_t eye ) {
 
 bool OpenXRBackend::UsesSrgbTextures() const {
 #ifdef WIN32
-	return swapchainFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB || swapchainFormat == GL_SRGB8_ALPHA8;
+	return usingD3D11 ? ( swapchainFormat == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB ) : ( swapchainFormat == GL_SRGB8_ALPHA8 );
 #else
 	return swapchainFormat == GL_SRGB8_ALPHA8;
 #endif
@@ -520,7 +528,7 @@ void OpenXRBackend::ChooseSwapchainFormat() {
 	idList<int64_t> desiredFormats;
 	idList<idStr> formatNames;
 #ifdef WIN32
-	if ( xr_useD3D11.GetInteger() ) {
+	if ( usingD3D11 ) {
 		desiredFormats = { DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_FORMAT_R16G16B16A16_FLOAT };
 		formatNames = { "DXGI_FORMAT_R8G8B8A8_UNORM_SRGB", "DXGI_FORMAT_R8G8B8A8_UNORM", "DXGI_FORMAT_R16G16B16A16_FLOAT" };
 	} else

@@ -47,6 +47,7 @@ private:
 	int64_t swapchainFormat = 0;
 	XrViewConfigurationView views[2];
 	bool vrSessionActive = false;
+	bool usingD3D11 = false;
 
 	OpenXRSwapchain* eyeSwapchains[2];
 	OpenXRSwapchain* uiSwapchain;

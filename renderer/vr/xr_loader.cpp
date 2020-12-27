@@ -35,16 +35,6 @@ XRAPI_ATTR XrResult XRAPI_CALL xrGetOpenGLGraphicsRequirementsKHR(
 	return qxrGetOpenGLGraphicsRequirementsKHR( instance, systemId, graphicsRequirements );	
 }
 
-#ifdef WIN32
-PFN_xrGetD3D11GraphicsRequirementsKHR qxrGetD3D11GraphicsRequirementsKHR = nullptr;
-XRAPI_ATTR XrResult XRAPI_CALL xrGetD3D11GraphicsRequirementsKHR(
-    XrInstance                                  instance,
-    XrSystemId                                  systemId,
-    XrGraphicsRequirementsD3D11KHR*             graphicsRequirements) {
-	return qxrGetD3D11GraphicsRequirementsKHR( instance, systemId, graphicsRequirements );	
-}
-#endif
-
 XRAPI_ATTR XrResult XRAPI_CALL xrCreateDebugUtilsMessengerEXT(
     XrInstance                                  instance,
     const XrDebugUtilsMessengerCreateInfoEXT*   createInfo,
@@ -69,6 +59,42 @@ XRAPI_ATTR XrResult XRAPI_CALL xrGetVisibilityMaskKHR(
 	return qxrGetVisibilityMaskKHR( session, viewConfigurationType, viewIndex, visibilityMaskType, visibilityMask );
 }
 // -----------------------------------------------------------------------------------
+
+void XR_LoadExtensionOpenGL( XrInstance instance ) {
+	XrResult result;
+	result = xrGetInstanceProcAddr( instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction *)&qxrGetOpenGLGraphicsRequirementsKHR );
+	XR_CheckResult( result, "loading OpenGL extension function", instance );
+}
+
+void XR_LoadExtensionDebug( XrInstance instance ) {
+	XrResult result;
+	result = xrGetInstanceProcAddr( instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction *)&qxrCreateDebugUtilsMessengerEXT );
+	XR_CheckResult( result, "loading debug extension function", instance );
+	result = xrGetInstanceProcAddr( instance, "xrDestroyDebugUtilsMessengerEXT", (PFN_xrVoidFunction *)&qxrDestroyDebugUtilsMessengerEXT );
+	XR_CheckResult( result, "loading debug extension function", instance );
+}
+
+void XR_LoadExtensionVisibilityMask( XrInstance instance ) {
+	XrResult result;
+	result = xrGetInstanceProcAddr( instance, "xrGetVisibilityMaskKHR", (PFN_xrVoidFunction *)&qxrGetVisibilityMaskKHR );
+	XR_CheckResult( result, "loading visibility mask extension function", instance );
+}
+
+#ifdef WIN32
+PFN_xrGetD3D11GraphicsRequirementsKHR qxrGetD3D11GraphicsRequirementsKHR = nullptr;
+XRAPI_ATTR XrResult XRAPI_CALL xrGetD3D11GraphicsRequirementsKHR(
+    XrInstance                                  instance,
+    XrSystemId                                  systemId,
+    XrGraphicsRequirementsD3D11KHR*             graphicsRequirements) {
+	return qxrGetD3D11GraphicsRequirementsKHR( instance, systemId, graphicsRequirements );	
+}
+
+void XR_LoadExtensionD3D11( XrInstance instance ) {
+	XrResult result;
+	result = xrGetInstanceProcAddr( instance, "xrGetD3D11GraphicsRequirementsKHR", (PFN_xrVoidFunction *)&qxrGetD3D11GraphicsRequirementsKHR );
+	XR_CheckResult( result, "loading D3D11 extension function", instance );
+}
+#endif
 
 void XR_CheckResult( XrResult result, const char *description, XrInstance instance, bool fatal ) {
 	if ( XR_SUCCEEDED( result ) ) {
@@ -105,15 +131,21 @@ void XR_CheckAvailableExtensions() {
 		if ( strcmp( ext.extensionName, XR_KHR_OPENGL_ENABLE_EXTENSION_NAME ) == 0 ) {
 			XR_KHR_opengl_enable_available = true;
 		}
-		if ( strcmp( ext.extensionName, XR_KHR_D3D11_ENABLE_EXTENSION_NAME ) == 0 ) {
+#ifdef WIN32
+		if ( strcmp( ext.extensionName, XR_KHR_D3D11_ENABLE_EXTENSION_NAME ) == 0 && GLAD_WGL_NV_DX_interop2 ) {
 			XR_KHR_D3D11_enable_available = true;
 		}
+#endif
 		if ( strcmp( ext.extensionName, XR_KHR_VISIBILITY_MASK_EXTENSION_NAME ) == 0 ) {
 			XR_KHR_visibility_mask_available = true;
 		}
 		if ( strcmp( ext.extensionName, XR_EXT_DEBUG_UTILS_EXTENSION_NAME ) == 0 ) {
 			XR_EXT_debug_utils_available = true;
 		}
+	}
+
+	if ( !XR_KHR_opengl_enable_available && !XR_KHR_D3D11_enable_available ) {
+		common->FatalError( "No supported graphics API reported by the OpenXR runtime" );
 	}
 }
 
@@ -137,36 +169,9 @@ void XR_CheckAvailableApiLayers() {
 	}
 }
 
-void XR_LoadExtensionOpenGL( XrInstance instance ) {
-	XrResult result;
-	result = xrGetInstanceProcAddr( instance, "xrGetOpenGLGraphicsRequirementsKHR", (PFN_xrVoidFunction *)&qxrGetOpenGLGraphicsRequirementsKHR );
-	XR_CheckResult( result, "loading OpenGL extension function", instance );
-}
-
-#ifdef WIN32
-void XR_LoadExtensionD3D11( XrInstance instance ) {
-	XrResult result;
-	result = xrGetInstanceProcAddr( instance, "xrGetD3D11GraphicsRequirementsKHR", (PFN_xrVoidFunction *)&qxrGetD3D11GraphicsRequirementsKHR );
-	XR_CheckResult( result, "loading D3D11 extension function", instance );
-}
-#endif
-
-void XR_LoadExtensionDebug( XrInstance instance ) {
-	XrResult result;
-	result = xrGetInstanceProcAddr( instance, "xrCreateDebugUtilsMessengerEXT", (PFN_xrVoidFunction *)&qxrCreateDebugUtilsMessengerEXT );
-	XR_CheckResult( result, "loading debug extension function", instance );
-	result = xrGetInstanceProcAddr( instance, "xrDestroyDebugUtilsMessengerEXT", (PFN_xrVoidFunction *)&qxrDestroyDebugUtilsMessengerEXT );
-	XR_CheckResult( result, "loading debug extension function", instance );
-}
-
-void XR_LoadExtensionVisibilityMask( XrInstance instance ) {
-	XrResult result;
-	result = xrGetInstanceProcAddr( instance, "xrGetVisibilityMaskKHR", (PFN_xrVoidFunction *)&qxrGetVisibilityMaskKHR );
-	XR_CheckResult( result, "loading visibility mask extension function", instance );
-}
-
 XrInstance XR_CreateInstance() {
 	XR_KHR_opengl_enable_available = false;
+	XR_KHR_D3D11_enable_available = false;
 	XR_KHR_visibility_mask_available = false;
 	XR_EXT_debug_utils_available = false;
 	XR_CheckAvailableExtensions();
