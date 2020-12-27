@@ -1345,6 +1345,9 @@
     <ClInclude Include="renderer\vr\D3D11Helper.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\vr\VRFoveatedRendering.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -3116,6 +3119,9 @@
       <Filter>Renderer\VR</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\D3D11Helper.cpp">
+      <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vr\VRFoveatedRendering.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
   </ItemGroup>

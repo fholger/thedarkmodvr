@@ -516,6 +516,7 @@
     <ClInclude Include="renderer\vr\OpenXRSwapchainDX.h" />
     <ClInclude Include="renderer\vr\OpenXRSwapchainGL.h" />
     <ClInclude Include="renderer\vr\VRBackend.h" />
+    <ClInclude Include="renderer\vr\VRFoveatedRendering.h" />
     <ClInclude Include="renderer\vr\xr_loader.h" />
     <ClInclude Include="renderer\vr\xr_math.h" />
     <ClInclude Include="sound\efxlib.h" />
@@ -1122,6 +1123,7 @@
     <ClCompile Include="renderer\vr\OpenXRSwapchainDX.cpp" />
     <ClCompile Include="renderer\vr\OpenXRSwapchainGL.cpp" />
     <ClCompile Include="renderer\vr\VRBackend.cpp" />
+    <ClCompile Include="renderer\vr\VRFoveatedRendering.cpp" />
     <ClCompile Include="renderer\vr\xr_loader.cpp" />
     <ClCompile Include="renderer\vr\xr_math.cpp" />
     <ClCompile Include="sound\snd_cache.cpp" />

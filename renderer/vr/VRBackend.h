@@ -13,6 +13,7 @@
 
 ******************************************************************************/
 #pragma once
+#include "VRFoveatedRendering.h"
 #include "../tr_local.h"
 
 class FrameBuffer;
@@ -81,8 +82,6 @@ private:
 	void DrawAimIndicator( float size );
 	void UpdateFrameStatus( const frameData_t *frameData );
 	void DrawComfortVignette(eyeView_t eye);
-	void PrepareVariableRateShading();
-	void ReconstructImageFromRdm();
 
 	eyeView_t currentEye;
 	GLSLProgram *vrMirrorShader = nullptr;
@@ -91,8 +90,6 @@ private:
 	GLuint numVertsLeft = 0;
 	GLuint numVertsRight = 0;
 	GLSLProgram *hiddenAreaMeshShader = nullptr;
-	GLSLProgram *radialDensityMaskShader = nullptr;
-	GLSLProgram *rdmReconstructShader = nullptr;
 	idVec4 visibleAreaBounds[2];
 
 	idVec3 aimIndicatorPos;
@@ -105,9 +102,7 @@ private:
 	idAngles lastCameraAngles;
 	uint64_t lastCameraUpdateTime = 0;
 
-	idImage *variableRateShadingImage = nullptr;
-	idImage *rdmReconstructionImage = nullptr;
-	FrameBuffer *rdmReconstructionFbo = nullptr;
+	VRFoveatedRendering foveatedHelper;
 };
 
 extern VRBackend *vrBackend;
