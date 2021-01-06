@@ -1348,6 +1348,9 @@
     <ClInclude Include="renderer\vr\VRFoveatedRendering.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\vr\OpenXRInput.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -3122,6 +3125,9 @@
       <Filter>Renderer\VR</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\VRFoveatedRendering.cpp">
+      <Filter>Renderer\VR</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\vr\OpenXRInput.cpp">
       <Filter>Renderer\VR</Filter>
     </ClCompile>
   </ItemGroup>
