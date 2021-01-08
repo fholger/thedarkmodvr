@@ -15,6 +15,8 @@
 #include "precompiled.h"
 #include "OpenXRBackend.h"
 
+
+#include "OpenXRSwapchainGL.h"
 #include "xr_loader.h"
 #include "xr_math.h"
 #include "../tr_local.h"
@@ -156,6 +158,9 @@ void OpenXRBackend::InitBackend() {
 	XR_CheckResult( result, "creating seated reference space", instance );
 	common->Printf( "Acquired seated reference space\n" );
 
+	input.Init( instance, session );
+	common->Printf( "Initialized XR input\n" );
+
 	common->Printf( "-----------------------------\n" );
 }
 
@@ -164,6 +169,7 @@ void OpenXRBackend::DestroyBackend() {
 		return;
 	}
 
+	input.Destroy();
 	uiSwapchain->Destroy();
 	eyeSwapchains[0]->Destroy();
 	eyeSwapchains[1]->Destroy();

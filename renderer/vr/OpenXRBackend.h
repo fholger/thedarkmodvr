@@ -15,7 +15,8 @@
 #pragma once
 
 #include <openxr/openxr.h>
-#include "OpenXRSwapchainGL.h"
+#include "OpenXRSwapchain.h"
+#include "OpenXRInput.h"
 #include "VRBackend.h"
 
 class OpenXRBackend : public VRBackend {
@@ -44,6 +45,7 @@ private:
 	XrInstance instance = nullptr;
 	XrSystemId system = 0;
 	XrSession session = nullptr;
+	OpenXRInput input;
 	int64_t swapchainFormat = 0;
 	XrViewConfigurationView views[2];
 	bool vrSessionActive = false;

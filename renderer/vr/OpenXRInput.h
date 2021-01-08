@@ -17,27 +17,26 @@
 
 class OpenXRInput {
 public:
-	OpenXRInput();
-	
 	void Init(XrInstance instance, XrSession session);
 	void Destroy();
-
-private:
-	XrInstance instance = nullptr;
-	XrSession session = nullptr;
 
 	enum Action {
 		XR_WALK = 0,
 		XR_SPRINT,
 
-		XR_NUM_ACTIONS
+		XR_NUM_ACTIONS,
+		XR_INVALID = -1,
 	};
+private:
+	XrInstance instance = nullptr;
+	XrSession session = nullptr;
+
 	XrAction actions[XR_NUM_ACTIONS] = { nullptr };
-	idStr actionNames[XR_NUM_ACTIONS];
 
 	XrActionSet ingameActionSet = nullptr;
 
 	XrActionSet CreateActionSet( const idStr &name, uint32_t priority = 0 );
 	void CreateAction( XrActionSet actionSet, Action action, XrActionType actionType );
+	void RegisterSuggestedBindings();
 };
 
