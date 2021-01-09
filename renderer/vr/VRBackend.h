@@ -13,6 +13,7 @@
 
 ******************************************************************************/
 #pragma once
+#include "GamepadInput.h"
 #include "VRFoveatedRendering.h"
 #include "../tr_local.h"
 
@@ -47,6 +48,8 @@ public:
 	void UpdateLightScissor( viewLight_t *vLight );
 
 	bool UseRadialDensityMask();
+
+	virtual void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges ) = 0;
 
 	static const float GameUnitsToMetres;
 	static const float MetresToGameUnits;

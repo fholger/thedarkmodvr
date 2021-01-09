@@ -26,7 +26,10 @@ namespace {
 	};
 
 	actionName_t actionNames[] = {
-		{ OpenXRInput::XR_WALK, "walk", "Player walk" },
+		{ OpenXRInput::XR_FORWARD, "forward", "Player walk forward axis" },
+		{ OpenXRInput::XR_SIDE, "side", "Player walk side axis" },
+		{ OpenXRInput::XR_YAW, "yaw", "Camera look yaw" },
+		{ OpenXRInput::XR_PITCH, "pitch", "Camera look pitch" },
 		{ OpenXRInput::XR_SPRINT, "sprint", "Player sprint" },
 	};
 
@@ -101,26 +104,37 @@ void OpenXRInput::Init( XrInstance instance, XrSession session ) {
 	this->instance = instance;
 	this->session = session;
 
-	ingameActionSet = CreateActionSet( "gameplay" );
-	CreateAction( ingameActionSet, XR_WALK, XR_ACTION_TYPE_VECTOR2F_INPUT );
-	CreateAction( ingameActionSet, XR_SPRINT, XR_ACTION_TYPE_BOOLEAN_INPUT );
-
-	cmdSystem->AddCommand( "xr_profile", XR_Profile_f, CMD_FL_SYSTEM, "Creates a new XR input binding profile for a specific interaction profile path" );
-	cmdSystem->AddCommand( "xr_bind", XR_Bind_f, CMD_FL_SYSTEM, "Binds an input action to the specified user path for a given XR profile" );
-
-	if ( fileSystem->FindFile( userXrBindingsFile ) != FIND_NO ) {
-		cmdSystem->BufferCommandText( CMD_EXEC_NOW, idStr::Fmt( "exec %s\n", userXrBindingsFile ) );
-	} else if ( fileSystem->FindFile( defaultXrBindingsFile ) != FIND_NO ) {
-		cmdSystem->BufferCommandText( CMD_EXEC_NOW, idStr::Fmt( "exec %s\n", defaultXrBindingsFile ) );
-	}
-	RegisterSuggestedBindings();
-	
-	cmdSystem->RemoveCommand( "xr_profile" );
-	cmdSystem->RemoveCommand( "xr_bind" );
+	CreateAllActions();
+	LoadSuggestedBindings();
+	AttachActionSets();
 }
 
 void OpenXRInput::Destroy() {
 	suggestedBindingProfiles.clear();
+}
+
+void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges ) {
+	idList<XrActiveActionSet> activeActionSets {
+		{ ingameActionSet, XR_NULL_PATH },
+	};
+
+	XrActionsSyncInfo syncInfo {
+		XR_TYPE_ACTIONS_SYNC_INFO,
+		nullptr,
+		activeActionSets.Num(),
+		activeActionSets.Ptr(),
+	};
+	XrResult result = xrSyncActions( session, &syncInfo );
+	XR_CheckResult( result, "syncing actions", instance, false );
+
+	float forward = GetFloat( XR_FORWARD ).second;
+	float side = GetFloat( XR_SIDE ).second;
+	float yaw = GetFloat( XR_YAW ).second;
+	float pitch = GetFloat( XR_PITCH ).second;
+	axis[AXIS_SIDE] = 127.f * side;
+	axis[AXIS_FORWARD] = 127.f * forward;
+	axis[AXIS_YAW] = 127.f * yaw;
+	axis[AXIS_PITCH] = 127.f * pitch;
 }
 
 XrActionSet OpenXRInput::CreateActionSet( const idStr &name, uint32_t priority ) {
@@ -147,9 +161,35 @@ void OpenXRInput::CreateAction( XrActionSet actionSet, Action action, XrActionTy
 	XR_CheckResult( result, "creating action", instance, false );
 }
 
+void OpenXRInput::CreateAllActions() {
+	ingameActionSet = CreateActionSet( "gameplay" );
+	CreateAction( ingameActionSet, XR_FORWARD, XR_ACTION_TYPE_FLOAT_INPUT );
+	CreateAction( ingameActionSet, XR_SIDE, XR_ACTION_TYPE_FLOAT_INPUT );
+	CreateAction( ingameActionSet, XR_YAW, XR_ACTION_TYPE_FLOAT_INPUT );
+	CreateAction( ingameActionSet, XR_PITCH, XR_ACTION_TYPE_FLOAT_INPUT );
+	CreateAction( ingameActionSet, XR_SPRINT, XR_ACTION_TYPE_BOOLEAN_INPUT );
+}
+
+void OpenXRInput::LoadSuggestedBindings() {
+	cmdSystem->AddCommand( "xr_profile", XR_Profile_f, CMD_FL_SYSTEM, "Creates a new XR input binding profile for a specific interaction profile path" );
+	cmdSystem->AddCommand( "xr_bind", XR_Bind_f, CMD_FL_SYSTEM, "Binds an input action to the specified user path for a given XR profile" );
+
+	if ( fileSystem->FindFile( userXrBindingsFile ) != FIND_NO ) {
+		cmdSystem->BufferCommandText( CMD_EXEC_NOW, idStr::Fmt( "exec %s\n", userXrBindingsFile ) );
+	} else if ( fileSystem->FindFile( defaultXrBindingsFile ) != FIND_NO ) {
+		cmdSystem->BufferCommandText( CMD_EXEC_NOW, idStr::Fmt( "exec %s\n", defaultXrBindingsFile ) );
+	}
+	cmdSystem->ExecuteCommandBuffer();
+	RegisterSuggestedBindings();
+	
+	//cmdSystem->RemoveCommand( "xr_profile" );
+	//cmdSystem->RemoveCommand( "xr_bind" );
+}
+
 void OpenXRInput::RegisterSuggestedBindings() {
 	for ( const auto &it : suggestedBindingProfiles ) {
 		const BindingProfile &profile = it.second;
+		common->Printf( "Suggesting bindings for %s ...\n", profile.profilePath.c_str() );
 		XrPath profilePath;
 		XrResult result = xrStringToPath( instance, profile.profilePath, &profilePath );
 		if ( XR_FAILED( result )) {
@@ -159,6 +199,7 @@ void OpenXRInput::RegisterSuggestedBindings() {
 
 		idList<XrActionSuggestedBinding> bindings;
 		for ( SuggestedBinding binding : profile.bindings ) {
+			common->Printf( "Binding action %d to %s ...\n", binding.action, binding.binding.c_str() );
 			XrPath bindingPath;
 			result = xrStringToPath( instance, binding.binding, &bindingPath );
 			if ( XR_FAILED( result ) ) {
@@ -181,4 +222,40 @@ void OpenXRInput::RegisterSuggestedBindings() {
 		result = xrSuggestInteractionProfileBindings( instance, &suggestedBindings );
 		XR_CheckResult( result, "suggesting input bindings", instance, false );
 	}
+}
+
+void OpenXRInput::AttachActionSets() {
+	idList<XrActionSet> actionSets = { ingameActionSet };
+	XrSessionActionSetsAttachInfo attachInfo {
+		XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO,
+		nullptr,
+		actionSets.Num(),
+		actionSets.Ptr(),
+	};
+	XrResult result = xrAttachSessionActionSets( session, &attachInfo );
+	XR_CheckResult( result, "attaching action sets", instance, false );
+}
+
+std::pair<bool, bool> OpenXRInput::GetBool( Action action ) {
+	XrActionStateBoolean state { XR_TYPE_ACTION_STATE_BOOLEAN, nullptr };
+	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], XR_NULL_PATH };
+	XrResult result = xrGetActionStateBoolean( session, &info, &state );
+	XR_CheckResult( result, "getting action state", instance, false );
+	return { state.changedSinceLastSync, state.currentState };
+}
+
+std::pair<bool, float> OpenXRInput::GetFloat( Action action ) {
+	XrActionStateFloat state { XR_TYPE_ACTION_STATE_FLOAT, nullptr };
+	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], XR_NULL_PATH };
+	XrResult result = xrGetActionStateFloat( session, &info, &state );
+	XR_CheckResult( result, "getting action state", instance, false );
+	return { state.changedSinceLastSync, state.currentState };
+}
+
+std::pair<bool, idVec2> OpenXRInput::GetVec2( Action action ) {
+	XrActionStateVector2f state { XR_TYPE_ACTION_STATE_VECTOR2F, nullptr };
+	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], XR_NULL_PATH };
+	XrResult result = xrGetActionStateVector2f( session, &info, &state );
+	XR_CheckResult( result, "getting action state", instance, false );
+	return { state.changedSinceLastSync, idVec2(state.currentState.x, state.currentState.y) };
 }

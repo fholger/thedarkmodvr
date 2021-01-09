@@ -19,6 +19,7 @@
 
 #include "GamepadInput.h"
 #include "Session_local.h"
+#include "../renderer/vr/OpenVRBackend.h"
 #include "../sys/sys_padinput.h"
 
 /*
@@ -1094,6 +1095,7 @@ void idUsercmdGenLocal::Joystick( void ) {
 
 	idGamepadInput::UpdateAxisState( joystickAxis );
 	idList<padActionChange_t> stateChanges = idGamepadInput::GetActionStateChange();
+	vrBackend->UpdateInput( joystickAxis, stateChanges );
 	for ( auto change : stateChanges ) {
 		if ( change.active ) {
 

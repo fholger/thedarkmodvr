@@ -27,6 +27,8 @@ public:
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }
 
+	void UpdateInput(int axis[6], idList<padActionChange_t> &actionChanges) override;
+
 protected:
 	void InitBackend() override;
 	void DestroyBackend() override;

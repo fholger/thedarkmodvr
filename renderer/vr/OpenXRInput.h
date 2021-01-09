@@ -14,14 +14,20 @@
 ******************************************************************************/
 #pragma once
 #include <openxr/openxr.h>
+#include "GamepadInput.h"
 
 class OpenXRInput {
 public:
 	void Init(XrInstance instance, XrSession session);
 	void Destroy();
 
+	void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges );
+
 	enum Action {
-		XR_WALK = 0,
+		XR_FORWARD = 0,
+		XR_SIDE,
+		XR_YAW,
+		XR_PITCH,
 		XR_SPRINT,
 
 		XR_NUM_ACTIONS,
@@ -37,6 +43,13 @@ private:
 
 	XrActionSet CreateActionSet( const idStr &name, uint32_t priority = 0 );
 	void CreateAction( XrActionSet actionSet, Action action, XrActionType actionType );
+	void CreateAllActions();
+	void LoadSuggestedBindings();
 	void RegisterSuggestedBindings();
+	void AttachActionSets();
+
+	std::pair<bool, bool> GetBool( Action action );
+	std::pair<bool, float> GetFloat( Action action );
+	std::pair<bool, idVec2> GetVec2( Action action );
 };
 

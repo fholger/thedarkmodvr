@@ -75,6 +75,10 @@ namespace {
 	}
 }
 
+void OpenXRBackend::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges ) {
+	input.UpdateInput( axis, actionChanges );
+}
+
 void OpenXRBackend::InitBackend() {
 	if ( instance != nullptr ) {
 		Destroy();

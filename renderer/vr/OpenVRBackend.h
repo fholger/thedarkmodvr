@@ -23,6 +23,8 @@ class OpenVRBackend : public VRBackend {
 public:
 	void PrepareFrame() override;
 
+	void UpdateInput(int axis[6], idList<padActionChange_t> &actionChanges) override {}
+
 protected:
 	void InitBackend() override;
 	void DestroyBackend() override;
