@@ -227,7 +227,6 @@ void OpenXRInput::RegisterSuggestedBindings() {
 
 		idList<XrActionSuggestedBinding> bindings;
 		for ( SuggestedBinding binding : profile.bindings ) {
-			common->Printf( "Binding action %d to %s ...\n", binding.action, binding.binding.c_str() );
 			XrPath bindingPath;
 			result = xrStringToPath( instance, binding.binding, &bindingPath );
 			if ( XR_FAILED( result ) ) {

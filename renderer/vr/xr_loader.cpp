@@ -21,6 +21,7 @@ bool XR_KHR_opengl_enable_available = false;
 bool XR_KHR_D3D11_enable_available = false;
 bool XR_KHR_visibility_mask_available = false;
 bool XR_EXT_debug_utils_available = false;
+bool XR_EXT_hp_mixed_reality_controller = false;
 
 PFN_xrGetOpenGLGraphicsRequirementsKHR qxrGetOpenGLGraphicsRequirementsKHR = nullptr;
 PFN_xrCreateDebugUtilsMessengerEXT qxrCreateDebugUtilsMessengerEXT = nullptr;
@@ -142,6 +143,9 @@ void XR_CheckAvailableExtensions() {
 		if ( strcmp( ext.extensionName, XR_EXT_DEBUG_UTILS_EXTENSION_NAME ) == 0 ) {
 			XR_EXT_debug_utils_available = true;
 		}
+		if ( strcmp( ext.extensionName, "XR_EXT_hp_mixed_reality_controller" ) == 0 ) {
+			XR_EXT_hp_mixed_reality_controller = true;
+		}
 	}
 
 	if ( !XR_KHR_opengl_enable_available && !XR_KHR_D3D11_enable_available ) {
@@ -194,6 +198,9 @@ XrInstance XR_CreateInstance() {
 	}
 	if ( XR_EXT_debug_utils_available ) {
 		enabledExtensions.AddGrow( XR_EXT_DEBUG_UTILS_EXTENSION_NAME );
+	}
+	if ( XR_EXT_hp_mixed_reality_controller ) {
+		enabledExtensions.AddGrow( "XR_EXT_hp_mixed_reality_controller" );
 	}
 	XrInstanceCreateInfo instanceCreateInfo = {
 		XR_TYPE_INSTANCE_CREATE_INFO,
