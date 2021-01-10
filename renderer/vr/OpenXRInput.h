@@ -29,6 +29,9 @@ public:
 		XR_YAW,
 		XR_PITCH,
 		XR_SPRINT,
+		XR_CROUCH,
+		XR_JUMP,
+		XR_FROB,
 
 		XR_NUM_ACTIONS,
 		XR_INVALID = -1,
@@ -38,8 +41,9 @@ private:
 	XrSession session = nullptr;
 
 	XrAction actions[XR_NUM_ACTIONS] = { nullptr };
-
 	XrActionSet ingameActionSet = nullptr;
+
+	bool isSprinting = false;
 
 	XrActionSet CreateActionSet( const idStr &name, uint32_t priority = 0 );
 	void CreateAction( XrActionSet actionSet, Action action, XrActionType actionType );

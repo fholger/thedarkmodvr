@@ -31,6 +31,9 @@ namespace {
 		{ OpenXRInput::XR_YAW, "yaw", "Camera look yaw" },
 		{ OpenXRInput::XR_PITCH, "pitch", "Camera look pitch" },
 		{ OpenXRInput::XR_SPRINT, "sprint", "Player sprint" },
+		{ OpenXRInput::XR_CROUCH, "crouch", "Player crouch" },
+		{ OpenXRInput::XR_JUMP, "jump", "Player jump" },
+		{ OpenXRInput::XR_FROB, "frob", "Player frob" },
 	};
 
 	OpenXRInput::Action ActionByName( const idStr &name ) {
@@ -135,6 +138,28 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	axis[AXIS_FORWARD] = 127.f * forward;
 	axis[AXIS_YAW] = 127.f * yaw;
 	axis[AXIS_PITCH] = 127.f * pitch;
+
+	auto jumpState = GetBool( XR_JUMP );
+	if ( jumpState.first ) {
+		actionChanges.AddGrow( { UB_UP, "", jumpState.second } );
+	}
+	auto frobState = GetBool( XR_FROB );
+	if ( frobState.first ) {
+		actionChanges.AddGrow( { UB_FROB, "", frobState.second } );
+	}
+	auto crouchState = GetBool( XR_CROUCH );
+	if ( crouchState.first ) {
+		actionChanges.AddGrow( { UB_CROUCH, "", crouchState.second } );
+	}
+	if ( isSprinting && idMath::Fabs( side ) + idMath::Fabs( forward ) <= 0.001 ) {
+		actionChanges.AddGrow( { UB_SPEED, "", false } );
+		isSprinting = false;
+	}
+	auto sprintState = GetBool( XR_SPRINT );
+	if ( sprintState.first && sprintState.second && !isSprinting ) {
+		actionChanges.AddGrow( { UB_SPEED, "", true } );
+		isSprinting = true;
+	}
 }
 
 XrActionSet OpenXRInput::CreateActionSet( const idStr &name, uint32_t priority ) {
@@ -168,6 +193,9 @@ void OpenXRInput::CreateAllActions() {
 	CreateAction( ingameActionSet, XR_YAW, XR_ACTION_TYPE_FLOAT_INPUT );
 	CreateAction( ingameActionSet, XR_PITCH, XR_ACTION_TYPE_FLOAT_INPUT );
 	CreateAction( ingameActionSet, XR_SPRINT, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_CROUCH, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_JUMP, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_FROB, XR_ACTION_TYPE_BOOLEAN_INPUT );
 }
 
 void OpenXRInput::LoadSuggestedBindings() {
