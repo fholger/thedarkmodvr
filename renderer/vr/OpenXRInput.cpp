@@ -18,6 +18,8 @@
 #include "xr_loader.h"
 #include <map>
 
+idCVar vr_lefthanded( "vr_lefthanded", "0", CVAR_BOOL|CVAR_ARCHIVE|CVAR_GAME, "If enabled, assumes the dominant hand to be the left hand" );
+
 namespace {
 	struct actionName_t {
 		OpenXRInput::Action action;
@@ -228,7 +230,7 @@ void OpenXRInput::RegisterSuggestedBindings() {
 		idList<XrActionSuggestedBinding> bindings;
 		for ( SuggestedBinding binding : profile.bindings ) {
 			XrPath bindingPath;
-			result = xrStringToPath( instance, binding.binding, &bindingPath );
+			result = xrStringToPath( instance, ApplyDominantHandToActionPath( profile.profilePath, binding.binding ), &bindingPath );
 			if ( XR_FAILED( result ) ) {
 				common->Printf( "Failed to convert to XR path: %s\n", binding.binding.c_str() );
 				continue;
@@ -261,6 +263,26 @@ void OpenXRInput::AttachActionSets() {
 	};
 	XrResult result = xrAttachSessionActionSets( session, &attachInfo );
 	XR_CheckResult( result, "attaching action sets", instance, false );
+}
+
+idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const idStr &path ) {
+	idStr result = path;
+	if ( vr_lefthanded.GetBool() ) {
+		if ( profile == "/interaction_profiles/hp/mixed_reality_controller" || profile == "/interaction_profiles/oculus/touch_controller" ) {
+			result.Replace( "/user/hand/main/input/a/", "/user/hand/left/input/x/" );
+			result.Replace( "/user/hand/main/input/b/", "/user/hand/left/input/y/" );
+		}
+		result.Replace( "/user/hand/main/", "/user/hand/left/" );
+		result.Replace( "/user/hand/off/", "/user/hand/right/" );
+	} else {
+		if ( profile == "/interaction_profiles/hp/mixed_reality_controller" || profile == "/interaction_profiles/oculus/touch_controller" ) {
+			result.Replace( "/user/hand/off/input/a/", "/user/hand/left/input/x/" );
+			result.Replace( "/user/hand/off/input/b/", "/user/hand/left/input/y/" );
+		}
+		result.Replace( "/user/hand/main/", "/user/hand/right/" );
+		result.Replace( "/user/hand/off/", "/user/hand/left/" );
+	}
+	return result;
 }
 
 std::pair<bool, bool> OpenXRInput::GetBool( Action action ) {

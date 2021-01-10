@@ -51,6 +51,7 @@ private:
 	void LoadSuggestedBindings();
 	void RegisterSuggestedBindings();
 	void AttachActionSets();
+	idStr ApplyDominantHandToActionPath( const idStr &profile, const idStr &path );
 
 	std::pair<bool, bool> GetBool( Action action );
 	std::pair<bool, float> GetFloat( Action action );
