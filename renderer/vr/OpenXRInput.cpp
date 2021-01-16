@@ -36,6 +36,8 @@ namespace {
 		{ OpenXRInput::XR_CROUCH, "crouch", "Player crouch" },
 		{ OpenXRInput::XR_JUMP, "jump", "Player jump" },
 		{ OpenXRInput::XR_FROB, "frob", "Player frob" },
+		{ OpenXRInput::XR_MENU_AIM, "menu_aim", "Menu pointer aim" },
+		{ OpenXRInput::XR_MENU_CLICK, "menu_click", "Menu pointer click" },
 	};
 
 	OpenXRInput::Action ActionByName( const idStr &name ) {
@@ -109,6 +111,9 @@ void OpenXRInput::Init( XrInstance instance, XrSession session ) {
 	this->instance = instance;
 	this->session = session;
 
+	xrStringToPath( instance, "/user/hand/left", &handPaths[0] );
+	xrStringToPath( instance, "/user/hand/right", &handPaths[1] );
+
 	CreateAllActions();
 	LoadSuggestedBindings();
 	AttachActionSets();
@@ -118,7 +123,7 @@ void OpenXRInput::Destroy() {
 	suggestedBindingProfiles.clear();
 }
 
-void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges ) {
+void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time ) {
 	idList<XrActiveActionSet> activeActionSets {
 		{ ingameActionSet, XR_NULL_PATH },
 	};
@@ -176,16 +181,32 @@ XrActionSet OpenXRInput::CreateActionSet( const idStr &name, uint32_t priority )
 }
 
 
-void OpenXRInput::CreateAction( XrActionSet actionSet, Action action, XrActionType actionType ) {
+void OpenXRInput::CreateAction( XrActionSet actionSet, Action action, XrActionType actionType, uint32_t numSubPaths, XrPath *subPaths ) {
 	const actionName_t &actionName = *NameByAction( action );
 	XrActionCreateInfo createInfo { XR_TYPE_ACTION_CREATE_INFO, nullptr };
 	strncpy( createInfo.actionName, actionName.name, XR_MAX_ACTION_NAME_SIZE );
 	createInfo.actionType = actionType;
-	createInfo.countSubactionPaths = 0;
-	createInfo.subactionPaths = nullptr;
+	createInfo.countSubactionPaths = numSubPaths;
+	createInfo.subactionPaths = subPaths;
 	strncpy( createInfo.localizedActionName, actionName.description, XR_MAX_LOCALIZED_ACTION_NAME_SIZE );
 	XrResult result = xrCreateAction( actionSet, &createInfo, &actions[action] );
 	XR_CheckResult( result, "creating action", instance, false );
+
+	if ( actionType == XR_ACTION_TYPE_POSE_INPUT ) {
+		XrPosef origin;
+		origin.position.x = origin.position.y = origin.position.z = 0;
+		origin.orientation.x = origin.orientation.y = origin.orientation.z = 0;
+		origin.orientation.w = 1;
+		XrActionSpaceCreateInfo spaceInfo {
+			XR_TYPE_ACTION_SPACE_CREATE_INFO,
+			nullptr,
+			actions[action],
+			XR_NULL_PATH,
+			origin,
+		};
+		result = xrCreateActionSpace( session, &spaceInfo, &actionSpaces[action] );
+		XR_CheckResult( result, "creating action space", instance, false );
+	}
 }
 
 void OpenXRInput::CreateAllActions() {
@@ -198,6 +219,10 @@ void OpenXRInput::CreateAllActions() {
 	CreateAction( ingameActionSet, XR_CROUCH, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_JUMP, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_FROB, XR_ACTION_TYPE_BOOLEAN_INPUT );
+
+	menuActionSet = CreateActionSet( "menu" );
+	CreateAction( menuActionSet, XR_MENU_AIM, XR_ACTION_TYPE_POSE_INPUT, 2, handPaths );
+	CreateAction( menuActionSet, XR_MENU_CLICK, XR_ACTION_TYPE_BOOLEAN_INPUT, 2, handPaths );
 }
 
 void OpenXRInput::LoadSuggestedBindings() {
@@ -211,9 +236,6 @@ void OpenXRInput::LoadSuggestedBindings() {
 	}
 	cmdSystem->ExecuteCommandBuffer();
 	RegisterSuggestedBindings();
-	
-	//cmdSystem->RemoveCommand( "xr_profile" );
-	//cmdSystem->RemoveCommand( "xr_bind" );
 }
 
 void OpenXRInput::RegisterSuggestedBindings() {
@@ -254,7 +276,7 @@ void OpenXRInput::RegisterSuggestedBindings() {
 }
 
 void OpenXRInput::AttachActionSets() {
-	idList<XrActionSet> actionSets = { ingameActionSet };
+	idList<XrActionSet> actionSets = { ingameActionSet, menuActionSet };
 	XrSessionActionSetsAttachInfo attachInfo {
 		XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO,
 		nullptr,
@@ -285,26 +307,38 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 	return result;
 }
 
-std::pair<bool, bool> OpenXRInput::GetBool( Action action ) {
+std::pair<bool, bool> OpenXRInput::GetBool( Action action, XrPath subPath ) {
 	XrActionStateBoolean state { XR_TYPE_ACTION_STATE_BOOLEAN, nullptr };
-	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], XR_NULL_PATH };
+	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], subPath };
 	XrResult result = xrGetActionStateBoolean( session, &info, &state );
 	XR_CheckResult( result, "getting action state", instance, false );
 	return { state.changedSinceLastSync, state.currentState };
 }
 
-std::pair<bool, float> OpenXRInput::GetFloat( Action action ) {
+std::pair<bool, float> OpenXRInput::GetFloat( Action action, XrPath subPath ) {
 	XrActionStateFloat state { XR_TYPE_ACTION_STATE_FLOAT, nullptr };
-	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], XR_NULL_PATH };
+	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], subPath };
 	XrResult result = xrGetActionStateFloat( session, &info, &state );
 	XR_CheckResult( result, "getting action state", instance, false );
 	return { state.changedSinceLastSync, state.currentState };
 }
 
-std::pair<bool, idVec2> OpenXRInput::GetVec2( Action action ) {
+std::pair<bool, idVec2> OpenXRInput::GetVec2( Action action, XrPath subPath ) {
 	XrActionStateVector2f state { XR_TYPE_ACTION_STATE_VECTOR2F, nullptr };
-	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], XR_NULL_PATH };
+	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], subPath };
 	XrResult result = xrGetActionStateVector2f( session, &info, &state );
 	XR_CheckResult( result, "getting action state", instance, false );
 	return { state.changedSinceLastSync, idVec2(state.currentState.x, state.currentState.y) };
+}
+
+XrPosef OpenXRInput::GetPose( Action action, XrSpace referenceSpace, XrTime time, XrPath subPath ) {
+	XrActionStatePose state { XR_TYPE_ACTION_STATE_POSE, nullptr };
+	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], subPath };
+	XrResult result = xrGetActionStatePose( session, &info, &state );
+	XR_CheckResult( result, "getting action state", instance, false );
+
+	XrSpaceLocation location { XR_TYPE_SPACE_LOCATION, nullptr };
+	result = xrLocateSpace( actionSpaces[action], referenceSpace, time, &location );
+	XR_CheckResult( result, "getting action space", instance, false );
+	return location.pose;
 }

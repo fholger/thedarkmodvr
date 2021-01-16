@@ -21,7 +21,7 @@ public:
 	void Init(XrInstance instance, XrSession session);
 	void Destroy();
 
-	void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges );
+	void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time );
 
 	enum Action {
 		XR_FORWARD = 0,
@@ -33,6 +33,9 @@ public:
 		XR_JUMP,
 		XR_FROB,
 
+		XR_MENU_AIM,
+		XR_MENU_CLICK,
+
 		XR_NUM_ACTIONS,
 		XR_INVALID = -1,
 	};
@@ -40,21 +43,25 @@ private:
 	XrInstance instance = nullptr;
 	XrSession session = nullptr;
 
+	XrPath handPaths[2] = { XR_NULL_PATH };
 	XrAction actions[XR_NUM_ACTIONS] = { nullptr };
+	XrSpace actionSpaces[XR_NUM_ACTIONS] = { nullptr };
 	XrActionSet ingameActionSet = nullptr;
+	XrActionSet menuActionSet = nullptr;
 
 	bool isSprinting = false;
 
 	XrActionSet CreateActionSet( const idStr &name, uint32_t priority = 0 );
-	void CreateAction( XrActionSet actionSet, Action action, XrActionType actionType );
+	void CreateAction( XrActionSet actionSet, Action action, XrActionType actionType, uint32_t numSubPaths = 0, XrPath *subPaths = nullptr );
 	void CreateAllActions();
 	void LoadSuggestedBindings();
 	void RegisterSuggestedBindings();
 	void AttachActionSets();
 	idStr ApplyDominantHandToActionPath( const idStr &profile, const idStr &path );
 
-	std::pair<bool, bool> GetBool( Action action );
-	std::pair<bool, float> GetFloat( Action action );
-	std::pair<bool, idVec2> GetVec2( Action action );
+	std::pair<bool, bool> GetBool( Action action, XrPath subPath = XR_NULL_PATH );
+	std::pair<bool, float> GetFloat( Action action, XrPath subPath = XR_NULL_PATH );
+	std::pair<bool, idVec2> GetVec2( Action action, XrPath subPath = XR_NULL_PATH );
+	XrPosef GetPose( Action action, XrSpace referenceSpace, XrTime time, XrPath subPath = XR_NULL_PATH );
 };
 
