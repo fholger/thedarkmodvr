@@ -18,6 +18,10 @@
 #include "xr_loader.h"
 #include <map>
 
+
+#include "OpenVRBackend.h"
+#include "Session_local.h"
+
 idCVar vr_lefthanded( "vr_lefthanded", "0", CVAR_BOOL|CVAR_ARCHIVE|CVAR_GAME, "If enabled, assumes the dominant hand to be the left hand" );
 
 namespace {
@@ -121,52 +125,7 @@ void OpenXRInput::Init( XrInstance instance, XrSession session ) {
 
 void OpenXRInput::Destroy() {
 	suggestedBindingProfiles.clear();
-}
-
-void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time ) {
-	idList<XrActiveActionSet> activeActionSets {
-		{ ingameActionSet, XR_NULL_PATH },
-	};
-
-	XrActionsSyncInfo syncInfo {
-		XR_TYPE_ACTIONS_SYNC_INFO,
-		nullptr,
-		activeActionSets.Num(),
-		activeActionSets.Ptr(),
-	};
-	XrResult result = xrSyncActions( session, &syncInfo );
-	XR_CheckResult( result, "syncing actions", instance, false );
-
-	float forward = GetFloat( XR_FORWARD ).second;
-	float side = GetFloat( XR_SIDE ).second;
-	float yaw = GetFloat( XR_YAW ).second;
-	float pitch = GetFloat( XR_PITCH ).second;
-	axis[AXIS_SIDE] = 127.f * side;
-	axis[AXIS_FORWARD] = 127.f * forward;
-	axis[AXIS_YAW] = 127.f * yaw;
-	axis[AXIS_PITCH] = 127.f * pitch;
-
-	auto jumpState = GetBool( XR_JUMP );
-	if ( jumpState.first ) {
-		actionChanges.AddGrow( { UB_UP, "", jumpState.second } );
-	}
-	auto frobState = GetBool( XR_FROB );
-	if ( frobState.first ) {
-		actionChanges.AddGrow( { UB_FROB, "", frobState.second } );
-	}
-	auto crouchState = GetBool( XR_CROUCH );
-	if ( crouchState.first ) {
-		actionChanges.AddGrow( { UB_CROUCH, "", crouchState.second } );
-	}
-	if ( isSprinting && idMath::Fabs( side ) + idMath::Fabs( forward ) <= 0.001 ) {
-		actionChanges.AddGrow( { UB_SPEED, "", false } );
-		isSprinting = false;
-	}
-	auto sprintState = GetBool( XR_SPRINT );
-	if ( sprintState.first && sprintState.second && !isSprinting ) {
-		actionChanges.AddGrow( { UB_SPEED, "", true } );
-		isSprinting = true;
-	}
+	actionSpaces.Clear();
 }
 
 XrActionSet OpenXRInput::CreateActionSet( const idStr &name, uint32_t priority ) {
@@ -193,20 +152,33 @@ void OpenXRInput::CreateAction( XrActionSet actionSet, Action action, XrActionTy
 	XR_CheckResult( result, "creating action", instance, false );
 
 	if ( actionType == XR_ACTION_TYPE_POSE_INPUT ) {
-		XrPosef origin;
-		origin.position.x = origin.position.y = origin.position.z = 0;
-		origin.orientation.x = origin.orientation.y = origin.orientation.z = 0;
-		origin.orientation.w = 1;
-		XrActionSpaceCreateInfo spaceInfo {
-			XR_TYPE_ACTION_SPACE_CREATE_INFO,
-			nullptr,
-			actions[action],
-			XR_NULL_PATH,
-			origin,
-		};
-		result = xrCreateActionSpace( session, &spaceInfo, &actionSpaces[action] );
-		XR_CheckResult( result, "creating action space", instance, false );
+		actionSpaces.AddGrow( {
+			action, XR_NULL_PATH, CreateActionSpace( action, XR_NULL_PATH )
+		} );
+		for ( uint32_t i = 0; i < numSubPaths; ++i ) {
+			actionSpaces.AddGrow( {
+				action, subPaths[i], CreateActionSpace( action, subPaths[i] )
+			} );
+		}
 	}
+}
+
+XrSpace OpenXRInput::CreateActionSpace( Action action, XrPath subPath ) {
+	XrPosef origin;
+	origin.position.x = origin.position.y = origin.position.z = 0;
+	origin.orientation.x = origin.orientation.y = origin.orientation.z = 0;
+	origin.orientation.w = 1;
+	XrActionSpaceCreateInfo spaceInfo {
+		XR_TYPE_ACTION_SPACE_CREATE_INFO,
+		nullptr,
+		actions[action],
+		subPath,
+		origin,
+	};
+	XrSpace space = nullptr;
+	XrResult result = xrCreateActionSpace( session, &spaceInfo, &space );
+	XR_CheckResult( result, "creating action space", instance, false );
+	return space;	
 }
 
 void OpenXRInput::CreateAllActions() {
@@ -307,6 +279,120 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 	return result;
 }
 
+void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time ) {
+	if ( sessLocal.guiActive || console->Active() ) {
+		HandleMenuInput( referenceSpace, time );
+		return;
+	}
+
+	idList<XrActiveActionSet> activeActionSets {
+		{ ingameActionSet, XR_NULL_PATH },
+	};
+
+	XrActionsSyncInfo syncInfo {
+		XR_TYPE_ACTIONS_SYNC_INFO,
+		nullptr,
+		activeActionSets.Num(),
+		activeActionSets.Ptr(),
+	};
+	XrResult result = xrSyncActions( session, &syncInfo );
+	XR_CheckResult( result, "syncing actions", instance, false );
+
+	float forward = GetFloat( XR_FORWARD ).second;
+	float side = GetFloat( XR_SIDE ).second;
+	float yaw = GetFloat( XR_YAW ).second;
+	float pitch = GetFloat( XR_PITCH ).second;
+	axis[AXIS_SIDE] = 127.f * side;
+	axis[AXIS_FORWARD] = 127.f * forward;
+	axis[AXIS_YAW] = 127.f * yaw;
+	axis[AXIS_PITCH] = 127.f * pitch;
+
+	auto jumpState = GetBool( XR_JUMP );
+	if ( jumpState.first ) {
+		actionChanges.AddGrow( { UB_UP, "", jumpState.second } );
+	}
+	auto frobState = GetBool( XR_FROB );
+	if ( frobState.first ) {
+		actionChanges.AddGrow( { UB_FROB, "", frobState.second } );
+	}
+	auto crouchState = GetBool( XR_CROUCH );
+	if ( crouchState.first ) {
+		actionChanges.AddGrow( { UB_CROUCH, "", crouchState.second } );
+	}
+	if ( isSprinting && idMath::Fabs( side ) + idMath::Fabs( forward ) <= 0.001 ) {
+		actionChanges.AddGrow( { UB_SPEED, "", false } );
+		isSprinting = false;
+	}
+	auto sprintState = GetBool( XR_SPRINT );
+	if ( sprintState.first && sprintState.second && !isSprinting ) {
+		actionChanges.AddGrow( { UB_SPEED, "", true } );
+		isSprinting = true;
+	}
+}
+
+void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time ) {
+	idList<XrActiveActionSet> activeActionSets {
+		{ menuActionSet, XR_NULL_PATH },
+	};
+
+	XrActionsSyncInfo syncInfo {
+		XR_TYPE_ACTIONS_SYNC_INFO,
+		nullptr,
+		activeActionSets.Num(),
+		activeActionSets.Ptr(),
+	};
+	XrResult result = xrSyncActions( session, &syncInfo );
+	XR_CheckResult( result, "syncing actions", instance, false );
+
+	auto rightAimState = GetPose( XR_MENU_AIM, referenceSpace, time, handPaths[1] );
+	if ( rightAimState.first && sessLocal.guiActive ) {
+		idVec2 uiIntersect = FindGuiOverlayIntersection( rightAimState.second );
+		sessLocal.guiActive->SetCursor( 640 * uiIntersect.x, 480 * uiIntersect.y );
+		sysEvent_t moveEvent = sys->GenerateMouseMoveEvent( 0, 0 );
+		sessLocal.guiActive->HandleEvent( &moveEvent, 0 );
+	}
+
+	auto rightClickState = GetBool( XR_MENU_CLICK, handPaths[1] );
+	if ( rightClickState.first && sessLocal.guiActive ) {
+		sysEvent_t clickEvent = sys->GenerateMouseButtonEvent( 1, rightClickState.second );
+		sessLocal.guiActive->HandleEvent( &clickEvent, 0 );
+	}
+}
+
+idVec2 OpenXRInput::FindGuiOverlayIntersection( XrPosef pointerPose ) {
+	// FIXME: will need to be calculated dynamically in the future
+	guiOverlayPose = { {0, 0, 0, 1}, {0, vr_uiOverlayVerticalOffset.GetFloat(), -vr_uiOverlayDistance.GetFloat()} };
+	idQuat uiOrientation ( guiOverlayPose.orientation.x, guiOverlayPose.orientation.y, guiOverlayPose.orientation.z, guiOverlayPose.orientation.w );
+	idVec3 uiOrigin ( guiOverlayPose.position.x, guiOverlayPose.position.y, guiOverlayPose.position.z );
+	idQuat pointerOrientation ( pointerPose.orientation.x, pointerPose.orientation.y, pointerPose.orientation.z, pointerPose.orientation.w );
+	idVec3 pointerOrigin ( pointerPose.position.x, pointerPose.position.y, pointerPose.position.z );
+
+	idQuat pointerInUiOrientation = uiOrientation * pointerOrientation;
+	idVec3 pointerInUiOrigin = uiOrientation * ( pointerOrigin - uiOrigin );
+	idVec3 pointerDir = pointerInUiOrientation.ToRotation().GetVec();
+	pointerDir.Normalize();
+
+	float t = - pointerInUiOrigin.z / pointerDir.z;
+	if ( t < 0 ) {
+		return idVec2 (0, 0);
+	}
+	idVec2 intersection ( pointerInUiOrigin.y + t * pointerDir.y, pointerInUiOrigin.x + t * pointerDir.x );
+	idVec2 overlaySize = idVec2( vr_uiOverlayAspect.GetFloat(), 1 ) * vr_uiOverlayHeight.GetFloat();
+	idVec2 upperLeft = idVec2( 0, vr_uiOverlayVerticalOffset.GetFloat() ) - .5f * overlaySize;
+	intersection -= upperLeft;
+	intersection /= overlaySize;
+	return idVec2( 1 - intersection.x, 1 - intersection.y );
+}
+
+XrSpace OpenXRInput::FindActionSpace( Action action, XrPath subPath ) {
+	for ( const auto &actionSpace : actionSpaces ) {
+		if ( actionSpace.action == action && actionSpace.subPath == subPath ) {
+			return actionSpace.space;
+		}
+	}
+	return nullptr;
+}
+
 std::pair<bool, bool> OpenXRInput::GetBool( Action action, XrPath subPath ) {
 	XrActionStateBoolean state { XR_TYPE_ACTION_STATE_BOOLEAN, nullptr };
 	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], subPath };
@@ -331,14 +417,14 @@ std::pair<bool, idVec2> OpenXRInput::GetVec2( Action action, XrPath subPath ) {
 	return { state.changedSinceLastSync, idVec2(state.currentState.x, state.currentState.y) };
 }
 
-XrPosef OpenXRInput::GetPose( Action action, XrSpace referenceSpace, XrTime time, XrPath subPath ) {
+std::pair<bool, XrPosef> OpenXRInput::GetPose( Action action, XrSpace referenceSpace, XrTime time, XrPath subPath ) {
 	XrActionStatePose state { XR_TYPE_ACTION_STATE_POSE, nullptr };
 	XrActionStateGetInfo info { XR_TYPE_ACTION_STATE_GET_INFO, nullptr, actions[action], subPath };
 	XrResult result = xrGetActionStatePose( session, &info, &state );
 	XR_CheckResult( result, "getting action state", instance, false );
 
 	XrSpaceLocation location { XR_TYPE_SPACE_LOCATION, nullptr };
-	result = xrLocateSpace( actionSpaces[action], referenceSpace, time, &location );
+	result = xrLocateSpace( FindActionSpace( action, subPath ), referenceSpace, time, &location );
 	XR_CheckResult( result, "getting action space", instance, false );
-	return location.pose;
+	return { state.isActive, location.pose };
 }

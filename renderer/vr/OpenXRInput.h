@@ -43,25 +43,37 @@ private:
 	XrInstance instance = nullptr;
 	XrSession session = nullptr;
 
+	struct actionSpace_t {
+		Action action;
+		XrPath subPath;
+		XrSpace space;
+	};
 	XrPath handPaths[2] = { XR_NULL_PATH };
 	XrAction actions[XR_NUM_ACTIONS] = { nullptr };
-	XrSpace actionSpaces[XR_NUM_ACTIONS] = { nullptr };
+	idList<actionSpace_t> actionSpaces;
 	XrActionSet ingameActionSet = nullptr;
 	XrActionSet menuActionSet = nullptr;
 
 	bool isSprinting = false;
 
+	XrPosef guiOverlayPose;
+
 	XrActionSet CreateActionSet( const idStr &name, uint32_t priority = 0 );
 	void CreateAction( XrActionSet actionSet, Action action, XrActionType actionType, uint32_t numSubPaths = 0, XrPath *subPaths = nullptr );
+	XrSpace CreateActionSpace( Action action, XrPath subPath );
 	void CreateAllActions();
 	void LoadSuggestedBindings();
 	void RegisterSuggestedBindings();
 	void AttachActionSets();
 	idStr ApplyDominantHandToActionPath( const idStr &profile, const idStr &path );
 
+	void HandleMenuInput( XrSpace referenceSpace, XrTime time );
+	idVec2 FindGuiOverlayIntersection( XrPosef pointerPose );
+
+	XrSpace FindActionSpace( Action action, XrPath subPath = XR_NULL_PATH );
 	std::pair<bool, bool> GetBool( Action action, XrPath subPath = XR_NULL_PATH );
 	std::pair<bool, float> GetFloat( Action action, XrPath subPath = XR_NULL_PATH );
 	std::pair<bool, idVec2> GetVec2( Action action, XrPath subPath = XR_NULL_PATH );
-	XrPosef GetPose( Action action, XrSpace referenceSpace, XrTime time, XrPath subPath = XR_NULL_PATH );
+	std::pair<bool, XrPosef> GetPose( Action action, XrSpace referenceSpace, XrTime time, XrPath subPath = XR_NULL_PATH );
 };
 
