@@ -57,6 +57,7 @@ private:
 	bool isSprinting = false;
 
 	XrPosef guiOverlayPose;
+	idVec2 curOverlayIntersect;
 
 	XrActionSet CreateActionSet( const idStr &name, uint32_t priority = 0 );
 	void CreateAction( XrActionSet actionSet, Action action, XrActionType actionType, uint32_t numSubPaths = 0, XrPath *subPaths = nullptr );
