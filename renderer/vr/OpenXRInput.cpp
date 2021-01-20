@@ -121,6 +121,8 @@ void OpenXRInput::Init( XrInstance instance, XrSession session ) {
 	CreateAllActions();
 	LoadSuggestedBindings();
 	AttachActionSets();
+
+	activeMenuHand = !vr_lefthanded.GetBool();
 }
 
 void OpenXRInput::Destroy() {
@@ -344,23 +346,26 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time ) {
 	XrResult result = xrSyncActions( session, &syncInfo );
 	XR_CheckResult( result, "syncing actions", instance, false );
 
-	auto rightAimState = GetPose( XR_MENU_AIM, referenceSpace, time, handPaths[1] );
-	if ( rightAimState.first && sessLocal.guiActive ) {
-		idVec2 uiIntersect = FindGuiOverlayIntersection( rightAimState.second );
+	auto handAimState = GetPose( XR_MENU_AIM, referenceSpace, time, handPaths[activeMenuHand] );
+	if ( handAimState.first && sessLocal.guiActive ) {
+		idVec2 uiIntersect = FindGuiOverlayIntersection( handAimState.second );
 		if ( ( uiIntersect - curOverlayIntersect ).LengthSqr() > 0.00001 ) {
 			curOverlayIntersect = uiIntersect;
 			sessLocal.guiActive->SetCursor( 640 * uiIntersect.x, 480 * uiIntersect.y );
 			sysEvent_t moveEvent = sys->GenerateMouseMoveEvent( 0, 0 );
-			//sessLocal.guiActive->HandleEvent( &moveEvent, 0 );
 			Sys_QueEvent( 0, moveEvent.evType, moveEvent.evValue, moveEvent.evValue2, moveEvent.evPtrLength, moveEvent.evPtr );
 		}
 	}
 
-	auto rightClickState = GetBool( XR_MENU_CLICK, handPaths[1] );
-	if ( rightClickState.first && sessLocal.guiActive ) {
-		sysEvent_t clickEvent = sys->GenerateMouseButtonEvent( 1, rightClickState.second );
-		//sessLocal.guiActive->HandleEvent( &clickEvent, 0 );
+	auto menuClickState = GetBool( XR_MENU_CLICK, handPaths[activeMenuHand] );
+	if ( menuClickState.first && sessLocal.guiActive ) {
+		sysEvent_t clickEvent = sys->GenerateMouseButtonEvent( 1, menuClickState.second );
 		Sys_QueEvent( 0, clickEvent.evType, clickEvent.evValue, clickEvent.evValue2, clickEvent.evPtrLength, clickEvent.evPtr );
+	}
+
+	auto altHandClick = GetBool( XR_MENU_CLICK, handPaths[!activeMenuHand] );
+	if ( altHandClick.first ) {
+		activeMenuHand = !activeMenuHand;
 	}
 }
 
@@ -381,8 +386,6 @@ idVec2 OpenXRInput::FindGuiOverlayIntersection( XrPosef pointerPose ) {
 	if ( t < 0 ) {
 		return idVec2 (0, 0);
 	}
-
-//	gameRenderWorld->DebugLine( idVec4(0, 1, 0, 1), pointerOrigin, pointerOrigin + t * pointerOrientation.ToRotation().GetVec() );
 
 	idVec2 intersection ( pointerInUiOrigin.y + t * pointerDir.y, pointerInUiOrigin.x + t * pointerDir.x );
 	idVec2 overlaySize = 3 * idVec2( vr_uiOverlayAspect.GetFloat(), 1 ) * vr_uiOverlayHeight.GetFloat();
