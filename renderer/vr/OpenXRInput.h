@@ -32,6 +32,8 @@ public:
 		XR_CROUCH,
 		XR_JUMP,
 		XR_FROB,
+		XR_MENU_OPEN,
+		XR_INVENTORY_OPEN,
 
 		XR_MENU_AIM,
 		XR_MENU_CLICK,
@@ -69,7 +71,7 @@ private:
 	void AttachActionSets();
 	idStr ApplyDominantHandToActionPath( const idStr &profile, const idStr &path );
 
-	void HandleMenuInput( XrSpace referenceSpace, XrTime time );
+	void HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<padActionChange_t> &actionChanges );
 	idVec2 FindGuiOverlayIntersection( XrPosef pointerPose );
 
 	XrSpace FindActionSpace( Action action, XrPath subPath = XR_NULL_PATH );

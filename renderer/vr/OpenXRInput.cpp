@@ -40,6 +40,8 @@ namespace {
 		{ OpenXRInput::XR_CROUCH, "crouch", "Player crouch" },
 		{ OpenXRInput::XR_JUMP, "jump", "Player jump" },
 		{ OpenXRInput::XR_FROB, "frob", "Player frob" },
+		{ OpenXRInput::XR_MENU_OPEN, "menu_open", "Open main menu" },
+		{ OpenXRInput::XR_INVENTORY_OPEN, "inventory_open", "Open inventory menu" },
 		{ OpenXRInput::XR_MENU_AIM, "menu_aim", "Menu pointer aim" },
 		{ OpenXRInput::XR_MENU_CLICK, "menu_click", "Menu pointer click" },
 	};
@@ -193,6 +195,8 @@ void OpenXRInput::CreateAllActions() {
 	CreateAction( ingameActionSet, XR_CROUCH, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_JUMP, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_FROB, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_MENU_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_INVENTORY_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
 
 	menuActionSet = CreateActionSet( "menu" );
 	CreateAction( menuActionSet, XR_MENU_AIM, XR_ACTION_TYPE_POSE_INPUT, 2, handPaths );
@@ -283,7 +287,7 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 
 void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time ) {
 	if ( sessLocal.guiActive || console->Active() || gameLocal.GetLocalPlayer()->ActiveGui() ) {
-		HandleMenuInput( referenceSpace, time );
+		HandleMenuInput( referenceSpace, time, actionChanges );
 		return;
 	}
 
@@ -309,6 +313,14 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	axis[AXIS_YAW] = 127.f * yaw;
 	axis[AXIS_PITCH] = 127.f * pitch;
 
+	auto menuState = GetBool( XR_MENU_OPEN );
+	if ( menuState.first ) {
+		actionChanges.AddGrow( { UB_NONE, "escape", menuState.second } );
+	}
+	auto inventoryState = GetBool( XR_INVENTORY_OPEN );
+	if ( inventoryState.first ) {
+		actionChanges.AddGrow( { UB_INVENTORY_GRID, "", inventoryState.second } );
+	}
 	auto jumpState = GetBool( XR_JUMP );
 	if ( jumpState.first ) {
 		actionChanges.AddGrow( { UB_UP, "", jumpState.second } );
@@ -332,7 +344,7 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	}
 }
 
-void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time ) {
+void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<padActionChange_t> &actionChanges ) {
 	idList<XrActiveActionSet> activeActionSets {
 		{ menuActionSet, XR_NULL_PATH },
 	};
