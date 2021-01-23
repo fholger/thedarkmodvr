@@ -352,7 +352,7 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time ) {
 	if ( !gui ) {
 		gui = player->ActiveGui();
 	}
-	if ( handAimState.first && sessLocal.guiActive ) {
+	if ( handAimState.first && gui ) {
 		idVec2 uiIntersect = FindGuiOverlayIntersection( handAimState.second );
 		if ( ( uiIntersect - curOverlayIntersect ).LengthSqr() > 0.00001 ) {
 			curOverlayIntersect = uiIntersect;
@@ -361,8 +361,7 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time ) {
 				gui->SetCursor( 640 * uiIntersect.x, 480 * uiIntersect.y );
 				Sys_QueEvent( 0, moveEvent.evType, moveEvent.evValue, moveEvent.evValue2, moveEvent.evPtrLength, moveEvent.evPtr );
 			} else {
-				common->Printf("Sending to overlay ui\n");
-				gui->SetCursor( vr_uiOverlayHeight.GetInteger() * vr_uiOverlayAspect.GetFloat() * uiIntersect.x, vr_uiOverlayHeight.GetInteger() * uiIntersect.y );
+				gui->SetCursor( 640 * uiIntersect.x, 480 * uiIntersect.y );
 				auto command = gui->HandleEvent( &moveEvent, 0 );
 				player->HandleGuiCommands( player, command );
 			}
@@ -370,9 +369,14 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time ) {
 	}
 
 	auto menuClickState = GetBool( XR_MENU_CLICK, handPaths[activeMenuHand] );
-	if ( menuClickState.first && sessLocal.guiActive ) {
+	if ( menuClickState.first && gui ) {
 		sysEvent_t clickEvent = sys->GenerateMouseButtonEvent( 1, menuClickState.second );
-		Sys_QueEvent( 0, clickEvent.evType, clickEvent.evValue, clickEvent.evValue2, clickEvent.evPtrLength, clickEvent.evPtr );
+		if ( gui == sessLocal.guiActive ) {
+			Sys_QueEvent( 0, clickEvent.evType, clickEvent.evValue, clickEvent.evValue2, clickEvent.evPtrLength, clickEvent.evPtr );
+		} else {
+			auto command = gui->HandleEvent( &clickEvent, 0 );
+			player->HandleGuiCommands( player, command );
+		}
 	}
 
 	auto altHandClick = GetBool( XR_MENU_CLICK, handPaths[!activeMenuHand] );
