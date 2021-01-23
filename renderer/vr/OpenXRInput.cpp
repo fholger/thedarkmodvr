@@ -282,7 +282,7 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 }
 
 void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time ) {
-	if ( sessLocal.guiActive || console->Active() ) {
+	if ( sessLocal.guiActive || console->Active() || gameLocal.GetLocalPlayer()->ActiveGui() ) {
 		HandleMenuInput( referenceSpace, time );
 		return;
 	}
@@ -347,13 +347,25 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time ) {
 	XR_CheckResult( result, "syncing actions", instance, false );
 
 	auto handAimState = GetPose( XR_MENU_AIM, referenceSpace, time, handPaths[activeMenuHand] );
+	idPlayer *player = gameLocal.GetLocalPlayer();
+	idUserInterface* gui = sessLocal.guiActive;
+	if ( !gui ) {
+		gui = player->ActiveGui();
+	}
 	if ( handAimState.first && sessLocal.guiActive ) {
 		idVec2 uiIntersect = FindGuiOverlayIntersection( handAimState.second );
 		if ( ( uiIntersect - curOverlayIntersect ).LengthSqr() > 0.00001 ) {
 			curOverlayIntersect = uiIntersect;
-			sessLocal.guiActive->SetCursor( 640 * uiIntersect.x, 480 * uiIntersect.y );
 			sysEvent_t moveEvent = sys->GenerateMouseMoveEvent( 0, 0 );
-			Sys_QueEvent( 0, moveEvent.evType, moveEvent.evValue, moveEvent.evValue2, moveEvent.evPtrLength, moveEvent.evPtr );
+			if ( gui == sessLocal.guiActive ) {
+				gui->SetCursor( 640 * uiIntersect.x, 480 * uiIntersect.y );
+				Sys_QueEvent( 0, moveEvent.evType, moveEvent.evValue, moveEvent.evValue2, moveEvent.evPtrLength, moveEvent.evPtr );
+			} else {
+				common->Printf("Sending to overlay ui\n");
+				gui->SetCursor( vr_uiOverlayHeight.GetInteger() * vr_uiOverlayAspect.GetFloat() * uiIntersect.x, vr_uiOverlayHeight.GetInteger() * uiIntersect.y );
+				auto command = gui->HandleEvent( &moveEvent, 0 );
+				player->HandleGuiCommands( player, command );
+			}
 		}
 	}
 

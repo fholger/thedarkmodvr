@@ -1289,7 +1289,9 @@ private:
 #endif
 
 	void					UpdateLocation( void );
+public:
 	idUserInterface *		ActiveGui( void );
+private:
 	void					ExtractEmailInfo( const idStr &email, const char *scan, idStr &out );
 
 	void					UseVehicle( void );
