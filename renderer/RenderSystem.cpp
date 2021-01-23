@@ -626,6 +626,7 @@ void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	}
 
 	try {
+		RB_CopyDebugPrimitivesToBackend();
 		ProfilingBeginFrame();
 		common->SetErrorIndirection( true );
 		vrBackend->PrepareFrame();
