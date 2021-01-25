@@ -25,7 +25,7 @@
 #include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
 #include "../GLSLProgramManager.h"
-#include "../vr/VRBackend.h"
+#include "../vr/OpenXRBackend.h"
 
 RenderBackend renderBackendImpl;
 RenderBackend *renderBackend = &renderBackendImpl;
@@ -64,7 +64,6 @@ void RenderBackend::Init() {
 		qglBufferData( GL_PIXEL_PACK_BUFFER, DARKMOD_LG_RENDER_WIDTH * DARKMOD_LG_RENDER_WIDTH * 3, nullptr, GL_STREAM_READ );
 	}
 
-	SelectVRImplementation();
 	vrBackend->Init();
 }
 

@@ -21,7 +21,7 @@
 #include "Profiling.h"
 #include "backend/RenderBackend.h"
 #include "FrameBufferManager.h"
-#include "vr/VRBackend.h"
+#include "vr/OpenXRBackend.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;

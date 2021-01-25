@@ -19,7 +19,7 @@
 
 #include "GamepadInput.h"
 #include "Session_local.h"
-#include "../renderer/vr/OpenVRBackend.h"
+#include "../renderer/vr/OpenXRBackend.h"
 #include "../sys/sys_padinput.h"
 
 /*

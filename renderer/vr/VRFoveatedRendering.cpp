@@ -16,7 +16,7 @@
 #include "VRFoveatedRendering.h"
 
 
-#include "VRBackend.h"
+#include "OpenXRBackend.h"
 #include "../FrameBufferManager.h"
 #include "../GLSLProgramManager.h"
 #include "../GLSLUniforms.h"

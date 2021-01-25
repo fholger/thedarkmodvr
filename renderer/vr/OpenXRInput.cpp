@@ -17,10 +17,8 @@
 #include "OpenXRInput.h"
 #include "xr_loader.h"
 #include <map>
-
-
-#include "OpenVRBackend.h"
 #include "Session_local.h"
+#include "OpenXRBackend.h"
 
 idCVar vr_lefthanded( "vr_lefthanded", "0", CVAR_BOOL|CVAR_ARCHIVE|CVAR_GAME, "If enabled, assumes the dominant hand to be the left hand" );
 

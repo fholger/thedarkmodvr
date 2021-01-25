@@ -16,34 +16,97 @@
 
 #include <openxr/openxr.h>
 #include "OpenXRSwapchain.h"
+#include "../tr_local.h"
+#include "GamepadInput.h"
 #include "OpenXRInput.h"
-#include "VRBackend.h"
+#include "VRFoveatedRendering.h"
 
-class OpenXRBackend : public VRBackend {
+extern idCVar vr_uiOverlayHeight;
+extern idCVar vr_uiOverlayAspect;
+extern idCVar vr_uiOverlayDistance;
+extern idCVar vr_uiOverlayVerticalOffset;
+extern idCVar vr_aimIndicatorSize;
+extern idCVar vr_aimIndicatorRangedMultiplier;
+extern idCVar vr_aimIndicatorRangedSize;
+extern idCVar vr_decoupleMouseMovement;
+extern idCVar vr_decoupledMouseYawAngle;
+extern idCVar vr_force2DRender;
+extern idCVar vr_disableZoomAnimations;
+
+class OpenXRBackend {
 public:
+	void Init();
+	void Destroy();
 
-	void PrepareFrame() override;
+	void PrepareFrame();
+ 
+	void AdjustRenderView( renderView_t *view );
+	void RenderStereoView( const frameData_t *frameData );
+	void DrawHiddenAreaMeshToDepth();
+	void DrawRadialDensityMaskToDepth();
+
+	void UpdateLightScissor( viewLight_t *vLight );
+
+	bool UseRadialDensityMask();
+
+	void UpdateInput(int axis[6], idList<padActionChange_t> &actionChanges);
+
+	static const float GameUnitsToMetres;
+	static const float MetresToGameUnits;
 
 	XrInstance Instance() const { return instance; }
 	XrSession Session() const { return session; }
 
-	void UpdateInput(int axis[6], idList<padActionChange_t> &actionChanges) override;
-
-protected:
-	void InitBackend() override;
-	void DestroyBackend() override;
-
-	bool BeginFrame() override;
-	void SubmitFrame() override;
-	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) override;
-	bool GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation ) override;
-	bool GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation ) override;
-	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture ) override;
-	idList<idVec2> GetHiddenAreaMask( eyeView_t eye ) override;
-	idVec4 GetVisibleAreaBounds( eyeView_t eye ) override;
-	bool UsesSrgbTextures() const override;
-
 private:
+	void InitBackend();
+	void DestroyBackend();
+
+	enum eyeView_t {
+		LEFT_EYE = 0,
+		RIGHT_EYE = 1,
+		UI = 2,
+	};
+	void ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView );
+	bool BeginFrame();
+	void SubmitFrame();
+	void GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown );
+	bool GetCurrentEyePose( int eye, idVec3 &origin, idQuat &orientation );
+	bool GetPredictedEyePose( int eye, idVec3 &origin, idQuat &orientation );
+	void AcquireFboAndTexture( eyeView_t eye, FrameBuffer *&fbo, idImage *&texture );
+	idList<idVec2> GetHiddenAreaMask( eyeView_t eye );
+	idVec4 GetVisibleAreaBounds( eyeView_t eye );
+	bool UsesSrgbTextures() const;
+
+	void InitHiddenAreaMesh();
+	void UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye );
+	void SetupProjectionMatrix( viewDef_t *viewDef, int eye );
+	void UpdateViewPose( viewDef_t *viewDef, int eye );
+	void MirrorVrView( idImage *eyeTexture, idImage *uiTexture );
+	void DrawAimIndicator( float size );
+	void UpdateFrameStatus( const frameData_t *frameData );
+	void DrawComfortVignette(eyeView_t eye);
+
+	eyeView_t currentEye;
+	GLSLProgram *vrMirrorShader = nullptr;
+
+	GLuint hiddenAreaMeshBuffer = 0;
+	GLuint numVertsLeft = 0;
+	GLuint numVertsRight = 0;
+	GLSLProgram *hiddenAreaMeshShader = nullptr;
+	idVec4 visibleAreaBounds[2];
+
+	idVec3 aimIndicatorPos;
+	idMat4 aimIndicatorMvp;
+	GLSLProgram *vrAimIndicatorShader = nullptr;
+
+	GLSLProgram *comfortVignetteShader = nullptr;
+	bool vignetteEnabled = false;
+	idVec3 lastCameraPosition;
+	idAngles lastCameraAngles;
+	uint64_t lastCameraUpdateTime = 0;
+
+	VRFoveatedRendering foveatedHelper;
+
 	XrInstance instance = nullptr;
 	XrSystemId system = 0;
 	XrSession session = nullptr;
@@ -73,4 +136,4 @@ private:
 	void HandleSessionStateChange( const XrEventDataSessionStateChanged &stateChangedEvent );
 };
 
-extern OpenXRBackend *xrBackend;
+extern OpenXRBackend *vrBackend;

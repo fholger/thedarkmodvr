@@ -1327,12 +1327,6 @@
     <ClInclude Include="renderer\vr\OpenXRBackend.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\vr\VRBackend.h">
-      <Filter>Renderer\VR</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\vr\OpenVRBackend.h">
-      <Filter>Renderer\VR</Filter>
-    </ClInclude>
     <ClInclude Include="renderer\vr\OpenXRSwapchainGL.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
@@ -3108,12 +3102,6 @@
     </ClCompile>
     <ClCompile Include="renderer\ParticleSystem.cpp">
       <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\vr\VRBackend.cpp">
-      <Filter>Renderer\VR</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\vr\OpenVRBackend.cpp">
-      <Filter>Renderer\VR</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\OpenXRSwapchainGL.cpp">
       <Filter>Renderer\VR</Filter>

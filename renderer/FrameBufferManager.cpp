@@ -17,7 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "tr_local.h"
 #include "FrameBufferManager.h"
 #include "FrameBuffer.h"
-#include "vr/OpenVRBackend.h"
+#include "vr/OpenXRBackend.h"
 
 FrameBufferManager frameBuffersImpl;
 FrameBufferManager *frameBuffers = &frameBuffersImpl;
