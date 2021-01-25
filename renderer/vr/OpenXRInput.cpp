@@ -340,6 +340,13 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 		actionChanges.AddGrow( { UB_SPEED, "", true } );
 		isSprinting = true;
 	}
+
+	if (fakeAttackPressed) {
+		common->Printf("Releasing attack\n");
+		// fixme: adjust once we have actual attack handling
+		actionChanges.AddGrow( { UB_ATTACK, "", false } );
+		fakeAttackPressed = false;
+	}
 }
 
 void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<padActionChange_t> &actionChanges ) {
@@ -380,12 +387,13 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<p
 
 	auto menuClickState = GetBool( XR_MENU_CLICK, handPaths[activeMenuHand] );
 	if ( menuClickState.first && gui ) {
-		sysEvent_t clickEvent = sys->GenerateMouseButtonEvent( 1, menuClickState.second );
 		if ( gui == sessLocal.guiActive ) {
+			sysEvent_t clickEvent = sys->GenerateMouseButtonEvent( 1, menuClickState.second );
 			Sys_QueEvent( 0, clickEvent.evType, clickEvent.evValue, clickEvent.evValue2, clickEvent.evPtrLength, clickEvent.evPtr );
 		} else {
-			auto command = gui->HandleEvent( &clickEvent, 0 );
-			player->HandleGuiCommands( player, command );
+			// hack: needed to pass the mission start dialogue
+			actionChanges.AddGrow( { UB_ATTACK, "", menuClickState.second } );
+			fakeAttackPressed = true;
 		}
 	}
 
