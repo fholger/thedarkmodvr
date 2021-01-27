@@ -21,11 +21,13 @@ public:
 	void Init(XrInstance instance, XrSession session);
 	void Destroy();
 
-	void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time );
+	void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, idQuat &movementAxis, XrSpace referenceSpace, XrTime time );
 
 	enum Action {
 		XR_FORWARD = 0,
 		XR_SIDE,
+		XR_MOVE_DIR_HEAD,
+		XR_MOVE_DIR_HAND,
 		XR_YAW,
 		XR_PITCH,
 		XR_SPRINT,
@@ -34,6 +36,7 @@ public:
 		XR_FROB,
 		XR_MENU_OPEN,
 		XR_INVENTORY_OPEN,
+
 
 		XR_MENU_AIM,
 		XR_MENU_CLICK,

@@ -415,6 +415,8 @@ private:
 	int				mouseDx, mouseDy;	// added to by mouse events
 	int				joystickAxis[MAX_JOYSTICK_AXIS];	// set by joystick events
 
+	idQuat			movementAxis;
+
 	static idCVar	in_yawSpeed;
 	static idCVar	in_pitchSpeed;
 	static idCVar	in_angleSpeedKey;
@@ -822,6 +824,8 @@ void idUsercmdGenLocal::MakeCurrent( void ) {
 		// get basic movement from joystick
 		JoystickMove();
 
+		cmd.movementAxis = movementAxis;
+
 		// check to make sure the angles haven't wrapped
 		if ( viewangles[PITCH] - oldAngles[PITCH] > 90 ) {
 			viewangles[PITCH] = oldAngles[PITCH] + 90;
@@ -1095,7 +1099,8 @@ void idUsercmdGenLocal::Joystick( void ) {
 
 	idGamepadInput::UpdateAxisState( joystickAxis );
 	idList<padActionChange_t> stateChanges = idGamepadInput::GetActionStateChange();
-	vrBackend->UpdateInput( joystickAxis, stateChanges );
+	movementAxis = idQuat( 0, 0, 0, 1 );
+	vrBackend->UpdateInput( joystickAxis, stateChanges, movementAxis );
 	for ( auto change : stateChanges ) {
 		if ( change.active ) {
 

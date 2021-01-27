@@ -19,6 +19,7 @@
 #include <map>
 #include "Session_local.h"
 #include "OpenXRBackend.h"
+#include "xr_math.h"
 
 idCVar vr_lefthanded( "vr_lefthanded", "0", CVAR_BOOL|CVAR_ARCHIVE|CVAR_GAME, "If enabled, assumes the dominant hand to be the left hand" );
 
@@ -32,6 +33,8 @@ namespace {
 	actionName_t actionNames[] = {
 		{ OpenXRInput::XR_FORWARD, "forward", "Player walk forward axis" },
 		{ OpenXRInput::XR_SIDE, "side", "Player walk side axis" },
+		{ OpenXRInput::XR_MOVE_DIR_HEAD, "move_dir_head", "Player walk direction head" },
+		{ OpenXRInput::XR_MOVE_DIR_HAND, "move_dir_hand", "Player walk direction hand" },
 		{ OpenXRInput::XR_YAW, "yaw", "Camera look yaw" },
 		{ OpenXRInput::XR_PITCH, "pitch", "Camera look pitch" },
 		{ OpenXRInput::XR_SPRINT, "sprint", "Player sprint" },
@@ -187,6 +190,8 @@ void OpenXRInput::CreateAllActions() {
 	ingameActionSet = CreateActionSet( "gameplay" );
 	CreateAction( ingameActionSet, XR_FORWARD, XR_ACTION_TYPE_FLOAT_INPUT );
 	CreateAction( ingameActionSet, XR_SIDE, XR_ACTION_TYPE_FLOAT_INPUT );
+	CreateAction( ingameActionSet, XR_MOVE_DIR_HEAD, XR_ACTION_TYPE_POSE_INPUT );
+	CreateAction( ingameActionSet, XR_MOVE_DIR_HAND, XR_ACTION_TYPE_POSE_INPUT );
 	CreateAction( ingameActionSet, XR_YAW, XR_ACTION_TYPE_FLOAT_INPUT );
 	CreateAction( ingameActionSet, XR_PITCH, XR_ACTION_TYPE_FLOAT_INPUT );
 	CreateAction( ingameActionSet, XR_SPRINT, XR_ACTION_TYPE_BOOLEAN_INPUT );
@@ -283,7 +288,7 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 	return result;
 }
 
-void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, XrSpace referenceSpace, XrTime time ) {
+void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, idQuat &movementAxis, XrSpace referenceSpace, XrTime time ) {
 	if ( sessLocal.guiActive || console->Active() || gameLocal.GetLocalPlayer()->ActiveGui() ) {
 		HandleMenuInput( referenceSpace, time, actionChanges );
 		return;
@@ -310,6 +315,9 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	axis[AXIS_FORWARD] = 127.f * forward;
 	axis[AXIS_YAW] = 127.f * yaw;
 	axis[AXIS_PITCH] = 127.f * pitch;
+
+	// TODO: make axis configurable
+	movementAxis = QuatFromXr( GetPose( XR_MOVE_DIR_HAND, referenceSpace, time ).second.orientation );
 
 	auto menuState = GetBool( XR_MENU_OPEN );
 	if ( menuState.first ) {
