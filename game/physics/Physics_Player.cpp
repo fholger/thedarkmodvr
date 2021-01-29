@@ -2757,7 +2757,8 @@ void idPhysics_Player::MovePlayer( int msec ) {
 	current.velocity -= current.pushVelocity;
 
 	// view vectors
-	viewAngles.ToVectors( &viewForward, NULL, NULL );
+	auto finalMoveAngles = (command.movementAxis * actualViewAngles.ToQuat()).ToAngles();
+	finalMoveAngles.ToVectors( &viewForward, NULL, NULL );
 	viewForward *= clipModelAxis;
 	viewRight = gravityNormal.Cross( viewForward );
 	viewRight.Normalize();
@@ -3424,7 +3425,7 @@ void idPhysics_Player::Restore( idRestoreGame *savefile ) {
 idPhysics_Player::SetPlayerInput
 ================
 */
-void idPhysics_Player::SetPlayerInput( const usercmd_t &cmd, const idAngles &newViewAngles ) 
+void idPhysics_Player::SetPlayerInput( const usercmd_t &cmd, const idAngles &newViewAngles, const idAngles &actualViewAngles ) 
 {
 	command = cmd;
 
@@ -3450,6 +3451,7 @@ void idPhysics_Player::SetPlayerInput( const usercmd_t &cmd, const idAngles &new
 	}
 
 	viewAngles = newViewAngles;	// can't use cmd.angles cause of the delta_angles
+	this->actualViewAngles = actualViewAngles;
 
 	m_lastCommandViewYaw = command.angles[1];
 	m_lastCommandViewPitch = command.angles[0];

@@ -115,7 +115,7 @@ public:
 	**/
 	int						GetMovementFlags( void );
 	void					SetMovementFlags( int );
-	void					SetPlayerInput( const usercmd_t &cmd, const idAngles &newViewAngles );
+	void					SetPlayerInput( const usercmd_t &cmd, const idAngles &newViewAngles, const idAngles &actualViewAngles );
 	void					SetKnockBack( const int knockBackTime );
 	void					SetDebugLevel( bool set );
 							// feed back from last physics frame
@@ -261,6 +261,7 @@ private:
 	// player input
 	usercmd_t				command;
 	idAngles				viewAngles;
+	idAngles				actualViewAngles;
 
 	// run-time variables
 	int						framemsec;
