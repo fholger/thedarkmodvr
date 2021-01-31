@@ -21,7 +21,9 @@
 #include "OpenXRBackend.h"
 #include "xr_math.h"
 
-idCVar vr_lefthanded( "vr_lefthanded", "0", CVAR_BOOL|CVAR_ARCHIVE|CVAR_GAME, "If enabled, assumes the dominant hand to be the left hand" );
+idCVar vr_useMotionControllers( "vr_useMotionControllers", "0", CVAR_GAME|CVAR_BOOL|CVAR_ARCHIVE, "If enabled, use motion controllers for game input (wip)" );
+idCVar vr_inputLefthanded( "vr_inputLefthanded", "0", CVAR_BOOL|CVAR_ARCHIVE|CVAR_GAME, "If enabled, assumes the dominant hand to be the left hand" );
+idCVar vr_inputWalkHeadRelative( "vr_inputWalkHeadRelative", "0", CVAR_GAME|CVAR_BOOL|CVAR_RENDERER, "If enabled, movement is relative to head orientation. Otherwise, it is relative to controller orientation." );
 
 namespace {
 	struct actionName_t {
@@ -121,11 +123,20 @@ void OpenXRInput::Init( XrInstance instance, XrSession session ) {
 	xrStringToPath( instance, "/user/hand/left", &handPaths[0] );
 	xrStringToPath( instance, "/user/hand/right", &handPaths[1] );
 
+	XrReferenceSpaceCreateInfo spaceCreateInfo = {
+		XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+		nullptr,
+		XR_REFERENCE_SPACE_TYPE_VIEW,
+		{ {0, 0, 0, 1}, {0, 0, 0} },
+	};
+	XrResult result = xrCreateReferenceSpace( session, &spaceCreateInfo, &hmdSpace );
+	XR_CheckResult( result, "creating HMD reference space", instance );
+
 	CreateAllActions();
 	LoadSuggestedBindings();
 	AttachActionSets();
 
-	activeMenuHand = !vr_lefthanded.GetBool();
+	activeMenuHand = !vr_inputLefthanded.GetBool();
 }
 
 void OpenXRInput::Destroy() {
@@ -270,7 +281,7 @@ void OpenXRInput::AttachActionSets() {
 
 idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const idStr &path ) {
 	idStr result = path;
-	if ( vr_lefthanded.GetBool() ) {
+	if ( vr_inputLefthanded.GetBool() ) {
 		if ( profile == "/interaction_profiles/hp/mixed_reality_controller" || profile == "/interaction_profiles/oculus/touch_controller" ) {
 			result.Replace( "/user/hand/main/input/a/", "/user/hand/left/input/x/" );
 			result.Replace( "/user/hand/main/input/b/", "/user/hand/left/input/y/" );
@@ -289,6 +300,10 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 }
 
 void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, idQuat &movementAxis, XrSpace referenceSpace, XrTime time ) {
+	if ( !vr_useMotionControllers.GetBool() ) {
+		return;
+	}
+
 	if ( sessLocal.guiActive || console->Active() || gameLocal.GetLocalPlayer()->ActiveGui() ) {
 		HandleMenuInput( referenceSpace, time, actionChanges );
 		return;
@@ -316,8 +331,14 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	axis[AXIS_YAW] = 127.f * yaw;
 	axis[AXIS_PITCH] = 127.f * pitch;
 
-	// TODO: make axis configurable
-	movementAxis = QuatFromXr( GetPose( XR_MOVE_DIR_HAND, referenceSpace, time ).second.orientation );
+	if ( vr_inputWalkHeadRelative.GetBool() ) {
+		XrSpaceLocation location { XR_TYPE_SPACE_LOCATION, nullptr };
+		result = xrLocateSpace( hmdSpace, referenceSpace, time, &location );
+		XR_CheckResult( result, "getting HMD space", instance, false );
+		movementAxis = QuatFromXr( location.pose.orientation );
+	} else {
+		movementAxis = QuatFromXr( GetPose( XR_MOVE_DIR_HAND, referenceSpace, time ).second.orientation );
+	}
 
 	auto menuState = GetBool( XR_MENU_OPEN );
 	if ( menuState.first ) {

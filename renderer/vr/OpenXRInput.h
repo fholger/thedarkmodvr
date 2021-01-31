@@ -16,6 +16,8 @@
 #include <openxr/openxr.h>
 #include "GamepadInput.h"
 
+extern idCVar vr_useMotionControllers;
+
 class OpenXRInput {
 public:
 	void Init(XrInstance instance, XrSession session);
@@ -47,6 +49,7 @@ public:
 private:
 	XrInstance instance = nullptr;
 	XrSession session = nullptr;
+	XrSpace hmdSpace = nullptr;
 
 	struct actionSpace_t {
 		Action action;

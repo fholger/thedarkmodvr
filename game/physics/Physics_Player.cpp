@@ -23,6 +23,7 @@
 #include "../BinaryFrobMover.h"
 #include "../FrobDoor.h"
 #include "Force_Push.h"
+#include "../../renderer/vr/OpenXRBackend.h"
 
 CLASS_DECLARATION( idPhysics_Actor, idPhysics_Player )
 END_CLASS
@@ -2757,7 +2758,7 @@ void idPhysics_Player::MovePlayer( int msec ) {
 	current.velocity -= current.pushVelocity;
 
 	// view vectors
-	auto finalMoveAngles = (command.movementAxis * actualViewAngles.ToQuat()).ToAngles();
+	auto finalMoveAngles = vr_useMotionControllers.GetBool() ? (command.movementAxis * actualViewAngles.ToQuat()).ToAngles() : viewAngles;
 	finalMoveAngles.ToVectors( &viewForward, NULL, NULL );
 	viewForward *= clipModelAxis;
 	viewRight = gravityNormal.Cross( viewForward );
