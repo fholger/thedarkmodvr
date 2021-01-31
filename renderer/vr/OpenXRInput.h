@@ -28,7 +28,6 @@ public:
 	enum Action {
 		XR_FORWARD = 0,
 		XR_SIDE,
-		XR_MOVE_DIR_HEAD,
 		XR_MOVE_DIR_HAND,
 		XR_YAW,
 		XR_PITCH,
@@ -38,7 +37,7 @@ public:
 		XR_FROB,
 		XR_MENU_OPEN,
 		XR_INVENTORY_OPEN,
-
+		XR_AIM,
 
 		XR_MENU_AIM,
 		XR_MENU_CLICK,

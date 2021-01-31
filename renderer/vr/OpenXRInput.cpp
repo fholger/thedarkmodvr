@@ -35,7 +35,6 @@ namespace {
 	actionName_t actionNames[] = {
 		{ OpenXRInput::XR_FORWARD, "forward", "Player walk forward axis" },
 		{ OpenXRInput::XR_SIDE, "side", "Player walk side axis" },
-		{ OpenXRInput::XR_MOVE_DIR_HEAD, "move_dir_head", "Player walk direction head" },
 		{ OpenXRInput::XR_MOVE_DIR_HAND, "move_dir_hand", "Player walk direction hand" },
 		{ OpenXRInput::XR_YAW, "yaw", "Camera look yaw" },
 		{ OpenXRInput::XR_PITCH, "pitch", "Camera look pitch" },
@@ -47,6 +46,7 @@ namespace {
 		{ OpenXRInput::XR_INVENTORY_OPEN, "inventory_open", "Open inventory menu" },
 		{ OpenXRInput::XR_MENU_AIM, "menu_aim", "Menu pointer aim" },
 		{ OpenXRInput::XR_MENU_CLICK, "menu_click", "Menu pointer click" },
+		{ OpenXRInput::XR_AIM, "aim", "Frob aim controller pose" },
 	};
 
 	OpenXRInput::Action ActionByName( const idStr &name ) {
@@ -201,7 +201,6 @@ void OpenXRInput::CreateAllActions() {
 	ingameActionSet = CreateActionSet( "gameplay" );
 	CreateAction( ingameActionSet, XR_FORWARD, XR_ACTION_TYPE_FLOAT_INPUT );
 	CreateAction( ingameActionSet, XR_SIDE, XR_ACTION_TYPE_FLOAT_INPUT );
-	CreateAction( ingameActionSet, XR_MOVE_DIR_HEAD, XR_ACTION_TYPE_POSE_INPUT );
 	CreateAction( ingameActionSet, XR_MOVE_DIR_HAND, XR_ACTION_TYPE_POSE_INPUT );
 	CreateAction( ingameActionSet, XR_YAW, XR_ACTION_TYPE_FLOAT_INPUT );
 	CreateAction( ingameActionSet, XR_PITCH, XR_ACTION_TYPE_FLOAT_INPUT );
@@ -211,6 +210,7 @@ void OpenXRInput::CreateAllActions() {
 	CreateAction( ingameActionSet, XR_FROB, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_MENU_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_INVENTORY_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_AIM, XR_ACTION_TYPE_POSE_INPUT );
 
 	menuActionSet = CreateActionSet( "menu" );
 	CreateAction( menuActionSet, XR_MENU_AIM, XR_ACTION_TYPE_POSE_INPUT, 2, handPaths );
