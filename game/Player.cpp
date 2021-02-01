@@ -10909,7 +10909,12 @@ void idPlayer::PerformFrobCheck()
 	CInventoryItemPtr curItem = InventoryCursor()->GetCurrentItem();
 
 	idVec3 start = eyePos;
-	idVec3 end = start + viewAngles.ToForward() * maxFrobDistance;
+	idAngles angles = viewAngles;
+	if ( vr_useMotionControllers.GetBool() ) {
+		start = eyePos + usercmd.frobPos * actualViewAngles.ToMat3();
+		angles = ( usercmd.frobAxis * actualViewAngles.ToQuat() ).ToAngles();
+	}
+	idVec3 end = start + angles.ToForward() * maxFrobDistance;
 
 	// Do frob trace first, along view axis, record distance traveled
 	// Frob collision mask:
@@ -10920,7 +10925,7 @@ void idPlayer::PerformFrobCheck()
 	gameLocal.clip.TracePoint(trace, start, end, cm, this);
 	
 	float traceDist = maxFrobDistance * trace.fraction;
-	frameData->mouseAimPosition = start + viewAngles.ToForward() * traceDist;
+	frameData->mouseAimPosition = start + angles.ToForward() * traceDist;
 
 	if (m_bGrabberActive)
 	{
@@ -11031,7 +11036,7 @@ void idPlayer::PerformFrobCheck()
 
 	int numFrobEnt = gameLocal.clip.EntitiesTouchingBounds(frobBounds, -1, frobRangeEnts, MAX_GENTITIES);
 
-	idVec3 vecForward = viewAngles.ToForward();
+	idVec3 vecForward = angles.ToForward();
 	float bestDot = 0;
 	idEntity* bestEnt = NULL;
 
@@ -11059,7 +11064,7 @@ void idPlayer::PerformFrobCheck()
 
 		// Get the frob distance from the entity candidate
 		float frobDist = ent->m_FrobDistance;
-		idVec3 delta = ent->GetPhysics()->GetOrigin() - eyePos;
+		idVec3 delta = ent->GetPhysics()->GetOrigin() - start;
 		
 		float entDistance = delta.LengthFast();
 

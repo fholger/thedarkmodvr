@@ -49,7 +49,7 @@ public:
 
 	bool UseRadialDensityMask();
 
-	void UpdateInput(int axis[6], idList<padActionChange_t> &actionChanges, idQuat &movementAxis);
+	void UpdateInput(int axis[6], idList<padActionChange_t> &actionChanges, poseInput_t &poseInput);
 
 	static const float GameUnitsToMetres;
 	static const float MetresToGameUnits;

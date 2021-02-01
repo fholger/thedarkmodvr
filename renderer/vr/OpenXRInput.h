@@ -18,12 +18,18 @@
 
 extern idCVar vr_useMotionControllers;
 
+struct poseInput_t {
+	idQuat movementAxis;
+	idVec3 frobHandPos;
+	idQuat frobHandAxis;
+};
+
 class OpenXRInput {
 public:
 	void Init(XrInstance instance, XrSession session);
 	void Destroy();
 
-	void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, idQuat &movementAxis, XrSpace referenceSpace, XrTime time );
+	void UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, poseInput_t &poseInput, XrSpace referenceSpace, XrTime time );
 
 	enum Action {
 		XR_FORWARD = 0,

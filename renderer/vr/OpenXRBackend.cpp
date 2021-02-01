@@ -719,8 +719,8 @@ namespace {
 	}
 }
 
-void OpenXRBackend::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, idQuat &movementAxis ) {
-	input.UpdateInput( axis, actionChanges, movementAxis, seatedSpace, predictedFrameDisplayTime );
+void OpenXRBackend::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, poseInput_t &poseInput ) {
+	input.UpdateInput( axis, actionChanges, poseInput, seatedSpace, predictedFrameDisplayTime );
 }
 
 void OpenXRBackend::InitBackend() {

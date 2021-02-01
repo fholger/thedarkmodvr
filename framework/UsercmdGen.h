@@ -221,6 +221,8 @@ public:
 	short		jy;								// joystick y
 
 	idQuat		movementAxis;
+	idQuat		frobAxis;
+	idVec3		frobPos;
 
 public:
 	void		ByteSwap();						// on big endian systems, byte swap the shorts and ints

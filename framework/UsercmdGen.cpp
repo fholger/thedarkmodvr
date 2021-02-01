@@ -415,7 +415,7 @@ private:
 	int				mouseDx, mouseDy;	// added to by mouse events
 	int				joystickAxis[MAX_JOYSTICK_AXIS];	// set by joystick events
 
-	idQuat			movementAxis;
+	poseInput_t		poseInput;
 
 	static idCVar	in_yawSpeed;
 	static idCVar	in_pitchSpeed;
@@ -824,7 +824,9 @@ void idUsercmdGenLocal::MakeCurrent( void ) {
 		// get basic movement from joystick
 		JoystickMove();
 
-		cmd.movementAxis = movementAxis;
+		cmd.movementAxis = poseInput.movementAxis;
+		cmd.frobAxis = poseInput.frobHandAxis;
+		cmd.frobPos = poseInput.frobHandPos;
 
 		// check to make sure the angles haven't wrapped
 		if ( viewangles[PITCH] - oldAngles[PITCH] > 90 ) {
@@ -1099,8 +1101,10 @@ void idUsercmdGenLocal::Joystick( void ) {
 
 	idGamepadInput::UpdateAxisState( joystickAxis );
 	idList<padActionChange_t> stateChanges = idGamepadInput::GetActionStateChange();
-	movementAxis = idQuat( 0, 0, 0, 1 );
-	vrBackend->UpdateInput( joystickAxis, stateChanges, movementAxis );
+	poseInput.movementAxis = idQuat( 0, 0, 0, 1 );
+	poseInput.frobHandAxis = idQuat( 0, 0, 0, 1 );
+	poseInput.frobHandPos = idVec3( 0, 0, 0 );
+	vrBackend->UpdateInput( joystickAxis, stateChanges, poseInput );
 	for ( auto change : stateChanges ) {
 		if ( change.active ) {
 

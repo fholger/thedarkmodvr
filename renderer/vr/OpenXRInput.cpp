@@ -299,7 +299,7 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 	return result;
 }
 
-void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, idQuat &movementAxis, XrSpace referenceSpace, XrTime time ) {
+void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, poseInput_t &poseInput, XrSpace referenceSpace, XrTime time ) {
 	if ( !vr_useMotionControllers.GetBool() ) {
 		return;
 	}
@@ -335,10 +335,14 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 		XrSpaceLocation location { XR_TYPE_SPACE_LOCATION, nullptr };
 		result = xrLocateSpace( hmdSpace, referenceSpace, time, &location );
 		XR_CheckResult( result, "getting HMD space", instance, false );
-		movementAxis = QuatFromXr( location.pose.orientation );
+		poseInput.movementAxis = QuatFromXr( location.pose.orientation );
 	} else {
-		movementAxis = QuatFromXr( GetPose( XR_MOVE_DIR_HAND, referenceSpace, time ).second.orientation );
+		poseInput.movementAxis = QuatFromXr( GetPose( XR_MOVE_DIR_HAND, referenceSpace, time ).second.orientation );
 	}
+
+	auto frobHandState = GetPose( XR_AIM, referenceSpace, time );
+	poseInput.frobHandAxis = QuatFromXr( frobHandState.second.orientation );
+	poseInput.frobHandPos = Vec3FromXr( frobHandState.second.position );
 
 	auto menuState = GetBool( XR_MENU_OPEN );
 	if ( menuState.first ) {
