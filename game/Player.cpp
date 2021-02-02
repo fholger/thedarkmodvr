@@ -8657,6 +8657,15 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) 
 	}
 }
 
+void idPlayer::GetFrobPos( idVec3 &origin, idMat3 &axis ) const {
+	if ( vr_useMotionControllers.GetBool() ) {
+		origin = GetEyePosition() + usercmd.frobPos * actualViewAngles.ToMat3();
+		axis = ( usercmd.frobAxis * actualViewAngles.ToQuat() ).ToMat3();
+	} else {
+		GetViewPos( origin, axis );
+	}
+}
+
 /*
 ===============
 idPlayer::CalculateFirstPersonView

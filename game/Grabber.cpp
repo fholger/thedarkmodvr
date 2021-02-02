@@ -389,7 +389,7 @@ void CGrabber::Update( idPlayer *player, bool hold, bool preservePosition )
 	/*if( playerPhys->OnRope() || playerPhys->OnLadder() )
 		goto Quit;*/
 
-	player->GetViewPos( viewPoint, viewAxis );
+	player->GetFrobPos( viewPoint, viewAxis );
 
 	// if no entity is currently selected for dragging, start grabbing the frobbed entity
 	if ( !m_dragEnt.GetEntity() ) 
@@ -599,7 +599,7 @@ void CGrabber::StartDrag( idPlayer *player, idEntity *newEnt, int bodyID, bool p
 	StopDrag();
 	m_EquippedEnt = NULL;
 
-	player->GetViewPos( viewPoint, viewAxis );
+	player->GetFrobPos( viewPoint, viewAxis );
 
 	// If an entity was not explictly passed in, use the frob entity
 	if ( !newEnt ) 
@@ -790,7 +790,7 @@ void CGrabber::ManipulateObject( idPlayer *player ) {
 	idVec3 viewPoint;
 	idMat3 viewAxis;
 
-	player->GetViewPos( viewPoint, viewAxis );
+	player->GetFrobPos( viewPoint, viewAxis );
 
 	idEntity *ent;
 	idVec3 angularVelocity;

@@ -649,6 +649,7 @@ public:
 	bool					CanGreet(); // grayman #3338
 
 	void					GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles = false ) const;
+	void					GetFrobPos( idVec3 &origin, idMat3 &axis ) const;
 	void					OffsetThirdPersonView( float angle, float range, float height, bool clip );
 
 	bool					Give( const char *statname, const char *value );
