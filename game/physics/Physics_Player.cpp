@@ -5021,7 +5021,8 @@ void idPhysics_Player::PerformMantle()
 	m_mantledEntityID = 0;
 
 	// Forward vector is direction player is looking
-	idVec3 forward = viewAngles.ToForward();
+	auto finalMoveAngles = vr_useMotionControllers.GetBool() ? (command.movementAxis * actualViewAngles.ToQuat()).ToAngles() : viewAngles;
+	idVec3 forward = finalMoveAngles.ToForward();
 	forward.Normalize();
 
 	// We use gravity alot here...
