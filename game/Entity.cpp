@@ -970,6 +970,9 @@ idEntity::idEntity()
 	fromMapFile		= false;
 	renderView		= NULL;
 	cameraTarget	= NULL;
+	cameraFovX		= 0;
+	cameraFovY		= 0;
+
 	health			= 0;
 	maxHealth		= 0;
 
@@ -1564,6 +1567,9 @@ void idEntity::Spawn( void )
 
 	cameraTarget = NULL;
 	temp = spawnArgs.GetString( "cameraTarget" );
+	cameraFovX = spawnArgs.GetInt("cameraFovX", "120");
+	cameraFovY = spawnArgs.GetInt("cameraFovY", "120");
+
 	if ( temp && temp[0] ) {
 		// update the camera target
 		PostEventMS( &EV_UpdateCameraTarget, 0 );
@@ -1973,15 +1979,23 @@ idEntity::~idEntity( void )
 
 	// Tels: #2430 - If this entity is shouldered by the player, dequip it forcefully
 	//stgatilov: in case of save loading error, grabber may not exist yet
-	if (gameLocal.m_Grabber && gameLocal.m_Grabber->GetEquipped() == this)
+	if (gameLocal.m_Grabber )
 	{
-		if ( spawnArgs.GetBool("shoulderable") )
+		if ( gameLocal.m_Grabber->GetEquipped() == this ) 
 		{
-			gameLocal.Printf("Grabber: Forcefully unshouldering %s because it will be removed.\n", GetName() );
-			gameLocal.m_Grabber->UnShoulderBody(this);
+			if ( spawnArgs.GetBool("shoulderable") )
+			{
+				gameLocal.Printf("Grabber: Forcefully unshouldering %s because it will be removed.\n", GetName() );
+				gameLocal.m_Grabber->UnShoulderBody(this);
+			}
+			gameLocal.Printf("Grabber: Forcefully dequipping %s because it will be removed.\n", GetName() );
+			gameLocal.m_Grabber->Forget(this);
 		}
-		gameLocal.Printf("Grabber: Forcefully dequipping %s because it will be removed.\n", GetName() );
-		gameLocal.m_Grabber->Forget(this);
+		else if ( gameLocal.m_Grabber->GetSelected() == this )
+		{
+			//nbohr1more #1084: ensure grabber forgets held entities on removal
+			gameLocal.m_Grabber->Forget(this);
+		}
 	}
 
 	// Let each objective entity we're currently in know about our destruction
@@ -2089,7 +2103,9 @@ void idEntity::Save( idSaveGame *savefile ) const
 	savefile->WriteBool( fromMapFile );
 
 	savefile->WriteObject( cameraTarget );
-
+	savefile->WriteInt( cameraFovX );
+	savefile->WriteInt( cameraFovY );
+	
 	savefile->WriteInt( health );
 	savefile->WriteInt( maxHealth );
 
@@ -2363,6 +2379,9 @@ void idEntity::Restore( idRestoreGame *savefile )
 		// // grayman #4615 - update the camera target (will handle a NULL "cameraTarget")
 		PostEventMS( &EV_UpdateCameraTarget, 0 );
 	}
+
+	savefile->ReadInt( cameraFovX );
+	savefile->ReadInt( cameraFovY );
 
 	savefile->ReadInt( health );
 	savefile->ReadInt( maxHealth );
@@ -4498,8 +4517,8 @@ renderView_t *idEntity::GetRenderView( void ) {
 	memset( renderView, 0, sizeof( *renderView ) );
 
 	renderView->vieworg = GetPhysics()->GetOrigin();
-	renderView->fov_x = 120;
-	renderView->fov_y = 120;
+	renderView->fov_x = cameraFovX;
+	renderView->fov_y = cameraFovY;
 	renderView->viewaxis = GetPhysics()->GetAxis();
 
 	// copy global shader parms
@@ -7596,7 +7615,6 @@ idEntity::TouchTriggers
 bool idEntity::TouchTriggers( void ) const {
 	int				i, numClipModels, numEntities;
 	idClipModel *	cm;
-	idClipModel *	clipModels[ MAX_GENTITIES ];
 	idEntity *		ent;
 	trace_t			trace;
 
@@ -7604,7 +7622,8 @@ bool idEntity::TouchTriggers( void ) const {
 	trace.endpos = GetPhysics()->GetOrigin();
 	trace.endAxis = GetPhysics()->GetAxis();
 
-	numClipModels = gameLocal.clip.ClipModelsTouchingBounds( GetPhysics()->GetAbsBounds(), CONTENTS_TRIGGER, clipModels, MAX_GENTITIES );
+	idClip_ClipModelList clipModels;
+	numClipModels = gameLocal.clip.ClipModelsTouchingBounds( GetPhysics()->GetAbsBounds(), CONTENTS_TRIGGER, clipModels );
 	numEntities = 0;
 
 	for ( i = 0; i < numClipModels; i++ ) {
@@ -11895,7 +11914,7 @@ void idEntity::Event_Frob()
 	if (player != NULL)
 	{
 		// Let the player frob this entity.
-		player->PerformFrob(EPressed, this);
+		player->PerformFrob(EPressed, this, false);
 	}
 }
 

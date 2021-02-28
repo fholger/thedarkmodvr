@@ -853,9 +853,8 @@ void CFrobDoor::FindDoubleDoor()
 	   which doesn't rely on clipmodels.
 	*/
 
-	for ( int i = 0; i < MAX_GENTITIES; ++i )
+	for( idEntity *ent = gameLocal.spawnedEntities.Next(); ent != NULL; ent = ent->spawnNode.Next() )
 	{
-		idEntity* ent = gameLocal.entities[i];
 		if ( !ent )
 		{
 			continue;	// skip nulls
@@ -886,12 +885,12 @@ void CFrobDoor::FindDoubleDoor()
 	}
 	// end of new code
 #else // old code
-	idClipModel* clipModelList[MAX_GENTITIES];
+	idClip_ClipModelList clipModelList;
 
 	idBounds clipBounds = physicsObj.GetAbsBounds();
 	clipBounds.ExpandSelf( 10.0f );
 
-	int numListedClipModels = gameLocal.clip.ClipModelsTouchingBounds( clipBounds, CONTENTS_SOLID, clipModelList, MAX_GENTITIES );
+	int numListedClipModels = gameLocal.clip.ClipModelsTouchingBounds( clipBounds, CONTENTS_SOLID, clipModelList );
 
 	for ( int i = 0 ; i < numListedClipModels ; i++ )
 	{

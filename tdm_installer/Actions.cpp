@@ -28,58 +28,54 @@ static std::vector<std::string> CollectTdmZipPaths(const std::string &installDir
 	std::vector<std::string> lastInstallZips = g_state->_lastInstall.GetOwnedZips();
 
 	std::vector<std::string> res;
-	auto allPaths = stdext::recursive_directory_enumerate(installDir);
+	std::vector<std::string> allPaths = ZipSync::EnumerateFilesInDirectory(installDir);
 	for (const auto &entry : allPaths) {
-		if (stdext::is_regular_file(entry)) {
-			std::string absPath = entry.string();
-			std::string relPath = ZipSync::PathAR::FromAbs(absPath, installDir).rel;
-			bool managed = false;
+		std::string relPath = entry;
+		std::string absPath = (stdext::path(installDir) / entry).string();
+		bool managed = false;
 
-			//common categories:
-			if (stdext::istarts_with(relPath, "tdm_") && stdext::iends_with(relPath, ".pk4"))
-				managed = true;		//e.g. tdm_ai_base01.pk4
-			if (stdext::istarts_with(relPath, "tdm_") && stdext::iends_with(relPath, ".zip"))
-				managed = true;		//e.g. tdm_shared_stuff.zip
-			if (stdext::istarts_with(relPath, "fms/tdm_") && stdext::iends_with(relPath, ".pk4"))
-				managed = true;		//e.g. fms/tdm_training_mission/tdm_training_mission.pk4
+		//common categories:
+		if (stdext::istarts_with(relPath, "tdm_") && stdext::iends_with(relPath, ".pk4"))
+			managed = true;		//e.g. tdm_ai_base01.pk4
+		if (stdext::istarts_with(relPath, "tdm_") && stdext::iends_with(relPath, ".zip"))
+			managed = true;		//e.g. tdm_shared_stuff.zip
+		if (stdext::istarts_with(relPath, "fms/tdm_") && stdext::iends_with(relPath, ".pk4"))
+			managed = true;		//e.g. fms/tdm_training_mission/tdm_training_mission.pk4
 
-			//hardcoded prepackaged FMs:
-			if (stdext::istarts_with(relPath, "fms/newjob/") && stdext::iends_with(relPath, ".pk4"))
-				managed = true;		//e.g. fms/newjob/newjob.pk4
-			if (stdext::istarts_with(relPath, "fms/stlucia/") && stdext::iends_with(relPath, ".pk4"))
-				managed = true;		//e.g. fms/stlucia/stlucia.pk4
-			if (stdext::istarts_with(relPath, "fms/saintlucia/") && stdext::iends_with(relPath, ".pk4"))
-				managed = true;		//e.g. fms/saintlucia/saintlucia.pk4
-			if (stdext::istarts_with(relPath, "fms/training_mission/") && stdext::iends_with(relPath, ".pk4"))
-				managed = true;		//e.g. fms/training_mission/training_mission.pk4
+		//hardcoded prepackaged FMs:
+		if (stdext::istarts_with(relPath, "fms/newjob/") && stdext::iends_with(relPath, ".pk4"))
+			managed = true;		//e.g. fms/newjob/newjob.pk4
+		if (stdext::istarts_with(relPath, "fms/stlucia/") && stdext::iends_with(relPath, ".pk4"))
+			managed = true;		//e.g. fms/stlucia/stlucia.pk4
+		if (stdext::istarts_with(relPath, "fms/saintlucia/") && stdext::iends_with(relPath, ".pk4"))
+			managed = true;		//e.g. fms/saintlucia/saintlucia.pk4
+		if (stdext::istarts_with(relPath, "fms/training_mission/") && stdext::iends_with(relPath, ".pk4"))
+			managed = true;		//e.g. fms/training_mission/training_mission.pk4
 
-			for (const auto &s : lastInstallZips)
-				if (relPath == s)
-					managed = true;	//managed by last install
+		for (const auto &s : lastInstallZips)
+			if (relPath == s)
+				managed = true;	//managed by last install
 
-			if (managed)
-				res.push_back(absPath);
-		}
+		if (managed)
+			res.push_back(absPath);
 	}
 	return res;
 }
 
 static std::vector<std::string> CollectFilesInList(const std::string &installDir, const std::vector<std::string> &filenames) {
 	std::vector<std::string> res;
-	auto allPaths = stdext::recursive_directory_enumerate(installDir);
+	std::vector<std::string> allPaths = ZipSync::EnumerateFilesInDirectory(installDir);
 	for (const auto &entry : allPaths) {
-		if (stdext::is_regular_file(entry)) {
-			std::string absPath = entry.string();
-			std::string relPath = ZipSync::PathAR::FromAbs(absPath, installDir).rel;
+		std::string relPath = entry;
+		std::string absPath = (stdext::path(installDir) / entry).string();
 
-			bool matches = false;
-			for (const auto &fn : filenames)
-				if (relPath == fn)
-					matches = true;
+		bool matches = false;
+		for (const auto &fn : filenames)
+			if (relPath == fn)
+				matches = true;
 
-			if (matches)
-				res.push_back(absPath);
-		}
+		if (matches)
+			res.push_back(absPath);
 	}
 	return res;
 }
@@ -177,28 +173,42 @@ std::vector<std::string> Actions::CheckSpaceAndPermissions(const std::string &in
 	fclose(f);
 	stdext::remove(checkPath);
 
-	g_logger->infof("Checking for free space at %s", lastExistingDir.c_str());
-	uint64_t freeSpace = OsUtils::GetAvailableDiskSpace(lastExistingDir) >> 20;
-	ZipSyncAssertF(freeSpace >= TDM_INSTALLER_FREESPACE_MINIMUM, 
-		"Only %0.0lf MB of free space is available in installation directory.\n"
-		"Installer surely won't work without at least %0.0lf MB of free space!",
-		freeSpace / 1.0, TDM_INSTALLER_FREESPACE_MINIMUM / 1.0
-	);
-	if (freeSpace < TDM_INSTALLER_FREESPACE_RECOMMENDED) {
-		warnings.push_back(ZipSync::formatMessage(
-			"Only %0.2lf GB of free space is available in installation directory.\n"
-			"Installation or update can fail due to lack of space.\n"
-			"Better free at least %0.2lf GB and restart updater.\n",
-			freeSpace / 1024.0, TDM_INSTALLER_FREESPACE_RECOMMENDED / 1024.0
-		));
+	//filesystem::space returns free space module 2^32 bytes on 32-bit Linux
+	//so we have to disable free space check for it
+	//see also: https://forums.thedarkmod.com/index.php?/topic/20460-new-tdm_installer-and-dev-builds/&do=findComment&comment=456147
+	bool isLinux32 = false;
+#ifndef _WIN32
+	if (sizeof(void*) == 4)
+		isLinux32 = true;
+#endif
+
+	if (!isLinux32) {
+		g_logger->infof("Checking for free space at %s", lastExistingDir.c_str());
+		uint64_t freeSpace = OsUtils::GetAvailableDiskSpace(lastExistingDir) >> 20;
+		ZipSyncAssertF(freeSpace >= TDM_INSTALLER_FREESPACE_MINIMUM, 
+			"Only %0.0lf MB of free space is available in installation directory.\n"
+			"Installer surely won't work without at least %0.0lf MB of free space!",
+			freeSpace / 1.0, TDM_INSTALLER_FREESPACE_MINIMUM / 1.0
+		);
+		if (freeSpace < TDM_INSTALLER_FREESPACE_RECOMMENDED) {
+			warnings.push_back(ZipSync::formatMessage(
+				"Only %0.2lf GB of free space is available in installation directory.\n"
+				"Installation or update can fail due to lack of space.\n"
+				"Better free at least %0.2lf GB and restart updater.\n",
+				freeSpace / 1024.0, TDM_INSTALLER_FREESPACE_RECOMMENDED / 1024.0
+			));
+		}
 	}
+
 	return warnings;
 }
 
 void Actions::StartLogFile() {
 	//from now on, write logs to a logfile in CWD
 	delete g_logger;
-	g_logger = new LoggerTdm();
+	auto myLogger = new LoggerTdm();
+	g_logger = myLogger;
+	myLogger->Init();
 	g_logger->infof("Install directory: %s", OsUtils::GetCwd().c_str());
 }
 
@@ -359,30 +369,33 @@ void Actions::ScanInstallDirectoryIfNecessary(bool force, ZipSync::ProgressIndic
 		g_logger->infof("Local manifest read successfully");
 
 		g_logger->infof("");
-		return;
+	}
+	else {
+		g_logger->infof("Installation currently contains of %d TDM-owned zips", managedZips.size());
+		uint64_t totalSize = 0;
+		for (const std::string &mzip : managedZips) {
+			g_logger->infof("  %s", mzip.c_str());
+			totalSize += ZipSync::SizeOfFile(mzip);
+		}
+		g_logger->infof("Total size of managed zips: %0.0lf MB", totalSize * 1e-6);
+
+		g_logger->infof("Analysing the archives");
+		ZipSync::Manifest manifest = ZipSync::DoAnalyze(root, managedZips, true, 1, progress);
+		g_logger->infof("Saving results of analysis to manifest file");
+		ZipSync::WriteIniFile((root + "/manifest.iniz").c_str(), manifest.WriteToIni());
+		g_state->_localManifest = std::move(manifest);
+
+		g_logger->infof("Saving current scan at %s", TDM_INSTALLER_LASTSCAN_PATH);
+		ScanState nowScan = ScanState::ScanZipSet(managedZipsAndMani, root);
+		ZipSync::IniData ini = nowScan.WriteToIni();
+		stdext::create_directories(stdext::path(TDM_INSTALLER_LASTSCAN_PATH).parent_path());
+		ZipSync::WriteIniFile(TDM_INSTALLER_LASTSCAN_PATH, ini);
+
+		g_logger->infof("");
 	}
 
-	g_logger->infof("Installation currently contains of %d TDM-owned zips", managedZips.size());
-	uint64_t totalSize = 0;
-	for (const std::string &mzip : managedZips) {
-		g_logger->infof("  %s", mzip.c_str());
-		totalSize += ZipSync::SizeOfFile(mzip);
-	}
-	g_logger->infof("Total size of managed zips: %0.0lf MB", totalSize * 1e-6);
-
-	g_logger->infof("Analysing the archives");
-	ZipSync::Manifest manifest = ZipSync::DoAnalyze(root, managedZips, true, 1, progress);
-	g_logger->infof("Saving results of analysis to manifest file");
-	ZipSync::WriteIniFile((root + "/manifest.iniz").c_str(), manifest.WriteToIni());
-	g_state->_localManifest = std::move(manifest);
-
-	g_logger->infof("Saving current scan at %s", TDM_INSTALLER_LASTSCAN_PATH);
-	ScanState nowScan = ScanState::ScanZipSet(managedZipsAndMani, root);
-	ZipSync::IniData ini = nowScan.WriteToIni();
-	stdext::create_directories(stdext::path(TDM_INSTALLER_LASTSCAN_PATH).parent_path());
-	ZipSync::WriteIniFile(TDM_INSTALLER_LASTSCAN_PATH, ini);
-
-	g_logger->infof("");
+	std::string message = OsUtils::CanModifyFiles(managedZipsAndMani, false);
+	ZipSyncAssertF(message == "", "%s.\nPlease make sure no TheDarkMod-related programs are running and try again.", message.c_str());
 }
 
 Actions::VersionInfo Actions::RefreshVersionInfo(const std::string &targetVersion, const std::string &customManifestUrl, bool bitwiseExact, ZipSync::ProgressIndicator *progress) {
@@ -731,13 +744,8 @@ void Actions::PerformInstallFinalize(ZipSync::ProgressIndicator *progress) {
 	if (progress)
 		progress->Update(0.95, "Renaming config file...");
 	if (stdext::is_regular_file(TDM_DARKMOD_CFG_FILENAME)) {
-		time_t timeval = time(0);
-		//note: use UTC time to avoid any timezone troubles
-		auto *tm = gmtime(&timeval);
-		char filename[1024] = {0};
-		int len = strftime(filename, sizeof(filename), TDM_DARKMOD_CFG_OLD_FORMAT, tm);
-		ZipSyncAssertF(len > 0 && len < sizeof(filename)-1, "Failed to format TDM config filename with datetime (%d)", len);
-		g_logger->infof("Renaming %s to %s...", TDM_DARKMOD_CFG_FILENAME, filename);
+		std::string filename = FormatFilenameWithDatetime(TDM_DARKMOD_CFG_OLD_FORMAT, "TDM config");
+		g_logger->infof("Renaming %s to %s...", TDM_DARKMOD_CFG_FILENAME, filename.c_str());
 		if (stdext::is_regular_file(filename))
 			g_logger->infof("Failed to rename: destination file already exists.");
 		else

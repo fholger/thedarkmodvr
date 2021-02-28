@@ -5410,9 +5410,9 @@ void idPhysics_Player::UpdateLeanAngle (float deltaLeanTiltDegrees, float deltaL
 				}
 				else
 				{
-					idEntity* entityList[MAX_GENTITIES];
+					idClip_EntityList entityList;
 					int num;
-					num = gameLocal.EntitiesWithinRadius(player->GetEyePosition(), PEEK_MAX_DIST, entityList, MAX_GENTITIES);
+					num = gameLocal.EntitiesWithinRadius(player->GetEyePosition(), PEEK_MAX_DIST, entityList);
 					for ( int i = 0 ; i < num ; i++ )
 					{
 						idEntity *candidate = entityList[i];
@@ -5878,11 +5878,11 @@ void idPhysics_Player::UpdateLean( void ) // grayman #4882 - expanded to handle 
 			/** More precise test (Not currently used)
 
 			int numEnts = 0;
-			idEntity *ents[MAX_GENTITIES];
 			idEntity *ent = NULL;
 			bool bMatchedDoor(false);
 
-			numEnts = gameLocal.clip.EntitiesTouchingBounds( TestBounds, CONTENTS_SOLID, ents, MAX_GENTITIES);
+			idClip_EntityList ents;
+			numEnts = gameLocal.clip.EntitiesTouchingBounds( TestBounds, CONTENTS_SOLID, ents );
 			for( int i=0; i < numEnts; i++ )
 			{
 			if( ents[i] == (idEntity *) door )

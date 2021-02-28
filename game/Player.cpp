@@ -209,6 +209,8 @@ const idEventDef EV_Player_ObjectiveCompUnlatch( "objectiveCompUnlatch", EventAr
 		"Unlatch an irreversible objective component that has latched into a state");
 
 const idEventDef EV_Player_SetObjectiveVisible( "setObjectiveVisible", EventArgs('d', "ObjNum", "", 'd', "val", "1 for true, 0 for false"), EV_RETURNS_VOID, "Sets objective visibility.");
+const idEventDef EV_Player_GetObjectiveVisible("getObjectiveVisible", EventArgs('d', "ObjNum", "Starts counting at 1"), 'd', "Returns the current visibility of the objective with the number ObjNum.");
+
 const idEventDef EV_Player_SetObjectiveOptional( "setObjectiveOptional", EventArgs('d', "ObjNum", "", 'd', "val", "1 for true, 0 for false"), EV_RETURNS_VOID, "Sets objective mandatory." );
 const idEventDef EV_Player_SetObjectiveOngoing( "setObjectiveOngoing", EventArgs('d', "ObjNum", "", 'd', "val", "1 for true, 0 for false"), EV_RETURNS_VOID, "Sets objective ongoing." );
 
@@ -411,6 +413,7 @@ CLASS_DECLARATION( idActor, idPlayer )
 	EVENT( EV_Player_ObjectiveUnlatch,		idPlayer::Event_ObjectiveUnlatch )
 	EVENT( EV_Player_ObjectiveCompUnlatch,	idPlayer::Event_ObjectiveComponentUnlatch )
 	EVENT( EV_Player_SetObjectiveVisible,	idPlayer::Event_SetObjectiveVisible )
+	EVENT( EV_Player_GetObjectiveVisible,	idPlayer::Event_GetObjectiveVisible )
 	EVENT( EV_Player_SetObjectiveOptional,	idPlayer::Event_SetObjectiveOptional )
 	EVENT( EV_Player_SetObjectiveOngoing,	idPlayer::Event_SetObjectiveOngoing )
 	EVENT( EV_Player_SetObjectiveEnabling,	idPlayer::Event_SetObjectiveEnabling )
@@ -668,22 +671,13 @@ idPlayer::idPlayer() :
 	ready					= false;
 	leader					= false;
 	lastSpectateChange		= 0;
-	lastTeleFX				= -9999;
 	weaponCatchup			= false;
 	lastSnapshotSequence	= 0;
-
-	MPAim					= -1;
-	lastMPAim				= -1;
-	lastMPAimTime			= 0;
-	MPAimFadeTime			= 0;
-	MPAimHighlight			= false;
 
 	spawnedTime				= 0;
 	lastManOver				= false;
 	lastManPlayAgain		= false;
 	lastManPresent			= false;
-
-	isTelefragged			= false;
 
 	isLagged				= false;
 	isChatting				= false;
@@ -1003,7 +997,6 @@ void idPlayer::Init( void ) {
 	privateCameraView	= NULL;
 
 	lastSpectateChange	= 0;
-	lastTeleFX			= -9999;
 
 	hiddenWeapon		= false;
 	tipUp				= false;
@@ -1014,12 +1007,6 @@ void idPlayer::Init( void ) {
 	SetPrivateCameraView( NULL );
 
 	lastSnapshotSequence	= 0;
-
-	MPAim				= -1;
-	lastMPAim			= -1;
-	lastMPAimTime		= 0;
-	MPAimFadeTime		= 0;
-	MPAimHighlight		= false;
 
 	if ( hud ) {
 		hud->HandleNamedEvent( "aim_clear" );
@@ -1048,8 +1035,8 @@ void idPlayer::Spawn( void )
 	idStr		temp;
 	idBounds	bounds;
 
-	if ( entityNumber >= MAX_CLIENTS ) {
-		gameLocal.Error( "entityNum > MAX_CLIENTS for player.  Player may only be spawned with a client." );
+	if ( entityNumber >= 1) {
+		gameLocal.Error( "entityNum > 1 for player.  Player may only be spawned with a client." );
 	}
 
 	// allow thinking during cinematics
@@ -1421,7 +1408,7 @@ bool idPlayer::WaitUntilReady()
 	oldButtons = usercmd.buttons;
 
 	// grab out usercmd
-	usercmd = gameLocal.usercmds[ entityNumber ];
+	usercmd = gameLocal.usercmds;
 	buttonMask &= usercmd.buttons;
 	usercmd.buttons &= ~buttonMask;
 
@@ -2238,7 +2225,6 @@ void idPlayer::Save( idSaveGame *savefile ) const {
 	savefile->WriteBool( respawning );
 	savefile->WriteBool( leader );
 	savefile->WriteInt( lastSpectateChange );
-	savefile->WriteInt( lastTeleFX );
 
 	// Commented out by Dram. TDM does not use stamina
 	//savefile->WriteFloat( pm_stamina.GetFloat() );
@@ -2571,7 +2557,6 @@ void idPlayer::Restore( idRestoreGame *savefile ) {
 	savefile->ReadBool( respawning );
 	savefile->ReadBool( leader );
 	savefile->ReadInt( lastSpectateChange );
-	savefile->ReadInt( lastTeleFX );
 
 	// set the pm_ cvars
 	const idKeyValue	*kv;
@@ -2853,7 +2838,6 @@ void idPlayer::SpawnToPoint( const idVec3 &spawn_origin, const idAngles &spawn_a
 	respawning			= false;
 	lastManOver			= false;
 	lastManPlayAgain	= false;
-	isTelefragged		= false;
 }
 
 /*
@@ -2864,7 +2848,7 @@ Saves any inventory and player stats when changing levels.
 ===============
 */
 void idPlayer::SavePersistantInfo( void ) {
-	idDict &playerInfo = gameLocal.persistentPlayerInfo[entityNumber];
+	idDict &playerInfo = gameLocal.persistentPlayerInfo;
 
 	playerInfo.Clear();
 
@@ -2902,7 +2886,7 @@ idPlayer::GetUserInfo
 ================
 */
 idDict *idPlayer::GetUserInfo( void ) {
-	return &gameLocal.userInfo[ entityNumber ];
+	return &gameLocal.userInfo;
 }
 
 /*
@@ -4143,26 +4127,6 @@ void idPlayer::Weapon_Combat( void ) {
 
 /*
 ===============
-idPlayer::Weapon_NPC
-===============
-*/
-#if 0
-void idPlayer::Weapon_NPC( void ) {
-	if ( idealWeapon != currentWeapon ) {
-		Weapon_Combat();
-	}
-	StopFiring();
-	weapon.GetEntity()->LowerWeapon();
-
-	if ( ( usercmd.buttons & BUTTON_ATTACK ) && !( oldButtons & BUTTON_ATTACK ) ) {
-		buttonMask |= BUTTON_ATTACK;
-		focusCharacter->TalkTo( this );
-	}
-}
-#endif
-
-/*
-===============
 idPlayer::LowerWeapon
 ===============
 */
@@ -4673,232 +4637,6 @@ void idPlayer::ClearPushEntity() // grayman #4603 - clear the entity the player 
 		static_cast<idPhysics_Player*>(GetPhysics())->ClearPushEntity();
 	}
 }
-
-/*
-================
-idPlayer::ClearFocus
-
-Clears the focus cursor
-================
-*/
-#if 0
-void idPlayer::ClearFocus( void ) {
-	focusCharacter	= NULL;
-	focusGUIent		= NULL;
-	focusUI			= NULL;
-	focusVehicle	= NULL;
-	talkCursor		= 0;
-}
-#endif
-
-/*
-================
-idPlayer::UpdateFocus
-
-Searches nearby entities for interactive guis, possibly making one of them
-the focus and sending it a mouse move event
-================
-*/
-#if 0
-void idPlayer::UpdateFocus( void ) {
-	idClipModel *clipModelList[ MAX_GENTITIES ];
-	idClipModel *clip;
-	int			listedClipModels;
-	idEntity	*oldFocus;
-	idEntity	*ent;
-	idUserInterface *oldUI;
-	idAI		*oldChar;
-	int			oldTalkCursor;
-	idAFEntity_Vehicle *oldVehicle;
-	int			i;
-	idVec3		start, end;
-	bool		allowFocus;
-	const char *command;
-	trace_t		trace;
-	guiPoint_t	pt;
-	sysEvent_t	ev;
-	idUserInterface *ui;
-
-	if ( gameLocal.inCinematic ) {
-		return;
-	}
-
-	// only update the focus character when attack button isn't pressed so players
-	// can still chainsaw NPC's
-	if ( gameLocal.isMultiplayer || ( !focusCharacter && ( usercmd.buttons & BUTTON_ATTACK ) ) ) {
-		allowFocus = false;
-	} else {
-		allowFocus = true;
-	}
-
-	oldFocus		= focusGUIent;
-	oldUI			= focusUI;
-	oldChar			= focusCharacter;
-	oldTalkCursor	= talkCursor;
-	oldVehicle		= focusVehicle;
-
-	if ( focusTime <= gameLocal.time ) {
-		ClearFocus();
-	}
-
-	// don't let spectators interact with GUIs
-	if ( spectating ) {
-		return;
-	}
-
-	start = GetEyePosition();
-	end = start + viewAngles.ToForward() * 80.0f;
-
-	// player identification -> names to the hud
-	if ( gameLocal.isMultiplayer && entityNumber == gameLocal.localClientNum ) {
-		idVec3 end = start + viewAngles.ToForward() * 768.0f;
-		gameLocal.clip.TracePoint( trace, start, end, MASK_SHOT_BOUNDINGBOX, this );
-		int iclient = -1;
-		if ( ( trace.fraction < 1.0f ) && ( trace.c.entityNum < MAX_CLIENTS ) ) {
-			iclient = trace.c.entityNum;
-		}
-		if ( MPAim != iclient ) {
-			lastMPAim = MPAim;
-			MPAim = iclient;
-			lastMPAimTime = gameLocal.realClientTime;
-		}
-	}
-
-	idBounds bounds( start );
-	bounds.AddPoint( end );
-
-	listedClipModels = gameLocal.clip.ClipModelsTouchingBounds( bounds, -1, clipModelList, MAX_GENTITIES );
-
-	// no pretense at sorting here, just assume that there will only be one active
-	// gui within range along the trace
-	for ( i = 0; i < listedClipModels; i++ ) {
-		clip = clipModelList[ i ];
-		ent = clip->GetEntity();
-
-		if ( ent->IsHidden() ) {
-			continue;
-		}
-
-		if ( allowFocus ) {
-			if ( ent->IsType( idAFAttachment::Type ) ) {
-				idEntity *body = static_cast<idAFAttachment *>( ent )->GetBody();
-				if ( body && body->IsType( idAI::Type ) && ( static_cast<idAI *>( body )->GetTalkState() >= TALK_OK ) ) {
-					gameLocal.clip.TracePoint( trace, start, end, MASK_SHOT_RENDERMODEL, this );
-					if ( ( trace.fraction < 1.0f ) && ( trace.c.entityNum == ent->entityNumber ) ) {
-						ClearFocus();
-						focusCharacter = static_cast<idAI *>( body );
-						talkCursor = 1;
-						focusTime = gameLocal.time + FOCUS_TIME;
-						break;
-					}
-				}
-				continue;
-			}
-
-			if ( ent->IsType( idAI::Type ) ) {
-				if ( static_cast<idAI *>( ent )->GetTalkState() >= TALK_OK ) {
-					gameLocal.clip.TracePoint( trace, start, end, MASK_SHOT_RENDERMODEL, this );
-					if ( ( trace.fraction < 1.0f ) && ( trace.c.entityNum == ent->entityNumber ) ) {
-						ClearFocus();
-						focusCharacter = static_cast<idAI *>( ent );
-						talkCursor = 1;
-						focusTime = gameLocal.time + FOCUS_TIME;
-						break;
-					}
-				}
-				continue;
-			}
-
-			if ( ent->IsType( idAFEntity_Vehicle::Type ) ) {
-				gameLocal.clip.TracePoint( trace, start, end, MASK_SHOT_RENDERMODEL, this );
-				if ( ( trace.fraction < 1.0f ) && ( trace.c.entityNum == ent->entityNumber ) ) {
-					ClearFocus();
-					focusVehicle = static_cast<idAFEntity_Vehicle *>( ent );
-					focusTime = gameLocal.time + FOCUS_TIME;
-					break;
-				}
-				continue;
-			}
-		}
-
-		if ( !ent->GetRenderEntity() || !ent->GetRenderEntity()->gui[ 0 ] || !ent->GetRenderEntity()->gui[ 0 ]->IsInteractive() ) {
-			continue;
-		}
-
-		if ( ent->spawnArgs.GetBool( "inv_item" ) ) {
-			// don't allow guis on pickup items focus
-			continue;
-		}
-
-		pt = gameRenderWorld->GuiTrace( ent->GetModelDefHandle(), start, end );
-		if ( pt.x != -1 ) {
-			// we have a hit
-			renderEntity_t *focusGUIrenderEntity = ent->GetRenderEntity();
-			if ( !focusGUIrenderEntity ) {
-				continue;
-			}
-
-			if ( pt.guiId == 1 ) {
-				ui = focusGUIrenderEntity->gui[ 0 ];
-			} else if ( pt.guiId == 2 ) {
-				ui = focusGUIrenderEntity->gui[ 1 ];
-			} else {
-				ui = focusGUIrenderEntity->gui[ 2 ];
-			}
-			
-			if ( ui == NULL ) {
-				continue;
-			}
-
-			ClearFocus();
-			focusGUIent = ent;
-			focusUI = ui;
-
-			// clamp the mouse to the corner
-			ev = sys->GenerateMouseMoveEvent( -2000, -2000 );
-			command = focusUI->HandleEvent( &ev, gameLocal.time );
- 			HandleGuiCommands( focusGUIent, command );
-
-			// move to an absolute position
-			ev = sys->GenerateMouseMoveEvent( static_cast<int>(pt.x) * SCREEN_WIDTH, static_cast<int>(pt.y) * SCREEN_HEIGHT );
-			command = focusUI->HandleEvent( &ev, gameLocal.time );
-			HandleGuiCommands( focusGUIent, command );
-			focusTime = gameLocal.time + FOCUS_GUI_TIME;
-			break;
-		}
-	}
-
-	if ( focusGUIent && focusUI ) {
-		if ( !oldFocus || oldFocus != focusGUIent ) {
-			command = focusUI->Activate( true, gameLocal.time );
-			HandleGuiCommands( focusGUIent, command );
-			StartSound( "snd_guienter", SND_CHANNEL_ANY, 0, false, NULL );
-			// HideTip();
-			// HideObjective();
-		}
-	} else if ( oldFocus && oldUI ) {
-		command = oldUI->Activate( false, gameLocal.time );
-		HandleGuiCommands( oldFocus, command );
-		StartSound( "snd_guiexit", SND_CHANNEL_ANY, 0, false, NULL );
-	}
-
-	if ( cursor && ( oldTalkCursor != talkCursor ) ) {
-		cursor->SetStateInt( "talkcursor", talkCursor );
-	}
-
-	if ( oldChar != focusCharacter && hud ) {
-		if ( focusCharacter ) {
-			hud->SetStateString( "npc", focusCharacter->spawnArgs.GetString( "npc_name", "Joe" ) );
-			hud->HandleNamedEvent( "showNPC" );
-			// HideTip();
-			// HideObjective();
-		} else {
-			hud->SetStateString( "npc", "" );
-			hud->HandleNamedEvent( "hideNPC" );
-		}
-	}
-}
-#endif
 
 /*
 =================
@@ -5637,7 +5375,6 @@ void idPlayer::Spectate( bool spectate ) {
 		Event_DisableWeapon();
 		if ( hud ) {
 			hud->HandleNamedEvent( "aim_clear" );
-			MPAimFadeTime = 0;
 		}
 	} else {
 		// put everything back together again
@@ -7446,7 +7183,7 @@ void idPlayer::Think( void )
 
 	// grab out usercmd
 	usercmd_t oldCmd = usercmd;
-	usercmd = gameLocal.usercmds[ entityNumber ];
+	usercmd = gameLocal.usercmds;
 	buttonMask &= usercmd.buttons;
 	usercmd.buttons &= ~buttonMask;
 
@@ -8165,8 +7902,6 @@ void idPlayer::Damage( idEntity *inflictor, idEntity *attacker, const idVec3 &di
 				health = -999;
 			}
 
-			isTelefragged = damageDef->dict.GetBool( "telefrag" );
-
 			lastDmgTime = gameLocal.time;
 			Killed( inflictor, attacker, damage, dir, location );
 
@@ -8879,36 +8614,6 @@ void idPlayer::SetLastHitTime( int time ) {
 	if ( cursor ) {
 		cursor->HandleNamedEvent( "hitTime" );
 	}
-	if ( hud ) {
-		if ( MPAim != -1 ) {
-			if ( gameLocal.entities[ MPAim ] && gameLocal.entities[ MPAim ]->IsType( idPlayer::Type ) ) {
-				aimed = static_cast< idPlayer * >( gameLocal.entities[ MPAim ] );
-			}
-			assert( aimed );
-			// full highlight, no fade till loosing aim
-			hud->SetStateString( "aim_text", gameLocal.userInfo[ MPAim ].GetString( "ui_name" ) );
-			if ( aimed ) {
-				hud->SetStateFloat( "aim_color", aimed->colorBarIndex );
-			}
-			hud->HandleNamedEvent( "aim_flash" );
-			MPAimHighlight = true;
-			MPAimFadeTime = 0;
-		} else if ( lastMPAim != -1 ) {
-			if ( gameLocal.entities[ lastMPAim ] && gameLocal.entities[ lastMPAim ]->IsType( idPlayer::Type ) ) {
-				aimed = static_cast< idPlayer * >( gameLocal.entities[ lastMPAim ] );
-			}
-			assert( aimed );
-			// start fading right away
-			hud->SetStateString( "aim_text", gameLocal.userInfo[ lastMPAim ].GetString( "ui_name" ) );
-			if ( aimed ) {
-				hud->SetStateFloat( "aim_color", aimed->colorBarIndex );
-			}
-			hud->HandleNamedEvent( "aim_flash" );
-			hud->HandleNamedEvent( "aim_fade" );
-			MPAimHighlight = false;
-			MPAimFadeTime = gameLocal.realClientTime;
-		}
-	}
 }
 
 /*
@@ -9209,7 +8914,7 @@ void idPlayer::ClientPredictionThink( void ) {
 	oldFlags = usercmd.flags;
 	oldButtons = usercmd.buttons;
 
-	usercmd = gameLocal.usercmds[ entityNumber ];
+	usercmd = gameLocal.usercmds;
 
 	if ( entityNumber != gameLocal.localClientNum ) 
 	{
@@ -9261,11 +8966,6 @@ void idPlayer::ClientPredictionThink( void ) {
 		// don't allow client to move when lagged
 		Move();
 	} 
-
-#if 0
-	// update GUIs, Items, and character interactions
-	UpdateFocus();
-#endif
 
 	// service animations
 	if ( !spectating && !af.IsActive() ) {
@@ -9414,8 +9114,8 @@ void idPlayer::WriteToSnapshot( idBitMsgDelta &msg ) const {
 	msg.WriteDir( lastDamageDir, 9 );
 	msg.WriteShort( lastDamageLocation );
 	msg.WriteBits( idealWeapon, idMath::BitsForInteger( 256 ) );
-	msg.WriteBits( weapon.GetSpawnId(), 32 );
-	msg.WriteBits( spectator, idMath::BitsForInteger( MAX_CLIENTS ) );
+	msg.WriteBits( weapon.GetEntityNum(), 32 );
+	msg.WriteBits( weapon.GetSpawnNum(), 32 );
 	msg.WriteBits( lastHitToggle, 1 );
 	msg.WriteBits( weaponGone, 1 );
 	msg.WriteBits( isLagged, 1 );
@@ -9428,7 +9128,7 @@ idPlayer::ReadFromSnapshot
 ================
 */
 void idPlayer::ReadFromSnapshot( const idBitMsgDelta &msg ) {
-	int		oldHealth, newIdealWeapon, weaponSpawnId;
+	int		oldHealth, newIdealWeapon;
 	bool	newHitToggle, stateHitch;
 
 	if ( snapshotSequence - lastSnapshotSequence > 1 ) {
@@ -9449,8 +9149,8 @@ void idPlayer::ReadFromSnapshot( const idBitMsgDelta &msg ) {
 	lastDamageDir = msg.ReadDir( 9 );
 	lastDamageLocation = msg.ReadShort();
 	newIdealWeapon = msg.ReadBits( idMath::BitsForInteger( 256 ) );
-	weaponSpawnId = msg.ReadBits( 32 );
-	spectator = msg.ReadBits( idMath::BitsForInteger( MAX_CLIENTS ) );
+	int weaponEntityId = msg.ReadBits( 32 );
+	int weaponSpawnId = msg.ReadBits( 32 );
 	newHitToggle = msg.ReadBits( 1 ) != 0;
 	weaponGone = msg.ReadBits( 1 ) != 0;
 	isLagged = msg.ReadBits( 1 ) != 0;
@@ -9458,7 +9158,7 @@ void idPlayer::ReadFromSnapshot( const idBitMsgDelta &msg ) {
 
 	// no msg reading below this
 
-	if ( weapon.SetSpawnId( weaponSpawnId ) ) {
+	if ( weapon.Set( weaponEntityId, weaponSpawnId ) ) {
 		if ( weapon.GetEntity() ) {
 			// maintain ownership locally
 			weapon.GetEntity()->SetOwner( this );
@@ -10820,6 +10520,12 @@ void idPlayer::Event_SetObjectiveVisible( int ObjIndex, bool bVal )
 	gameLocal.m_MissionData->SetObjectiveVisibility(ObjIndex - 1, bVal);
 }
 
+void idPlayer::Event_GetObjectiveVisible( int ObjIndex )
+{
+	bool bVisible = gameLocal.m_MissionData->GetObjectiveVisibility( ObjIndex - 1 );
+	idThread::ReturnInt( (int) bVisible );
+}
+
 void idPlayer::Event_SetObjectiveOptional( int ObjIndex, bool bVal )
 {
 	gameLocal.m_MissionData->SetObjectiveMandatory(ObjIndex - 1, !bVal); // negate the incoming bool
@@ -11041,9 +10747,8 @@ void idPlayer::PerformFrobCheck()
 		gameRenderWorld->DebugBounds( colorBlue, frobBounds );
 	}
 
-	static idEntity* frobRangeEnts[MAX_GENTITIES];
-
-	int numFrobEnt = gameLocal.clip.EntitiesTouchingBounds(frobBounds, -1, frobRangeEnts, MAX_GENTITIES);
+	idClip_EntityList frobRangeEnts;
+	int numFrobEnt = gameLocal.clip.EntitiesTouchingBounds(frobBounds, -1, frobRangeEnts);
 
 	idVec3 vecForward = angles.ToForward();
 	float bestDot = 0;
@@ -11547,7 +11252,7 @@ CInventoryItemPtr idPlayer::AddToInventory(idEntity *ent)
 	return returnValue;
 }
 
-void idPlayer::PerformFrob(EImpulseState impulseState, idEntity* target)
+void idPlayer::PerformFrob(EImpulseState impulseState, idEntity* target, bool allowUseCurrentInvItem)
 {
 	// greebo: Don't perform frobs on hidden or NULL entities
 	if (target == NULL || target->IsHidden())
@@ -11575,13 +11280,14 @@ void idPlayer::PerformFrob(EImpulseState impulseState, idEntity* target)
 	}
 
 	// Do we allow use on frob?
-	if (cv_tdm_inv_use_on_frob.GetBool()) 
+	// stgatilov #5542: block use-on-frob when frob called from game script
+	if (allowUseCurrentInvItem && cv_tdm_inv_use_on_frob.GetBool())
 	{
 		// Check if we have a "use" relationship with the currently selected inventory item (key => door)
 		CInventoryItemPtr item = InventoryCursor()->GetCurrentItem();
 
 		// Only allow items with UseOnFrob == TRUE to be used when frobbing
-		if ( (item != NULL) && item->UseOnFrob() && highlightedEntity->CanBeUsedBy(item, true))
+		if ( item && item->UseOnFrob() && highlightedEntity && highlightedEntity->CanBeUsedBy(item, true))
 		{
 			// Try to use the item
 			bool couldBeUsed = UseInventoryItem( impulseState, item, USERCMD_MSEC, true ); // true => is frob action
@@ -11675,7 +11381,7 @@ void idPlayer::PerformFrob()
 	idEntity* frob = m_FrobEntity.GetEntity();
 
 	// Relay the function to the specialised method
-	PerformFrob(EPressed, frob);
+	PerformFrob(EPressed, frob, true);
 }
 
 void idPlayer::PerformFrobKeyRepeat(int holdTime)
@@ -11696,7 +11402,7 @@ void idPlayer::PerformFrobKeyRepeat(int holdTime)
 	}
 
 	// Relay the function to the specialised method
-	PerformFrob(ERepeat, frob);
+	PerformFrob(ERepeat, frob, true);
 }
 
 void idPlayer::PerformFrobKeyRelease(int holdTime)
@@ -11717,7 +11423,7 @@ void idPlayer::PerformFrobKeyRelease(int holdTime)
 	}
 
 	// Relay the function to the specialised method
-	PerformFrob(EReleased, frob);
+	PerformFrob(EReleased, frob, true);
 }
 
 void idPlayer::setHealthPoolTimeInterval(int newTimeInterval, float factor, int stepAmount)

@@ -1,4 +1,5 @@
 /*****************************************************************************
+/*****************************************************************************
                     The Dark Mod GPL Source Code
  
  This file is part of the The Dark Mod Source Code, originally based 
@@ -83,11 +84,9 @@ class idThread;
 class idEditEntities;
 class idLocationEntity;
 
-#define	MAX_CLIENTS				32
 // Tels: If you change this value, make sure that LUDICROUS_INDEX 
 // in renderer/RenderWorld_local.h is higher than MAX_GENTITIES
-// stgatilov: also, update definition of idEntityPtr type in game.natvis
-#define	GENTITYNUM_BITS			13
+#define	GENTITYNUM_BITS			16
 #define	MAX_GENTITIES			(1<<GENTITYNUM_BITS)
 #define	ENTITYNUM_NONE			(MAX_GENTITIES-1)
 #define	ENTITYNUM_WORLD			(MAX_GENTITIES-2)
@@ -184,12 +183,12 @@ class CSearchManager; // grayman #3857
 
 const int MAX_GAME_MESSAGE_SIZE		= 8192;
 const int MAX_ENTITY_STATE_SIZE		= 512;
-const int ENTITY_PVS_SIZE			= ((MAX_GENTITIES+31)>>5);
+//const int ENTITY_PVS_SIZE			= ((MAX_GENTITIES+31)>>5);
 const int NUM_RENDER_PORTAL_BITS	= idMath::BitsForInteger( PS_BLOCK_ALL );
 
 const float SMALL_AI_MASS		= 5.0f; // grayman #3756
 
-typedef struct entityState_s {
+/*typedef struct entityState_s {
 	int						entityNumber;
 	idBitMsg				state;
 	byte					stateBuf[MAX_ENTITY_STATE_SIZE];
@@ -201,7 +200,7 @@ typedef struct snapshot_s {
 	entityState_t *			firstEntityState;
 	int						pvs[ENTITY_PVS_SIZE];
 	struct snapshot_s *		next;
-} snapshot_t;
+} snapshot_t;*/
 
 const int MAX_EVENT_PARAM_SIZE		= 128;
 
@@ -368,15 +367,15 @@ public:
 	bool					operator==(const idEntityPtr<type>& other) const;
 
 	// synchronize entity pointers over the network
-	int						GetSpawnId( void ) const { return spawnId; }
-	bool					SetSpawnId( int id );
-	bool					UpdateSpawnId( void );
+	int						GetSpawnNum( void ) const;
+	bool					Set( int entityId, int spawnId );
 
 	bool					IsValid( void ) const;
 	type *					GetEntity( void ) const;
 	int						GetEntityNum( void ) const;
 
 private:
+	int						entityId;
 	int						spawnId;
 };
 
@@ -433,14 +432,11 @@ class idGameLocal : public idGame {
 public:
 	idDict					serverInfo;				// all the tunable parameters, like numclients, etc
 	int						numClients;				// pulled from serverInfo and verified
-	idDict					userInfo[MAX_CLIENTS];	// client specific settings
-	usercmd_t				usercmds[MAX_CLIENTS];	// client input commands
-	idDict					persistentPlayerInfo[MAX_CLIENTS];
+	idDict					userInfo;	// client specific settings
+	usercmd_t				usercmds;	// client input commands
+	idDict					persistentPlayerInfo;
 	idEntity *				entities[MAX_GENTITIES];// index to entities
 	int						spawnIds[MAX_GENTITIES];// for use in idEntityPtr
-
-	// greebo: For use in Stim/Response system (gets invalidated each frame)
-	idEntity*				srEntities[MAX_GENTITIES]; 
 
 	int						firstFreeIndex;			// first free index in the entities array
 	int						num_entities;			// current number <= MAX_GENTITIES
@@ -827,7 +823,7 @@ public:
 	idEntity *				FindTraceEntity( idVec3 start, idVec3 end, const idTypeInfo &c, const idEntity *skip ) const;
 	idEntity *				FindEntity( const char *name ) const;
 	idEntity *				FindEntityUsingDef( idEntity *from, const char *match ) const;
-	int						EntitiesWithinRadius( const idVec3 org, float radius, idEntity **entityList, int maxCount ) const;
+	int						EntitiesWithinRadius( const idVec3 org, float radius, idClip_EntityList &entityList ) const;
 
 	/**
 	* Get the entity that the player is looking at
@@ -935,7 +931,7 @@ public:
 	* @return The number of responses triggered
 	*
 	*/
-	int						DoResponseAction(const CStimPtr& stim, int numEntities, idEntity* originator, const idVec3& stimOrigin);
+	int						DoResponseAction(const CStimPtr& stim, const idClip_EntityList &srEntities, idEntity* originator, const idVec3& stimOrigin);
 
 	/**
 	 * Trace a LOS path from gas origin to a point.
@@ -1031,13 +1027,8 @@ private:
 	bool					influenceActive;		// true when a phantasm is happening
 	int						nextGibTime;
 
-	idList<int>				clientDeclRemap[MAX_CLIENTS][DECL_MAX_TYPES];
+	//int						clientPVS[ENTITY_PVS_SIZE];
 
-	entityState_t *			clientEntityStates[MAX_CLIENTS][MAX_GENTITIES];
-	int						clientPVS[MAX_CLIENTS][ENTITY_PVS_SIZE];
-	snapshot_t *			clientSnapshots[MAX_CLIENTS];
-	idBlockAlloc<entityState_t,256>entityStateAllocator;
-	idBlockAlloc<snapshot_t,64>snapshotAllocator;
 
 	idStaticList<spawnSpot_t, MAX_GENTITIES> spawnSpots;
 	idStaticList<idEntity *, MAX_GENTITIES> initialSpots;
@@ -1143,25 +1134,29 @@ extern idAnimManager		animationLib;
 
 template< class type >
 ID_INLINE idEntityPtr<type>::idEntityPtr() {
+	entityId = 0;
 	spawnId = 0;
 }
 
 template< class type >
 ID_INLINE void idEntityPtr<type>::Save( idSaveGame *savefile ) const {
+	savefile->WriteInt( entityId );
 	savefile->WriteInt( spawnId );
 }
 
 template< class type >
 ID_INLINE void idEntityPtr<type>::Restore( idRestoreGame *savefile ) {
+	savefile->ReadInt( entityId );
 	savefile->ReadInt( spawnId );
 }
 
 template< class type >
 ID_INLINE idEntityPtr<type> &idEntityPtr<type>::operator=( type *ent ) {
 	if ( ent == NULL ) {
-		spawnId = 0;
+		entityId = spawnId = 0;
 	} else {
-		spawnId = ( gameLocal.spawnIds[ent->entityNumber] << GENTITYNUM_BITS ) | ent->entityNumber;
+		entityId = ent->entityNumber;
+		spawnId = gameLocal.spawnIds[ent->entityNumber];
 	}
 	return *this;
 }
@@ -1173,14 +1168,15 @@ ID_INLINE bool idEntityPtr<type>::operator==(const idEntityPtr<type>& other) con
 }
 
 template< class type >
-ID_INLINE bool idEntityPtr<type>::SetSpawnId( int id ) {
+ID_INLINE bool idEntityPtr<type>::Set( int _entityId, int _spawnId ) {
 	// the reason for this first check is unclear:
 	// the function returning false may mean the spawnId is already set right, or the entity is missing
-	if ( id == spawnId ) {
+	if ( _spawnId == spawnId && entityId == _entityId ) {
 		return false;
 	}
-	if ( ( id >> GENTITYNUM_BITS ) == gameLocal.spawnIds[ id & ( ( 1 << GENTITYNUM_BITS ) - 1 ) ] ) {
-		spawnId = id;
+	if ( _spawnId == gameLocal.spawnIds[ _entityId ] ) {
+		entityId = _entityId;
+		spawnId = _spawnId;
 		return true;
 	}
 	return false;
@@ -1188,21 +1184,24 @@ ID_INLINE bool idEntityPtr<type>::SetSpawnId( int id ) {
 
 template< class type >
 ID_INLINE bool idEntityPtr<type>::IsValid( void ) const {
-	return ( gameLocal.spawnIds[ spawnId & ( ( 1 << GENTITYNUM_BITS ) - 1 ) ] == ( spawnId >> GENTITYNUM_BITS ) );
+	return ( gameLocal.spawnIds[ entityId ] == spawnId );
 }
 
 template< class type >
 ID_INLINE type *idEntityPtr<type>::GetEntity( void ) const {
-	int entityNum = spawnId & ( ( 1 << GENTITYNUM_BITS ) - 1 );
-	if ( gameLocal.spawnIds[ entityNum ] == ( spawnId >> GENTITYNUM_BITS ) ) {
-		return static_cast<type *>( gameLocal.entities[ entityNum ] );
+	if ( gameLocal.spawnIds[ entityId ] == spawnId ) {
+		return static_cast<type *>( gameLocal.entities[ entityId ] );
 	}
 	return NULL;
 }
 
 template< class type >
+ID_INLINE int idEntityPtr<type>::GetSpawnNum( void ) const {
+	return spawnId;
+}
+template< class type >
 ID_INLINE int idEntityPtr<type>::GetEntityNum( void ) const {
-	return ( spawnId & ( ( 1 << GENTITYNUM_BITS ) - 1 ) );
+	return entityId;
 }
 
 //============================================================================

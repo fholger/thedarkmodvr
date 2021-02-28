@@ -600,14 +600,13 @@ void idProjectile::Think( void ) {
 		{
 			// Any AI around? For AI who manage to avoid a collision with the mine, catch them here if they're close enough and moving/rotating.
 
-			idEntity* entityList[ MAX_GENTITIES ];
 			idVec3 org = GetPhysics()->GetOrigin();
 			idBounds bounds = GetPhysics()->GetAbsBounds();
 			float closeEnough = Square(23);
 
 			// get all entities touching the bounds
-
-			int numListedEntities = gameLocal.clip.EntitiesTouchingBounds( bounds, -1, entityList, MAX_GENTITIES );
+			idClip_EntityList entityList;
+			int numListedEntities = gameLocal.clip.EntitiesTouchingBounds( bounds, -1, entityList );
 
 			for ( int i = 0 ; i < numListedEntities ; i++ )
 			{
@@ -1589,7 +1588,8 @@ idProjectile::WriteToSnapshot
 ================
 */
 void idProjectile::WriteToSnapshot( idBitMsgDelta &msg ) const {
-	msg.WriteBits( owner.GetSpawnId(), 32 );
+	msg.WriteBits( owner.GetEntityNum(), 32 );
+	msg.WriteBits( owner.GetSpawnNum(), 32 );
 
 	msg.WriteBits( state, 3 );
 
@@ -1626,7 +1626,10 @@ idProjectile::ReadFromSnapshot
 void idProjectile::ReadFromSnapshot( const idBitMsgDelta &msg ) {
 	projectileState_t newState;
 
-	owner.SetSpawnId( msg.ReadBits( 32 ) );
+	int entId = msg.ReadBits( 32 );
+	int spnId = msg.ReadBits( 32 );
+	owner.Set( entId, spnId );
+
 	newState = (projectileState_t) msg.ReadBits( 3 );
 	if ( msg.ReadBits( 1 ) ) {
 		Hide();

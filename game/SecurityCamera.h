@@ -65,62 +65,115 @@ private:
 		STATE_DEAD
 	};
 
-	float					angle;
+	bool					rotate;
+	bool					stationary;
+	bool					sweeping;
+
+	bool					negativeSweep;
 	float					sweepAngle;
-	int						modelAxis;
-	bool					flipAxis;
+	float					sweepTime;
+	float					sweepSpeed;
+	float					sweepStartTime;
+	float					sweepEndTime;
+	float					percentSwept;
+
+	bool					negativeIncline;
+	float					inclineAngle;
+	float					inclineSpeed;
+	float					inclineStartTime;
+	float					inclineEndTime;
+	float					percentInclined;
+
+	float					angle;
+	float					angleTarget;
+	float					anglePos1;
+	float					anglePos2;
+	float					angleToPlayer;
+
+	float					incline;
+	float					inclineTarget;
+	float					inclinePos1;
+	float					inclineToPlayer;
+
+	bool					follow;
+	bool					following;
+	float					followSpeedMult;
+	bool					followIncline;
+	float					followTolerance;
+	float					followInclineTolerance;
+
+	float					constrainUp;
+	float					constrainDown;
+	float					constrainPositive;
+	float					constrainNegative;
+
 	float					scanDist;
 	float					scanFov;
-							
-	int						sweepStartTime;
-	int						sweepEndTime;
-	int						nextSparkTime;
-	int						removeSparkTime;
-	bool					negativeSweep;
-	bool					sweeping;
-	int						alertMode;
 	float					scanFovCos;
+	float					sightThreshold;
 
+	int						modelAxis;
+	bool					flipAxis;
 	idVec3					viewOffset;
-							
+
 	int						pvsArea;
 	idPhysics_RigidBody		physicsObj;
 	idTraceModel			trm;
 
-	bool					rotate;
-	bool					stationary;
-	int						nextAlertTime;
-	int						state;
-	int						startAlertTime;
-	bool					emitPauseSound;
-	int						emitPauseSoundTime;
-	int						pauseEndTime;
-	int						endAlertTime;
-	int						lostInterestEndTime;
-	float					percentSwept;
 	idEntityPtr<idLight>	spotLight;
 	idEntityPtr<idEntity>	sparks;
 	idEntityPtr<idEntity>	cameraDisplay;
+
+	int						state;
+	int						alertMode;
 	bool					powerOn;
 	bool					spotlightPowerOn;
+
+	float					timeLastSeen;
+	float					lostInterestEndTime;
+	float					nextAlertTime;
+	float					startAlertTime;
+	float					endAlertTime;
+	float					alertDuration;
+	bool					emitPauseSound;
+	float					emitPauseSoundTime;
+	float					pauseEndTime;
+	float					nextSparkTime;
+
+	bool					sparksOn;
+	bool					sparksPowerDependent;
+	bool					sparksPeriodic;
+	float					sparksInterval;
+	float					sparksIntervalRand;
+
+	bool					useColors;
+	idVec3					colorSweeping;
+	idVec3					colorSighted;
+	idVec3					colorAlerted;
+
 
 	void					StartSweep( void );
 	bool					CanSeePlayer( void );
 	void					SetAlertMode( int status );
 	void					DrawFov( void );
 	const idVec3			GetAxis( void ) const;
-	float					SweepTime( void ) const;
 
 	void					ReverseSweep( void );
 	void					ContinueSweep( void );
+	void					TurnToTarget( void );
 	void					Event_AddLight( void );
 	void					Event_SpotLight_Toggle( void );
 	void					Event_Sweep_Toggle( void );
-	// Obsttorte
+	void					Event_SeePlayer_Toggle(void);
 	void					Event_GetSpotLight(void);
+	void					Event_GetSecurityCameraState( void );
+	void					Event_GetHealth( void );
+	void					Event_SetHealth( float newHealth );
+	void					Event_SetSightThreshold(float newThreshold);
 
 	void					PostSpawn( void );
-	void					AddSparks(void);
+	void					TriggerSparks( void );
+	void					UpdateColors( void );
 
 	void					Activate( idEntity* activator );
 	float					GetCalibratedLightgemValue(idPlayer* player);
