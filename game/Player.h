@@ -269,6 +269,7 @@ public:
 	idAngles				cmdAngles;			// player cmd angles
 	// VR support
 	mutable idAngles		actualViewAngles;
+	idVec3					aimPos;
 
 	int						buttonMask;
 	int						oldButtons;
@@ -644,7 +645,7 @@ public:
 
 	float					DefaultFov( void ) const;
 	float					CalcFov( bool honorZoom );
-	void					CalculateViewWeaponPos( idVec3 &origin, idMat3 &axis );
+	void					CalculateViewWeaponPos( idVec3 &playerOrigin, idMat3 &playerAxis, idVec3 &origin, idMat3 &axis );
 	idVec3					GetEyePosition( void ) const;
 	bool					CanGreet(); // grayman #3338
 

@@ -8437,7 +8437,7 @@ idPlayer::CalculateViewWeaponPos
 Calculate the bobbing position of the view weapon
 ==============
 */
-void idPlayer::CalculateViewWeaponPos( idVec3 &origin, idMat3 &axis ) {
+void idPlayer::CalculateViewWeaponPos( idVec3 &playerOrigin, idMat3 &playerAxis, idVec3 &origin, idMat3 &axis ) {
 	float		scale;
 	float		fracsin1;
 	float		fracsin2;
@@ -8446,8 +8446,20 @@ void idPlayer::CalculateViewWeaponPos( idVec3 &origin, idMat3 &axis ) {
 	int			delta;
 
 	// CalculateRenderView must have been called first
-	const idVec3 &viewOrigin = firstPersonViewOrigin;
-	const idMat3 &viewAxis = firstPersonViewAxis;
+	playerOrigin = firstPersonViewOrigin;
+	playerAxis = firstPersonViewAxis;
+	if ( vr_useMotionControllers.GetBool() ) {
+		common->Printf("Cursor pos (%.8f, %.8f, %.8f)\n", aimPos.x, aimPos.y, aimPos.z );
+		idVec3 aimDir = aimPos - playerOrigin;
+		aimDir.Normalize();
+		common->Printf("Aim dir (%.2f, %.2f, %.2f)\n", aimDir.x, aimDir.y, aimDir.z );
+		float pitch = idMath::ASin( -aimDir.z );
+		float yaw = idMath::ASin( aimDir.y / idMath::Cos(pitch) );
+		common->Printf( "Calculated weapon angles: pitch %.2f - yaw %.2f\n", pitch, yaw );
+		playerAxis = idAngles( pitch, yaw, 0 ).ToMat3();
+	}
+	const idVec3 &viewOrigin = playerOrigin;
+	const idMat3 &viewAxis = playerAxis;
 
 	// these cvars are just for hand tweaking before moving a value to the weapon def
 	idVec3	gunpos( g_gun_x.GetFloat(), g_gun_y.GetFloat(), g_gun_z.GetFloat() );
@@ -10934,7 +10946,9 @@ void idPlayer::PerformFrobCheck()
 	gameLocal.clip.TracePoint(trace, start, end, cm, this);
 	
 	float traceDist = maxFrobDistance * trace.fraction;
-	frameData->mouseAimPosition = start + angles.ToForward() * traceDist;
+	aimPos = start + angles.ToForward() * traceDist;
+	common->Printf("New aimPos: (%.2f, %.2f, %.2f)\n", aimPos.x, aimPos.y, aimPos.z );
+	frameData->mouseAimPosition = aimPos;
 
 	if (m_bGrabberActive)
 	{
