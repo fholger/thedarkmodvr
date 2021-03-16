@@ -189,6 +189,9 @@
     <ClCompile Include="idlib\containers\StrPool.cpp">
       <Filter>Containers</Filter>
     </ClCompile>
+    <ClCompile Include="idlib\containers\PlaneSet.cpp">
+      <Filter>Containers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="idlib\bv\Bounds.h">
@@ -417,6 +420,9 @@
       <Filter>Containers</Filter>
     </ClInclude>
     <ClInclude Include="idlib\containers\DisjointSets.h">
+      <Filter>Containers</Filter>
+    </ClInclude>
+    <ClInclude Include="idlib\containers\BinHeap.h">
       <Filter>Containers</Filter>
     </ClInclude>
   </ItemGroup>

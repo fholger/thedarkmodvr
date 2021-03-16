@@ -12,7 +12,7 @@
  *
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *  Copyright (C) 2015 Intel Corporation
  *
@@ -771,6 +771,16 @@ enum snd_tplg_type {
 /** Fit for all user cases */
 #define SND_TPLG_INDEX_ALL  0
 
+/** Flags for the snd_tplg_create */
+#define SND_TPLG_CREATE_VERBOSE		(1<<0)	/*!< Verbose output */
+#define SND_TPLG_CREATE_DAPM_NOSORT	(1<<1)	/*!< Do not sort DAPM objects by index */
+
+/**
+ * \brief Return the version of the topology library.
+ * \return A static string with the version number.
+ */
+const char *snd_tplg_version(void);
+
 /**
  * \brief Create a new topology parser instance.
  * \return New topology parser instance
@@ -778,10 +788,25 @@ enum snd_tplg_type {
 snd_tplg_t *snd_tplg_new(void);
 
 /**
+ * \brief Create a new topology parser instance.
+ * \return New topology parser instance
+ */
+snd_tplg_t *snd_tplg_create(int flags);
+
+/**
  * \brief Free a topology parser instance.
  * \param tplg Topology parser instance
  */
 void snd_tplg_free(snd_tplg_t *tplg);
+
+/**
+ * \brief Load topology from the text buffer.
+ * \param tplg Topology instance.
+ * \param buf Text buffer.
+ * \param size Text buffer size in bytes.
+ * \return Zero on success, otherwise a negative error code
+ */
+int snd_tplg_load(snd_tplg_t *tplg, const char *buf, size_t size);
 
 /**
  * \brief Parse and build topology text file into binary file.
@@ -791,7 +816,7 @@ void snd_tplg_free(snd_tplg_t *tplg);
  * \return Zero on success, otherwise a negative error code
  */
 int snd_tplg_build_file(snd_tplg_t *tplg, const char *infile,
-	const char *outfile);
+			const char *outfile);
 
 /**
  * \brief Enable verbose reporting of binary file output
@@ -860,7 +885,10 @@ struct snd_tplg_ctl_template {
 	const char *name;	/*!< Control name */
 	int access;		/*!< Control access */
 	struct snd_tplg_io_ops_template ops;	/*!< operations */
-	struct snd_tplg_tlv_template *tlv; /*!< non NULL means we have TLV data */
+	union {
+		struct snd_tplg_tlv_template *tlv; /*!< non NULL means we have TLV data */
+		struct snd_tplg_tlv_dbscale_template *tlv_scale; /*!< scale TLV data */
+	};
 };
 
 /** \struct snd_tplg_mixer_template
@@ -997,12 +1025,12 @@ struct snd_tplg_pcm_template {
 struct snd_tplg_hw_config_template {
 	int id;                         /* unique ID - - used to match */
 	unsigned int fmt;               /* SND_SOC_DAI_FORMAT_ format value */
-	unsigned char clock_gated;      /* 1 if clock can be gated to save power */
+	unsigned char clock_gated;      /* SND_SOC_TPLG_DAI_CLK_GATE_ value */
 	unsigned char  invert_bclk;     /* 1 for inverted BCLK, 0 for normal */
 	unsigned char  invert_fsync;    /* 1 for inverted frame clock, 0 for normal */
-	unsigned char  bclk_master;     /* 1 for master of BCLK, 0 for slave */
-	unsigned char  fsync_master;    /* 1 for master of FSYNC, 0 for slave */
-	unsigned char  mclk_direction;  /* 0 for input, 1 for output */
+	unsigned char  bclk_master;     /* SND_SOC_TPLG_BCLK_ value */
+	unsigned char  fsync_master;    /* SND_SOC_TPLG_FSYNC_ value */
+	unsigned char  mclk_direction;  /* SND_SOC_TPLG_MCLK_ value */
 	unsigned short reserved;        /* for 32bit alignment */
 	unsigned int mclk_rate;	        /* MCLK or SYSCLK freqency in Hz */
 	unsigned int bclk_rate;	        /* BCLK freqency in Hz */
@@ -1090,6 +1118,15 @@ int snd_tplg_add_object(snd_tplg_t *tplg, snd_tplg_obj_template_t *t);
 int snd_tplg_build(snd_tplg_t *tplg, const char *outfile);
 
 /**
+ * \brief Build all registered topology data into memory.
+ * \param tplg Topology instance.
+ * \param bin Binary topology output buffer (malloc).
+ * \param size Binary topology output buffer size in bytes.
+ * \return Zero on success, otherwise a negative error code
+ */
+int snd_tplg_build_bin(snd_tplg_t *tplg, void **bin, size_t *size);
+
+/**
  * \brief Attach private data to topology manifest.
  * \param tplg Topology instance.
  * \param data Private data.
@@ -1105,6 +1142,30 @@ int snd_tplg_set_manifest_data(snd_tplg_t *tplg, const void *data, int len);
  * \return Zero on success, otherwise a negative error code
  */
 int snd_tplg_set_version(snd_tplg_t *tplg, unsigned int version);
+
+/*
+ * Flags for the snd_tplg_save()
+ */
+#define SND_TPLG_SAVE_SORT	(1<<0)	/*!< sort identifiers */
+#define SND_TPLG_SAVE_GROUPS	(1<<1)	/*!< create the structure by group index */
+#define SND_TPLG_SAVE_NOCHECK	(1<<16)	/*!< unchecked output for debugging */
+
+/**
+ * \brief Save the topology to the text configuration string.
+ * \param tplg Topology instance.
+ * \param dst A pointer to string with result (malloc).
+ * \return Zero on success, otherwise a negative error code
+ */
+int snd_tplg_save(snd_tplg_t *tplg, char **dst, int flags);
+
+/**
+ * \brief Decode the binary topology contents.
+ * \param tplg Topology instance.
+ * \param bin Binary topology input buffer.
+ * \param size Binary topology input buffer size.
+ * \return Zero on success, otherwise a negative error code
+ */
+int snd_tplg_decode(snd_tplg_t *tplg, void *bin, size_t size, int dflags);
 
 /* \} */
 

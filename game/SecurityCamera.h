@@ -40,8 +40,9 @@ public:
 	virtual renderView_t *	GetRenderView();
 	virtual void			Killed( idEntity *inflictor, idEntity *attacker, int damage, const idVec3 &dir, int location );
 	virtual bool			Pain( idEntity *inflictor, idEntity *attacker, int damage, const idVec3 &dir, int location );
-	virtual void			Present( void );
-
+	virtual	void			Damage(idEntity *inflictor, idEntity *attacker, const idVec3 &dir, const char *damageDefName,
+														const float damageScale, const int location, trace_t *tr = NULL);
+	virtual void			Present(void);
 
 private:
 
@@ -71,7 +72,6 @@ private:
 
 	bool					negativeSweep;
 	float					sweepAngle;
-	float					sweepTime;
 	float					sweepSpeed;
 	float					sweepStartTime;
 	float					sweepEndTime;
@@ -128,6 +128,7 @@ private:
 	int						alertMode;
 	bool					powerOn;
 	bool					spotlightPowerOn;
+	bool					flinderized;
 
 	float					timeLastSeen;
 	float					lostInterestEndTime;
@@ -157,19 +158,25 @@ private:
 	void					SetAlertMode( int status );
 	void					DrawFov( void );
 	const idVec3			GetAxis( void ) const;
-
 	void					ReverseSweep( void );
 	void					ContinueSweep( void );
 	void					TurnToTarget( void );
+
 	void					Event_AddLight( void );
+	void					Event_AddSparks( void );
 	void					Event_SpotLight_Toggle( void );
+	void					Event_SpotLight_State( bool set );
 	void					Event_Sweep_Toggle( void );
-	void					Event_SeePlayer_Toggle(void);
+	void					Event_Sweep_State( bool set );
+	void					Event_SeePlayer_Toggle( void );
+	void					Event_SeePlayer_State( bool set );
 	void					Event_GetSpotLight(void);
 	void					Event_GetSecurityCameraState( void );
 	void					Event_GetHealth( void );
 	void					Event_SetHealth( float newHealth );
 	void					Event_SetSightThreshold(float newThreshold);
+	void					Event_On( void );
+	void					Event_Off( void );
 
 	void					PostSpawn( void );
 	void					TriggerSparks( void );

@@ -54,7 +54,6 @@ class TdmDepends(ConanFile):
         "libjpeg/9c@thedarkmod/local",
         "libpng/1.6.34@bincrafters/stable",
         "ffmpeg/4.0.2@thedarkmod/local",
-        "openal/1.19.1@thedarkmod/local",
         "vorbis/1.3.6@bincrafters/stable",
         "fltk/1.3.5@thedarkmod/local",
         "BLAKE2/master@thedarkmod/local",
@@ -63,6 +62,7 @@ class TdmDepends(ConanFile):
     # these deps must be built separately for each configuration (both debug and release)
     # this is required for C++ libs because iterator debugging and runtime differences are not allowed by MSVC
     requires_perbuild = (
+        "openal/1.21.1@thedarkmod/local",
         "pugixml/1.9@bincrafters/stable",
     )
 
@@ -86,6 +86,7 @@ class TdmDepends(ConanFile):
             print(os.path.abspath("artefacts/%s/lib/%s" % (name, platform)))
             # note: we assume recipes are sane, and the set of headers does not depend on compiler/arch
             self.copy("*.h"  , root_package=name, src="include" , dst="artefacts/%s/include" % name)
+            self.copy("*.H"  , root_package=name, src="include" , dst="artefacts/%s/include" % name)    # FLTK =(
             self.copy("*.hpp", root_package=name, src="include" , dst="artefacts/%s/include" % name)
             self.copy("*"    , root_package=name, src="licenses", dst="artefacts/%s/licenses" % name)
             # compiled binaries are put under subdirectory named by build settings

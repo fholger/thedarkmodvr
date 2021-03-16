@@ -1330,6 +1330,12 @@
     <ClInclude Include="renderer\vr\OpenXRSwapchainGL.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\vr\OpenXRBackend.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\vr\OpenXRSwapchainGL.h">
+      <Filter>Renderer\VR</Filter>
+    </ClInclude>
     <ClInclude Include="renderer\vr\OpenXRSwapchain.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
@@ -3102,6 +3108,12 @@
     </ClCompile>
     <ClCompile Include="renderer\ParticleSystem.cpp">
       <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\earcut.cpp">
+      <Filter>Tools\Compilers\DMap</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\compilers\dmap\planargraph.cpp">
+      <Filter>Tools\Compilers\DMap</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\OpenXRSwapchainGL.cpp">
       <Filter>Renderer\VR</Filter>

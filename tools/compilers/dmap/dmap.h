@@ -15,9 +15,24 @@
 
 #include "../../../renderer/tr_local.h"
 
+//meta-cvar
+extern idCVar dmap_compatibility;
+//TDM 2.08:
 extern idCVar dmap_fixBrushOpacityFirstSide;
 extern idCVar dmap_bspAllSidesOfVisportal;
 extern idCVar dmap_fixVisportalOutOfBoundaryEffects;
+//TDM 2.10:
+extern idCVar dmap_planeHashing;
+extern idCVar dmap_fasterPutPrimitives;
+extern idCVar dmap_dontSplitWithFuncStaticVertices;
+extern idCVar dmap_fixVertexSnappingTjunc;
+extern idCVar dmap_fasterShareMapTriVerts;
+extern idCVar dmap_optimizeTriangulation;
+extern idCVar dmap_optimizeExactTjuncIntersection;
+extern idCVar dmap_fasterAasMeltPortals;
+extern idCVar dmap_fasterAasBrushListMerge;
+extern idCVar dmap_pruneAasBrushesChopping;
+extern idCVar dmap_fasterAasWaterJumpReachability;
 
 
 typedef struct primitive_s {
@@ -31,7 +46,10 @@ typedef struct primitive_s {
 
 typedef struct {
 	struct optimizeGroup_s	*groups;
-	// we might want to add other fields later
+	
+	//stgatilov: this data exists temporarily while PutPrimitivesInAreas runs
+	//it provides faster groups search (by planeNum), but is dropped when function ends
+	struct groupsPerPlane_s *groupsPerPlane;
 } uArea_t;
 
 typedef struct {
@@ -395,8 +413,6 @@ void	Prelight( uEntity_t *e );
 
 // tritjunction.cpp
 
-struct hashVert_s	*GetHashVert( idVec3 &v );
-void	HashTriangles( optimizeGroup_t *groupList );
 void	FreeTJunctionHash( void );
 int		CountGroupListTris( const optimizeGroup_t *groupList );
 void	FixEntityTjunctions( uEntity_t *e );
@@ -418,6 +434,7 @@ typedef struct optVertex_s {
 	struct optVertex_s	*islandLink;
 	bool	addedToIsland;
 	bool	emited;			// when regenerating triangles
+	int idx;
 } optVertex_t;
 
 typedef struct optEdge_s {
