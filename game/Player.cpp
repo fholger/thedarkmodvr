@@ -4901,6 +4901,7 @@ idPlayer::SetViewAngles
 void idPlayer::SetViewAngles( const idAngles &angles ) {
 	UpdateDeltaViewAngles( angles );
 	viewAngles = angles;
+	actualViewAngles.yaw = angles.yaw;
 }
 
 /*
@@ -4955,6 +4956,20 @@ void idPlayer::UpdateViewAngles( void )
 	}
 	if ( !centerView.IsDone( gameLocal.time ) ) {
 		TestAngles.pitch = centerView.GetCurrentValue(gameLocal.time);
+	}
+
+	if (vr_useMotionControllers.GetBool()) {
+		actualViewAngles.yaw = idMath::AngleNormalize180( actualViewAngles.yaw + TestAngles.yaw - viewAngles.yaw);
+		// adjust the viewAngles to look at the frob position
+		idVec3 forward = frobAimIndicatorPos - firstPersonViewOrigin;
+		forward.Normalize();
+		float pitch = idMath::ASin( -forward.z );
+		float cp = idMath::Cos( pitch );
+		float yaw = idMath::ASin( forward.y / cp );
+		if ( forward.x / cp < 0 ) {
+			yaw = idMath::PI - yaw;
+		}
+		TestAngles = idAngles( RAD2DEG(pitch), RAD2DEG(yaw), 0 );
 	}
 
 	// clamp the pitch
@@ -8358,7 +8373,7 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) 
 		origin = GetEyePosition() + viewBob;
 		angles = viewAngles + viewBobAngles + physicsObj.GetViewLeanAngles() + playerView.AngleOffset();
 
-		if ( decoupledAngles ) {
+		if ( decoupledAngles && !vr_useMotionControllers.GetBool() ) {
 			// in VR, mouse pitch and roll added to the view is confusing, so leave it out
 			actualViewAngles.pitch = 0;
 			actualViewAngles.roll = 0;
@@ -8378,6 +8393,9 @@ void idPlayer::GetViewPos( idVec3 &origin, idMat3 &axis, bool decoupledAngles ) 
 				actualViewAngles.yaw = angles.yaw - idMath::ClampFloat( -maxYawDiff, maxYawDiff, yawDiff );
 			}
 
+			angles = actualViewAngles;
+		}
+		if (decoupledAngles && vr_useMotionControllers.GetBool()) {
 			angles = actualViewAngles;
 		}
 
@@ -10640,7 +10658,8 @@ void idPlayer::PerformFrobCheck()
 	gameLocal.clip.TracePoint(trace, start, end, cm, this);
 	
 	float traceDist = maxFrobDistance * trace.fraction;
-	frameData->mouseAimPosition = start + angles.ToForward() * traceDist;
+	frobAimIndicatorPos = start + angles.ToForward() * traceDist;
+	frameData->mouseAimPosition = frobAimIndicatorPos;
 
 	if (m_bGrabberActive)
 	{

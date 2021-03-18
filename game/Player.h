@@ -269,6 +269,7 @@ public:
 	idAngles				cmdAngles;			// player cmd angles
 	// VR support
 	mutable idAngles		actualViewAngles;
+	idVec3					frobAimIndicatorPos;  // world position of the small dot indicating frob aim in VR
 
 	int						buttonMask;
 	int						oldButtons;
