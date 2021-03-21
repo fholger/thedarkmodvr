@@ -23,8 +23,8 @@ public:
 	void Destroy();
 	
 	void PrepareVariableRateShading();
-	void DrawRadialDensityMaskToDepth();
-	void ReconstructImageFromRdm();
+	void DrawRadialDensityMaskToDepth( int eye );
+	void ReconstructImageFromRdm( int eye );
 	
 private:
 	idImage *variableRateShadingImage = nullptr;

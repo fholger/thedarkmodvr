@@ -7,6 +7,7 @@
 uniform sampler2D u_srcTex;
 layout (binding = 0, rgba8) uniform restrict writeonly image2D u_dstTex;
 
+uniform vec2 u_center;
 uniform vec2 u_invClusterResolution;
 uniform vec2 u_invResolution;
 uniform vec3 u_radius;
@@ -217,7 +218,7 @@ void main() {
 	uvec2 uFragCoordHalf = uvec2(currentUV >> 1u);
 
 	//We must work in blocks so the reconstruction filter can work properly
-	vec2 toCenter = (currentUV >> 3u) * u_invClusterResolution - vec2(0.5f);
+	vec2 toCenter = (currentUV >> 3u) * u_invClusterResolution - u_center;
 	float distToCenter = 2 * length(toCenter);
 
 	//We know for a fact distToCenter is in blocks of 8x8

@@ -5,12 +5,13 @@
 
 out vec4 FragColor;
 
+uniform vec2 u_center;
 uniform vec3 u_radius;
 uniform vec2 u_invClusterResolution;
 
 void main() {
     vec2 clusterUV = trunc(gl_FragCoord.xy * 0.125f) * u_invClusterResolution;
-    float distToCenter = 2 * length(clusterUV - vec2(0.5f));
+    float distToCenter = 2 * length(clusterUV - u_center);
     
     uvec2 fragCoordHalf = uvec2(gl_FragCoord.xy * 0.5f);
     // everything in the inner radius is preserved

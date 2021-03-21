@@ -216,7 +216,7 @@ void OpenXRBackend::DrawRadialDensityMaskToDepth() {
 		return;
 	}
 
-	foveatedHelper.DrawRadialDensityMaskToDepth();
+	foveatedHelper.DrawRadialDensityMaskToDepth( currentEye );
 }
 
 void OpenXRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView ) {
@@ -301,9 +301,9 @@ void OpenXRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView
 	}
 
 	frameBuffers->LeavePrimary();
-	if ( shouldRender3D ) {
+	if ( shouldRender3D && currentEye != UI ) {
 		if ( UseRadialDensityMask() ) {
-			foveatedHelper.ReconstructImageFromRdm();
+			foveatedHelper.ReconstructImageFromRdm( currentEye );
 		}
 		RB_Tonemap();
 	}
@@ -634,19 +634,23 @@ struct ComfortVignetteUniforms : GLSLUniformGroup {
 	DEFINE_UNIFORM( vec2, center)
 };
 
-void OpenXRBackend::DrawComfortVignette(eyeView_t eye) {
-	// draw a circular cutout
+idVec2 OpenXRBackend::ProjectCenterUV( int eye ) {
 	// since we are dealing with an asymmetrical projection, we need to figure out the projection center
 	// see: https://developer.oculus.com/blog/tech-note-asymmetric-field-of-view-faq/
 	viewDef_t stubView;
 	memset( &stubView, 0, sizeof(stubView) );
 	SetupProjectionMatrix( &stubView, eye );
 
-	idVec4 projectedVignetteCenter;
-	R_PointTimesMatrix( stubView.projectionMatrix, idVec4(0, 0, -r_znear.GetFloat(), 1), projectedVignetteCenter );
-	projectedVignetteCenter.x /= projectedVignetteCenter.w;
-	projectedVignetteCenter.y /= projectedVignetteCenter.w;
-	idVec2 uv( 0.5f * (projectedVignetteCenter.x + 1), 0.5f * (projectedVignetteCenter.y + 1) );
+	idVec4 projectedCenter;
+	R_PointTimesMatrix( stubView.projectionMatrix, idVec4(0, 0, -r_znear.GetFloat(), 1), projectedCenter );
+	projectedCenter.x /= projectedCenter.w;
+	projectedCenter.y /= projectedCenter.w;
+	return idVec2( 0.5f * (projectedCenter.x + 1), 0.5f * (projectedCenter.y + 1) );
+}
+
+void OpenXRBackend::DrawComfortVignette(eyeView_t eye) {
+	// draw a circular cutout
+	idVec2 uv = ProjectCenterUV( eye );
 	
 	comfortVignetteShader->Activate();
 	ComfortVignetteUniforms *uniforms = comfortVignetteShader->GetUniformGroup<ComfortVignetteUniforms>();

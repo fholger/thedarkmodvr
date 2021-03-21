@@ -74,6 +74,7 @@ namespace {
 	struct RadialDensityMaskUniforms : GLSLUniformGroup {
 		UNIFORM_GROUP_DEF( RadialDensityMaskUniforms )
 		
+		DEFINE_UNIFORM( vec2, center )
 		DEFINE_UNIFORM( vec3, radius )
 		DEFINE_UNIFORM( vec2, invClusterResolution )
 	};
@@ -83,6 +84,7 @@ namespace {
 
 		DEFINE_UNIFORM( sampler, srcTex )
 		DEFINE_UNIFORM( sampler, dstTex )
+		DEFINE_UNIFORM( vec2, center )
 		DEFINE_UNIFORM( vec2, invClusterResolution )
 		DEFINE_UNIFORM( vec2, invResolution )
 		DEFINE_UNIFORM( vec3, radius )
@@ -149,16 +151,17 @@ void VRFoveatedRendering::PrepareVariableRateShading() {
 	qglShadingRateImagePaletteNV( 0, 0, sizeof(palette)/sizeof(GLenum), palette );
 }
 
-void VRFoveatedRendering::DrawRadialDensityMaskToDepth() {
+void VRFoveatedRendering::DrawRadialDensityMaskToDepth( int eye ) {
 	radialDensityMaskShader->Activate();
 	auto uniforms = radialDensityMaskShader->GetUniformGroup<RadialDensityMaskUniforms>();
+	uniforms->center.Set( vrBackend->ProjectCenterUV( eye ) );
 	uniforms->radius.Set( vr_foveatedInnerRadius.GetFloat(), vr_foveatedMidRadius.GetFloat(), vr_foveatedOuterRadius.GetFloat() );
 	uniforms->invClusterResolution.Set( 8.f / frameBuffers->primaryFbo->Width(), 8.f / frameBuffers->primaryFbo->Height() );
 
 	RB_DrawFullScreenQuad();
 }
 
-void VRFoveatedRendering::ReconstructImageFromRdm() {
+void VRFoveatedRendering::ReconstructImageFromRdm( int eye ) {
 	GL_PROFILE("RdmReconstruction")
 
 	rdmReconstructionFbo->Bind();
@@ -169,6 +172,7 @@ void VRFoveatedRendering::ReconstructImageFromRdm() {
 	auto uniforms = rdmReconstructShader->GetUniformGroup<RdmReconstructUniforms>();
 	uniforms->srcTex.Set( 0 );
 	uniforms->dstTex.Set( 0 );
+	uniforms->center.Set( vrBackend->ProjectCenterUV( eye ) );
 	uniforms->invClusterResolution.Set( 8.f/width, 8.f/height );
 	uniforms->invResolution.Set( 1.f/width, 1.f/height );
 	uniforms->radius.Set( vr_foveatedInnerRadius.GetFloat(), vr_foveatedMidRadius.GetFloat(), vr_foveatedOuterRadius.GetFloat() );

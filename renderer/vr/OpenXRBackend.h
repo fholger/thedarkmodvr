@@ -35,6 +35,12 @@ extern idCVar vr_disableZoomAnimations;
 
 class OpenXRBackend {
 public:
+	enum eyeView_t {
+		LEFT_EYE = 0,
+		RIGHT_EYE = 1,
+		UI = 2,
+	};
+
 	void Init();
 	void Destroy();
 
@@ -51,6 +57,8 @@ public:
 
 	void UpdateInput(int axis[6], idList<padActionChange_t> &actionChanges, poseInput_t &poseInput);
 
+	idVec2 ProjectCenterUV( int eye );
+
 	static const float GameUnitsToMetres;
 	static const float MetresToGameUnits;
 
@@ -61,11 +69,6 @@ private:
 	void InitBackend();
 	void DestroyBackend();
 
-	enum eyeView_t {
-		LEFT_EYE = 0,
-		RIGHT_EYE = 1,
-		UI = 2,
-	};
 	void ExecuteRenderCommands( const frameData_t *frameData, eyeView_t eyeView );
 	bool BeginFrame();
 	void SubmitFrame();
