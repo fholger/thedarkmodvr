@@ -22,12 +22,13 @@ public:
 	void Init();
 	void Destroy();
 	
-	void PrepareVariableRateShading();
+	void PrepareVariableRateShading( int eye );
+	void DisableVariableRateShading();
 	void DrawRadialDensityMaskToDepth( int eye );
 	void ReconstructImageFromRdm( int eye );
 	
 private:
-	idImage *variableRateShadingImage = nullptr;
+	idImage *variableRateShadingImage[2] = { nullptr };
 	idImage *rdmReconstructionImage = nullptr;
 	FrameBuffer *rdmReconstructionFbo = nullptr;
 	GLSLProgram *radialDensityMaskShader = nullptr;

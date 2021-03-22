@@ -31,6 +31,7 @@ idCVar vr_foveatedReconstructionQuality("vr_foveatedReconstructionQuality", "2",
 
 namespace {
 	void VR_CreateVariableRateShadingImage( idImage *image ) {
+		int eye = image->imgName == "vrsImage0" ? 0 : 1;
 		image->type = TT_2D;
 		image->uploadWidth = frameBuffers->renderWidth;
 		image->uploadHeight = frameBuffers->renderHeight;
@@ -42,8 +43,9 @@ namespace {
 		qglGetIntegerv( GL_SHADING_RATE_IMAGE_TEXEL_HEIGHT_NV, &texelH );
 		GLsizei imageWidth = image->uploadWidth / texelW;
 		GLsizei imageHeight = image->uploadHeight / texelH;
-		GLsizei centerX = imageWidth / 2;
-		GLsizei centerY = imageHeight / 2;
+		idVec2 centerUV = vrBackend->ProjectCenterUV( eye );
+		GLsizei centerX = imageWidth * centerUV.x;
+		GLsizei centerY = imageHeight * centerUV.y;
 		float outerRadius = vr_foveatedOuterRadius.GetFloat() * 0.5f * imageHeight;
 		float midRadius = vr_foveatedMidRadius.GetFloat() * 0.5f * imageHeight;
 		float innerRadius = vr_foveatedInnerRadius.GetFloat() * 0.5f * imageHeight;
@@ -94,7 +96,8 @@ namespace {
 
 void VRFoveatedRendering::Init() {
 	if ( GLAD_GL_NV_shading_rate_image ) {
-		variableRateShadingImage = globalImages->ImageFromFunction( "vrsImage", VR_CreateVariableRateShadingImage );
+		variableRateShadingImage[0] = globalImages->ImageFromFunction( "vrsImage0", VR_CreateVariableRateShadingImage );
+		variableRateShadingImage[1] = globalImages->ImageFromFunction( "vrsImage1", VR_CreateVariableRateShadingImage );
 	}
 	rdmReconstructionImage = globalImages->ImageFromFunction( "rdm_reconstruct", FB_RenderTexture );
 	rdmReconstructionFbo = frameBuffers->CreateFromGenerator( "rdm_reconstruction_fbo", [this](FrameBuffer *fbo) {
@@ -111,20 +114,25 @@ void VRFoveatedRendering::Init() {
 void VRFoveatedRendering::Destroy() {
 	radialDensityMaskShader = nullptr;
 	rdmReconstructShader = nullptr;
-	if ( variableRateShadingImage != nullptr ) {
-		variableRateShadingImage->PurgeImage();
-		variableRateShadingImage = nullptr;
+	if ( variableRateShadingImage[0] != nullptr ) {
+		variableRateShadingImage[0]->PurgeImage();
+		variableRateShadingImage[0] = nullptr;
+	}
+	if ( variableRateShadingImage[1] != nullptr ) {
+		variableRateShadingImage[1]->PurgeImage();
+		variableRateShadingImage[1] = nullptr;
 	}
 }
 
-void VRFoveatedRendering::PrepareVariableRateShading() {
+void VRFoveatedRendering::PrepareVariableRateShading( int eye ) {
 	if ( !GLAD_GL_NV_shading_rate_image ) {
 		return;
 	}
 
 	if ( vr_useFixedFoveatedRendering.IsModified() || vr_foveatedInnerRadius.IsModified() || vr_foveatedMidRadius.IsModified() || vr_foveatedOuterRadius.IsModified() ) {
-		// ensure VRS image is up to date
-		variableRateShadingImage->PurgeImage();
+		// ensure VRS images are up to date
+		variableRateShadingImage[0]->PurgeImage();
+		variableRateShadingImage[1]->PurgeImage();
 		vr_useFixedFoveatedRendering.ClearModified();
 		vr_foveatedInnerRadius.ClearModified();
 		vr_foveatedMidRadius.ClearModified();
@@ -135,20 +143,27 @@ void VRFoveatedRendering::PrepareVariableRateShading() {
 		return;
 	}
 
-	if ( variableRateShadingImage->uploadWidth != frameBuffers->renderWidth
-			|| variableRateShadingImage->uploadHeight != frameBuffers->renderHeight ) {
-		variableRateShadingImage->PurgeImage();
+	if ( variableRateShadingImage[eye]->uploadWidth != frameBuffers->renderWidth
+			|| variableRateShadingImage[eye]->uploadHeight != frameBuffers->renderHeight ) {
+		variableRateShadingImage[eye]->PurgeImage();
 	}
 
 	// ensure image is constructed
-	variableRateShadingImage->Bind();
-	qglBindShadingRateImageNV( variableRateShadingImage->texnum );
+	variableRateShadingImage[eye]->Bind();
+	qglBindShadingRateImageNV( variableRateShadingImage[eye]->texnum );
 	GLenum palette[3];
 	palette[0] = GL_SHADING_RATE_1_INVOCATION_PER_PIXEL_NV;
-	palette[1] = GL_SHADING_RATE_1_INVOCATION_PER_1X2_PIXELS_NV;
-	palette[2] = GL_SHADING_RATE_1_INVOCATION_PER_2X2_PIXELS_NV;
+	palette[1] = GL_SHADING_RATE_1_INVOCATION_PER_2X2_PIXELS_NV;
+	palette[2] = GL_SHADING_RATE_1_INVOCATION_PER_2X4_PIXELS_NV;
 	palette[3] = GL_SHADING_RATE_1_INVOCATION_PER_4X4_PIXELS_NV;
 	qglShadingRateImagePaletteNV( 0, 0, sizeof(palette)/sizeof(GLenum), palette );
+	qglEnable( GL_SHADING_RATE_IMAGE_NV );
+}
+
+void VRFoveatedRendering::DisableVariableRateShading() {
+	if ( GLAD_GL_NV_shading_rate_image ) {
+		qglDisable( GL_SHADING_RATE_IMAGE_NV );
+	}
 }
 
 void VRFoveatedRendering::DrawRadialDensityMaskToDepth( int eye ) {

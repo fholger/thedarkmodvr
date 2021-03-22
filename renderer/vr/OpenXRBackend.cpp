@@ -155,10 +155,9 @@ void OpenXRBackend::RenderStereoView( const frameData_t *frameData ) {
 
 	aimIndicatorPos = frameData->mouseAimPosition;
 
-	foveatedHelper.PrepareVariableRateShading();
-
 	// render stereo views
 	for ( int eye = 0; eye < 2; ++eye ) {
+		foveatedHelper.PrepareVariableRateShading( eye );
 		frameBuffers->defaultFbo = eyeBuffers[eye];
 		frameBuffers->defaultFbo->Bind();
 		GL_ViewportRelative( 0, 0, 1, 1 );
@@ -173,6 +172,7 @@ void OpenXRBackend::RenderStereoView( const frameData_t *frameData ) {
 			DrawAimIndicator( frameData->mouseAimSize );
 		}
 	}
+	foveatedHelper.DisableVariableRateShading();
 
 	// render lightgem and 2D UI elements
 	frameBuffers->defaultFbo = uiBuffer;
@@ -251,9 +251,6 @@ void OpenXRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView
 			if ( (isv3d && shouldRender3D) || (!isv3d && shouldRender2D) ) {
 				if ( isv3d && shouldRender3D ) {
 					frameBuffers->EnterPrimary();
-					if ( eyeView != UI && vr_useFixedFoveatedRendering.GetInteger() == 1 && GLAD_GL_NV_shading_rate_image ) {
-						qglEnable( GL_SHADING_RATE_IMAGE_NV );						
-					}
 				}
 				const_cast<viewDef_t*>(backEnd.viewDef)->updateShadowMap = eyeView == UI || eyeView == LEFT_EYE;
 				renderBackend->DrawView( backEnd.viewDef );
@@ -301,14 +298,11 @@ void OpenXRBackend::ExecuteRenderCommands( const frameData_t *frameData, eyeView
 	}
 
 	frameBuffers->LeavePrimary();
-	if ( shouldRender3D && currentEye != UI ) {
-		if ( UseRadialDensityMask() ) {
+	if ( shouldRender3D ) {
+		if ( UseRadialDensityMask() && currentEye != UI ) {
 			foveatedHelper.ReconstructImageFromRdm( currentEye );
 		}
 		RB_Tonemap();
-	}
-	if ( eyeView != UI && vr_useFixedFoveatedRendering.GetInteger() == 1 && GLAD_GL_NV_shading_rate_image ) {
-		qglDisable( GL_SHADING_RATE_IMAGE_NV );
 	}
 }
 
