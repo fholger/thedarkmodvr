@@ -354,7 +354,9 @@ Sys_Init
 Posix_EarlyInit/Posix_LateInit is better
 =================
 */
-void Sys_Init( void ) { }
+void Sys_Init( void ) {
+	Sys_InitCPUID();
+}
 
 /*
 =================
@@ -457,9 +459,6 @@ void Sys_FlushCacheMemory(void *base, int bytes)
 }
 
 void Sys_FPU_ClearStack( void ) {
-}
-
-void Sys_FPU_SetPrecision() {
 }
 
 /*

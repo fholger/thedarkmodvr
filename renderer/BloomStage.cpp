@@ -75,7 +75,7 @@ namespace {
 	};
 
 	void LoadBloomDownsampleShader(GLSLProgram *downsampleShader) {
-		downsampleShader->InitFromFiles( "bloom.vert.glsl", "bloom_downsample.frag.glsl" );
+		downsampleShader->InitFromFiles( "fullscreen_tri.vert.glsl", "bloom_downsample.frag.glsl" );
 		BloomDownsampleUniforms *uniforms = downsampleShader->GetUniformGroup<BloomDownsampleUniforms>();
 		uniforms->sourceTexture.Set(0);
 	}
@@ -83,26 +83,20 @@ namespace {
 	void LoadBloomDownsampleWithBrightPassShader(GLSLProgram *downsampleShader) {
 		idDict defines;
 		defines.Set( "BLOOM_BRIGHTPASS", "1" );
-		downsampleShader->InitFromFiles( "bloom.vert.glsl", "bloom_downsample.frag.glsl", defines );
+		downsampleShader->InitFromFiles( "fullscreen_tri.vert.glsl", "bloom_downsample.frag.glsl", defines );
 		BloomDownsampleUniforms *uniforms = downsampleShader->GetUniformGroup<BloomDownsampleUniforms>();
 		uniforms->sourceTexture.Set(0);
 	}
 
-	void LoadBloomBlurShader(GLSLProgram *blurShader) {
-		blurShader->InitFromFiles( "bloom.vert.glsl", "bloom_blur.frag.glsl" );
-		BloomBlurUniforms *uniforms = blurShader->GetUniformGroup<BloomBlurUniforms>();
-		uniforms->source.Set(0);
-	}
-
 	void LoadBloomUpsampleShader(GLSLProgram *upsampleShader) {
-		upsampleShader->InitFromFiles( "bloom.vert.glsl", "bloom_upsample.frag.glsl" );
+		upsampleShader->InitFromFiles( "fullscreen_tri.vert.glsl", "bloom_upsample.frag.glsl" );
 		BloomUpsampleUniforms *uniforms = upsampleShader->GetUniformGroup<BloomUpsampleUniforms>();
 		uniforms->blurredTexture.Set(0);
 		uniforms->detailTexture.Set(1);
 	}
 
 	void LoadBloomApplyShader(GLSLProgram *applyShader) {
-		applyShader->InitFromFiles( "bloom.vert.glsl", "bloom_apply.frag.glsl" );
+		applyShader->InitFromFiles( "fullscreen_tri.vert.glsl", "bloom_apply.frag.glsl" );
 		BloomApplyUniforms *uniforms = applyShader->GetUniformGroup<BloomApplyUniforms>();
 		uniforms->texture.Set(0);
 		uniforms->bloomTex.Set(1);
@@ -137,7 +131,6 @@ void BloomStage::Init() {
 
 	downsampleShader = programManager->LoadFromGenerator("bloom_downsample", LoadBloomDownsampleShader);
 	downsampleWithBrightPassShader = programManager->LoadFromGenerator("bloom_downsample_brightpass", LoadBloomDownsampleWithBrightPassShader);
-	blurShader = programManager->LoadFromGenerator("bloom_blur", LoadBloomBlurShader);
 	upsampleShader = programManager->LoadFromGenerator("bloom_upsample", LoadBloomUpsampleShader);
 	applyShader = programManager->LoadFromGenerator("bloom_apply", LoadBloomApplyShader);
 }
@@ -208,7 +201,7 @@ void BloomStage::ApplyBloom() {
 	BindBloomTexture();
 	uniforms->bloomWeight.Set( r_bloom_weight.GetFloat() );
 
-	RB_DrawFullScreenQuad();
+	RB_DrawFullScreenTri();
 
 	qglEnable( GL_DEPTH_TEST );
 }
@@ -226,7 +219,7 @@ void BloomStage::Downsample() {
 	GL_SelectTexture( 0 );
 	globalImages->currentRenderImage->Bind();
 	qglClear(GL_COLOR_BUFFER_BIT);
-	RB_DrawFullScreenQuad();
+	RB_DrawFullScreenTri();
 
 	// generate additional downsampled mip levels
 	bloomDownSamplers[0]->Bind();
@@ -236,7 +229,7 @@ void BloomStage::Downsample() {
 		downsampleFBOs[i]->Bind();
 		GL_ViewportRelative( 0, 0, 1, 1 );
 		qglClear(GL_COLOR_BUFFER_BIT);
-		RB_DrawFullScreenQuad();
+		RB_DrawFullScreenTri();
 		bloomDownSamplers[i]->Bind();
 	}
 }
@@ -245,8 +238,8 @@ void BloomStage::Blur() {
 	GL_PROFILE("BloomBlur")
 
 	int step = numDownsamplingSteps - 1;
-	blurShader->Activate();
-	BloomBlurUniforms *uniforms = blurShader->GetUniformGroup<BloomBlurUniforms>();
+	programManager->gaussianBlurShader->Activate();
+	BloomBlurUniforms *uniforms = programManager->gaussianBlurShader->GetUniformGroup<BloomBlurUniforms>();
 
 	// first horizontal Gaussian blur goes from downsampler[lowestMip] to upsampler[lowestMip]
 	GL_SelectTexture( 0 );
@@ -255,18 +248,21 @@ void BloomStage::Blur() {
 	upsampleFBOs[step]->Bind();
 	GL_ViewportRelative( 0, 0, 1, 1 );
 	qglClear(GL_COLOR_BUFFER_BIT);
-	RB_DrawFullScreenQuad();
+	RB_DrawFullScreenTri();
 
 	// second vertical Gaussian blur goes from upsampler[lowestMip] to downsampler[lowestMip]
 	uniforms->axis.Set( 0, 1 );
 	downsampleFBOs[step]->Bind();
 	bloomUpSamplers[step]->Bind();
 	qglClear(GL_COLOR_BUFFER_BIT);
-	RB_DrawFullScreenQuad();
+	RB_DrawFullScreenTri();
 }
 
 void BloomStage::Upsample() {
 	GL_PROFILE( "BloomUpsampling" )
+
+	if (numDownsamplingSteps <= 1)
+		return;
 
 	upsampleShader->Activate();
 	BloomUpsampleUniforms *uniforms = upsampleShader->GetUniformGroup<BloomUpsampleUniforms>();
@@ -282,7 +278,7 @@ void BloomStage::Upsample() {
 		bloomDownSamplers[i]->Bind();
 		upsampleFBOs[i]->Bind();
 		GL_ViewportRelative( 0, 0, 1, 1 );
-		RB_DrawFullScreenQuad();
+		RB_DrawFullScreenTri();
 		// next upsampling steps go from upsampler[mip+1] to upsampler[mip]
 		GL_SelectTexture( 0 );
 		bloomUpSamplers[i]->Bind();

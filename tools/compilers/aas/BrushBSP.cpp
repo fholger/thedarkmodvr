@@ -317,21 +317,20 @@ idBrushBSPNode::Split
 */
 bool idBrushBSPNode::Split( const idPlane &splitPlane, int splitPlaneNum ) {
 	int s, i;
-	idWinding *mid;
 	idBrushBSPPortal *p, *midPortal, *newPortals[2];
 	idBrushBSPNode *newNodes[2];
 
-	mid = new idWinding( splitPlane.Normal(), splitPlane.Dist() );
-
-	for ( p = portals; p && mid; p = p->next[s] ) {
+	idList<idPlane> cuttingPlanes;
+	for ( p = portals; p ; p = p->next[s] ) {
 		s = (p->nodes[1] == this);
 		if ( s ) {
-			mid = mid->Clip( -p->plane, 0.1f, false );
+			cuttingPlanes.AddGrow( -p->plane );
 		}
 		else {
-			mid = mid->Clip( p->plane, 0.1f, false );
+			cuttingPlanes.AddGrow( p->plane );
 		}
 	}
+	idWinding *mid = idWinding::CreateTrimmedPlane( splitPlane, cuttingPlanes.Num(), cuttingPlanes.Ptr(), 0.1f );
 
 	if ( !mid ) {
 		return false;
@@ -1055,35 +1054,7 @@ void idBrushBSP::PruneTree( int contents ) {
 	common->Printf( "%6d splits pruned\n", numPrunedSplits );
 }
 
-/*
-============
-idBrushBSP::BaseWindingForNode
-============
-*/
 #define	BASE_WINDING_EPSILON		0.001f
-
-idWinding *idBrushBSP::BaseWindingForNode( idBrushBSPNode *node ) {
-	idWinding *w;
-	idBrushBSPNode *n;
-
-	w = new idWinding( node->plane.Normal(), node->plane.Dist() );
-
-	// clip by all the parents
-	for ( n = node->parent; n && w; n = n->parent ) {
-
-		if ( n->children[0] == node ) {
-			// take front
-			w = w->Clip( n->plane, BASE_WINDING_EPSILON );
-		}
-		else {
-			// take back
-			w = w->Clip( -n->plane, BASE_WINDING_EPSILON );
-		}
-		node = n;
-	}
-
-	return w;
-}
 
 /*
 ============
@@ -1094,27 +1065,39 @@ idBrushBSP::MakeNodePortal
 ============
 */
 void idBrushBSP::MakeNodePortal( idBrushBSPNode *node ) {
-	idBrushBSPPortal *newPortal, *p;
-	idWinding *w;
-	int side = 0;
+	idList<idPlane> cuttingPlanes;
 
-	w = BaseWindingForNode( node );
+	// clip by all the parents
+	for ( idBrushBSPNode *curr = node, *n = node->parent; n; n = n->parent ) {
+
+		if ( n->children[0] == curr ) {
+			// take front
+			cuttingPlanes.AddGrow(n->plane);
+		}
+		else {
+			// take back
+			cuttingPlanes.AddGrow(-n->plane);
+		}
+		curr = n;
+	}
 
 	// clip the portal by all the other portals in the node
-	for ( p = node->portals; p && w; p = p->next[side] ) {
+	int side = 0;
+	for ( idBrushBSPPortal *p = node->portals; p; p = p->next[side] ) {
 		if ( p->nodes[0] == node ) {
 			side = 0;
-			w = w->Clip( p->plane, 0.1f );
+			cuttingPlanes.AddGrow(p->plane);
 		}
 		else if ( p->nodes[1] == node ) {
 			side = 1;
-			w = w->Clip( -p->plane, 0.1f );
+			cuttingPlanes.AddGrow(-p->plane);
 		}
 		else {
 			common->Error( "MakeNodePortal: mislinked portal" );
 		}
 	}
 
+	idWinding *w = idWinding::CreateTrimmedPlane( node->plane, cuttingPlanes.Num(), cuttingPlanes.Ptr(), BASE_WINDING_EPSILON );
 	if ( !w ) {
 		return;
 	}
@@ -1124,7 +1107,7 @@ void idBrushBSP::MakeNodePortal( idBrushBSPNode *node ) {
 		return;
 	}
 
-	newPortal = new idBrushBSPPortal();
+	idBrushBSPPortal *newPortal = new idBrushBSPPortal();
 	newPortal->plane = node->plane;
 	newPortal->winding = w;
 	newPortal->AddToNodes( node->children[0], node->children[1] );

@@ -2035,8 +2035,6 @@ bool idFrustum::ProjectionBounds( const idBounds &bounds, idBounds &projectionBo
 	return ProjectionBounds( idBox( bounds, vec3_origin, mat3_identity ), projectionBounds );
 }
 
-#if !defined(__linux__) && !defined(MACOS_X)
-
 /*
 ============
 idFrustum::ProjectionBounds
@@ -2161,8 +2159,6 @@ bool idFrustum::ProjectionBounds( const idBox &box, idBounds &projectionBounds )
 
 	return true;
 }
-
-#endif
 
 /*
 ============
@@ -2431,6 +2427,9 @@ void idFrustum::ClipFrustumToBox( const idBox &box, float clipFractions[4], int 
 	bounds[1] = box.GetExtents();
 
 	minf = ( dNear + 1.0f ) * invFar;
+
+	//stgatilov: cornerVecs[i] can be zero, causing division-by-zero inside loop
+	idIgnoreFpExceptions guard;
 
 	for ( i = 0; i < 4; i++ ) {
 

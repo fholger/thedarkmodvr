@@ -25,6 +25,7 @@
 #include "../FrameBufferManager.h"
 #include "../FrameBuffer.h"
 #include "../GLSLProgramManager.h"
+#include "../glsl.h"
 #include "../vr/OpenXRBackend.h"
 
 RenderBackend renderBackendImpl;
@@ -56,6 +57,7 @@ void RenderBackend::Init() {
 	manyLightStage.Init();
 	stencilShadowStage.Init();
 	shadowMapStage.Init();
+	frobOutlineStage.Init();
 
 	lightgemFbo = frameBuffers->CreateFromGenerator( "lightgem", CreateLightgemFbo );
 	qglGenBuffers( 3, lightgemPbos );
@@ -71,6 +73,7 @@ void RenderBackend::Shutdown() {
 	vrBackend->Destroy();
 
 	qglDeleteBuffers( 3, lightgemPbos );
+	frobOutlineStage.Shutdown();
 	shadowMapStage.Shutdown();
 	stencilShadowStage.Shutdown();
 	manyLightStage.Shutdown();
@@ -129,6 +132,10 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	// now draw any non-light dependent shading passes
 	int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs );
 	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
+
+	if ( r_frobOutline.GetBool() ) {
+		frobOutlineStage.DrawFrobOutline( drawSurfs, numDrawSurfs );
+	}
 
 	// fog and blend lights
 	extern void RB_STD_FogAllLights( bool translucent );

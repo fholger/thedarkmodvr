@@ -276,8 +276,6 @@ void idGameLocal::Clear( void )
 
 	m_StartPosition = ""; // grayman #2933
 
-	m_time2Start = false; // grayman #3763
-
 	m_GUICommandStack.Clear();
 	m_GUICommandArgs = 0;
 
@@ -1143,16 +1141,6 @@ idGameLocal::SetPersistentPlayerInfo
 */
 void idGameLocal::SetPersistentPlayerInfo( int clientNum, const idDict &playerInfo ) {
 	persistentPlayerInfo = playerInfo;
-}
-
-/*
-===========
-idGameLocal::SetTime2Start
-============
-*/
-void idGameLocal::SetTime2Start() // grayman #3763
-{
-	m_time2Start = true;
 }
 
 /*
@@ -3212,7 +3200,7 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds, int timestepMs 
 		// set the user commands for this frame
 		memcpy(&usercmds, clientCmds, sizeof(usercmds));
 
-		if ( m_time2Start && player->WaitUntilReady() ) // grayman #3763
+		if ( player->WaitUntilReady() ) // grayman #3763
 		{
 			// Player got ready this frame, start timer
 			m_GamePlayTimer.Start();
@@ -4719,9 +4707,9 @@ void idGameLocal::ShowTargets( void ) {
 		gameRenderWorld->DebugBounds( ( ent->IsHidden() ? colorLtGrey : colorOrange ) * frac, ent->GetPhysics()->GetAbsBounds() );
 		if ( viewTextBounds.IntersectsBounds( ent->GetPhysics()->GetAbsBounds() ) ) {
 			idVec3 center = ent->GetPhysics()->GetAbsBounds().GetCenter();
-			gameRenderWorld->DrawText( ent->name.c_str(), center - up, 0.1f, colorWhite * frac, axis, 1 );
-			gameRenderWorld->DrawText( ent->GetEntityDefName(), center, 0.1f, colorWhite * frac, axis, 1 );
-			gameRenderWorld->DrawText( va( "#%d", ent->entityNumber ), center + up, 0.1f, colorWhite * frac, axis, 1 );
+			gameRenderWorld->DebugText( ent->name.c_str(), center - up, 0.1f, colorWhite * frac, axis, 1 );
+			gameRenderWorld->DebugText( ent->GetEntityDefName(), center, 0.1f, colorWhite * frac, axis, 1 );
+			gameRenderWorld->DebugText( va( "#%d", ent->entityNumber ), center + up, 0.1f, colorWhite * frac, axis, 1 );
 		}
 
 		for( i = 0; i < ent->targets.Num(); i++ ) {
@@ -4785,9 +4773,9 @@ void idGameLocal::RunDebugInfo( void ) {
 				}
 			}
 			if ( viewTextBounds.IntersectsBounds( entBounds ) ) {
-				gameRenderWorld->DrawText( ent->name.c_str(), entBounds.GetCenter(), 0.1f, colorWhite, axis, 1 );
-				gameRenderWorld->DrawText( va( "#%d", ent->entityNumber ), entBounds.GetCenter() + up, 0.1f, colorWhite, axis, 1 );
-				gameRenderWorld->DrawText( 
+				gameRenderWorld->DebugText( ent->name.c_str(), entBounds.GetCenter(), 0.1f, colorWhite, axis, 1 );
+				gameRenderWorld->DebugText( va( "#%d", ent->entityNumber ), entBounds.GetCenter() + up, 0.1f, colorWhite, axis, 1 );
+				gameRenderWorld->DebugText( 
 					va( "%d / %d", ent->GetPhysics()->GetContents(), ent->GetPhysics()->GetClipMask() ), 
 					entBounds.GetCenter() - up, 0.1f, 
 					colorWhite, 
@@ -4836,7 +4824,7 @@ void idGameLocal::RunDebugInfo( void ) {
 				continue;
 			}
 			
-			gameRenderWorld->DrawText(va("Health: %d", ent->health), ent->GetPhysics()->GetOrigin(), 0.2f, colorGreen, axis);
+			gameRenderWorld->DebugText(va("Health: %d", ent->health), ent->GetPhysics()->GetOrigin(), 0.2f, colorGreen, axis);
 		}
 	}
 
@@ -5416,6 +5404,8 @@ void idGameLocal::SpawnMapEntities( void )
 		return;
 	}
 
+	int start = Sys_Milliseconds();
+
 	// Add the lightgem to the map before anything else happened
 	// so it will be included as if it were a regular map entity.
 	m_lightGem.SpawnLightGemEntity( mapFile );
@@ -5494,7 +5484,7 @@ void idGameLocal::SpawnMapEntities( void )
 
 	m_lightGem.InitializeLightGemEntity();
 
-	Printf( "... %i entities spawned, %i inhibited\n\n", num, inhibit );
+	Printf( "... %i entities spawned, %i inhibited in %5.1f seconds\n\n", num, inhibit, (Sys_Milliseconds() - start) * 0.001f );
 	DM_LOG(LC_LIGHT, LT_DEBUG)LOGSTRING("... %i entities spawned, %i inhibited\r", num, inhibit);
 }
 

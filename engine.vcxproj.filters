@@ -1351,6 +1351,9 @@
     <ClInclude Include="renderer\vr\OpenXRInput.h">
       <Filter>Renderer\VR</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\backend\FrobOutlineStage.h">
+      <Filter>Renderer\Backend</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cm\CollisionModel_contacts.cpp">
@@ -1815,16 +1818,10 @@
     <ClCompile Include="tools\compilers\dmap\glfile.cpp">
       <Filter>Tools\Compilers\DMap</Filter>
     </ClCompile>
-    <ClCompile Include="tools\compilers\dmap\leakfile.cpp">
-      <Filter>Tools\Compilers\DMap</Filter>
-    </ClCompile>
     <ClCompile Include="tools\compilers\dmap\map.cpp">
       <Filter>Tools\Compilers\DMap</Filter>
     </ClCompile>
     <ClCompile Include="tools\compilers\dmap\optimize.cpp">
-      <Filter>Tools\Compilers\DMap</Filter>
-    </ClCompile>
-    <ClCompile Include="tools\compilers\dmap\optimize_gcc.cpp">
       <Filter>Tools\Compilers\DMap</Filter>
     </ClCompile>
     <ClCompile Include="tools\compilers\dmap\output.cpp">
@@ -3114,6 +3111,12 @@
     </ClCompile>
     <ClCompile Include="tools\compilers\dmap\planargraph.cpp">
       <Filter>Tools\Compilers\DMap</Filter>
+    </ClCompile>
+    <ClCompile Include="sys\sys_cpu.cpp">
+      <Filter>Sys</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\backend\FrobOutlineStage.cpp">
+      <Filter>Renderer\Backend</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\OpenXRSwapchainGL.cpp">
       <Filter>Renderer\VR</Filter>

@@ -207,6 +207,8 @@ bool idBrush::CreateWindings( void ) {
 	int i, j;
 	idBrushSide *side;
 
+	idList<idPlane> cuttingPlanes;
+
 	bounds.Clear();
 	for ( i = 0; i < sides.Num(); i++ ) {
 		side = sides[i];
@@ -215,15 +217,16 @@ bool idBrush::CreateWindings( void ) {
 			delete side->winding;
 		}
 
-		side->winding = new idWinding( side->plane.Normal(), side->plane.Dist() );
-
-		for ( j = 0; j < sides.Num() && side->winding; j++ ) {
+		cuttingPlanes.SetNum(0, false);
+		for ( j = 0; j < sides.Num(); j++ ) {
 			if ( i == j ) {
 				continue;
 			}
-			// keep the winding if on the clip plane
-			side->winding = side->winding->Clip( -sides[j]->plane, BRUSH_EPSILON, true );
+			cuttingPlanes.AddGrow( -sides[j]->plane );
 		}
+		// stgatilov: don't delete winding if clipping plane has opposite normal
+		// that corresponds to case when side planes are equal (note that trim plane is negated)
+		side->winding = idWinding::CreateTrimmedPlane( side->plane, cuttingPlanes.Num(), cuttingPlanes.Ptr(), BRUSH_EPSILON, INCIDENT_PLANE_RETAIN_OPPOSITE );
 
 		if ( side->winding ) {
 			for ( j = 0; j < side->winding->GetNumPoints(); j++ ) {
@@ -619,11 +622,6 @@ int idBrush::SplitDestroy( const idPlane &plane, int planeNum, idBrush* &front, 
 }
 
 int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idBrush **back, bool killThis ) {
-	int res, i, j;
-	idBrushSide *side, *frontSide, *backSide;
-	float dist, maxBack, maxFront, *maxBackWinding, *maxFrontWinding;
-	idWinding *w, *mid;
-
 	assert( windingsValid );
 
 	if ( front ) {
@@ -633,7 +631,7 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 		*back = NULL;
 	}
 
-	res = bounds.PlaneSide( plane, -BRUSH_EPSILON );
+	int res = bounds.PlaneSide( plane, -BRUSH_EPSILON );
 	if ( res == PLANESIDE_FRONT ) {
 		if ( front ) {
 			*front = killThis ? this : Copy();
@@ -647,14 +645,14 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 		return res;
 	}
 
-	maxBackWinding = (float *) _alloca16( sides.Num() * sizeof(float) );
-	maxFrontWinding = (float *) _alloca16( sides.Num() * sizeof(float) );
+	float *maxBackWinding = (float *) _alloca16( sides.Num() * sizeof(float) );
+	float *maxFrontWinding = (float *) _alloca16( sides.Num() * sizeof(float) );
 
-	maxFront = maxBack = 0.0f;
-	for ( i = 0; i < sides.Num(); i++ ) {
-		side = sides[i];
+	float maxFront = 0.0f, maxBack = 0.0f;
+	for ( int i = 0; i < sides.Num(); i++ ) {
+		idBrushSide *side = sides[i];
 
-		w = side->winding;
+		idWinding *w = side->winding;
 
 		if ( !w ) {
 			continue;
@@ -663,9 +661,9 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 		maxBackWinding[i] = 10.0f;
 		maxFrontWinding[i] = -10.0f;
 
-		for ( j = 0; j < w->GetNumPoints(); j++ ) {
+		for ( int j = 0; j < w->GetNumPoints(); j++ ) {
 
-			dist = plane.Distance( (*w)[j].ToVec3() );
+			float dist = plane.Distance( (*w)[j].ToVec3() );
 			if ( dist > maxFrontWinding[i] ) {
 				maxFrontWinding[i] = dist;
 			}
@@ -696,11 +694,11 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 		return PLANESIDE_FRONT;
 	}
 
-	mid = new idWinding( plane.Normal(), plane.Dist() );
-
-	for ( i = 0; i < sides.Num() && mid; i++ ) {
-		mid = mid->Clip( -sides[i]->plane, BRUSH_EPSILON, false );
+	idList<idPlane> cuttingPlanes;
+	for ( int i = 0; i < sides.Num(); i++ ) {
+		cuttingPlanes.AddGrow( -sides[i]->plane );
 	}
+	idWinding *mid = idWinding::CreateTrimmedPlane(plane, cuttingPlanes.Num(), cuttingPlanes.Ptr(), BRUSH_EPSILON);
 
 	if ( mid ) {
 		if ( mid->IsTiny() ) {
@@ -748,8 +746,8 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 	(*back)->SetEntityNum( entityNum );
 	(*back)->SetPrimitiveNum( primitiveNum );
 
-	for ( i = 0; i < sides.Num(); i++ ) {
-		side = sides[i];
+	for ( int i = 0; i < sides.Num(); i++ ) {
+		idBrushSide *side = sides[i];
 
 		if ( !side->winding ) {
 			continue;
@@ -764,6 +762,7 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 			(*back)->sides.Append( killThis ? side : side->Copy() );
 		}
 		else {
+			idBrushSide *frontSide, *backSide;
 			// split the side
 			side->Split( plane, &frontSide, &backSide );
 			if ( frontSide ) {
@@ -789,7 +788,7 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 		}
 	}
 
-	side = new idBrushSide( -plane, planeNum^1 );
+	idBrushSide *side = new idBrushSide( -plane, planeNum^1 );
 	side->winding = mid->Reverse();
 	side->flags |= SFL_SPLIT;
 	(*front)->sides.Append( side );
@@ -804,7 +803,7 @@ int idBrush::SplitImpl( const idPlane &plane, int planeNum, idBrush **front, idB
 	(*back)->BoundBrush( this );
 
 	if (killThis) {
-		for ( i = 0; i < sides.Num(); i++ )
+		for ( int i = 0; i < sides.Num(); i++ )
 			if ( (*front)->sides.Find(sides[i]) || (*back)->sides.Find(sides[i]) )
 				sides[i] = nullptr;
 		delete this;

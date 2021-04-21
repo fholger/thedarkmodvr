@@ -17,6 +17,7 @@ include(CMakeDependentOption)
 include(ucm)
 include(PrecompiledHeader)
 include(SvnVersion)
+include(CheckCXXCompilerFlag)
 
 project(TheDarkMod)
 
@@ -48,25 +49,19 @@ if (UNIX)
 			-fvisibility=hidden
 			-fno-unsafe-math-optimizations
 			-std=c++14
-			-msse2
 	)
+	# enable SSE2 if supported (mainly 32-bit x86)
+	check_cxx_compiler_flag(-msse2 MSSE2_SUPPORTED)
+	if (MSSE2_SUPPORTED)
+		add_compile_options(-msse2)
+	endif()
+
 	# TODO: do we really want to keep using this
 	# use old ABI for std::string and std::list to allow TDM to run on distros with old
 	# glibcxx (e.g. Ubuntu 14.04). the old ABI is not fully compliant with C++11 standard.
 	add_compile_definitions("_GLIBCXX_USE_CXX11_ABI=0")
 	# ensure threading support in X
 	add_compile_definitions(XTHREADS)
-
-	# disable optimizations for certain problematic files
-	set_property(SOURCE
-			"idlib/Token.cpp"
-			"idlib/bv/Frustum_gcc.cpp"
-			PROPERTY COMPILE_OPTIONS -O1
-	)
-	set_property(SOURCE
-			"tools/compilers/dmap/optimize_gcc.cpp"
-			PROPERTY COMPILE_OPTIONS -O0
-	)
 elseif (MSVC)
 	add_compile_definitions("WIN32" _WINDOWS
 			_CRT_SECURE_NO_DEPRECATE
@@ -80,6 +75,7 @@ elseif (MSVC)
 	add_compile_options(/MP /Gm-)
 	ucm_add_flags(/GS- /Gy /Zi /GF /FC /Oi /Oy /Ot CONFIG Release)
 	ucm_add_linker_flags(EXE /LARGEADDRESSAWARE /NXCOMPAT /SAFESEH:NO /STACK:16777216,16777216)
+	set(MSSE2_SUPPORTED 1)
 	if (CMAKE_SIZEOF_VOID_P EQUAL 4)
 		add_compile_options(/arch:SSE2)
 	endif()
@@ -105,7 +101,14 @@ ucm_add_dirs(
 		"tools/compilers"
 		TO TDM_SOURCE_FILES RECURSIVE
 )
-ucm_add_files("sys/sys_local.cpp" "sys/sys_local.h" "sys/sys_public.h" "sys/sys_padinput.cpp" "sys/sys_padinput.h" TO TDM_SOURCE_FILES)
+ucm_add_files(
+	"sys/sys_local.cpp"
+	"sys/sys_local.h"
+	"sys/sys_public.h"
+	"sys/sys_padinput.cpp"
+	"sys/sys_padinput.h"
+	"sys/sys_cpu.cpp"
+TO TDM_SOURCE_FILES)
 
 if (WITH_TOOLS)
 	ucm_add_dirs("tools" TO TDM_SOURCE_FILES RECURSIVE)

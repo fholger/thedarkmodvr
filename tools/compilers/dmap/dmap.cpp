@@ -83,16 +83,6 @@ bool ProcessModel( uEntity_t *e, bool floodFill ) {
 			// set the outside leafs to opaque
 			FillOutside( e );
 		} else {
-			// We have a leak.
-			if ( dmapGlobals.verbose < VL_ORIGDEFAULT ) // #4123
-			{
-				// We haven't printed which entity we're working on so do it now
-				PrintEntityHeader( VL_CONCISE, e );
-			}
-			PrintIfVerbosityAtLeast( VL_CONCISE, "**********************\n" );
-			common->Warning( "******* leaked *******" );
-			PrintIfVerbosityAtLeast( VL_CONCISE, "**********************\n" );
-			LeakFile( e->tree );
 			// bail out here.  If someone really wants to
 			// process a map that leaks, they should use
 			// -noFlood
@@ -305,16 +295,17 @@ void Dmap( const idCmdArgs &args ) {
 		dmap_fixVisportalOutOfBoundaryEffects.SetBool(version >= 208);
 		//new in 2.10
 		dmap_planeHashing.SetBool(version >= 210);
-	    dmap_fasterPutPrimitives.SetBool(version >= 210);
-	    dmap_dontSplitWithFuncStaticVertices.SetBool(version >= 210);
-	    dmap_fixVertexSnappingTjunc.SetInteger(version >= 210 ? 2 : 0);
-	    dmap_fasterShareMapTriVerts.SetBool(version >= 210);
-	    dmap_optimizeTriangulation.SetBool(version >= 210);
-	    dmap_optimizeExactTjuncIntersection.SetBool(version >= 210);
-	    dmap_fasterAasMeltPortals.SetBool(version >= 210);
-	    dmap_fasterAasBrushListMerge.SetBool(version >= 210);
-	    dmap_pruneAasBrushesChopping.SetBool(version >= 210);
-	    dmap_fasterAasWaterJumpReachability.SetBool(version >= 210);
+		dmap_fasterPutPrimitives.SetBool(version >= 210);
+		dmap_dontSplitWithFuncStaticVertices.SetBool(version >= 210);
+		dmap_fixVertexSnappingTjunc.SetInteger(version >= 210 ? 2 : 0);
+		dmap_fasterShareMapTriVerts.SetBool(version >= 210);
+		dmap_optimizeTriangulation.SetBool(version >= 210);
+		dmap_optimizeExactTjuncIntersection.SetBool(version >= 210);
+		dmap_fasterAasMeltPortals.SetBool(version >= 210);
+		dmap_fasterAasBrushListMerge.SetBool(version >= 210);
+		dmap_pruneAasBrushesChopping.SetBool(version >= 210);
+		dmap_fasterAasWaterJumpReachability.SetBool(version >= 210);
+		dmap_disableCellSnappingTjunc.SetBool(version >= 210);
 	}
 
 	if ( args.Argc() < 2 ) {

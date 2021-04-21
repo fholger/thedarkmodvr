@@ -16,6 +16,8 @@
 #ifndef __MATH_SIMD_SSE3_H__
 #define __MATH_SIMD_SSE3_H__
 
+#include "Simd_SSE2.h"
+
 /*
 ===============================================================================
 
@@ -26,12 +28,9 @@
 
 class idSIMD_SSE3 : public idSIMD_SSE2 {
 public:
-	idSIMD_SSE3() { name = "SSE3"; }
+	idSIMD_SSE3();
 
-#if defined(MACOS_X) && defined(__i386__)
-#elif SIMD_USE_ASM
-	virtual void VPCALL TransformVerts( idDrawVert *verts, const int numVerts, const idJointMat *joints, const idVec4 *weights, const int *index, const int numWeights );
-
+#ifdef ENABLE_SSE_PROCESSORS
 #endif
 };
 

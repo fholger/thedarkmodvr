@@ -98,7 +98,7 @@ idCVar com_asyncSound( "com_asyncSound", "1", CVAR_INTEGER|CVAR_SYSTEM, ASYNCSOU
 idCVar com_forceGenericSIMD( "com_forceGenericSIMD", "0", CVAR_SYSTEM | CVAR_NOCHEAT,
 	"Force specified implementation of SIMD processor (if supported)\n"
 	"Value 1 or Generic forces slow platform-independent implementation. "
-	"Other options include: SSE, SSE2, SSE3, AVX, AVX2"
+	"Other options include: SSE, SSE2, SSE3, AVX, AVX2, [Win32]:IdAsm)"
 );
 idCVar com_fpexceptions( "com_fpexceptions", "0", CVAR_BOOL | CVAR_SYSTEM, "enable FP exceptions: throw exception when NaN or Inf value is produced" );
 idCVar com_developer( "developer", "0", CVAR_BOOL|CVAR_SYSTEM|CVAR_NOCHEAT, "developer mode" );
@@ -2514,14 +2514,12 @@ void idCommonLocal::Frame( void ) {
 		// write config file if anything changed
 		WriteConfiguration(); 
 
+		// stgatilov #4550: update FPU props (e.g. NaN exceptions)
+		sys->ThreadHeartbeat();
+
 		// change SIMD implementation if required
 		if ( com_forceGenericSIMD.IsModified() ) {
 			InitSIMD();
-		}
-
-		if ( com_fpexceptions.IsModified()) {
-			sys->FPU_SetExceptions(com_fpexceptions.GetBool());
-			com_fpexceptions.ClearModified();
 		}
 
 		eventLoop->RunEventLoop();
@@ -2653,7 +2651,10 @@ void idCommonLocal::Async( void ) {
 		return;
 	}
 
-	else if ( !com_preciseTic.GetBool() ) {
+	// stgatilov #4550: update FPU props (e.g. NaN exceptions)
+	sys->ThreadHeartbeat();
+
+	if ( !com_preciseTic.GetBool() ) {
 		// just run a single tic, even if the exact msec isn't precise
 		SingleAsyncTic();
 		return;
@@ -2861,8 +2862,8 @@ void idCommonLocal::Init( int argc, const char **argv, const char *cmdline )
 		// override cvars from command line
 		StartupVariable( NULL, false );
 
-        // set fpu double extended precision
-        Sys_FPU_SetPrecision();
+		// stgatilov #4550: set FPU props (FTZ + DAZ, etc.)
+		sys->ThreadStartup();
 
 		// initialize processor specific SIMD implementation
 		InitSIMD();

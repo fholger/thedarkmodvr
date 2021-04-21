@@ -1326,7 +1326,7 @@ void R_AxisToModelMatrix( const idMat3 &axis, const idVec3 &origin, float modelM
 // note that many of these assume a normalized matrix, and will not work with scaled axis
 void R_GlobalPointToLocal( const float modelMatrix[16], const idVec3 &in, idVec3 &out );
 void R_GlobalVectorToLocal( const float modelMatrix[16], const idVec3 &in, idVec3 &out );
-void VPCALL R_GlobalPlaneToLocal( const float modelMatrix[16], const idPlane &in, idPlane &out );
+void R_GlobalPlaneToLocal( const float modelMatrix[16], const idPlane &in, idPlane &out );
 void R_PointTimesMatrix( const float modelMatrix[16], const idVec4 &in, idVec4 &out );
 void R_LocalPointToGlobal( const float modelMatrix[16], const idVec3 &in, idVec3 &out );
 void R_LocalVectorToGlobal( const float modelMatrix[16], const idVec3 &in, idVec3 &out );
@@ -1470,6 +1470,7 @@ void RB_Multi_DrawElements( int instances = 0 );
 
 // postprocessing related
 void RB_DrawFullScreenQuad( float e = 1 );
+void RB_DrawFullScreenTri();
 
 /*
 ============================================================

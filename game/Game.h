@@ -16,11 +16,6 @@
 #ifndef __GAME_H__
 #define __GAME_H__
 
-#if defined(__linux__) || defined(MACOS_X)
-#include "../idlib/Lib.h"
-#include "../sound/sound.h"
-#endif
-
 #include "../framework/Licensee.h"
 
 /*
@@ -97,9 +92,6 @@ public:
 
 	// The session calls this right before a new level is loaded.
 	virtual void				SetPersistentPlayerInfo( int clientNum, const idDict &playerInfo ) = 0;
-
-	// The session calls this to allow painting of the "Mission Loaded / Press Attack" gui
-	virtual void				SetTime2Start() = 0; // grayman #3763
 
 	// Obsttorte
 	virtual idStr				triggeredSave() = 0; 

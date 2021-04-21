@@ -832,9 +832,9 @@ static void RB_ShowSurfaceInfo( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	idStr modelText;
 	sprintf( modelText, "%s : %d", mt.entity->hModel->Name(), mt.surfIdx );
 
-	tr.primaryWorld->DrawText( modelText, mt.point + tr.primaryView->renderView.viewaxis[2] * 16,
+	tr.primaryWorld->DebugText( modelText, mt.point + tr.primaryView->renderView.viewaxis[2] * 16,
 		0.35f, colorRed, tr.primaryView->renderView.viewaxis );
-	tr.primaryWorld->DrawText( mt.material->GetName(), mt.point, 
+	tr.primaryWorld->DebugText( mt.material->GetName(), mt.point, 
 		0.35f, colorBlue, tr.primaryView->renderView.viewaxis );
 	if ( r_showSurfaceInfo.GetInteger() == 2 ) {
 #if 1
@@ -849,7 +849,7 @@ static void RB_ShowSurfaceInfo( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		auto rel = backEnd.viewDef->renderWorld->entityDefs[mh];
 		idStr index( rel->index );
 #endif
-		tr.primaryWorld->DrawText( index.c_str(), mt.point + tr.primaryView->renderView.viewaxis[2] * 32,
+		tr.primaryWorld->DebugText( index.c_str(), mt.point + tr.primaryView->renderView.viewaxis[2] * 32,
 			0.35f, colorBlue, tr.primaryView->renderView.viewaxis );
 	}
 
@@ -2520,10 +2520,22 @@ void R_Tools() {
 	static idCVarInt r_maxTri( "r_maxTri", "0", CVAR_RENDERER, "Limit max tri per draw call" );
 	if ( r_maxTri ) {
 		auto limitTris = []( drawSurf_t* surf ) {
-			surf->numIndexes = Min<int>( r_maxTri, surf->numIndexes );
+			surf->numIndexes = Min<int>( r_maxTri*3, surf->numIndexes );
 		};
 		for ( int i = 0; i < tr.viewDef->numDrawSurfs; i++ )
 			limitTris( tr.viewDef->drawSurfs[i] );
+		for ( auto vLight = tr.viewDef->viewLights; vLight; vLight = vLight->next ) {
+			for ( drawSurf_t* surf = vLight->globalInteractions; surf; surf = surf->nextOnLight )
+				limitTris( surf );
+			for ( drawSurf_t* surf = vLight->localInteractions; surf; surf = surf->nextOnLight )
+				limitTris( surf );
+			for ( drawSurf_t* surf = vLight->globalShadows; surf; surf = surf->nextOnLight )
+				limitTris( surf );
+			for ( drawSurf_t* surf = vLight->localShadows; surf; surf = surf->nextOnLight )
+				limitTris( surf );
+			for ( drawSurf_t* surf = vLight->translucentInteractions; surf; surf = surf->nextOnLight )
+				limitTris( surf );
+		}
 	}
 	if ( r_showEntityDraws )
 		for ( auto ent = tr.viewDef->viewEntitys; ent; ent = ent->next ) {

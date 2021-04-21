@@ -33,6 +33,7 @@ extern idCVar dmap_fasterAasMeltPortals;
 extern idCVar dmap_fasterAasBrushListMerge;
 extern idCVar dmap_pruneAasBrushesChopping;
 extern idCVar dmap_fasterAasWaterJumpReachability;
+extern idCVar dmap_disableCellSnappingTjunc;
 
 
 typedef struct primitive_s {
@@ -358,6 +359,7 @@ void GLS_EndScene( void );
 typedef struct interAreaPortal_s {
 	int		area0, area1;
 	side_t	*side;
+	uBrush_t *brush;
 } interAreaPortal_t;
 
 extern	interAreaPortal_t interAreaPortals[MAX_INTER_AREA_PORTALS];
