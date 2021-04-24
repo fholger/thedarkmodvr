@@ -1807,8 +1807,8 @@ idImageManager::StartBuild
 ===============
 */
 void idImageManager::StartBuild() {
-	ddsList.Clear();
-	ddsHash.Free();
+	ddsList.ClearFree();
+	ddsHash.ClearFree();
 }
 
 /*
@@ -1850,8 +1850,8 @@ void idImageManager::FinishBuild( bool removeDups ) {
 		}
 		fileSystem->CloseFile( batchFile );
 	}
-	ddsList.Clear();
-	ddsHash.Free();
+	ddsList.ClearFree();
+	ddsHash.ClearFree();
 }
 
 /*

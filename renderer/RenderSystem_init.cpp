@@ -1781,7 +1781,6 @@ idRenderSystemLocal::Clear
 ===============
 */
 void idRenderSystemLocal::Clear( void ) {
-	registered = false;
 	frameCount = 0;
 	viewCount = 0;
 	staticAllocCount = 0;
@@ -1801,7 +1800,6 @@ void idRenderSystemLocal::Clear( void ) {
 	ambientCubeImage = NULL;
 	viewDef = NULL;
 	memset( &pc, 0, sizeof( pc ) );
-	memset( &lockSurfacesCmd, 0, sizeof( lockSurfacesCmd ) );
 	memset( &identitySpace, 0, sizeof( identitySpace ) );
 	logFile = NULL;
 	memset( renderCrops, 0, sizeof( renderCrops ) );

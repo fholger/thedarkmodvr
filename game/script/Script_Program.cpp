@@ -1938,7 +1938,7 @@ void idProgram::FreeData( void ) {
 	// free the defs
 	varDefs.DeleteContents( true );
 	varDefNames.DeleteContents( true );
-	varDefNameHash.Free();
+	varDefNameHash.ClearFree();
 
 	returnDef		= NULL;
 	returnStringDef = NULL;
@@ -1957,8 +1957,8 @@ void idProgram::FreeData( void ) {
 		functions[ i ].Clear();
 	}
 
-	filename.Clear();
-	fileList.Clear();
+	filename.ClearFree();
+	fileList.ClearFree();
 	statements.Clear();
 	functions.Clear();
 

@@ -624,9 +624,9 @@ void PutPrimitivesInAreas( uEntity_t *e ) {
 		for (int i = 0; i < e->numAreas; i++) {
 			e->areas[i].groupsPerPlane = new groupsPerPlane_s();
 			groupsPerPlane_s &gpp = *e->areas[i].groupsPerPlane;
-			gpp.hash.Clear(capacity, capacity);
-			gpp.lists.AssureSize(capacity);
-			gpp.lists.SetNum(0, false);
+			gpp.hash.ClearFree(capacity, capacity);
+			gpp.lists.Clear();
+			gpp.lists.Reserve(capacity);
 		}
 	}
 

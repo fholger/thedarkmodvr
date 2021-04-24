@@ -861,8 +861,6 @@ public:
 
 public:
 	// renderer globals
-	bool					registered;			// cleared at shutdown, set at InitOpenGL
-
 	bool					takingScreenshot;
 
 	int						frameCount;			// incremented every frame
@@ -901,8 +899,6 @@ public:
 
 	performanceCounters_t	pc;					// performance counters
 
-	drawSurfsCommand_t		lockSurfacesCmd;	// use this when r_lockSurfaces = 1
-
 	viewEntity_t			identitySpace;		// can use if we don't know viewDef->worldSpace is valid
 	FILE 					*logFile;			// for logging GL calls and frame breaks
 
@@ -934,6 +930,7 @@ extern idCVar r_glDebugContext;
 extern idCVar r_displayRefresh;			// optional display refresh rate option for vid mode
 extern idCVar r_fullscreen;				// 0 = windowed, 1 = full screen
 extern idCVar r_multiSamples;			// number of antialiasing samples
+extern idCVarBool r_fboSRGB;
 
 extern idCVar r_ignore;					// used for random debugging without defining new vars
 extern idCVar r_ignore2;				// used for random debugging without defining new vars

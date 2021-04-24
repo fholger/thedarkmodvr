@@ -85,6 +85,7 @@ public:
 					~idList( void );
 
 	void			Clear( void );										// clear the list
+	void			ClearFree( void );									// clear the list and delete buffer
 	int				Num( void ) const;									// returns number of elements in list
 	int				NumAllocated( void ) const;							// returns number of elements allocated for
 	void			SetGranularity( int newgranularity );				// set new granularity
@@ -105,6 +106,7 @@ public:
 	void			AssureSize( int newSize);							// assure list has given number of elements, but leave them uninitialized
 	void			AssureSize( int newSize, const type &initValue );	// assure list has given number of elements and initialize any new elements
 	void			AssureSizeAlloc( int newSize, new_t *allocator );	// assure the pointer list has the given number of elements and allocate any new elements
+	void			Reserve( int newSize );								// resize list to newSize if it is smaller, don't change Num
 
 	type *			Ptr( void );										// returns a pointer to the list
 	const type *	Ptr( void ) const;									// returns a pointer to the list
@@ -151,8 +153,9 @@ ID_INLINE idList<type>::idList( int newgranularity ) {
 	assert( newgranularity > 0 );
 
 	list		= NULL;
+	num			= 0;
+	size		= 0;
 	granularity	= newgranularity;
-	Clear();
 }
 
 /*
@@ -186,18 +189,30 @@ idList<type>::~idList<type>
 */
 template< class type >
 ID_INLINE idList<type>::~idList( void ) {
-	Clear();
+	ClearFree();
 }
 
 /*
 ================
 idList<type>::Clear
 
-Frees up the memory allocated by the list.  Assumes that type automatically handles freeing up memory.
+//stgatilov #5593: Removes all elements from the list without freeing memory.
 ================
 */
 template< class type >
 ID_INLINE void idList<type>::Clear( void ) {
+	num		= 0;
+}
+
+/*
+================
+idList<type>::ClearFree
+
+Frees up the memory allocated by the list.  Assumes that type automatically handles freeing up memory.
+================
+*/
+template< class type >
+ID_INLINE void idList<type>::ClearFree( void ) {
 	if ( list ) {
 		delete[] list;
 	}
@@ -229,7 +244,7 @@ ID_INLINE void idList<type>::DeleteContents( bool clear ) {
 	}
 
 	if ( clear ) {
-		Clear();
+		ClearFree();
 	} else {
 		memset( list, 0, size * sizeof( type ) );
 	}
@@ -359,7 +374,7 @@ ID_INLINE void idList<type>::Condense( void ) {
 		if ( num ) {
 			Resize( num );
 		} else {
-			Clear();
+			ClearFree();
 		}
 	}
 }
@@ -369,7 +384,7 @@ ID_INLINE void idList<type>::Condense( void ) {
 idList<type>::Resize
 
 Allocates memory for the amount of elements requested while keeping the contents intact.
-Contents are copied using their = operator so that data is correnctly instantiated.
+Contents are copied using their = operator so that data is correctly instantiated.
 ================
 */
 template< class type >
@@ -381,7 +396,7 @@ ID_INLINE void idList<type>::Resize( int newsize ) {
 
 	// free up the list if no data is being reserved
 	if ( newsize <= 0 ) {
-		Clear();
+		ClearFree();
 		return;
 	}
 
@@ -428,7 +443,7 @@ ID_INLINE void idList<type>::Resize( int newsize, int newgranularity ) {
 
 	// free up the list if no data is being reserved
 	if ( newsize <= 0 ) {
-		Clear();
+		ClearFree();
 		return;
 	}
 
@@ -540,6 +555,22 @@ ID_INLINE void idList<type>::AssureSizeAlloc( int newSize, new_t *allocator ) {
 
 /*
 ================
+idList<type>::Reserve
+
+Makes sure the list capacity can hold at least the given number of elements.
+================
+*/
+template< class type >
+ID_INLINE void idList<type>::Reserve( int newSize ) {
+	if (newSize > size) {
+		int tnum = num;
+		AssureSize( newSize );
+		num = tnum;
+	}
+}
+
+/*
+================
 idList<type>::operator=
 
 Copies the contents and size attributes of another list.
@@ -549,7 +580,7 @@ template< class type >
 ID_INLINE idList<type> &idList<type>::operator=( const idList<type> &other ) {
 	int	i;
 
-	Clear();
+	ClearFree();
 
 	num			= other.num;
 	size		= other.size;

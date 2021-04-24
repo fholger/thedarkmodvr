@@ -2648,12 +2648,12 @@ void idFileSystemLocal::Shutdown( bool reloading ) {
 
 	searchpath_t *sp, *next, *loop;
 
-	gameFolder.Clear();
-	serverPaks.Clear();
+	gameFolder.ClearFree();
+	serverPaks.ClearFree();
 
 	if ( !reloading ) {
-		restartChecksums.Clear();
-		addonChecksums.Clear();
+		restartChecksums.ClearFree();
+		addonChecksums.ClearFree();
 	}
 
 	loadedFileFromDir = false;
@@ -2692,7 +2692,7 @@ void idFileSystemLocal::Shutdown( bool reloading ) {
 	cmdSystem->RemoveCommand( "dirtree" );
 	cmdSystem->RemoveCommand( "touchFile" );
 
-	mapDict.Clear();
+	mapDict.ClearFree();
 }
 
 /*

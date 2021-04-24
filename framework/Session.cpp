@@ -390,11 +390,11 @@ void idSessionLocal::Shutdown() {
 		menuSoundWorld = NULL;
 	}
 		
-	mapSpawnData.serverInfo.Clear();
-	mapSpawnData.syncedCVars.Clear();
+	mapSpawnData.serverInfo.ClearFree();
+	mapSpawnData.syncedCVars.ClearFree();
 	for ( i = 0; i < MAX_ASYNC_CLIENTS; i++ ) {
-		mapSpawnData.userInfo[i].Clear();
-		mapSpawnData.persistentPlayerInfo[i].Clear();
+		mapSpawnData.userInfo[i].ClearFree();
+		mapSpawnData.persistentPlayerInfo[i].ClearFree();
 	}
 
 	if ( guiMainMenu_MapList != NULL ) {
@@ -1659,8 +1659,6 @@ const idStr GetNextQuicksaveFilename()
 	// Get the list of existing save games
 	idStrList fileList;
 	idList<fileTIME_T> fileTimes;
-	fileList.Clear();
-	fileTimes.Clear();
 	sessLocal.GetSaveGameList( fileList, fileTimes ); // fileTimes is sorted, most recent first
 
 	// Count the number of quicksaves and remember the oldest one we saw
@@ -1702,8 +1700,6 @@ const idStr GetMostRecentQuicksaveFilename()
 	// Get the list of existing save games
 	idStrList fileList;
 	idList<fileTIME_T> fileTimes;
-	fileList.Clear();
-	fileTimes.Clear();
 	sessLocal.GetSaveGameList( fileList, fileTimes ); 
 
 	// fileTimes is sorted, most recent first. Find the first quick save

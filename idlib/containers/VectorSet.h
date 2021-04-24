@@ -39,7 +39,8 @@ public:
 
 	void					Init( const type &mins, const type &maxs, const int boxHashSize, const int initialSize );
 	void					ResizeIndex( const int newSize );
-	void					Clear( bool deleteBuffers = false );
+	void					Clear( void );
+	void					ClearFree( void );
 
 							// finds arbitrary match for the specified vector
 							// if there is no match, then the specified vector is appended
@@ -62,7 +63,7 @@ private:
 template< class type, int dimension >
 ID_INLINE idVectorSet<type,dimension>::idVectorSet( void ) {
 	boxHashSize = 16;
-	hash.Clear( idMath::IPow( boxHashSize, dimension ), 128 );
+	hash.ClearFree( idMath::IPow( boxHashSize, dimension ), 128 );
 	memset( boxInvSize, 0, dimension * sizeof( boxInvSize[0] ) );
 	memset( boxHalfSize, 0, dimension * sizeof( boxHalfSize[0] ) );
 }
@@ -82,7 +83,7 @@ ID_INLINE void idVectorSet<type,dimension>::Init( const type &mins, const type &
 
 	int hashSize = idMath::CeilPowerOfTwo( idMath::IPow( boxHashSize, dimension ) );
 	if (hashSize != hash.GetHashSize())
-		hash.Clear( hashSize, initialSize );
+		hash.ClearFree( hashSize, initialSize );
 	else {
 		hash.Clear();
 		hash.ResizeIndex(initialSize);
@@ -106,15 +107,15 @@ ID_INLINE void idVectorSet<type,dimension>::ResizeIndex( const int newSize ) {
 }
 
 template< class type, int dimension >
-ID_INLINE void idVectorSet<type,dimension>::Clear( bool deleteBuffers ) {
-	if (deleteBuffers) {
-		idList<type>::Clear();
-		hash.Free();
-	}
-	else {
-		idList<type>::SetNum(0, false);
-		hash.Clear();
-	}
+ID_INLINE void idVectorSet<type,dimension>::Clear( void ) {
+	idList<type>::Clear();
+	hash.Clear();
+}
+
+template< class type, int dimension >
+ID_INLINE void idVectorSet<type,dimension>::ClearFree( void ) {
+	idList<type>::ClearFree();
+	hash.ClearFree();
 }
 
 template< class type, int dimension > template< class Lambda >
@@ -199,7 +200,8 @@ public:
 	size_t					Size( void ) const { return sizeof( *this ) + Allocated(); }
 
 	void					Init( const type &mins, const type &maxs, const int boxHashSize, const int initialSize );
-	void					Clear( bool deleteBuffers = false );
+	void					Clear( void );
+	void					ClearFree( void );
 
 							// returns either vectorNum or an index to a previously found vector
 	int						FindVector( const type *vectorList, const int vectorNum, const float epsilon );
@@ -216,7 +218,7 @@ private:
 template< class type, int dimension >
 ID_INLINE idVectorSubset<type,dimension>::idVectorSubset( void ) {
 	boxHashSize = 16;
-	hash.Clear( idMath::IPow( boxHashSize, dimension ), 128 );
+	hash.ClearFree( idMath::IPow( boxHashSize, dimension ), 128 );
 	memset( boxInvSize, 0, dimension * sizeof( boxInvSize[0] ) );
 	memset( boxHalfSize, 0, dimension * sizeof( boxHalfSize[0] ) );
 }
@@ -233,7 +235,7 @@ ID_INLINE void idVectorSubset<type,dimension>::Init( const type &mins, const typ
 
 	int hashSize = idMath::CeilPowerOfTwo( idMath::IPow( boxHashSize, dimension ) );
 	if (hashSize != hash.GetHashSize())
-		hash.Clear( hashSize, initialSize );
+		hash.ClearFree( hashSize, initialSize );
 	else {
 		hash.Clear();
 		hash.ResizeIndex(initialSize);
@@ -251,15 +253,15 @@ ID_INLINE void idVectorSubset<type,dimension>::Init( const type &mins, const typ
 }
 
 template< class type, int dimension >
-ID_INLINE void idVectorSubset<type,dimension>::Clear( bool deleteBuffers ) {
-	if (deleteBuffers) {
-		idList<type>::Clear();
-		hash.Free();
-	}
-	else {
-		idList<type>::SetNum(0, false);
-		hash.Clear();
-	}
+ID_INLINE void idVectorSubset<type,dimension>::Clear( void ) {
+	idList<type>::Clear();
+	hash.Clear();
+}
+
+template< class type, int dimension >
+ID_INLINE void idVectorSubset<type,dimension>::ClearFree( void ) {
+	idList<type>::ClearFree();
+	hash.ClearFree();
 }
 
 template< class type, int dimension >

@@ -33,7 +33,7 @@ tdmEAS::tdmEAS(idAASLocal* aas) :
 
 void tdmEAS::Clear()
 {
-	_elevators.Clear();
+	_elevators.ClearFree();
 	_clusterInfo.clear();
 	_elevatorStations.clear();
 }
