@@ -41,6 +41,7 @@ public:
 		XR_CROUCH,
 		XR_JUMP,
 		XR_FROB,
+		XR_ATTACK,
 		XR_MENU_OPEN,
 		XR_INVENTORY_OPEN,
 		XR_AIM,

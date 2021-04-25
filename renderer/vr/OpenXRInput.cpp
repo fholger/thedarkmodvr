@@ -42,6 +42,7 @@ namespace {
 		{ OpenXRInput::XR_CROUCH, "crouch", "Player crouch" },
 		{ OpenXRInput::XR_JUMP, "jump", "Player jump" },
 		{ OpenXRInput::XR_FROB, "frob", "Player frob" },
+		{ OpenXRInput::XR_ATTACK, "attack", "Attack" },
 		{ OpenXRInput::XR_MENU_OPEN, "menu_open", "Open main menu" },
 		{ OpenXRInput::XR_INVENTORY_OPEN, "inventory_open", "Open inventory menu" },
 		{ OpenXRInput::XR_MENU_AIM, "menu_aim", "Menu pointer aim" },
@@ -208,6 +209,7 @@ void OpenXRInput::CreateAllActions() {
 	CreateAction( ingameActionSet, XR_CROUCH, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_JUMP, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_FROB, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_ATTACK, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_MENU_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_INVENTORY_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_AIM, XR_ACTION_TYPE_POSE_INPUT );
@@ -379,6 +381,11 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 		// fixme: adjust once we have actual attack handling
 		actionChanges.AddGrow( { UB_ATTACK, "", false } );
 		fakeAttackPressed = false;
+	}
+
+	auto attackState = GetBool(XR_ATTACK);
+	if ( attackState.first ) {
+		actionChanges.AddGrow( { UB_ATTACK, "", attackState.second } );
 	}
 }
 

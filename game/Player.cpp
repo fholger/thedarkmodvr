@@ -10631,7 +10631,7 @@ void idPlayer::PerformFrobCheck()
 	float maxFrobDistance = g_Global.m_MaxFrobDistance;
 
 	frameData->mouseAimSize = vr_aimIndicatorSize.GetFloat();
-	bool isUsingBow = weapon.GetEntity() && weapon.GetEntity()->IsRanged() && m_immobilization.GetInt( "arrow_weapon" ) != 0;
+	bool isUsingBow = weapon.GetEntity() && weapon.GetEntity()->IsRanged();// && m_immobilization.GetInt( "arrow_weapon" ) != 0;
 	if ( isUsingBow ) {
 		// VR: allow aim indicator to reach further for better ranged aim
 		maxFrobDistance *= vr_aimIndicatorRangedMultiplier.GetFloat();
