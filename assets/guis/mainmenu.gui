@@ -1,0 +1,107 @@
+/* =============================================================================================
+ *
+ * Main Menu Master File. This file is part of The Dark Mod's Main Menu GUI
+ *
+ * Mission Authors: DO NOT EDIT, INCLUDE OR OVERRIDE THIS FILE IN YOUR MISSION PK4.
+ *
+ * greebo: The main menu file includes not only the starting menu but also
+ * briefing, videos, objectives, load/save, missions success and credits.
+ *
+ * ============================================================================================= */
+
+// Include all constants first
+#include "guis/mainmenu_defs.gui"
+
+// This file can be overridden by FM authors to specify custom GUI settings
+#include "guis/mainmenu_custom_defs.gui"
+
+// Include some defaults in case the custom file above did not define them:
+#include "guis/mainmenu_custom_defaults.gui"
+
+windowDef Desktop
+{
+	rect		0, 0, 640, 640 
+	backcolor	0.14, 0.02, 0, 1 // Note: This background colour shouldn't be visible (dark reddish brown)
+	menugui	1
+	visible	1
+
+	// tels: 0 => first start, 1 => reloaded from the SDK, so show Video Settings
+	float reload;
+
+	// Background graphics and animations
+	#include "guis/mainmenu_background.gui"
+
+	// General utility scripts to get the mainmenu working
+	#include "guis/mainmenu_utils.gui"
+
+	#include "guis/mainmenu_music.gui"
+
+	// Include the initial list of options (Load/Save/Settings/Quit)
+	#include "guis/mainmenu_main.gui"
+	#include "guis/mainmenu_main_ingame.gui"
+
+	// Include the "New Game" menu
+	#include "guis/mainmenu_newgame.gui"
+
+	// Include the Download menu
+	#include "guis/mainmenu_download.gui"
+
+	// Include the code for handling the Quit question
+	#include "guis/mainmenu_quit.gui"
+
+	// Include the Credits code
+	#include "guis/mainmenu_credits.gui"
+
+	// Include the saving loading stuff
+	#include "guis/mainmenu_loadsave.gui"
+
+	// Include the standard briefing code
+	#include "guis/mainmenu_briefing.gui"
+	
+	// Include the briefing video code
+	#include "guis/mainmenu_briefing_video.gui"
+
+	// Include the debriefing video code
+	#include "guis/mainmenu_debriefing_video.gui"
+
+	// Include the "Mission Complete" GUI
+	#include "guis/mainmenu_success.gui"
+
+	// Include the "Objectives" GUI
+	#include "guis/mainmenu_objectives.gui"
+
+	// Include the "Shop" screen
+	#include "guis/mainmenu_shop.gui"
+
+	// Include the "Settings" menu
+	#include "guis/mainmenu_settings.gui"
+
+	// Include the "VR Settings" menu
+	#include "guis/mainmenu_vrsettings.gui"
+
+	// Include the error message GUI
+	#include "guis/mainmenu_message.gui"
+	
+	// Include the gui scaling GUI
+	#include "guis/mainmenu_settings_guisize.gui"
+
+	// A black window to fade in the main menu
+	windowDef BlackFade
+	{
+		rect		0, 0, 640, 640
+		backcolor	0, 0, 0, 1
+		visible		0
+		notime		1
+
+		onTime 0
+		{
+			transition "backcolor" "0,0,0,1" "0,0,0,0" "1000";
+		}
+
+		onTime 1100
+		{
+			set "visible" "0";
+		}
+	}
+
+} // end windowDef Desktop (outermost windowDef)

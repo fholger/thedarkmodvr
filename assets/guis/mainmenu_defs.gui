@@ -1,0 +1,543 @@
+// For vim users, don't remove: vim:ts=4:sw=4:cindent
+/* =============================================================================================
+ *
+ * This file is part of The Dark Mod's Main Menu GUI
+ *
+ * Mission Authors: DO NOT EDIT, INCLUDE OR OVERRIDE THIS FILE IN YOUR MISSION PK4.
+ *
+ * greebo: These constants are used throughout the menu GUI. Include this file first.
+ *
+ * ============================================================================================= */
+
+#define MM_STATE_NONE				0	// no state defined yet
+#define MM_STATE_MAINMENU			1	// main menu (initial screen)
+#define MM_STATE_MAINMENU_INGAME	2	// (INTERNAL) main menu (in-game) only for use in mainmenu_utils.gui
+#define MM_STATE_MAINMENU_NOTINGAME	3	// (INTERNAL) main menu (not in-game) only for use in mainmenu_utils.gui
+#define MM_STATE_CREDITS			4	// credits
+#define MM_STATE_SETTINGS			5	// settings
+#define MM_STATE_MOD_SELECT			6	// mod selection
+#define MM_STATE_BRIEFING			7	// briefing
+#define MM_STATE_DIFF_SELECT		8	// pre-game objectives / difficulty
+#define MM_STATE_SHOP				9	// shop / purchase menu
+#define MM_STATE_OBJECTIVES			10	// in-game objectives
+#define MM_STATE_QUITGAME			11	// quit game confirmation
+#define MM_STATE_LOAD_SAVE_GAME		12	// loading / saving
+#define MM_STATE_SUCCESS			13	// mission success
+#define MM_STATE_BRIEFING_VIDEO		14	// briefing video
+#define MM_STATE_DOWNLOAD			15	// download page
+#define MM_STATE_DEBRIEFING_VIDEO	16	// debriefing video
+#define MM_STATE_GUISIZE			17	// changing gui size (Obsttorte)
+#define MM_STATE_VRSETTINGS			18	// VR settings
+
+#define MM_MUSIC_NONE				0	// no music playing
+#define MM_MUSIC_MAINMENU			1	// main menu
+#define MM_MUSIC_INGAME				2	// in-game
+#define MM_MUSIC_BRIEFING			3	// briefing
+#define MM_MUSIC_CREDITS			4	// credits
+#define MM_MUSIC_MISSION_COMPLETE	5	// mission complete
+#define MM_MUSIC_BRIEFING_VIDEO		6	// briefing video
+#define MM_MUSIC_DEBRIEFING_VIDEO	7	// debriefing video
+
+// Settings Pages
+#define SETTINGS_PAGE_NONE			0
+#define SETTINGS_PAGE_AUDIO			1
+#define SETTINGS_PAGE_VIDEO			2
+#define SETTINGS_PAGE_GAMEPLAY		3
+#define SETTINGS_PAGE_CONTROLS		4
+
+// VR Settings Pages
+#define VRSETTINGS_PAGE_NONE		0
+#define VRSETTINGS_PAGE_GENERAL		1
+#define VRSETTINGS_PAGE_CONTROLS	2
+
+// Settings > Video Pages
+#define SETTINGS_VIDEO_PAGE_NONE			0
+#define SETTINGS_VIDEO_PAGE_GENERAL			1
+#define SETTINGS_VIDEO_PAGE_ADVANCED		2
+#define SETTINGS_VIDEO_PAGE_LANGUAGE		3
+
+// grayman #3682
+// Settings > Gameplay Pages
+#define SETTINGS_GAMEPLAY_PAGE_NONE			0
+#define SETTINGS_GAMEPLAY_PAGE_GENERAL		1
+#define SETTINGS_GAMEPLAY_PAGE_DIFFICULTY	2
+
+// Settings > Controls Pages
+#define CONTROLS_PAGE_NONE			0
+#define CONTROLS_PAGE_MOVEMENT		1
+#define CONTROLS_PAGE_ACTIONS		2
+#define CONTROLS_PAGE_WEAPONS		3
+#define CONTROLS_PAGE_TOOLS			4
+#define CONTROLS_PAGE_GENERAL		5
+#define CONTROLS_PAGE_INVENTORY		6
+
+// Default sounds for TDM menus
+// When overridden by a mainmenu_custom_defs.gui, these should be #undef'd first
+
+// Played during non-video briefing
+#define MM_BRIEFING_SOUND_CMD "music tdm_objectives;"
+
+// Menu music after startup (not in-game)
+#define MM_MENU_SOUND_CMD "music tdm_mainmenu_background_music;"
+
+// Played in main menu when in-game (ESCaping out of the game)
+#define MM_INGAME_MENU_SOUND_CMD "music tdm_objectives;"
+
+// Played while displaying the credits
+#define MM_CREDITS_SOUND_CMD "music deviginti02;"
+
+// Played after completing a mission
+#define MM_MISSION_SUCCESS_SOUND_CMD "music mission_complete;"
+
+// The "Quit mission/game" message box
+#define MM_MSG_BOX_RECT			rect 200, 150, 240, 180 background "guis/assets/mainmenu/oldparchment_backdrop3" matcolor 1, 1, 1, 1
+
+// =============================================================================================
+// Common definitions for the (main) menu, like glowing buttons etc.
+
+// greebo: The BUTTON constant defines the graphics rectangle, the ACTION constant defines the mouse action rectangle
+
+#define MM_POS_X		323 // grayman #3733
+#define MM_POS_X_GLOW	324 // grayman #3733
+#define MM_POS_Y		220 // grayman #3733
+#define MM_POS_Y_GLOW	221
+//#define MM_POS_X		330
+//#define MM_POS_X_GLOW	331
+//#define MM_POS_Y		190
+//#define MM_POS_Y_GLOW	191
+#define MM_POS_W		250
+
+// Tels: Height of one button rectangle (for showing the text and the action definition)
+#define MM_POS_H		23
+// Offset to next button
+#define MM_POS_Y_STEP		22
+
+// Height of one line in the settings menu
+#define MM_LINE_H		18
+// Height of a slider
+#define MM_SLIDER_H		16
+
+// --------------------------------------------------------------
+// grayman #3733 - for the campaign and mission titles,
+// for both the starting and in-game main menus
+
+#define MM_TITLE_X					290 // x position of campaign and mission titles
+#define MM_TITLE_W					310 // width of campaign and mission titles
+#define MM_TITLE_H					 17	// height of campaign and mission titles
+
+#define MM_TITLE_CAMPAIGN_Y			170 // y position of campaign title
+#define MM_TITLE_CAMPAIGN_MISSION_Y	184 // y position of campaign mission title
+#define MM_TITLE_MISSION_Y			170 // y position of non-campaign mission title
+
+#define	MM_TITLE_CAMPAIGN		 	MM_TITLE_X, MM_TITLE_CAMPAIGN_Y, MM_TITLE_W, MM_TITLE_H
+#define	MM_TITLE_CAMPAIGN_MISSION 	MM_TITLE_X, MM_TITLE_CAMPAIGN_MISSION_Y, MM_TITLE_W, MM_TITLE_H
+#define	MM_TITLE_MISSION 			MM_TITLE_X, MM_TITLE_MISSION_Y, MM_TITLE_W, MM_TITLE_H
+
+#define MM_TITLE_FONTSCALE			0.25
+#define MM_TITLE_COLOR				0.4,0,0,0.9   // use this for initial definition
+#define SMM_TITLE_COLOR				"0.4 0 0 0.9" // use this for transitions
+#define MM_TITLE_FONT				font MM_BOLD_FONT forecolor INVISIBLE textscale MM_TITLE_FONTSCALE visible 1 textalign 1
+// --------------------------------------------------------------
+
+// grayman #3733 - for the Load/Save campaign and mission titles
+#define LS_TITLE_X					MM_TITLE_X // x position of campaign and mission titles
+#define LS_TITLE_W					MM_TITLE_W // width of campaign and mission titles
+#define LS_TITLE_H					MM_TITLE_H	// height of campaign and mission titles
+
+#define LS_TITLE_CAMPAIGN_Y			 99 // y position of campaign title
+#define LS_TITLE_CAMPAIGN_MISSION_Y	113 // y position of campaign mission title
+#define LS_TITLE_MISSION_Y			104 // y position of non-campaign mission title
+
+#define	LS_TITLE_CAMPAIGN		 	MM_TITLE_X, LS_TITLE_CAMPAIGN_Y, MM_TITLE_W, LS_TITLE_H
+#define	LS_TITLE_CAMPAIGN_MISSION 	MM_TITLE_X, LS_TITLE_CAMPAIGN_MISSION_Y, MM_TITLE_W, LS_TITLE_H
+#define	LS_TITLE_MISSION 			MM_TITLE_X, LS_TITLE_MISSION_Y, MM_TITLE_W, LS_TITLE_H
+
+#define LS_TITLE_FONTSCALE			0.25
+#define LS_TITLE_COLOR				0.4,0,0,0.9   // use this for initial definition
+#define SLS_TITLE_COLOR				"0.4 0 0 0.9" // use this for transitions
+#define LS_TITLE_FONT				font MM_BOLD_FONT forecolor INVISIBLE textscale LS_TITLE_FONTSCALE visible 1 textalign 1
+// --------------------------------------------------------------
+
+// Obsttorte - "Start Mission" button to directly start mission from main menu
+#define MM_POS_START_MISSION_BUTTON 		MM_POS_X, MM_POS_Y-0.5*MM_POS_Y_STEP, MM_POS_W, MM_POS_H
+#define MM_POS_START_MISSION_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y-0.5*MM_POS_Y_STEP, MM_POS_W, MM_POS_H
+#define MM_POS_START_MISSION_ACTION			MM_POS_START_MISSION_BUTTON
+
+// --------------------------------------------------------------
+// Obsttorte - "New Mission" button moved downwards if no mission installed (load/save isn't displayed then)
+#define	MM_POS_NEW_MISSION_BUTTON 	MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(0+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define	MM_POS_NEW_MISSION_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y+MM_POS_Y_STEP*(0+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define	MM_POS_NEW_MISSION_ACTION 	MM_POS_NEW_MISSION_BUTTON
+
+#define MM_POS_LOAD_GAME_BUTTON 	MM_POS_X, MM_POS_Y+0.5*MM_POS_Y_STEP, MM_POS_W, MM_POS_H
+#define MM_POS_LOAD_GAME_BUTTON_GLOW 	MM_POS_X_GLOW, MM_POS_Y_GLOW+0.5*MM_POS_Y_STEP, MM_POS_W, MM_POS_H
+#define MM_POS_LOAD_GAME_ACTION		MM_POS_LOAD_GAME_BUTTON
+
+#define MM_POS_SETTINGS_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(1+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_SETTINGS_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(1+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_SETTINGS_ACTION		MM_POS_SETTINGS_BUTTON
+
+#define MM_POS_CREDITS_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(2+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_CREDITS_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(2+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_CREDITS_ACTION		MM_POS_CREDITS_BUTTON
+
+#define MM_POS_QUIT_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(3+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_QUIT_BUTTON_GLOW		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(3+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_QUIT_ACTION		MM_POS_QUIT_BUTTON
+
+#define	MMIG_POS_RESUME_GAME_BUTTON 		MM_POS_START_MISSION_BUTTON
+#define	MMIG_POS_RESUME_GAME_BUTTON_GLOW	MM_POS_START_MISSION_BUTTON_GLOW
+#define	MMIG_POS_RESUME_GAME_ACTION 		MMIG_POS_RESUME_GAME_BUTTON
+
+#define	MMIG_POS_LOAD_GAME_BUTTON 		MM_POS_LOAD_GAME_BUTTON
+#define	MMIG_POS_LOAD_GAME_BUTTON_GLOW	MM_POS_LOAD_GAME_BUTTON_GLOW
+#define	MMIG_POS_LOAD_GAME_ACTION 		MMIG_POS_LOAD_GAME_BUTTON
+
+#define	MMIG_POS_OBJECTIVES_BUTTON 		MM_POS_NEW_MISSION_BUTTON
+#define	MMIG_POS_OBJECTIVES_BUTTON_GLOW	MM_POS_NEW_MISSION_BUTTON_GLOW
+#define	MMIG_POS_OBJECTIVES_ACTION 		MMIG_POS_OBJECTIVES_BUTTON
+
+#define	MMIG_POS_SETTINGS_BUTTON 		MM_POS_SETTINGS_BUTTON
+#define	MMIG_POS_SETTINGS_BUTTON_GLOW	MM_POS_SETTINGS_BUTTON_GLOW
+#define	MMIG_POS_SETTINGS_ACTION 		MMIG_POS_SETTINGS_BUTTON
+
+#define	MMIG_POS_CREDITS_BUTTON 		MM_POS_CREDITS_BUTTON
+#define	MMIG_POS_CREDITS_BUTTON_GLOW	MM_POS_CREDITS_BUTTON_GLOW
+#define	MMIG_POS_CREDITS_ACTION 		MMIG_POS_CREDITS_BUTTON
+
+#define MMIG_POS_RESTART_MISSION_BUTTON			MM_POS_START_MISSION_BUTTON
+#define MMIG_POS_RESTART_MISSION_BUTTON_GLOW	MM_POS_START_MISSION_BUTTON_GLOW
+#define MMIG_POS_RESTART_MISSION_ACTION			MMIG_POS_RESTART_MISSION_BUTTON
+
+#define	MMIG_POS_QUIT_MISSION_BUTTON 		MM_POS_QUIT_BUTTON
+#define	MMIG_POS_QUIT_MISSION_BUTTON_GLOW	MM_POS_QUIT_BUTTON_GLOW
+#define	MMIG_POS_QUIT_MISSION_ACTION 		MMIG_POS_QUIT_MISSION_BUTTON
+
+
+
+#define MM_BUTTON_HEIGHT			18
+
+// back to the "main menu" button:
+#define MM_POS_SETTINGS_BACK_BUTTON			rect	470, 435, 100, MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_BACK_BUTTON_GLOW	rect	471, 436, 100, MM_BUTTON_HEIGHT-1
+#define MM_POS_SETTINGS_BACK_ACTION			MM_POS_SETTINGS_BACK_BUTTON
+
+// back to the download menu button:
+#define MM_POS_SAMD_BACK_BUTTON			rect	470, 415, 100, MM_BUTTON_HEIGHT
+#define MM_POS_SAMD_BACK_BUTTON_GLOW	rect	471, 416, 100, MM_BUTTON_HEIGHT-1
+#define MM_POS_SAMD_BACK_ACTION			MM_POS_SAMD_BACK_BUTTON
+
+// Start Download button
+#define MM_POS_SAMD_START_BUTTON		rect	12, 198, 200, MM_BUTTON_HEIGHT
+#define MM_POS_SAMD_START_BUTTON_GLOW	rect	13, 199, 200, MM_BUTTON_HEIGHT-1
+#define MM_POS_SAMD_START_ACTION		MM_POS_SAMD_START_BUTTON
+
+// make sure that MM_POS_SETTINGS_BACK_ACTION and MM_POS_SETTINGS_RESTART_ACTION do not overlap!
+#define MM_POS_SETTINGS_RESTART			rect	327, 435, 140, MM_BUTTON_HEIGHT
+
+#define MM_POS_SETTINGS_RESTART_BUTTON		rect	0, 0, 140, MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_RESTART_BUTTON_GLOW	rect	1, 1, 139, MM_BUTTON_HEIGHT-1
+#define MM_POS_SETTINGS_RESTART_ACTION		MM_POS_SETTINGS_RESTART
+
+// Left side (but a bit indended right), back to the menu
+#define MM_POS_OBJ_BACK_BUTTON			rect	40, 445, 160, MM_BUTTON_HEIGHT * 1.3 
+#define MM_POS_OBJ_BACK_BUTTON_GLOW		rect	41, 446, 159, MM_BUTTON_HEIGHT * 1.3 - 1
+#define MM_POS_OBJ_BACK_ACTION			MM_POS_OBJ_BACK_BUTTON
+
+// Right side, onwards to start mission or resume game
+#define MM_POS_OBJ_FORWARD_BUTTON		rect	455, 445, 160, MM_BUTTON_HEIGHT * 1.3
+#define MM_POS_OBJ_FORWARD_BUTTON_GLOW	rect	456, 446, 159, MM_BUTTON_HEIGHT * 1.3 - 1
+#define MM_POS_OBJ_FORWARD_ACTION		MM_POS_OBJ_FORWARD_BUTTON
+
+#define MM_POS_NEWGAME_REFRESH_BUTTON		rect	375, 446, 150, MM_BUTTON_HEIGHT
+#define MM_POS_NEWGAME_REFRESH_BUTTON_GLOW	rect	376, 447, 149, MM_BUTTON_HEIGHT-1
+#define MM_POS_NEWGAME_REFRESH_ACTION		MM_POS_NEWGAME_REFRESH_BUTTON
+
+#define MM_POS_NEWGAME_DOWNLOAD_BUTTON		rect	327, 446, 140, MM_BUTTON_HEIGHT
+#define MM_POS_NEWGAME_DOWNLOAD_BUTTON_GLOW	rect	328, 447, 139, MM_BUTTON_HEIGHT-1
+#define MM_POS_NEWGAME_DOWNLOAD_ACTION		MM_POS_NEWGAME_DOWNLOAD_BUTTON
+
+#define MM_POS_NEWGAME_BACK_BUTTON		rect	470, 446, 100, MM_BUTTON_HEIGHT
+#define MM_POS_NEWGAME_BACK_BUTTON_GLOW	rect	471, 447, 100, MM_BUTTON_HEIGHT-1
+#define MM_POS_NEWGAME_BACK_ACTION		MM_POS_NEWGAME_BACK_BUTTON
+
+#define MM_POS_CREDITS_BACK_BUTTON			rect	520, 445, 90, MM_BUTTON_HEIGHT
+#define MM_POS_CREDITS_BACK_BUTTON_GLOW		rect	521, 446, 89, MM_BUTTON_HEIGHT-1
+#define MM_POS_CREDITS_BACK_ACTION			MM_POS_CREDITS_BACK_BUTTON
+
+#define MM_POS_NEWGAME_INSTALL_BUTTON		rect	327, 429, 140, MM_BUTTON_HEIGHT+4
+#define MM_POS_NEWGAME_INSTALL_BUTTON_GLOW	rect	328, 430, 139, MM_BUTTON_HEIGHT+3
+#define MM_POS_NEWGAME_INSTALL_ACTION		MM_POS_NEWGAME_INSTALL_BUTTON
+
+#define MM_POS_NEWGAME_NOTES_BUTTON			rect	0, 5, 120, MM_BUTTON_HEIGHT+4
+#define MM_POS_NEWGAME_NOTES_BUTTON_GLOW	rect	0, 6, 119, MM_BUTTON_HEIGHT+3
+#define MM_POS_NEWGAME_NOTES_ACTION			MM_POS_NEWGAME_INSTALL_BUTTON
+
+#define MM_POS_NEWGAME_START_BUTTON			rect	20, 92, 240, MM_BUTTON_HEIGHT+4
+#define MM_POS_NEWGAME_START_BUTTON_GLOW	rect	21, 93, 239, MM_BUTTON_HEIGHT+3
+
+#define MM_POS_NEWGAME_UNINSTALL_BUTTON			rect	20, 115, 240, MM_BUTTON_HEIGHT+4
+#define MM_POS_NEWGAME_UNINSTALL_BUTTON_GLOW	rect	21, 116, 239, MM_BUTTON_HEIGHT+3
+
+// for the restart.gui
+#define MM_POS_FAILURE_RESTART_BUTTON		rect	40, 430, 180, MM_BUTTON_HEIGHT+4 textaligny -2
+#define MM_POS_FAILURE_RESTART_BUTTON_GLOW	rect	41, 431, 179, MM_BUTTON_HEIGHT+3 textaligny -2
+
+#define MM_POS_FAILURE_OBJECTIVES_BUTTON		rect	230, 430, 180, MM_BUTTON_HEIGHT+4 textaligny -2
+#define MM_POS_FAILURE_OBJECTIVES_BUTTON_GLOW	rect	231, 431, 179, MM_BUTTON_HEIGHT+3 textaligny -2
+
+// x-3 to avoid cut-off text
+#define MM_POS_FAILURE_MAINMENU_BUTTON		rect	420, 430, 180, MM_BUTTON_HEIGHT+4 textaligny -2 textalignx -3
+#define MM_POS_FAILURE_MAINMENU_BUTTON_GLOW	rect	421, 431, 179, MM_BUTTON_HEIGHT+3 textaligny -2 textalignx -3
+
+// For the success gui
+#define MM_POS_SUCCESS_STATISTICS_BUTTON		rect	190, 390, 260, MM_BUTTON_HEIGHT+4 textaligny -2
+#define MM_POS_SUCCESS_STATISTICS_BUTTON_GLOW	rect	191, 390.5, 259, MM_BUTTON_HEIGHT+3 textaligny -2
+
+#define MM_POS_SUCCESS_CONTINUE_BUTTON		rect	190, 430, 260, MM_BUTTON_HEIGHT+4 textaligny -2
+#define MM_POS_SUCCESS_CONTINUE_BUTTON_GLOW	rect	191, 430.5, 259, MM_BUTTON_HEIGHT+3 textaligny -2
+
+#define MM_POS_SUCCESS_TITLE			rect	0, 190, 640, 82
+#define MM_POS_SUCCESS_TITLE_START		"0, 120, 640, 82"
+#define MM_POS_SUCCESS_TITLE_END		"0, 180, 640, 82"
+#define MM_SUCCESS_TITLE_START_COLOR	"0.70 0.60 0.4 0"
+#define MM_SUCCESS_TITLE_END_COLOR		"0.92 0.85 0.6 1"
+
+// Settings menu
+#define SETTINGS_VIDEO_FIRST_ROW_Y 130
+#define SETTINGS_GAMEPLAY_FIRST_ROW_Y 132
+
+// General, Advanced, Language
+#define MM_POS_SETTINGS_LEFT			rect	"gui::video_general_pos", SETTINGS_VIDEO_FIRST_ROW_Y-8, "gui::video_general_width", MM_BUTTON_HEIGHT+2
+#define MM_POS_SETTINGS_LEFT_GLOW		rect	"gui::video_general_pos"+1, SETTINGS_VIDEO_FIRST_ROW_Y-7, "gui::video_general_width"-1, MM_BUTTON_HEIGHT+2
+
+#define MM_POS_SETTINGS_RIGHT			rect	"gui::video_advanced_pos", SETTINGS_VIDEO_FIRST_ROW_Y-8, "gui::video_advanced_width", MM_BUTTON_HEIGHT+2
+#define MM_POS_SETTINGS_RIGHT_GLOW		rect	"gui::video_advanced_pos"+1, SETTINGS_VIDEO_FIRST_ROW_Y-7, "gui::video_advanced_width"-1, MM_BUTTON_HEIGHT+2
+
+#define MM_POS_SETTINGS_CENTER			rect	"gui::video_language_pos", SETTINGS_VIDEO_FIRST_ROW_Y-8, "gui::video_language_width", MM_BUTTON_HEIGHT+2
+#define MM_POS_SETTINGS_CENTER_GLOW		rect	"gui::video_language_pos"+1, SETTINGS_VIDEO_FIRST_ROW_Y-7, "gui::video_language_width"-1, MM_BUTTON_HEIGHT+2
+
+#define MM_POS_SETTINGS_AUDIO			rect	"gui::audio_pos", 100, "gui::audio_width", 21
+#define MM_POS_SETTINGS_AUDIO_GLOW		rect	"gui::audio_pos"+1, 101, "gui::audio_width"-1, 20
+
+#define MM_POS_SETTINGS_VIDEO			rect	"gui::video_pos", 100, "gui::video_width", 21
+#define MM_POS_SETTINGS_VIDEO_GLOW		rect	"gui::video_pos"+1, 101, "gui::video_width"-1, 20
+
+#define MM_POS_SETTINGS_GAMEPLAY		rect	"gui::gameplay_pos", 100, "gui::gameplay_width", 21
+#define MM_POS_SETTINGS_GAMEPLAY_GLOW		rect	"gui::gameplay_pos"+1, 101, "gui::gameplay_width"-1, 20
+
+// grayman #3682 - Gameplay -> General
+#define MM_POS_SETTINGS_GAMEPLAY_GENERAL			rect	"gui::gameplay_general_pos", SETTINGS_GAMEPLAY_FIRST_ROW_Y, "gui::gameplay_general_width", MM_BUTTON_HEIGHT+2
+#define MM_POS_SETTINGS_GAMEPLAY_GENERAL_GLOW		rect	"gui::gameplay_general_pos"+1, SETTINGS_GAMEPLAY_FIRST_ROW_Y-1, "gui::gameplay_general_width"-1, MM_BUTTON_HEIGHT+2
+
+// grayman #3682 - Gameplay -> Difficulty
+#define MM_POS_SETTINGS_GAMEPLAY_DIFFICULTY			rect	"gui::gameplay_difficulty_pos", SETTINGS_GAMEPLAY_FIRST_ROW_Y, "gui::gameplay_difficulty_width", MM_BUTTON_HEIGHT+2
+#define MM_POS_SETTINGS_GAMEPLAY_DIFFICULTY_GLOW	rect	"gui::gameplay_difficulty_pos"+1, SETTINGS_GAMEPLAY_FIRST_ROW_Y-1, "gui::gameplay_difficulty_width"-1, MM_BUTTON_HEIGHT+2
+
+#define MM_POS_SETTINGS_CONTROLS		rect	"gui::controls_pos", 100, "gui::controls_width", 21
+#define MM_POS_SETTINGS_CONTROLS_GLOW		rect	"gui::controls_pos"+1, 101, "gui::controls_width"-1, 20
+
+// For the Controls section in the Settings menu
+#define MM_POS_SETTINGS_CONTROLS_FR		SETTINGS_CONTROLS_FIRST_ROW_Y - 5
+#define MM_POS_SETTINGS_CONTROLS_SR		MM_POS_SETTINGS_CONTROLS_FR - 16
+
+#define MM_POS_SETTINGS_CONTROLS_MOVEMENT	rect	"gui::movement_pos", MM_POS_SETTINGS_CONTROLS_FR, "gui::movement_width", MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_CONTROLS_MOVEMENT_GLOW	rect	"gui::movement_pos"+1, MM_POS_SETTINGS_CONTROLS_FR, "gui::movement_width"-1, MM_BUTTON_HEIGHT-1
+
+#define MM_POS_SETTINGS_CONTROLS_ACTIONS	rect	"gui::actions_pos", MM_POS_SETTINGS_CONTROLS_FR, "gui::actions_width", MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_CONTROLS_ACTIONS_GLOW	rect	"gui::actions_pos"+1, MM_POS_SETTINGS_CONTROLS_FR, "gui::actions_width"-1, MM_BUTTON_HEIGHT-1
+
+#define MM_POS_SETTINGS_CONTROLS_INVENTORY	rect	"gui::inventory_pos", MM_POS_SETTINGS_CONTROLS_FR, "gui::inventory_width", MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_CONTROLS_INVENTORY_GLOW	rect	"gui::inventory_pos"+1, MM_POS_SETTINGS_CONTROLS_FR, "gui::inventory_width"-1, MM_BUTTON_HEIGHT-1
+
+#define MM_POS_SETTINGS_CONTROLS_WEAPONS	rect	"gui::weapons_pos", MM_POS_SETTINGS_CONTROLS_SR, "gui::weapons_width", MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_CONTROLS_WEAPONS_GLOW	rect	"gui::weapons_pos"+1, MM_POS_SETTINGS_CONTROLS_SR+1, "gui::weapons_width"-1, MM_BUTTON_HEIGHT-1
+
+#define MM_POS_SETTINGS_CONTROLS_TOOLS		rect	"gui::tools_pos", MM_POS_SETTINGS_CONTROLS_SR, "gui::tools_width", MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_CONTROLS_TOOLS_GLOW	rect	"gui::tools_pos"+1, MM_POS_SETTINGS_CONTROLS_SR+1, "gui::tools_width"-1, MM_BUTTON_HEIGHT-1
+
+#define MM_POS_SETTINGS_CONTROLS_GENERAL	rect	"gui::general_pos", MM_POS_SETTINGS_CONTROLS_SR, "gui::general_width", MM_BUTTON_HEIGHT
+#define MM_POS_SETTINGS_CONTROLS_GENERAL_GLOW	rect	"gui::general_pos"+1, MM_POS_SETTINGS_CONTROLS_SR+1, "gui::general_width"-1, MM_BUTTON_HEIGHT-1
+
+#define VERSION_TEXT_FONT			"fonts/carleton"
+
+#define GLOW_WHITE_COLOR 	0.98,0.93,0.82,1
+#define SGLOW_WHITE_COLOR 	"0.98 0.93 0.82 1"
+
+// For briefings
+#define SBRIEFING_WHITE		"0.98 0.93 0.82 1"
+#define SBRIEFING_WHITE_GLOW	"0.90 0.90 0.80 0.5"
+
+#define SBRIEFING_WHITE_INVISIBLE		"0.98 0.93 0.82 0"
+#define SBRIEFING_WHITE_GLOW_INVISIBLE	"0.90 0.90 0.80 0"
+
+#define GLOW_RED_COLOR		0.6,0.1,0.1,0.5
+#define SGLOW_RED_COLOR		"0.6 0.1 0.1 0.5"
+
+// for the restart GUI f.i.
+#define GLOW_YELLOW_COLOR	1.0,0.9,0.1,0.4
+#define SGLOW_YELLOW_COLOR	"1.0 0.9 0.1 0.4"
+
+// Used f.i. on dark backgrounds like in the credits or objectives screen
+#define BUTTON_WHITE_COLOR 	0.98,0.93,0.82,0.9
+#define SBUTTON_WHITE_COLOR 	"0.98 0.93 0.82 0.9"
+
+// For the settings menu
+#define SGLOW_DARKRED_COLOR	"0.6 0 0 0.6"
+
+// For the objectives screen
+#define SGLOW_BRIGHTRED_COLOR	"0.8 0.1 0.1 0.5"
+#define NORMAL_COLOR		0,0,0,0.90
+#define SNORMAL_COLOR		"0 0 0 0.90"
+#define INVISIBLE		0, 0, 0, 0
+#define SINVISIBLE		"0 0 0 0"
+
+#define INACTIVE_COLOR		0,0,0,0.50
+#define SINACTIVE_COLOR		"0 0 0 0.50"
+
+// For failure/success buttons
+#define WHITE_COLOR		0.9,0.9,0.9,0.9
+#define SWHITE_COLOR		"0.9 0.9 0.9 0.9"
+
+// For the settings buttons
+
+// for bold buttons
+#define BOLDGLOW_WHITE_COLOR 	1,1,1,1
+#define SBOLDGLOW_WHITE_COLOR 	"1 1 1 1"
+
+#define MM_FONTSCALE			0.33
+#define MM_SUCCESS_TITLE_FONTSCALE	font "fonts/carleton" textscale 0.40
+#define MM_SUCCESS_TITLE_START_SCALE	"0.40"
+// While 1.0 would come close to the original bitmap, it might overflow the screen for
+// some languages, also the text appears a bit pixelated, so reduce the size a bit:
+#define MM_SUCCESS_TITLE_END_SCALE	"0.9"
+
+#define MM_BUTTON_FONTSCALE		0.32
+#define MM_BUTTON_LARGE			textscale 0.27
+#define MM_BUTTON_BIG			textscale 0.30
+#define MM_BUTTON_HUGE			textscale 0.32
+// f.i. for the Objectives title
+#define MM_HEADLINE			textscale 0.40
+
+#define MM_NORMAL_FONT		"fonts/carleton"
+#define MM_GLOW_FONT		"fonts/carleton_glow"
+#define MM_BOLD_FONT		"fonts/carleton_bold"
+
+// These definitions cut down on repeated text below:
+
+// right-aligned button text
+#define MM_FONT_RIGHT		font MM_NORMAL_FONT forecolor INVISIBLE textscale 0.24 visible 1 textalign 2
+#define MM_FONT_RIGHT_BOLD	font MM_BOLD_FONT forecolor NORMAL_COLOR textscale 0.24 visible 1 textalign 2
+#define MM_FONT_RIGHT_GLOW	font MM_GLOW_FONT forecolor INVISIBLE textscale 0.24 visible 1 textalign 2
+
+// left-aligned button text
+#define MM_FONT_LEFT		MM_FONT_RIGHT textalign 0
+#define MM_FONT_LEFT_BOLD	MM_FONT_RIGHT_BOLD textalign 0
+#define MM_FONT_LEFT_GLOW	MM_FONT_RIGHT_GLOW textalign 0
+
+// centered button text
+#define MM_FONT_CENTER		MM_FONT_RIGHT textalign 1
+#define MM_FONT_CENTER_BOLD	MM_FONT_RIGHT_BOLD textalign 1
+#define MM_FONT_CENTER_GLOW	MM_FONT_RIGHT_GLOW textalign 1
+
+// centered text (invisible by default for the main menu)
+#define MM_FONT				font MM_NORMAL_FONT forecolor INVISIBLE textscale MM_FONTSCALE visible 1 textalign 1
+#define MM_FONT_GLOW		font MM_GLOW_FONT forecolor INVISIBLE textscale MM_FONTSCALE visible 1 textalign 1
+
+// centered text for headlines on parchments
+#define MM_FONT_HEADLINE	font MM_BOLD_FONT forecolor NORMAL_COLOR textscale MM_FONTSCALE*0.85 visible 1 textalign 1
+
+// a shortcut for the often-used buttons
+#define MM_BUTTON			visible 1 forecolor NORMAL_COLOR textscale MM_BUTTON_FONTSCALE textalign 1 font MM_NORMAL_FONT
+#define MM_BUTTON_RIGHT		visible 1 forecolor NORMAL_COLOR textscale MM_BUTTON_FONTSCALE textalign 2 font MM_NORMAL_FONT
+#define MM_BUTTON_LEFT		visible 1 forecolor NORMAL_COLOR textscale MM_BUTTON_FONTSCALE textalign 0 font MM_NORMAL_FONT
+
+#define MM_BUTTON_OK		MM_BUTTON text "#str_07188"
+
+// for building custom choice defs (that behave better than the D3 defaults)
+// carleton or carleton condensed, depending on language, set in the settings init
+// Dynamically changing the font is not yet implemented
+//#define SETTINGS_FONT		'#str_02350'
+//#define CHOICES_FONT		'#str_02351'
+//#define BINDINGS_FONT		'#str_02352'
+//#define DETAILS_FONT		'#str_02353'
+#define SETTINGS_FONT	        'fonts/carleton'            //	'fonts/carleton_condensed'
+#define CHOICES_FONT	        'fonts/carleton'               //	'fonts/carleton_condensed'
+#define BINDINGS_FONT	        'fonts/carleton'                //	'fonts/carleton_condensed'
+#define DETAILS_FONT	        'fonts/carleton'                  //	'fonts/carleton_condensed'
+#define SETTINGS_FONT_SCALE 0.24
+#define SETTINGS_FONT_COLOUR 0, 0, 0, .85
+#define SETTINGS_FONT_COLOUR_STR "0 0 0 0.85"
+#define SETTINGS_FONT_COLOUR_DISABLED_STR "0 0 0 0.5"
+
+// The text on the left side in the settings menu
+#define SETTINGS_TEXT		font SETTINGS_FONT  textscale SETTINGS_FONT_SCALE  forecolor  SETTINGS_FONT_COLOUR  visible 1
+// for choices in the settings menu like Yes/No, Disabled/Enabled
+#define CHOICES_TEXT		font CHOICES_FONT   textscale SETTINGS_FONT_SCALE  forecolor  SETTINGS_FONT_COLOUR  visible 1
+// for keybindings
+#define BINDINGS_TEXT		font BINDINGS_FONT  textscale SETTINGS_FONT_SCALE  forecolor  SETTINGS_FONT_COLOUR  visible 1  textalign 2  textalignx  -3
+// used in showing mission details like "Last Completed:" etc.
+#define DETAILS_TEXT		font DETAILS_FONT  textscale 0.20  forecolor  0,0,0,1  visible 1  textalign 0
+
+#define HEADLINE_HEIGHT 70
+
+// Used for the huge headlines on the menu parchments
+#define HEADLINE_TEXT		textscale 0.81  visible 1  textalign 1  forecolor 0,0,0,1.0  font "fonts/mason"
+#define HEADLINE_GLOW		textscale 0.81  visible 1  textalign 1  forecolor 1,1,0.80,0.8  font "fonts/mason_glow" textaligny -1
+
+// Define the white overlay stripes as rectangles
+#define WHITE_STRIPE( y ) \
+	windowDef stripe { rect 50, y, 242, 15 backcolor 1, 0.95, 0.80, 0.16 }
+
+// Define a macro with one parameter, that can setup the entire background for one settings pagea.
+#define MENU_BACKGROUND( watermark, headline, stop, headline2 ) \
+	windowDef SettingsVideoPageBackground	{ rect     18,    0, 304, 482  background "guis/assets/mainmenu/oldparchment_backdrop7" } \
+	windowDef SettingsVideoPageWatermark	{ rect     20,   0, 302, 480  background watermark } \
+	windowDef SettingsVideoPageSwirlTop		{ rect     42, stop, 258,  32  background "guis/assets/mainmenu/black_swirl_top" } \
+	windowDef SettingsVideoPageSwirlBottom	{ rect     42,  402, 258,  32  background "guis/assets/mainmenu/black_swirl_bottom" } \
+	windowDef SettingsVideoPageHeadlineGlow	{ rect      3, 23.5 + "gui::headline_offset", 322, HEADLINE_HEIGHT  text headline  HEADLINE_GLOW } \
+	windowDef SettingsVideoPageHeadline		{ rect      3, 23.5 + "gui::headline_offset", 322, HEADLINE_HEIGHT  text headline  HEADLINE_TEXT } \
+	windowDef SettingsVideoPageHeadlineGlow2{ rect      3, 33, 							  322, HEADLINE_HEIGHT  text headline2  HEADLINE_GLOW } \
+	windowDef SettingsVideoPageHeadline2	{ rect      3, 33,							  322, HEADLINE_HEIGHT  text headline2  HEADLINE_TEXT }
+
+// "Settings"
+#define SETTINGS_BACKGROUND( watermark) 	MENU_BACKGROUND( watermark, "#str_02104", 160, "" ) \
+                                                                                       	WHITE_STRIPE ( 188 ) \
+											WHITE_STRIPE ( 221 ) \
+											WHITE_STRIPE ( 257 ) \
+											WHITE_STRIPE ( 290 ) \
+											WHITE_STRIPE ( 324 ) \
+											WHITE_STRIPE ( 359 ) \
+                                                                                        WHITE_STRIPE ( 393 )
+
+
+
+
+// "New Mission" (gui::new_game_offset wil be set to #str_02279 during init)
+#define NEWGAME_BACKGROUND( watermark)		MENU_BACKGROUND( watermark, "#str_02312", 135, "#str_02313" ) \
+											WHITE_STRIPE ( 168 ) \
+											WHITE_STRIPE ( 200 ) \
+											WHITE_STRIPE ( 232 ) \
+											WHITE_STRIPE ( 264 ) \
+											WHITE_STRIPE ( 296 ) \
+											WHITE_STRIPE ( 328 ) \
+											WHITE_STRIPE ( 360 ) \
+											WHITE_STRIPE ( 392 ) 
+
+#define SETTINGS_FONT_SCALE_CHOICE 0.22
+#define SETTINGS_FONT_SCALE_SLIDER 0.18
+
+// the common settings
+#define CHOICE_DEF		font CHOICES_FONT  textscale SETTINGS_FONT_SCALE_CHOICE  textalign 2  textalignx -10  forecolor SETTINGS_FONT_COLOUR  choiceType 1
+
+// This make the text glow white on mouse-hover
+#define GLOW_ON_ENTER		onMouseEnter { transition "forecolor" SNORMAL_COLOR SBOLDGLOW_WHITE_COLOR "50";	 set "cmd" "play sound/meta/menu/mnu_hover"; }
+#define NORMAL_ON_EXIT		onMouseExit { transition "forecolor" SBOLDGLOW_WHITE_COLOR SNORMAL_COLOR "50"; }
+
+#define WHITE_GLOW		GLOW_ON_ENTER NORMAL_ON_EXIT
+
+// tooltip related
+#define TT_FONTCOLOR 1,1,1,1
+#define STT_FONTCOLOR "1,1,1,1"
+#define TT_OFFSET_Y 16
+#define MM_TT_FONT				font MM_BOLD_FONT forecolor TT_FONTCOLOR textscale MM_TITLE_FONTSCALE visible 1 textalign 1

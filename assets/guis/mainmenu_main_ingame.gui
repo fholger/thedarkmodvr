@@ -1,0 +1,852 @@
+/* =============================================================================================
+ *
+ * In-Game Main Menu. This file is part of The Dark Mod's Main Menu GUI
+ *
+ * Mission Authors: DO NOT EDIT, INCLUDE OR OVERRIDE THIS FILE IN YOUR MISSION PK4.
+ *
+ * ============================================================================================= */
+
+windowDef MainMenuInGame
+{
+	rect 		0, 0, 640, 640
+	matcolor	1, 1, 1, 1
+	visible		0
+
+	windowDef MainMenuInGameParchment
+	{
+		 rect		280, 0, 320, 640
+		 matcolor	1, 1, 1, 0
+		 background "guis/assets/mainmenu/parchment_mainmenu"
+	}
+
+#ifdef MM_SHOW_CUSTOM_MAINMENU_TITLE
+
+	windowDef CustomMainMenuTitleInGame
+	{
+		rect		MM_CUSTOM_MAINMENU_TITLE_IMAGE_LEFT, MM_CUSTOM_MAINMENU_TITLE_IMAGE_TOP, MM_CUSTOM_MAINMENU_TITLE_IMAGE_WIDTH, MM_CUSTOM_MAINMENU_TITLE_IMAGE_HEIGHT
+		visible		1
+		matcolor	1, 1, 1, 0
+		background	MM_CUSTOM_MAINMENU_TITLE_IMAGE
+	}
+
+#endif
+
+	// ------------ Campaign and Mission Titles (grayman #3733) -------------------
+
+	// CampaignTitleText and CampaignMissionTitleText will appear
+	// as a pair when playing a campaign mission
+
+	windowDef MMIGCampaignTitleText
+	{
+		rect		MM_TITLE_CAMPAIGN
+		MM_TITLE_FONT
+		//text		"No Honor Among Thieves:"	// Campaign title
+		text		"gui::MMIGCampaignTitleText"	// Campaign title
+	}
+
+	windowDef MMIGCampaignMissionTitleText
+	{
+		rect		MM_TITLE_CAMPAIGN_MISSION
+		MM_TITLE_FONT
+		//text		"A Night Out on the Town"	// Campaign Mission title
+		text		"gui::MMIGCampaignMissionTitleText"	// Campaign Mission title
+	}
+
+	// MissionTitleText will appear by itself when playing a non-campaign mission
+
+	windowDef MMIGMissionTitleText
+	{
+		rect		MM_TITLE_MISSION
+		MM_TITLE_FONT
+		//text		"Return to the City"	// Mission title
+		text		"gui::MMIGMissionTitleText"	// Mission title
+	}
+
+// --------------------- Resume Game -----------------------------------------
+
+	windowDef MMIGResumeGameTextH
+	{
+		rect		MMIG_POS_RESUME_GAME_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02102"		// Resume mission
+	}
+	windowDef MMIGResumeGameText
+	{
+		rect		MMIG_POS_RESUME_GAME_BUTTON
+		MM_FONT
+		text		"#str_02102"		// Resume mission
+	}
+
+	windowDef MMIGResumeGameAction
+	{
+		rect		MMIG_POS_RESUME_GAME_ACTION
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGResumeGameText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGResumeGameTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover;";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGResumeGameText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGResumeGameTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "MMIGResumeGameText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGResumeGameTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "exit" 1;
+
+			set "cmd" "play sound/meta/menu/mnu_select; close;";
+		}
+	}
+
+// --------------------- Load Game ------------------------------------------
+
+	windowDef MMIGLoadGameTextH
+	{
+		rect		MMIG_POS_LOAD_GAME_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02103"		// Load/Save Game
+	}
+	windowDef MMIGLoadGameText
+	{
+		rect		MMIG_POS_LOAD_GAME_BUTTON
+		MM_FONT
+		text		"#str_02103"		// Load/Save Game
+	}
+
+	windowDef MMIGLoadGameAction
+	{
+		rect		MMIG_POS_LOAD_GAME_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGLoadGameText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGLoadGameTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGLoadGameText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGLoadGameTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction {
+			transition "MMIGLoadGameText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGLoadGameTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			set "cmd" "play sound/meta/menu/mnu_select;";
+			set "exit" 1;
+
+			// Switch states
+			set "gui::targetmode" MM_STATE_LOAD_SAVE_GAME;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Objectives -----------------------------------------
+
+	windowDef MMIGShowObjectivesTextH
+	{
+		rect		MMIG_POS_OBJECTIVES_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02105"		// Objectives
+	}
+	windowDef MMIGShowObjectivesText
+	{
+		rect		MMIG_POS_OBJECTIVES_BUTTON
+		MM_FONT
+		text		"#str_02105"		// Objectives
+	}
+
+	windowDef MMIGShowObjectivesAction
+	{
+		rect		MMIG_POS_OBJECTIVES_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGShowObjectivesText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGShowObjectivesTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGShowObjectivesText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGShowObjectivesTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "MMIGShowObjectivesText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGShowObjectivesTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			set "exit" 1;
+			set "cmd" "play sound/meta/menu/mnu_select;";
+
+			// Switch to the objectives/difficulty display
+			set "gui::targetmode" MM_STATE_OBJECTIVES;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Settings -------------------------------------------
+	windowDef MMIGSettingsTextH
+	{
+		rect		MMIG_POS_SETTINGS_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02104"		// Settings
+	}
+	windowDef MMIGSettingsText
+	{
+		rect		MMIG_POS_SETTINGS_BUTTON
+		MM_FONT
+		text		"#str_02104"		// Settings
+	}
+
+	windowDef MMIGSettingsAction
+	{
+		rect		MMIG_POS_SETTINGS_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGSettingsText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGSettingsTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGSettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGSettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "MMIGSettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGSettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			// Switch to the settings menu
+			set "gui::targetmode" MM_STATE_SETTINGS;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Credits --------------------------------------------
+
+	windowDef MMIGCreditsTextH
+	{
+		rect		MMIG_POS_CREDITS_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02106"		// Credits
+	}
+	windowDef MMIGCreditsText
+	{
+		rect		MMIG_POS_CREDITS_BUTTON
+		MM_FONT
+		text		"#str_02106"		// Credits
+	}
+
+	windowDef MMIGCreditsAction
+	{
+		rect		MMIG_POS_CREDITS_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGCreditsText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGCreditsTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGCreditsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGCreditsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "MMIGCreditsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGCreditsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			// Switch to the credits state
+			set "gui::targetmode" MM_STATE_CREDITS;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// ------------------------ Quit Mission (in-game) --------------------------------------
+
+	windowDef MMIGQuitMissionTextH
+	{
+		rect		MMIG_POS_QUIT_MISSION_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02108"		// Quit Mission
+	}
+	windowDef MMIGQuitMissionText
+	{
+		rect		MMIG_POS_QUIT_MISSION_BUTTON
+		MM_FONT
+		text		"#str_02108"		// Quit Mission
+	}
+
+	windowDef MMIGQuitMissionAction
+	{
+		rect		MMIG_POS_QUIT_MISSION_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGQuitMissionText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGQuitMissionTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGQuitMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGQuitMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "MMIGQuitMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGQuitMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			set "exit" 1;
+
+			// Show the modal window
+			set "QuitMissionDialog::visible" "1";
+		}
+	}
+	// ----------------------- Version -------------------------------------
+	windowDef MMIGVersionText
+	{
+		rect		320,450,128,32
+		visible		1
+		matcolor	1, 1, 1, 1
+		forecolor	INVISIBLE
+		text		"gui::tdmversiontext"
+		font		VERSION_TEXT_FONT
+		textscale	0.18
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "VersionText::forecolor" "0 0 0 1" "1 1 1 1" "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "VersionText::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "VersionText::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			set "cmd" "check_tdm_version";
+		}
+	}
+
+// --------------------- Settings -------------------------------------------
+	windowDef MMIGVRSettingsTextH
+	{
+		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		MM_FONT_GLOW
+		text		"VR Settings"
+	}
+	windowDef MMIGVRSettingsText
+	{
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		MM_FONT
+		text		"VR Settings"
+	}
+
+	windowDef MMIGVRSettingsAction
+	{
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGVRSettingsText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGVRSettingsTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGVRSettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGVRSettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "MMIGVRSettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGVRSettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			// Switch to the settings menu
+			set "gui::targetmode" MM_STATE_VRSETTINGS;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Restart Mission (In-Game) ---------------------------------------
+	/*
+	windowDef MMIGRestartMissionTextH
+	{
+		rect	MMIG_POS_RESTART_MISSION_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02458"		// Restart Mission
+	}
+	
+	windowDef MMIGRestartMissionText
+	{
+		rect	MMIG_POS_RESTART_MISSION_BUTTON
+		MM_FONT
+		text		"#str_02458"		// Restart Mission
+	}
+	
+	windowDef MMIGRestartMissionAction
+	{
+		rect		MMIG_POS_RESTART_MISSION_ACTION
+		visible 	1
+		float		exit;
+		
+		onMouseEnter
+		{
+			set "exit" "0";
+			transition "MMIGRestartMissionText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGRestartMissionTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGRestartMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGRestartMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			set	"exit" "1";
+			transition "MMIGRestartMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "MMIGRestartMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "cmd" "restart";
+		}
+	}
+	*/
+	windowDef MMIGRestartMission
+	{
+		rect 		475, 450, 100, 32
+		visible 	1
+		matcolor	1, 1, 1, 1
+		forecolor 	INVISIBLE
+		text 		"#str_02458" // "Deselect Mission"
+		textalign	2
+		font		VERSION_TEXT_FONT
+		textscale	0.18
+		visible 	1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGRestartMission::forecolor" "0 0 0 1" "1 1 1 1" "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGRestartMission::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "MMIGRestartMission::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			//set "cmd"   "restart";
+			set "RestartMissionDialog::visible" "1";
+		}
+	}
+
+// ----------------------------------------------------------------------------
+
+	// This is called whenever the user switches to the main menu
+	windowDef MainMenuInGameStateInit
+	{
+		noTime 1
+
+		// Init methods have onTime 10 instead of onTime 0.
+		onTime 10
+		{
+			set "cmd" "log 'MainMenuInGameStateInit called.'";
+
+			set "cmd" "mainmenuingame_init";
+
+			// Show our parent windowDef
+			set "MainMenuInGame::visible" 1;
+
+			if ("MainMenuInGameIntroAnimation::introAnimPlayed" == 0)
+			{
+				set "cmd" "log 'Trying to call in-game main menu intro animation.'";
+
+				// Intro animation not yet played, show it now
+				set "MainMenuInGameIntroAnimation::notime" "0";
+				resetTime "MainMenuInGameIntroAnimation" 0;
+			}
+			else
+			{
+				set "cmd" "log 'Skipping in-game main menu intro animation.'";
+			}
+
+			// Also start the in-game main menu music
+			set "gui::targetmusic" MM_MUSIC_INGAME;
+			resetTime "MainMenuMusicSelect" 0;
+
+			set "notime" 1;
+		}
+	}
+
+	// Called when the MainMenuModeSelect script switches states.
+	windowDef MainMenuInGameStateEnd
+	{
+		noTime 1
+
+		onTime 0
+		{
+			set "cmd" "log 'MainMenuInGameStateEnd called.'";
+
+			set "MainMenuInGame::visible" "0";
+
+			set "notime" "1";
+		}
+	}
+
+// ------------ Intro animation for in-game main menu -------------------------
+
+	/**
+	 * Intro (fade-in) animation, is only played once.
+	 */
+	windowDef MainMenuInGameIntroAnimation
+	{
+		rect 0,0,0,0
+		notime 1
+		visible 1
+
+		float introAnimPlayed; // this is 1 if the intro anim has already been played
+
+		onTime 0 {
+			set "cmd" "log 'MainMenuInGameIntroAnimation called.'";
+
+			if ("introAnimPlayed" == 1) 
+			{
+				set "cmd" "log 'MainMenuInGameIntroAnimation has already been played, stopping.'";
+
+				set "notime" 1;
+			}
+			else
+			{
+				set "cmd" "log 'MainMenuInGameIntroAnimation started playing.'";
+			}
+		}
+
+		onTime 200 {
+			transition "MainMenuInGameParchment::matcolor" "1 1 1 0" "1 1 1 1" "400" ;
+		}
+
+#ifdef MM_SHOW_CUSTOM_MAINMENU_TITLE
+		onTime 200
+		{
+			transition "CustomMainMenuTitleIngame::matcolor" "1 1 1 0" "1 1 1 1" "600" ;
+			transition "CustomMainMenuTitleIngame::forecolor" SINVISIBLE SNORMAL_COLOR "600" ;
+		}
+#endif
+
+		// grayman #3733 - show campaign and mission titles
+		onTime 250
+		{
+			// these titles will appear as a pair when playing a campaign mission
+			transition "MMIGCampaignTitleText::forecolor" SINVISIBLE SMM_TITLE_COLOR "500" ;
+			transition "MMIGCampaignMissionTitleText::forecolor" SINVISIBLE SMM_TITLE_COLOR "500" ;
+
+			// this title will appear by itself when playing a non-campaign mission
+			transition "MMIGMissionTitleText::forecolor" SINVISIBLE SMM_TITLE_COLOR "500" ;
+		}
+		
+		onTime 300 {
+			transition "MMIGResumeGameText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+		}
+
+		onTime 350 {
+			transition "MMIGLoadGameText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+		}
+
+		onTime 400 {
+			transition "MMIGShowObjectivesText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+		}
+
+		onTime 450 {
+			transition "MMIGSettingsText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+		}
+
+		onTime 500 {
+			transition "MMIGCreditsText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+		}
+		
+		onTime 600 {
+			transition "MMIGQuitMissionText::forecolor" SINVISIBLE SNORMAL_COLOR "400";
+		}
+
+		onTime 600 {
+			transition "MMIGVRSettingsText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+		}
+
+		onTime 600 {
+			transition "MMIGRestartMission::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+			transition "MMIGVersionText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+
+			set "cmd" "log 'MainMenuInGameIntroAnimation successfully executed, stopping.'";
+
+			set "introAnimPlayed" 1;
+			set "notime" 1; // stop animation
+		}
+	}
+
+	/**
+	 * greebo: Confirmation dialog to ask the user whether to quit the mission
+	 */
+	windowDef QuitMissionDialog
+	{
+		rect 		0,0,640,640
+		backcolor	0,0,0,0.5
+		visible		0
+		modal		1
+
+		windowDef QuitMissionDialogParchment
+		{
+			MM_MSG_BOX_RECT
+//			background	"guis/assets/mainmenu/oldparchment_backdrop3"
+//			matcolor 	1, 1, 1, 1
+
+			windowDef QuitMissionDialogQuestion
+			{
+				rect		0,50,240,20
+				visible		1
+				text		"#str_02507"	// Quit this mission?
+				forecolor	0,0,0,1
+				textscale	0.26
+				textalign	1
+				font		"fonts/carleton"
+			}
+
+			windowDef QuitMissionDialogAnswerOK
+			{
+				rect		40,95,80,20
+				visible		1
+				text		"#str_02501"	// Yes
+				forecolor	0,0,0,1
+				textscale	0.32
+				textalign	1
+				font		"fonts/carleton"
+
+				onMouseEnter
+				{
+					set "forecolor" "1,1,1,1";
+					set "cmd" "play sound/meta/menu/mnu_hover";
+				}
+
+				onMouseExit
+				{
+					set "forecolor" "0,0,0,1";
+				}
+
+				onAction
+				{
+					set "cmd" "exec disconnect";
+					set "gui::targetmode" MM_STATE_MAINMENU;
+					resetTime "MainMenuModeSelect" 0;
+				}
+			}
+
+			windowDef QuitMissionDialogAnswerCancel
+			{
+				rect		120,95,80,20
+				visible		1
+				text		"#str_02502"	// No
+				forecolor	0,0,0,1
+				textscale	0.32
+				textalign	1
+				font		"fonts/carleton"
+
+				onMouseEnter
+				{
+					set "forecolor" "1,1,1,1";
+					set "cmd" "play sound/meta/menu/mnu_hover";
+				}
+
+				onMouseExit
+				{
+					set "forecolor" "0,0,0,1";
+				}
+
+				onAction
+				{
+					// Just hide the question dialog
+					set "QuitMissionDialog::visible" "0";
+				}
+			}
+		}
+	}
+	/**
+	 * Obsttorte: Confirmation dialog to ask the user whether to restart the mission
+	 */
+	windowDef RestartMissionDialog
+	{
+		rect 		0,0,640,640
+		backcolor	0,0,0,0.5
+		visible		0
+		modal		1
+
+		windowDef RestartMissionDialogParchment
+		{
+			MM_MSG_BOX_RECT
+//			background	"guis/assets/mainmenu/oldparchment_backdrop3"
+//			matcolor 	1, 1, 1, 1
+
+			windowDef RestartMissionDialogQuestion
+			{
+				rect		0,50,240,20
+				visible		1
+				text		"#str_02520"	// Restart this mission?
+				forecolor	0,0,0,1
+				textscale	0.26
+				textalign	1
+				font		"fonts/carleton"
+			}
+
+			windowDef RestartMissionDialogAnswerOK
+			{
+				rect		40,95,80,20
+				visible		1
+				text		"#str_02501"	// Yes
+				forecolor	0,0,0,1
+				textscale	0.32
+				textalign	1
+				font		"fonts/carleton"
+
+				onMouseEnter
+				{
+					set "forecolor" "1,1,1,1";
+					set "cmd" "play sound/meta/menu/mnu_hover";
+				}
+
+				onMouseExit
+				{
+					set "forecolor" "0,0,0,1";
+				}
+
+				onAction
+				{
+					set "cmd" "restart";
+				}
+			}
+
+			windowDef RestartMissionDialogAnswerCancel
+			{
+				rect		120,95,80,20
+				visible		1
+				text		"#str_02502"	// No
+				forecolor	0,0,0,1
+				textscale	0.32
+				textalign	1
+				font		"fonts/carleton"
+
+				onMouseEnter
+				{
+					set "forecolor" "1,1,1,1";
+					set "cmd" "play sound/meta/menu/mnu_hover";
+				}
+
+				onMouseExit
+				{
+					set "forecolor" "0,0,0,1";
+				}
+
+				onAction
+				{
+					// Just hide the question dialog
+					set "RestartMissionDialog::visible" "0";
+				}
+			}
+		}
+	}
+}

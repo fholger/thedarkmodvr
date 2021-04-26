@@ -1,0 +1,173 @@
+/* =============================================================================================
+ *
+ * This file is part of The Dark Mod VR's Main Menu GUI
+ *
+ * Mission Authors: DO NOT EDIT, INCLUDE OR OVERRIDE THIS FILE IN YOUR MISSION PK4.
+ *
+ * ============================================================================================= */
+
+windowDef VRSettingsGeneralCanvas
+{
+	rect		280, 0, 320, 640
+	visible		1
+
+	SETTINGS_BACKGROUND( "guis/assets/mainmenu/settings_audio_watermark" )
+
+	windowDef VRSettingsGeneralParent
+	{
+		rect	45,185-TT_OFFSET_Y,320,640
+		visible 1
+
+		windowDef ComfortVignetteText
+		{
+			rect		TEXT_X_OFFSET, 0+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Comfort vignette"
+			SETTINGS_TEXT
+		}
+		choiceDef ComfortVignette
+		{
+			rect		SETTINGS_X_OFFSET, 0+TT_OFFSET_Y, 80, MM_LINE_H
+			choices		"#str_07228"
+			values		"1;0"
+			cvar		"vr_comfortVignette"
+			CHOICE_DEF
+			toolTip("Fade out the edges of the screen during artificial movements and rotations")
+		}
+
+		windowDef VignetteRadiusText
+		{
+			rect		TEXT_X_OFFSET, 17+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Vignette radius"
+			SETTINGS_TEXT
+		}
+		windowDef VignetteRadiusSlider
+		{
+			rect		SETTINGS_X_OFFSET, 22+TT_OFFSET_Y, 128, MM_SLIDER_H
+			background	"guis/assets/mainmenu/buttons_settingsmenu/slider_bg"
+			matcolor	0, 0, 0, 1
+			noevents	1
+		}
+		sliderDef VignetteRadiusVolume
+		{
+			rect		SETTINGS_X_OFFSET, 22+TT_OFFSET_Y, 71, 8
+			forecolor	0.8, 1, 1, 1
+			matcolor	1, 1, 1, 1
+			low			0 
+			high		1
+			step		0.05
+			thumbShader	"guis/assets/mainmenu/buttons_settingsmenu/slider_bar1"
+			cvar		"vr_comfortVignetteRadius"
+			toolTip("The size of the comfort vignette")
+		}
+
+		windowDef ZoomAnimsText
+		{
+			rect		TEXT_X_OFFSET, 34+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Show Zoom animations"
+			SETTINGS_TEXT
+		}
+		choiceDef ZoomAnims
+		{
+			rect		SETTINGS_X_OFFSET, 34+TT_OFFSET_Y, 80, MM_LINE_H
+			choices		"#str_07228"
+			values		"0;1"
+			cvar		"vr_disableZoomAnimations"
+			CHOICE_DEF
+			toolTip("Choose if Zoom animations (e.g. when activating the spy glass) should be used. You can disable them if they make you feel sick.")
+		}
+
+		windowDef FixedFoveatedText
+		{
+			rect		TEXT_X_OFFSET, 68+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Fixed foveated rendering"
+			SETTINGS_TEXT
+		}
+		choiceDef FixedFoveated
+		{
+			rect		SETTINGS_X_OFFSET, 68+TT_OFFSET_Y, 80, MM_LINE_H
+			choices		"Off;On;On (VRS)"
+			values		"0;2;1"
+			cvar		"vr_useFixedFoveatedRendering"
+			CHOICE_DEF
+			toolTip("Reduce rendering resolution towards the edges of the eyes to improve performance. On NVIDIA RTX cards, you can alternatively enable VRS, which looks a little better, but might perform a little worse.")
+		}
+
+		windowDef FixedFoveatedInnerRadiusText
+		{
+			rect		TEXT_X_OFFSET, 85+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Foveated inner radius"
+			SETTINGS_TEXT
+		}
+		windowDef FixedFoveatedInnerRadiusSlider
+		{
+			rect		SETTINGS_X_OFFSET, 92+TT_OFFSET_Y, 128, MM_SLIDER_H
+			background	"guis/assets/mainmenu/buttons_settingsmenu/slider_bg"
+			matcolor	0, 0, 0, 1
+			noevents	1
+		}
+		sliderDef FixedFoveatedInnerRadius
+		{
+			rect		SETTINGS_X_OFFSET, 92+TT_OFFSET_Y, 71, 8
+			forecolor	0.8, 1, 1, 1
+			matcolor	1, 1, 1, 1
+			low			0 
+			high		1
+			step		0.05
+			thumbShader	"guis/assets/mainmenu/buttons_settingsmenu/slider_bar1"
+			cvar		"vr_foveatedInnerRadius"
+			toolTip("Inner radius that is rendered at full resolution")
+		}
+
+		windowDef FixedFoveatedMidRadiusText
+		{
+			rect		TEXT_X_OFFSET, 102+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Foveated mid radius"
+			SETTINGS_TEXT
+		}
+		windowDef FixedFoveatedMidRadiusSlider
+		{
+			rect		SETTINGS_X_OFFSET, 107+TT_OFFSET_Y, 128, MM_SLIDER_H
+			background	"guis/assets/mainmenu/buttons_settingsmenu/slider_bg"
+			matcolor	0, 0, 0, 1
+			noevents	1
+		}
+		sliderDef FixedFoveatedMidRadius
+		{
+			rect		SETTINGS_X_OFFSET, 107+TT_OFFSET_Y, 71, 8
+			forecolor	0.8, 1, 1, 1
+			matcolor	1, 1, 1, 1
+			low			0 
+			high		1
+			step		0.05
+			thumbShader	"guis/assets/mainmenu/buttons_settingsmenu/slider_bar1"
+			cvar		"vr_foveatedMidRadius"
+			toolTip("Everything between inner and middle radius is rendered at half resolution.")
+		}
+
+		windowDef FixedFoveatedOuterRadiusText
+		{
+			rect		TEXT_X_OFFSET, 119+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Foveated outer radius"
+			SETTINGS_TEXT
+		}
+		windowDef FixedFoveatedOuterRadiusSlider
+		{
+			rect		SETTINGS_X_OFFSET, 124+TT_OFFSET_Y, 128, MM_SLIDER_H
+			background	"guis/assets/mainmenu/buttons_settingsmenu/slider_bg"
+			matcolor	0, 0, 0, 1
+			noevents	1
+		}
+		sliderDef FixedFoveatedOuterRadius
+		{
+			rect		SETTINGS_X_OFFSET, 124+TT_OFFSET_Y, 71, 8
+			forecolor	0.8, 1, 1, 1
+			matcolor	1, 1, 1, 1
+			low			0 
+			high		1
+			step		0.05
+			thumbShader	"guis/assets/mainmenu/buttons_settingsmenu/slider_bar1"
+			cvar		"vr_foveatedOuterRadius"
+			toolTip("Everything between middle and outer radius is rendered at 1/4th resolution, everything outside the outer radius is rendered at 1/16th resolution.")
+		}
+	} // end windowDef VRSettingsGeneralParent
+} // end windowDef VRSettingsGeneralCanvas

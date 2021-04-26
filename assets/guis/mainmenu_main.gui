@@ -1,0 +1,660 @@
+/* =============================================================================================
+ *
+ * Main Menu (not in-game). This file is part of The Dark Mod's Main Menu GUI
+ *
+ * Mission Authors: DO NOT EDIT, INCLUDE OR OVERRIDE THIS FILE IN YOUR MISSION PK4.
+ *
+ * ============================================================================================= */
+
+windowDef MainMenu
+{
+	rect 		0,0,640,480
+	matcolor	1,1,1,1
+	visible	    	0 
+
+	// The background parchment for the main menu
+	windowDef MainMenuParchment
+	{
+		 rect		280, 0, 320, 640
+		 matcolor	1, 1, 1, 0
+		 background "guis/assets/mainmenu/parchment_mainmenu"
+		 visible 1
+	}
+
+#ifdef MM_SHOW_CUSTOM_MAINMENU_TITLE
+
+	windowDef CustomMainMenuTitle
+	{
+		rect		MM_CUSTOM_MAINMENU_TITLE_IMAGE_LEFT, MM_CUSTOM_MAINMENU_TITLE_IMAGE_TOP, MM_CUSTOM_MAINMENU_TITLE_IMAGE_WIDTH, MM_CUSTOM_MAINMENU_TITLE_IMAGE_HEIGHT
+		visible		1
+		matcolor	1, 1, 1, 0
+		background	MM_CUSTOM_MAINMENU_TITLE_IMAGE
+	}
+
+#endif
+
+	// ------------ Campaign and Mission Titles (grayman #3733) -------------------
+
+	// CampaignTitleText and CampaignMissionTitleText will appear
+	// as a pair when playing a campaign mission
+
+	windowDef CampaignTitleText
+	{
+		rect		MM_TITLE_CAMPAIGN
+		MM_TITLE_FONT
+		//text		"No Honor Among Thieves:"	// Campaign title
+		text		"gui::CampaignTitleText"	// Campaign title
+	}
+
+	windowDef CampaignMissionTitleText
+	{
+		rect		MM_TITLE_CAMPAIGN_MISSION
+		MM_TITLE_FONT
+		//text		"A Night Out on the Town"	// Campaign Mission title
+		text		"gui::CampaignMissionTitleText"	// Campaign Mission title
+	}
+
+	// MissionTitleText will appear by itself when playing a non-campaign mission
+
+	windowDef MissionTitleText
+	{
+		rect		MM_TITLE_MISSION
+		MM_TITLE_FONT
+		//text		"Return to the City"	// Mission title
+		text		"gui::MissionTitleText"	// Mission title
+	}
+
+	// -------------------- Start Mission -----------------------------------------
+	// Obsttorte
+	
+	windowDef StartMissionTextH
+	{
+		rect 		MM_POS_START_MISSION_BUTTON_GLOW
+		MM_FONT_GLOW
+		visible		"gui::hasCurrentMod"
+		text 		"#str_02110"
+	}
+	windowDef StartMissionText
+	{
+		rect 		MM_POS_START_MISSION_BUTTON
+		MM_FONT
+		visible		"gui::hasCurrentMod"
+		text 		"#str_02110"
+	}
+	windowDef StartMissionAction
+	{
+		rect 		MM_POS_START_MISSION_ACTION
+		visible 	"gui::hasCurrentMod"
+		
+		float 		exit;
+		
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "StartMissionText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "StartMissionTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set	"cmd" "play sound/meta/menu/mnu_hover";
+		}
+		
+		onMouseExit
+		{
+			if ("exit" == 0)
+			{
+				transition "StartMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "StartMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "StartMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "StartMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select;";
+			set "cmd" "onStartMissionClicked";
+			
+			// Switch states
+			set "gui::targetmode" MM_STATE_BRIEFING_VIDEO;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+	
+	// --------------------- New Mission ------------------------------------------
+
+	windowDef NewMissionTextH
+	{
+		rect		MM_POS_NEW_MISSION_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02101"		// New Mission
+	}
+	windowDef NewMissionText
+	{
+		rect		MM_POS_NEW_MISSION_BUTTON
+		MM_FONT
+		text		"#str_02101"		// New Mission
+	}
+	
+	windowDef NewMissionAction
+	{
+		rect		MM_POS_NEW_MISSION_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "NewMissionText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "NewMissionTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ("exit" == 0)
+			{
+				transition "NewMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "NewMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "NewMissionText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "NewMissionTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "exit" 1;
+
+			resetTime "HideMainMenu" 0;
+			set "cmd" "play sound/meta/menu/mnu_select";
+
+			// Switch to the mod menu
+			set "gui::targetmode" MM_STATE_MOD_SELECT;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Load Game ------------------------------------------
+
+	// Obsttorte - only visible if mission installed
+	windowDef LoadGameTextH
+	{
+		rect		MM_POS_LOAD_GAME_BUTTON_GLOW
+		MM_FONT_GLOW
+		visible 	"gui::hasCurrentMod"
+		text		"#str_02103"		// Load Game
+	}
+
+	windowDef LoadGameText
+	{
+		rect		MM_POS_LOAD_GAME_BUTTON
+		MM_FONT
+		visible		"gui::hasCurrentMod"
+		text		"#str_02103"		// Load Game
+	}
+
+	windowDef LoadGameAction
+	{
+		rect		MM_POS_LOAD_GAME_ACTION
+		visible		"gui::hasCurrentMod"
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "LoadGameText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "LoadGameTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set	"cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ("exit" == 0)
+			{
+				transition "LoadGameText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "LoadGameTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "LoadGameText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "LoadGameTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select;";
+
+			// Switch states
+			set "gui::targetmode" MM_STATE_LOAD_SAVE_GAME;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Settings -------------------------------------------
+
+	windowDef SettingsTextH
+	{
+		rect		MM_POS_SETTINGS_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02104"		// Settings
+	}
+
+	windowDef SettingsText
+	{
+		rect		MM_POS_SETTINGS_BUTTON
+		MM_FONT
+		text		"#str_02104"		// Settings
+	}
+
+	windowDef SettingsAction
+	{
+		rect		MM_POS_SETTINGS_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "SettingsText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "SettingsTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ("exit" == 0)
+			{
+				transition "SettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "SettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "SettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "SettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" "1";
+
+			// Switch to the settings menu
+			set "gui::targetmode" MM_STATE_SETTINGS;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Credits --------------------------------------------
+
+	windowDef CreditsTextH
+	{
+		rect		MM_POS_CREDITS_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02106"		// Credits
+	}
+
+	windowDef CreditsText
+	{
+		rect		MM_POS_CREDITS_BUTTON
+		MM_FONT
+		text		"#str_02106"		// Load Game
+	}
+
+	windowDef CreditsAction
+	{
+		rect		MM_POS_CREDITS_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "CreditsText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "CreditsTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "CreditsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "CreditsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "CreditsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "CreditsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			// Switch to the credits state
+			set "gui::targetmode" MM_STATE_CREDITS;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// ------------------------ Quit --------------------------------------
+
+	windowDef QuitTextH {
+		rect		MM_POS_QUIT_BUTTON_GLOW
+		MM_FONT_GLOW
+		text		"#str_02107"		// Quit
+	}
+
+	windowDef QuitText {
+		rect		MM_POS_QUIT_BUTTON
+		MM_FONT
+		text		"#str_02107"		// Quit
+	}
+
+	windowDef QuitAction {
+		rect		MM_POS_QUIT_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter {
+			set "exit" 0;
+			transition "QuitText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "QuitTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit {
+			if ( "exit" == 0 ) {
+				transition "QuitText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "QuitTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction {
+			transition "QuitText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "QuitTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			// Switch to the quit menu
+			set "gui::targetmode" MM_STATE_QUITGAME;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- VR Settings -------------------------------------------
+
+	windowDef VRSettingsTextH
+	{
+		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		MM_FONT_GLOW
+		text		"VR Settings"
+	}
+
+	windowDef VRSettingsText
+	{
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		MM_FONT
+		text		"VR Settings"
+	}
+
+	windowDef VRSettingsAction
+	{
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "VRSettingsText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "VRSettingsTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ("exit" == 0)
+			{
+				transition "VRSettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "VRSettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "VRSettingsText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "VRSettingsTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" "1";
+
+			// Switch to the settings menu
+			set "gui::targetmode" MM_STATE_VRSETTINGS;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+	// ----------------------- Version -------------------------------------
+	windowDef VersionText
+	{
+		rect		320,450,128,32
+		visible		1
+		matcolor	1, 1, 1, 1
+		forecolor	INVISIBLE
+		text		"gui::tdmversiontext"
+		font		VERSION_TEXT_FONT
+		textscale	0.18
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "VersionText::forecolor" "0 0 0 1" "1 1 1 1" "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "VersionText::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "VersionText::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			set "cmd" "check_tdm_version";
+		}
+	}
+	// ------------------- Uninstall ----------------------------------------
+	windowDef UninstallText
+	{
+		rect 		475, 450, 100, 32
+		visible 	1
+		matcolor	1, 1, 1, 1
+		forecolor 	INVISIBLE
+		text 		"#str_02961" // "Deselect Mission"
+		textalign	2
+		font		VERSION_TEXT_FONT
+		textscale	0.18
+		visible 	"gui::hasCurrentMod"
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "UninstallText::forecolor" "0 0 0 1" "1 1 1 1" "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "UninstallText::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "UninstallText::forecolor" "1 1 1 1" "0 0 0 1" "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			set "exit" 1;
+
+			set "gui::targetmode" MM_STATE_MOD_SELECT;
+			resetTime "MainMenuModeSelect" 0;
+			set "cmd"   "uninstallMod;";
+		}
+	}
+// ----------------------------------------------------------------------------
+
+	// This is called whenever the user switches to the main menu
+	windowDef MainMenuStateInit
+	{
+		noTime 1
+
+		// Init methods have onTime 10 instead of onTime 0.
+		onTime 10
+		{
+			if ("gui::inGame"==1)
+			{
+				set "gui::targetmode" MM_STATE_MAINMENU_INGAME;
+				resetTime "MainMenuModeSelect" 0;
+			}
+			set "cmd" "log 'MainMenuStateInit called.'";
+
+			set "cmd" "mainmenu_init";
+			
+			// Obsttorte - refresh is needed so gui::hasCurrentMod is set
+			set "cmd" "refreshMissionList";
+			// Show our parent windowDef
+			set "MainMenu::visible" 1;
+
+			if ("MainMenuIntroAnimation::introAnimPlayed" == 0)
+			{
+				set "cmd" "log 'Trying to call main menu intro animation.'";
+
+				// Intro animation not yet played, show it now
+				set "MainMenuIntroAnimation::notime" "0";
+				resetTime "MainMenuIntroAnimation" 0;
+			}
+			else
+			{
+				set "cmd" "log 'Skipping main menu intro animation.'";
+			}
+
+			// Also start the main menu music
+			set "gui::targetmusic" MM_MUSIC_MAINMENU;
+			resetTime "MainMenuMusicSelect" 0;
+
+			set "notime" 1;
+		}
+	}
+
+	// Called when the MainMenuModeSelect script switches states.
+	windowDef MainMenuStateEnd
+	{
+		noTime 1
+
+		onTime 0
+		{
+			set "cmd" "log 'MainMenuStateEnd called.'";
+
+			set "MainMenu::visible" "0";
+
+			set "notime" "1";
+		}
+	}
+
+	/**
+	 * Intro (fade-in) animation, is only played once.
+	 */
+	windowDef MainMenuIntroAnimation
+	{
+		rect	0,0,0,0
+		notime	1
+		visible	1
+
+		float introAnimPlayed; // this is 1 if the intro anim has already been played
+
+		onTime 0 {
+			set "cmd" "log 'MainMenuIntroAnimation called.'";
+
+			if ("introAnimPlayed" == 1) 
+			{
+				set "cmd" "log 'MainMenuIntroAnimation has already been played, stopping.'";
+
+				set "notime" 1;
+			}
+			else
+			{
+				set "cmd" "log 'MainMenuIntroAnimation started playing.'";
+			}
+		}
+
+		onTime 500 {
+			transition "MainMenuParchment::matcolor" "1 1 1 0" "1 1 1 1" "700" ;
+		}
+
+#ifdef MM_SHOW_CUSTOM_MAINMENU_TITLE
+		onTime 600
+		{
+			transition "CustomMainMenuTitle::matcolor" "1 1 1 0" "1 1 1 1" "900" ;
+			transition "CustomMainMenuTitle::forecolor" SINVISIBLE SNORMAL_COLOR "900" ;
+		}
+#endif
+
+		// grayman #3733 - show campaign and mission titles
+		onTime 650
+		{
+			// these titles will appear as a pair when playing a campaign mission
+			transition "CampaignTitleText::forecolor" SINVISIBLE SMM_TITLE_COLOR "500" ;
+			transition "CampaignMissionTitleText::forecolor" SINVISIBLE SMM_TITLE_COLOR "500" ;
+
+			// this title will appear by itself when playing a non-campaign mission
+			transition "MissionTitleText::forecolor" SINVISIBLE SMM_TITLE_COLOR "500" ;
+		}
+		// Obsttorte
+		onTime 750
+		{
+			transition "StartMissionText::forecolor" SINVISIBLE SNORMAL_COLOR "500";
+		}
+		onTime 800 {
+			transition "NewMissionText::forecolor" SINVISIBLE SNORMAL_COLOR "500" ;
+		}
+
+		onTime 850 {
+			transition "LoadGameText::forecolor" SINVISIBLE SNORMAL_COLOR "500" ;
+		}
+
+		onTime 900 {
+			transition "SettingsText::forecolor" SINVISIBLE SNORMAL_COLOR "500" ;
+		}
+
+		onTime 950 {
+			transition "CreditsText::forecolor" SINVISIBLE SNORMAL_COLOR "500" ;
+		}
+
+		onTime 1000 {
+			transition "VRSettingsText::forecolor" SINVISIBLE SNORMAL_COLOR "500" ;
+		}
+
+		onTime 1000 {
+			transition "QuitText::forecolor" SINVISIBLE SNORMAL_COLOR "500" ;
+
+			set "cmd" "log 'MainMenuIntroAnimation successfully executed, stopping.'";
+
+			transition "VersionText::forecolor" "0 0 0 0" "0 0 0 0.8" "800";
+			transition "UninstallText::forecolor" "0 0 0 0" "0 0 0 0.8" "800";
+
+			set "introAnimPlayed" 1;
+			set "notime" 1; // stop animation
+		}
+	}
+}

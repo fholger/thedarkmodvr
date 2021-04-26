@@ -1,0 +1,280 @@
+/* =============================================================================================
+ *
+ * VR Settings GUI. This file is part of The Dark Mod's Main Menu GUI
+ *
+ * Mission Authors: DO NOT EDIT, INCLUDE OR OVERRIDE THIS FILE IN YOUR MISSION PK4.
+ *
+ * ============================================================================================= */
+
+#define VRTEXT_X_OFFSET 3
+
+#define VRSETTINGS_X_OFFSET 175
+#define VRSETTINGS_X_OFFSET_CONTROLS 130
+#define VRSETTINGS_X_OFFSET_CONTROLS_GENERAL 163
+
+windowDef VRSettingsRootMenu
+{
+	rect 		0,0,640,640
+	matcolor	1,1,1,1
+	visible		0
+
+	// This is called whenever the user switches to this menu
+	windowDef VRSettingsMenuStateInit
+	{
+		noTime 1
+
+		// Init methods have onTime 10 instead of onTime 0.
+		onTime 10
+		{
+			set "cmd" "log 'VRSettingsMenuStateInit called.'";
+
+			// Show our parent windowDef
+			set "VRSettingsRootMenu::visible" 1;
+
+			// and the first headline line, if we have two
+			set "gui::headline_offset" 0;
+
+			set "notime" 1;
+		}
+	}
+
+	// Called when the MainMenuModeSelect script switches states.
+	windowDef VRSettingsMenuStateEnd
+	{
+		noTime 1
+
+		onTime 0
+		{
+			set "cmd" "log 'VRSettingsMenuStateEnd called.'";
+
+			set "VRSettingsRootMenu::visible" "0";
+		}
+
+		onTime 20 {
+			set "notime" "1";
+		}
+	}
+
+// -- General -------------------------------------------------------
+	#include "guis/mainmenu_vrsettings_general.gui"
+// ----------------------------------------------------------------
+
+// -- Controls -------------------------------------------------------
+	#include "guis/mainmenu_vrsettings_controls.gui"
+// ----------------------------------------------------------------
+
+	// Settings page selection
+	windowDef VRSettingsPageSelect 
+	{
+		rect 0,0,0,0
+		visible 1
+		notime 1
+
+		onTime 0
+		{
+			set "cmd" "log 'VRSettingsPageSelect called.'";
+
+			// First, set all to invisible
+			set "VRSettingsGeneralCanvas::visible" 0;
+			set "VRSettingsControlsCanvas::visible" 0;
+
+			set "VRSettingsGeneralText::forecolor" SNORMAL_COLOR;
+			set "VRSettingsGeneralTextH::forecolor" SINVISIBLE;
+			set "VRSettingsControlsText::forecolor" SNORMAL_COLOR;
+			set "VRSettingsControlsTextH::forecolor" SINVISIBLE;
+
+			// adjust the button centers and widths according to the position specified by the language
+			set "gui::vr_general_pos" "#str_02240";
+			set "gui::vr_controls_pos" "#str_02241";
+			set "gui::vr_general_width" "#str_02244";
+			set "gui::vr_controls_width" "#str_02245";
+
+			resetTime "AnimGammaDown" 0;
+
+			// Then select the desired page
+			if ("gui::vrsettingspage" == VRSETTINGS_PAGE_NONE)
+			{
+				set "cmd" "log 'Selecting VRSETTINGS_PAGE_NONE.'";
+			}
+			else if ("gui::vrsettingspage" == VRSETTINGS_PAGE_GENERAL)
+			{
+				set "cmd" "log 'Selecting VRSETTINGS_PAGE_GENERAL.'";
+
+				set "VRSettingsGeneralCanvas::visible" 1;
+				set "VRSettingsGeneralText::forecolor" SBOLDGLOW_WHITE_COLOR;
+				set "VRSettingsGeneralTextH::forecolor" SGLOW_DARKRED_COLOR;
+			}
+			else if ("gui::vrsettingspage" == VRSETTINGS_PAGE_CONTROLS)
+			{
+				set "cmd" "log 'Selecting VRSETTINGS_PAGE_CONTROLS.'";
+
+				set "VRSettingsControlsCanvas::visible" 1;
+				set "VRSettingsControlsText::forecolor" SBOLDGLOW_WHITE_COLOR;
+				set "VRSettingsControlsTextH::forecolor" SGLOW_DARKRED_COLOR;
+			}
+			else
+			{
+				set "cmd" "log 'Error: Unknown vrsettingspage value.'";
+			}
+
+			set "cmd" "log 'VRSettingsPageSelect done.'";
+		}
+	}
+
+	windowDef VRSettingsGeneralTextH
+	{
+		rect	310, 100, 85, 21
+		MM_FONT_CENTER_GLOW
+		MM_BUTTON_BIG
+		text		"General"
+	}
+	windowDef VRSettingsGeneralText
+	{
+		rect	311, 101, 84, 20
+		MM_FONT_CENTER_BOLD
+		MM_BUTTON_BIG
+		text		"General"
+	}
+
+	windowDef VRSettingsGeneralTextAction
+	{
+		rect	311, 101, 84, 20
+		matcolor	1, 1, 1, 0
+
+		onMouseEnter
+		{
+			transition "VRSettingsGeneralText::forecolor" SNORMAL_COLOR SBOLDGLOW_WHITE_COLOR "50";
+			transition "VRSettingsGeneralTextH::forecolor" SINVISIBLE SGLOW_DARKRED_COLOR "50";
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ("gui::vrsettingspage" != VRSETTINGS_PAGE_GENERAL)
+			{
+				transition "VRSettingsGeneralText::forecolor" SBOLDGLOW_WHITE_COLOR SNORMAL_COLOR "50";
+				transition "VRSettingsGeneralTextH::forecolor" SGLOW_DARKRED_COLOR SINVISIBLE "50";
+			}
+		}
+
+		onAction
+		{
+			set "cmd" "play sound/meta/menu/mnu_select";
+
+			resetTime "AnimGammaDown" 0;
+			
+			set "gui::vrsettingspage" VRSETTINGS_PAGE_GENERAL;
+			resetTime "VRSettingsPageSelect" 0;
+		}
+	}
+
+	windowDef VRSettingsControlsTextH
+	{
+		rect	398, 100, 85, 21
+		MM_FONT_CENTER_GLOW
+		MM_BUTTON_BIG
+		text		"Controls"
+	}
+
+	windowDef VRSettingsControlsText
+	{
+		rect	399, 101, 84, 20
+		MM_FONT_CENTER_BOLD
+		MM_BUTTON_BIG
+		text		"Controls"
+	}
+
+	windowDef VRSettingsControlsTextAction
+	{
+		rect	399, 101, 84, 20
+		matcolor	1, 1, 1, 0
+
+		onMouseEnter
+		{
+			transition "VRSettingsControlsText::forecolor" SNORMAL_COLOR SBOLDGLOW_WHITE_COLOR "50";
+			transition "VRSettingsControlsTextH::forecolor" SINVISIBLE SGLOW_DARKRED_COLOR "50";
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ("gui::vrsettingspage" != VRSETTINGS_PAGE_CONTROLS)
+			{
+				transition "VRSettingsControlsText::forecolor" SBOLDGLOW_WHITE_COLOR SNORMAL_COLOR "50";
+				transition "VRSettingsControlsTextH::forecolor" SGLOW_DARKRED_COLOR SINVISIBLE "50";
+			}
+		}
+
+		onAction
+		{
+			set "cmd" "play sound/meta/menu/mnu_select";
+
+			resetTime "AnimGammaDown" 0;
+			
+			set "gui::vrsettingspage" VRSETTINGS_PAGE_CONTROLS;
+			resetTime "VRSettingsPageSelect" 0;
+		}
+	}
+
+	windowDef VRSettingsBackH
+	{
+		MM_POS_SETTINGS_BACK_BUTTON_GLOW
+		MM_FONT_RIGHT_GLOW
+		text		"#str_02114"			// Main Menu
+	}
+	windowDef VRSettingsBack
+	{
+		MM_POS_SETTINGS_BACK_BUTTON
+		MM_FONT_RIGHT_BOLD
+		text		"#str_02114"			// Main Menu
+	}
+	// "Normal" version used for highlighting
+	windowDef VRSettingsBackN
+	{
+		MM_POS_SETTINGS_BACK_BUTTON
+		MM_FONT_RIGHT
+		text		"#str_02114"			// Main Menu
+	}
+
+	windowDef VRSettingsBackAction
+	{
+		MM_POS_SETTINGS_BACK_ACTION
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "VRSettingsBack::forecolor" SNORMAL_COLOR SINVISIBLE "50" ;
+			transition "VRSettingsBackH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			transition "VRSettingsBackN::forecolor" SINVISIBLE SBOLDGLOW_WHITE_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "VRSettingsBack::forecolor" SBOLDGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "VRSettingsBackH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+				transition "VRSettingsBackN::forecolor" SBOLDGLOW_WHITE_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction
+		{
+			transition "VRSettingsBack::forecolor" SBOLDGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+			transition "VRSettingsBackH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			transition "VRSettingsBackN::forecolor" SBOLDGLOW_WHITE_COLOR SINVISIBLE "50" ;
+
+			set "cmd" "play sound/meta/menu/mnu_select";
+			
+			set "exit" 1;
+			resetTime "AnimGammaDown" 0;
+
+			// Switch states
+			set "gui::targetmode" MM_STATE_MAINMENU;
+			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+}
