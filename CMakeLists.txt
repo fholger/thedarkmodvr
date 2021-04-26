@@ -277,6 +277,7 @@ if (COPY_EXE)
 			COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:TheDarkMod> "${GAME_DIR}"
 			COMMAND ${CMAKE_COMMAND} -E copy "${openxr_BINARY}" "${GAME_DIR}"
 			COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/glprogs" "${GAME_DIR}/glprogs_vr"
+			COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/assets/" "${GAME_DIR}"
 	)
 	if (UNIX)
 		add_custom_command(

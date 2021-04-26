@@ -32,13 +32,13 @@
     <PostBuildEvent>
       <Command>
         xcopy /y $(ThirdPartyDir)openxr\bin\win64_s_vc15_rel_mt\openxr_loader.dll $(OutDir)
-        xcopy /y $(ThirdPartyDir)openvr\bin\win64_s_vc15_rel_mt\openvr_api.dll $(OutDir)      
         robocopy $(SolutionDir)glprogs $(OutDir)glprogs_vr * /s /nfl /ndl /njh /njs
+        robocopy $(SolutionDir)assets $(OutDir) * /s /nfl /ndl /njh /njs
         if %errorlevel% leq 3 exit 0
       </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy DLLs and glprogs (shaders)</Message>
+      <Message>Copy DLLs and assets</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
 </Project>

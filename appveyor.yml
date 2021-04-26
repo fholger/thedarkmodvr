@@ -23,6 +23,7 @@ for:
   after_build:
   - cmd: |
       7z a -tzip tdm_vr.pk4 ..\darkmod\glprogs_vr
+      7z a -tzip tdm_vr.pk4 ..\darkmod\guis
       7z a -t7z TheDarkModVR.7z ..\darkmod\TheDarkMod*.exe
       7z a -t7z TheDarkModVR.7z ..\darkmod\*.dll
       7z a -t7z TheDarkModVR.7z tdm_vr.pk4
@@ -64,6 +65,7 @@ for:
       CURPATH=`pwd`
       cd ../darkmod
       7za a -tzip tdm_vr.pk4 glprogs_vr
+      7za a -tzip tdm_vr.pk4 guis
       tar -cSvf thedarkmodvr.tar "thedarkmodvr.x64" "tdm_vr.pk4" "libopenvr_api.so" "libopenxr_loader.so.1"
       bzip2 thedarkmodvr.tar
       cd $CURPATH
