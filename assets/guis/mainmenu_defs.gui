@@ -510,6 +510,15 @@
 											WHITE_STRIPE ( 359 ) \
                                                                                         WHITE_STRIPE ( 393 )
 
+// "VR Settings"
+#define VR_SETTINGS_BACKGROUND( watermark) 	MENU_BACKGROUND( watermark, "VR Settings", 160, "" ) \
+                                                                                       	WHITE_STRIPE ( 188 ) \
+											WHITE_STRIPE ( 221 ) \
+											WHITE_STRIPE ( 257 ) \
+											WHITE_STRIPE ( 290 ) \
+											WHITE_STRIPE ( 324 ) \
+											WHITE_STRIPE ( 359 ) \
+                                                                                        WHITE_STRIPE ( 393 )
 
 
 

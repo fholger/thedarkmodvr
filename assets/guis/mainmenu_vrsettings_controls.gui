@@ -1,0 +1,69 @@
+/* =============================================================================================
+ *
+ * This file is part of The Dark Mod VR's Main Menu GUI
+ *
+ * Mission Authors: DO NOT EDIT, INCLUDE OR OVERRIDE THIS FILE IN YOUR MISSION PK4.
+ *
+ * ============================================================================================= */
+
+windowDef VRSettingsControlsCanvas
+{
+	rect		280, 0, 320, 640
+	visible		1
+
+	VR_SETTINGS_BACKGROUND( "guis/assets/mainmenu/settings_audio_watermark" )
+
+	windowDef VRSettingsControlsParent
+	{
+		rect	45,185-TT_OFFSET_Y,320,640
+		visible 1
+
+		windowDef EnableControllersText
+		{
+			rect		TEXT_X_OFFSET, 0+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Enable motion controls"
+			SETTINGS_TEXT
+		}
+		choiceDef EnableControllers
+		{
+			rect		SETTINGS_X_OFFSET, 0+TT_OFFSET_Y, 80, MM_LINE_H
+			choices		"#str_07228"
+			values		"1;0"
+			cvar		"vr_useMotionControllers"
+			CHOICE_DEF
+			toolTip("Enable the use of motion controllers. EXPERIMENTAL WORK IN PROGRESS!")
+		}
+
+		windowDef DominantHandText
+		{
+			rect		TEXT_X_OFFSET, 17+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Dominant Hand"
+			SETTINGS_TEXT
+		}
+		choiceDef DominantHand
+		{
+			rect		SETTINGS_X_OFFSET, 17+TT_OFFSET_Y, 80, MM_LINE_H
+			choices		"Left;Right"
+			values		"1;0"
+			cvar		"vr_inputLeftHanded"
+			CHOICE_DEF
+			toolTip("Choose your dominant hand. This influences which controller carries out which actions.")
+		}
+
+		windowDef MovementModeText
+		{
+			rect		TEXT_X_OFFSET, 34+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Movement mode"
+			SETTINGS_TEXT
+		}
+		choiceDef MovementMode
+		{
+			rect		SETTINGS_X_OFFSET, 34+TT_OFFSET_Y, 80, MM_LINE_H
+			choices		"Head;Hand"
+			values		"1;0"
+			cvar		"vr_inputWalkHeadRelative"
+			CHOICE_DEF
+			toolTip("Choose the direction of movement. Depending on your choice, it will either be relative to the headset or to your off-hand controller orientation.")
+		}
+	} // end windowDef VRSettingsControlsParent
+} // end windowDef VRSettingsControlsCanvas
