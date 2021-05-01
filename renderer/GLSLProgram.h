@@ -30,10 +30,10 @@ public:
 	void Init();
 	void Destroy();
 
-	void AttachVertexShader( const char *sourceFile, const idDict &defines = idDict() );
-	void AttachGeometryShader( const char *sourceFile, const idDict &defines = idDict() );
-	void AttachFragmentShader( const char *sourceFile, const idDict &defines = idDict() );
-	void AttachComputeShader( const char *sourceFile, const idDict &defines = idDict() );
+	void AttachVertexShader( const char *sourceFile, const idHashMapDict &defines = {} );
+	void AttachGeometryShader( const char *sourceFile, const idHashMapDict &defines = {} );
+	void AttachFragmentShader( const char *sourceFile, const idHashMapDict &defines = {} );
+	void AttachComputeShader( const char *sourceFile, const idHashMapDict &defines = {} );
 
 	void BindAttribLocation( unsigned int location, const char *attribName );
 	void BindDefaultAttribLocations();
@@ -42,7 +42,7 @@ public:
 	bool Link();
 	bool Validate();
 
-	void InitFromFiles( const char *vertexFile, const char *fragmentFile, const idDict &defines = idDict() );
+	void InitFromFiles( const char *vertexFile, const char *fragmentFile, const idHashMapDict &defines = {} );
 
 	void Activate();
 	static void Deactivate();
@@ -81,8 +81,8 @@ private:
 	std::vector<ActiveUniformGroup> uniformGroups;
 
 	GLSLUniformGroup *&FindUniformGroup( const std::type_index &type );
-	void LoadAndAttachShader( GLint shaderType, const char *sourceFile, const idDict &defines );
-	GLuint CompileShader( GLint shaderType, const char *sourceFile, const idDict &defines );
+	void LoadAndAttachShader( GLint shaderType, const char *sourceFile, const idHashMapDict &defines );
+	GLuint CompileShader( GLint shaderType, const char *sourceFile, const idHashMapDict &defines );
 	void SetDefaultUniformBlockBindings();
 };
 

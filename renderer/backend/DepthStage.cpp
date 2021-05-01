@@ -34,7 +34,7 @@ namespace {
 	};
 
 	void LoadShader( GLSLProgram *shader, int maxSupportedDrawsPerBatch, bool bindless ) {
-		idDict defines;
+		idHashMapDict defines;
 		defines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", maxSupportedDrawsPerBatch ) );
 		if (bindless) {
 			defines.Set( "BINDLESS_TEXTURES", "1" );
@@ -88,7 +88,7 @@ void DepthStage::Init() {
 		depthShaderBindless = programManager->LoadFromGenerator( "depth_bindless", [=](GLSLProgram *program) { LoadShader(program, maxShaderParamsArraySize, true); } );
 	}
 
-	idDict fastDefines;
+	idHashMapDict fastDefines;
 	fastDefines.Set( "MAX_SHADER_PARAMS", idStr::Fmt( "%d", drawBatchExecutor->MaxShaderParamsArraySize<idMat4>() ) );
 	fastDepthShader = programManager->LoadFromFiles( "depth_fast", "stages/depth/depth_fast.vert.glsl", "stages/depth/depth_fast.frag.glsl", fastDefines );
 }

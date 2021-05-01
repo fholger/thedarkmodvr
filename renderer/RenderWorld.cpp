@@ -713,6 +713,12 @@ void idRenderWorldLocal::RenderScene( const renderView_t &renderView ) {
 		return;
 	}
 
+	// stgatilov: allow switching interaction table implementations on-the-fly
+	if ( r_useInteractionTable.IsModified() ) {
+		PutAllInteractionsIntoTable(true);
+		r_useInteractionTable.ClearModified();
+	}
+
 	// save this world for use by some console commands
 	tr.primaryWorld = this;
 	tr.primaryRenderView = renderView;
@@ -1506,13 +1512,21 @@ If this isn't called, they will all be dynamically generated
 
 This really isn't all that helpful anymore, because the calculation of shadows
 and light interactions is deferred from idRenderWorldLocal::CreateLightDefInteractions(), but we
-use it as an oportunity to size the interactionTable
+use it as an opportunity to size the interactionTable
+
+stgatilov: This is even harmful now!
+Interaction table is hash table, which grows automatically.
+generate everything => larger table => more cache pollution
 ===================
 */
 void idRenderWorldLocal::GenerateAllInteractions() {
 	if ( !glConfig.isInitialized ) {
 		return;
 	}
+
+	//stgatilov: never force-generate all interactions
+	return PutAllInteractionsIntoTable( true );
+	//(dead code follows)
 
 #ifdef _DEBUG
 	int start = Sys_Milliseconds();
@@ -1543,6 +1557,22 @@ void idRenderWorldLocal::GenerateAllInteractions() {
 #endif
 
 	// build the interaction table
+	PutAllInteractionsIntoTable( false );
+
+	// entities flagged as noDynamicInteractions will no longer make any
+	generateAllInteractionsCalled = true;
+}
+
+/*
+===================
+idRenderWorldLocal::PutAllInteractionsIntoTable
+===================
+*/
+void idRenderWorldLocal::PutAllInteractionsIntoTable( bool resetTable ) {
+	if ( resetTable ) {
+		interactionTable.Shutdown();
+		interactionTable.Init();
+	}
 	for( int i = 0; i < this->lightDefs.Num(); i++ ) {
 		idRenderLightLocal *ldef = this->lightDefs[i];
 		if( !ldef ) {
@@ -1556,9 +1586,6 @@ void idRenderWorldLocal::GenerateAllInteractions() {
 	idStr stats = interactionTable.Stats();
 	common->Printf( "Interaction table generated: %s\n", stats.c_str() );
 	common->Printf( "Initial counts:  %d entities  %d lightDefs  %d entityDefs\n", gameLocal.num_entities, lightDefs.Num(), entityDefs.Num() );
-
-	// entities flagged as noDynamicInteractions will no longer make any
-	generateAllInteractionsCalled = true;
 }
 
 /*

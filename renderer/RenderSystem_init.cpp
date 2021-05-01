@@ -50,7 +50,7 @@ idCVar r_useSilRemap( "r_useSilRemap", "1", CVAR_RENDERER | CVAR_BOOL, "consider
 idCVar r_useNodeCommonChildren( "r_useNodeCommonChildren", "1", CVAR_RENDERER | CVAR_BOOL, "stop pushing reference bounds early when possible" );
 idCVar r_useShadowProjectedCull( "r_useShadowProjectedCull", "1", CVAR_RENDERER | CVAR_BOOL, "discard triangles outside light volume before shadowing" );
 idCVar r_useShadowSurfaceScissor( "r_useShadowSurfaceScissor", "1", CVAR_RENDERER | CVAR_BOOL, "scissor shadows by the scissor rect of the interaction surfaces" );
-idCVar r_useInteractionTable( "r_useInteractionTable", "2", CVAR_RENDERER | CVAR_INTEGER, "which implementation to use for table of existing interactions: 0 = none, 1 = single full matrix, 2 = single hash table" );
+idCVar r_useInteractionTable( "r_useInteractionTable", "3", CVAR_RENDERER | CVAR_INTEGER, "which implementation to use for table of existing interactions: 0 = none, 1 = single full matrix, 2 = single hash table" );
 idCVar r_useTurboShadow( "r_useTurboShadow", "1", CVAR_RENDERER | CVAR_BOOL, "use the infinite projection with W technique for dynamic shadows" );
 idCVar r_useDeferredTangents( "r_useDeferredTangents", "1", CVAR_RENDERER | CVAR_BOOL, "defer tangents calculations after deform" );
 idCVar r_useCachedDynamicModels( "r_useCachedDynamicModels", "1", CVAR_RENDERER | CVAR_BOOL, "cache snapshots of dynamic models" );
@@ -232,7 +232,13 @@ idCVar r_glCoreProfile( "r_glCoreProfile", "2", CVAR_RENDERER | CVAR_ARCHIVE,
 	"  2: forward-compatible core profile\n"
 	"Note: restarting TDM is required after change!"
 );
-idCVarBool r_newFrob( "r_newFrob", "0", CVAR_RENDERER | CVAR_ARCHIVE, "1 = use the frob shader instead of material stages" );
+idCVar r_newFrob( "r_newFrob", "2", CVAR_RENDERER | CVAR_ARCHIVE,
+	"Controls how objects are frob-highlighted:\n"
+	"  0 = use material stages by parm11\n"
+	"  1 = use the frob shader\n"
+	"  2 = use nothing (no highlight)\n"
+	"Note: outline is controlled by r_frobOutline"
+);
 
 // FBO
 idCVar r_showFBO( "r_showFBO", "0", CVAR_RENDERER | CVAR_INTEGER, "0-5 individual fbo attachments" );
