@@ -302,6 +302,9 @@ idCVar cv_collision_damage_scale_vert(	"tdm_collision_damage_scale_vert", "1",	C
 idCVar cv_collision_damage_scale_horiz(	"tdm_collision_damage_scale_horiz", "0.5",	CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "This globally scales the damage AI take from horizontal collisions/decelerations. This multiplies delta-velocity squared." );
 idCVar cv_drag_limit_force(				"tdm_drag_limit_force", "1", CVAR_GAME | CVAR_ARCHIVE | CVAR_BOOL, "Cheat: Set to 0 to disable finite acceleration while grabbing objects." );
 idCVar cv_drag_force_max(				"tdm_drag_force_max", "100000", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Maximum force the player can apply to a dragged object [kg * doom units / second^2]" );
+idCVar cv_drag_arm_mass(				"tdm_drag_arm_mass", "5", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Weight of arm in kg: it is added to the mass of dragged object when force is applied" );
+idCVar cv_drag_vellimit_normal(			"tdm_drag_vellimit_normal", "80", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Maximum allowed speed of dragged object in quiet conditions" );
+idCVar cv_drag_vellimit_run(			"tdm_drag_vellimit_run", "250", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Maximum allowed speed of dragged object when run button is enabled" );
 idCVar cv_drag_stuck_dist(				"tdm_drag_stuck_dist", "38.0", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Distance from the grab point at which object is determined to be 'stuck' and possibly auto-dropped." );
 idCVar cv_drag_damping(					"tdm_drag_damping", "0.0", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Damping applied to objects being grabbed by the player" );
 idCVar cv_drag_damping_AF(				"tdm_drag_damping_af", "0.4", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Damping applied to ragdolls being grabbed by the player" );
@@ -353,10 +356,11 @@ idCVar cv_phys_show_momentum(			"tdm_phys_show_momentum", "0", CVAR_GAME | CVAR_
 * DarkMod Item Manipulation
 * Throw_min and throw_max are the min and max impulses applied to items thrown
 **/
-idCVar cv_throw_min(				"tdm_throw_min",			"600",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Minimum impulse applied to a thrown object." );
-idCVar cv_throw_max(				"tdm_throw_max",			"3500",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Maximum impulse applied to a thrown object." );
+idCVar cv_throw_impulse_min(		"tdm_throw_impulse_min",	"1200",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Impulse applied to a thrown object without holding throw button." );
+idCVar cv_throw_impulse_max(		"tdm_throw_impulse_max",	"3500",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Impulse applied to a thrown object after throw button held for full time." );
+idCVar cv_throw_vellimit_min(		"tdm_throw_vellimit_min",	"300",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Velocity upper limit for thrown object without holding throw button." );
+idCVar cv_throw_vellimit_max(		"tdm_throw_vellimit_max",	"900",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Velocity upper limit for thrown object after throw button held for full time." );
 idCVar cv_throw_time(				"tdm_throw_time",			"1200",			CVAR_GAME | CVAR_ARCHIVE | CVAR_INTEGER, "When throwing an object, time it takes to charge up to the max throw force in milliseconds." );
-idCVar cv_throw_max_vel(			"tdm_throw_max_vel",		"900",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Velocity of thrown objects is clamped to this value (in doomunits / second).  Needed to balance throwing of very light objects." );
 
 idCVar cv_bounce_sound_max_vel(		"tdm_bounce_sound_max_vel",	"400",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "At this velocity moveable collision sounds reach their maximum volume." );
 idCVar cv_bounce_sound_min_vel(		"tdm_bounce_sound_min_vel",	"80",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "This is the minimum velocity at which moveable collision sounds can be heard at all." );

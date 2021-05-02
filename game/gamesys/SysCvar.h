@@ -267,6 +267,9 @@ extern idCVar cv_collision_damage_scale_vert;
 extern idCVar cv_collision_damage_scale_horiz;
 extern idCVar cv_drag_limit_force;
 extern idCVar cv_drag_force_max;
+extern idCVar cv_drag_arm_mass;
+extern idCVar cv_drag_vellimit_normal;
+extern idCVar cv_drag_vellimit_run;
 extern idCVar cv_drag_stuck_dist;
 extern idCVar cv_drag_damping;
 extern idCVar cv_drag_damping_AF;
@@ -292,10 +295,11 @@ extern idCVar cv_melee_forbid_auto_parry;
 extern idCVar cv_melee_max_particles;
 extern idCVar cv_phys_show_momentum;
 
-extern idCVar cv_throw_min;
-extern idCVar cv_throw_max;
+extern idCVar cv_throw_impulse_min;
+extern idCVar cv_throw_impulse_max;
+extern idCVar cv_throw_vellimit_min;
+extern idCVar cv_throw_vellimit_max;
 extern idCVar cv_throw_time;
-extern idCVar cv_throw_max_vel;
 
 extern idCVar cv_bounce_sound_max_vel;
 extern idCVar cv_bounce_sound_min_vel;
