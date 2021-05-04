@@ -451,22 +451,22 @@ idVec2 OpenXRInput::FindGuiOverlayIntersection( XrPosef pointerPose ) {
 	idQuat pointerOrientation ( pointerPose.orientation.x, pointerPose.orientation.y, pointerPose.orientation.z, pointerPose.orientation.w );
 	idVec3 pointerOrigin ( pointerPose.position.x, pointerPose.position.y, pointerPose.position.z );
 
-	idQuat pointerInUiOrientation = uiOrientation * pointerOrientation;
+	idQuat pointerInUiOrientation = /*uiOrientation */ pointerOrientation;
 	idVec3 pointerInUiOrigin = uiOrientation * ( pointerOrigin - uiOrigin );
-	idVec3 pointerDir = pointerInUiOrientation.ToRotation().GetVec();
+	idVec3 pointerDir = pointerInUiOrientation * idVec3(0, 0, 1);
 	pointerDir.Normalize();
 
-	float t = - pointerInUiOrigin.z / pointerDir.z;
+	float t = pointerInUiOrigin.z / pointerDir.z;
 	if ( t < 0 ) {
-		return idVec2 (0, 0);
+		return idVec2 (-1, -1);
 	}
 
-	idVec2 intersection ( pointerInUiOrigin.y + t * pointerDir.y, pointerInUiOrigin.x + t * pointerDir.x );
-	idVec2 overlaySize = 3 * idVec2( vr_uiOverlayAspect.GetFloat(), 1 ) * vr_uiOverlayHeight.GetFloat();
+	idVec2 intersection ( pointerInUiOrigin.x + t * pointerDir.x, pointerInUiOrigin.y + t * pointerDir.y );
+	idVec2 overlaySize = idVec2( vr_uiOverlayAspect.GetFloat(), 1 ) * vr_uiOverlayHeight.GetFloat();
 	idVec2 upperLeft = -.5f * overlaySize;
 	intersection -= upperLeft;
 	intersection /= overlaySize;
-	return idVec2( 1 - intersection.x, 1 - intersection.y );
+	return idVec2( intersection.x, 1 - intersection.y );
 }
 
 XrSpace OpenXRInput::FindActionSpace( Action action, XrPath subPath ) {
