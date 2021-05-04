@@ -3947,7 +3947,7 @@ void idPhysics_Player::MantleMove()
 		viewAngles.roll = idMath::Sin(timeRadians) * rockDistance;
 		newPosition += (idMath::Sin(timeRadians) * rockDistance) * viewRight;
 		
-		if (self != NULL)
+		if (self != NULL && !vr_useMotionControllers.GetBool() )
 		{
 			static_cast<idPlayer*>(self)->SetViewAngles(viewAngles);
 		}
@@ -3968,7 +3968,7 @@ void idPhysics_Player::MantleMove()
 		newPosition += (idMath::Sin(timeRadians) * rockDistance) * viewRight;
 		viewAngles.roll = idMath::Sin(timeRadians) * rockDistance;
 
-		if (self != NULL)
+		if (self != NULL && !vr_useMotionControllers.GetBool() )
 		{
 			static_cast<idPlayer*>(self)->SetViewAngles(viewAngles);
 		}
@@ -4000,7 +4000,7 @@ void idPhysics_Player::MantleMove()
 			viewAngles.roll = 0.0f;
 		}
 
-		if (self != NULL)
+		if (self != NULL && !vr_useMotionControllers.GetBool() )
 		{
 			static_cast<idPlayer*>(self)->SetViewAngles(viewAngles);
 		}
@@ -4016,7 +4016,7 @@ void idPhysics_Player::MantleMove()
 		float timeRadians = idMath::HALF_PI * timeRatio;
 		viewAngles.roll = idMath::Cos(timeRadians) * m_mantleCancelStartRoll;
 
-		if (self != NULL)
+		if (self != NULL && !vr_useMotionControllers.GetBool() )
 		{
 			static_cast<idPlayer*>(self)->SetViewAngles(viewAngles);
 		}
