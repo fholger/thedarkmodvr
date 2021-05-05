@@ -49,7 +49,7 @@ for:
 
   install:
   - sh: |
-      sudo apt-get update && sudo apt-get -y install mesa-common-dev libxxf86vm-dev libxext-dev
+      sudo apt-get update && sudo apt-get -y install mesa-common-dev libxxf86vm-dev libxext-dev libxrandr-dev
 
   build_script:
   - sh: |
