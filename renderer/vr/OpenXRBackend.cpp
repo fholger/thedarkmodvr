@@ -1,5 +1,5 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+					The Dark Mod GPL Source Code
 
  This file is part of the The Dark Mod Source Code, originally based
  on the Doom 3 GPL Source Code as published in 2011.
@@ -26,6 +26,7 @@
 #include "../GLSLUniforms.h"
 #include "../Profiling.h"
 #include "../backend/RenderBackend.h"
+#include "../qgl.h"
 
 OpenXRBackend xrImpl;
 OpenXRBackend *vrBackend = &xrImpl;
@@ -104,7 +105,7 @@ void OpenXRBackend::AdjustRenderView( renderView_t *view ) {
 	view->fov_x = RAD2DEG( cantedAngle + 2 * maxHorizFov );
 	view->fov_y = RAD2DEG( 2 * maxVertFov );
 	// add a bit extra to the FOV since the view may have moved slightly when we actually render,
-	// but ensure not to reach 180° or more, as the math breaks down at that point
+	// but ensure not to reach 180ï¿½ or more, as the math breaks down at that point
 	view->fov_x = Min( 178.f, view->fov_x + 5 );
 	view->fov_y = Min( 178.f, view->fov_y + 5 );
 
@@ -152,6 +153,11 @@ void OpenXRBackend::RenderStereoView( const frameData_t *frameData ) {
 	AcquireFboAndTexture( UI, uiBuffer, uiTexture );
 	AcquireFboAndTexture( LEFT_EYE, eyeBuffers[0], eyeTextures[0] );
 	AcquireFboAndTexture( RIGHT_EYE, eyeBuffers[1], eyeTextures[1] );
+
+#ifdef __linux__
+	// hack: current SteamVR OpenXR implementation is broken and does not properly reset the GL context after certain calls
+	GLimp_ActivateContext();
+#endif
 
 	aimIndicatorPos = frameData->mouseAimPosition;
 
@@ -690,28 +696,52 @@ namespace {
 #endif
 
 #ifdef __linux__
-#include "../../sys/linux/local.h"
+#include "GLFW/glfw3.h"
+#define GLFW_EXPOSE_NATIVE_X11 1
+#define GLFW_EXPOSE_NATIVE_GLX 1
+#include "GLFW/glfw3native.h"
+extern GLFWwindow *window;
+
 typedef XrGraphicsBindingOpenGLXlibKHR XrGraphicsBindingGL;
 XrGraphicsBindingOpenGLXlibKHR Sys_CreateGraphicsBindingGL() {
-    uint32_t visualId = XVisualIDFromVisual(visinfo->visual);
-    return {
-        XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR,
-        nullptr,
-        dpy,
-        visualId,
-        bestFbc,
-        win,
-        ctx,
-    };
+	Display *dpy = glfwGetX11Display();
+	Window win = glfwGetX11Window( window );
+	GLXContext ctx = glfwGetGLXContext( window );
+	auto glXQueryContext = (PFNGLXQUERYCONTEXTPROC)glfwGetProcAddress( "glXQueryContext" );
+	auto glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC)glfwGetProcAddress( "glXChooseFBConfig" );
+	auto glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC)glfwGetProcAddress( "glXGetVisualFromFBConfig" );
+	int fbConfigId = 0;
+	glXQueryContext( dpy, ctx, GLX_FBCONFIG_ID, &fbConfigId );
+	common->Printf("FBConfig ID: %d\n", fbConfigId);
+	int numConfigs = 0;
+	int attribs[] = { GLX_FBCONFIG_ID, fbConfigId, None };
+	GLXFBConfig *fbConfigs = glXChooseFBConfig( dpy, 0, attribs, &numConfigs );
+	if ( numConfigs < 1 ) {
+		common->FatalError( "Could not retrieve GLXFBConfig for OpenXR initialization" );
+	}
+	GLXFBConfig fbConfig = fbConfigs[0];
+	XFree(fbConfigs);
+	XVisualInfo *visinfo = glXGetVisualFromFBConfig( dpy, fbConfig );
+	uint32_t visualId = XVisualIDFromVisual(visinfo->visual);
+
+	return {
+		XR_TYPE_GRAPHICS_BINDING_OPENGL_XLIB_KHR,
+		nullptr,
+		dpy,
+		visualId,
+		fbConfig,
+		win,
+		ctx,
+	};
 }
 #endif
 
 namespace {
 	XrBool32 XRAPI_PTR XR_DebugMessengerCallback(
-            XrDebugUtilsMessageSeverityFlagsEXT              messageSeverity,
-            XrDebugUtilsMessageTypeFlagsEXT                  messageTypes,
-            const XrDebugUtilsMessengerCallbackDataEXT*      callbackData,
-            void*                                            userData) {
+			XrDebugUtilsMessageSeverityFlagsEXT              messageSeverity,
+			XrDebugUtilsMessageTypeFlagsEXT                  messageTypes,
+			const XrDebugUtilsMessengerCallbackDataEXT*      callbackData,
+			void*                                            userData) {
 		common->Printf("XR in %s: %s\n", callbackData->functionName, callbackData->message);
 		return XR_TRUE;
 	}
@@ -808,6 +838,11 @@ void OpenXRBackend::InitBackend() {
 	common->Printf( "Initialized XR input\n" );
 
 	common->Printf( "-----------------------------\n" );
+
+#ifdef __linux__
+	// hack: current SteamVR OpenXR implementation is broken and does not properly reset the GL context after certain calls
+	GLimp_ActivateContext();
+#endif
 }
 
 void OpenXRBackend::DestroyBackend() {
@@ -948,6 +983,12 @@ void OpenXRBackend::SubmitFrame() {
 
 	GL_PROFILE("XrSubmitFrame")
 
+#ifdef __linux__
+	// hack: the SteamVR OpenXR runtime does not properly set viewport and scissor before copying render textures :(
+	qglViewport(0, 0, 10000, 10000);
+	qglScissor(0, 0, 10000, 10000);
+#endif
+
 	uiSwapchain->ReleaseImage();
 	eyeSwapchains[0]->ReleaseImage();
 	eyeSwapchains[1]->ReleaseImage();
@@ -1000,6 +1041,11 @@ void OpenXRBackend::SubmitFrame() {
 	};
 	XrResult result = xrEndFrame( session, &frameEndInfo );
 	XR_CheckResult( result, "submitting frame", instance, false );
+
+#ifdef __linux__
+	// hack: current SteamVR OpenXR implementation is broken and does not properly reset the GL context after certain calls
+	GLimp_ActivateContext();
+#endif
 }
 
 void OpenXRBackend::GetFov( int eye, float &angleLeft, float &angleRight, float &angleUp, float &angleDown ) {
