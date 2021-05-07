@@ -17,6 +17,7 @@
 #include "GamepadInput.h"
 
 extern idCVar vr_useMotionControllers;
+extern idCVar vr_inputSnapTurnInterval;
 
 struct poseInput_t {
 	idQuat movementAxis;

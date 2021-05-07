@@ -416,6 +416,7 @@ private:
 	int				joystickAxis[MAX_JOYSTICK_AXIS];	// set by joystick events
 
 	poseInput_t		poseInput;
+	int				lastTurnDeflection;
 
 	static idCVar	in_yawSpeed;
 	static idCVar	in_pitchSpeed;
@@ -725,8 +726,16 @@ void idUsercmdGenLocal::JoystickMove( void ) {
 
 	float yawAngleSpeed = anglespeed * ( in_padInvertYawAxis.GetBool() ? 1 : -1 );
 	float pitchAngleSpeed = anglespeed * ( in_padInvertPitchAxis.GetBool() ? 1 : -1 );
-	viewangles[YAW] += yawAngleSpeed * in_yawSpeed.GetFloat() * joystickAxis[AXIS_YAW] / 127.f;
 	viewangles[PITCH] += pitchAngleSpeed * in_pitchSpeed.GetFloat() * joystickAxis[AXIS_PITCH] / 127.f;
+	if ( vr_useMotionControllers.GetBool() && vr_inputSnapTurnInterval.GetInteger() > 0 ) {
+		int turnDeflection = joystickAxis[AXIS_YAW] >= 100 ? 1 : joystickAxis[AXIS_YAW] <= -100 ? -1 : 0;
+		if ( turnDeflection != lastTurnDeflection ) {
+			viewangles[YAW] += ( in_padInvertYawAxis.GetBool() ? 1 : -1 ) * turnDeflection * vr_inputSnapTurnInterval.GetInteger();
+			lastTurnDeflection = turnDeflection;
+		}		
+	} else {
+		viewangles[YAW] += yawAngleSpeed * in_yawSpeed.GetFloat() * joystickAxis[AXIS_YAW] / 127.f;
+	}
 	cmd.rightmove = idMath::ClampChar( cmd.rightmove + joystickAxis[AXIS_SIDE] );
 	cmd.forwardmove = idMath::ClampChar( cmd.forwardmove + joystickAxis[AXIS_FORWARD] );
 }
@@ -924,6 +933,8 @@ void idUsercmdGenLocal::Clear( void ) {
 	mouseDx = mouseDy = 0;
 	mouseButton = 0;
 	mouseDown = false;
+
+	lastTurnDeflection = 0;
 }
 
 /*

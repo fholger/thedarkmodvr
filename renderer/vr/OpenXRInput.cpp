@@ -24,6 +24,7 @@
 idCVar vr_useMotionControllers( "vr_useMotionControllers", "0", CVAR_GAME|CVAR_BOOL|CVAR_ARCHIVE, "If enabled, use motion controllers for game input (wip)" );
 idCVar vr_inputLefthanded( "vr_inputLefthanded", "0", CVAR_BOOL|CVAR_ARCHIVE|CVAR_GAME, "If enabled, assumes the dominant hand to be the left hand" );
 idCVar vr_inputWalkHeadRelative( "vr_inputWalkHeadRelative", "0", CVAR_GAME|CVAR_BOOL|CVAR_RENDERER, "If enabled, movement is relative to head orientation. Otherwise, it is relative to controller orientation." );
+idCVar vr_inputSnapTurnInterval( "vr_inputSnapTurnInterval", "45", CVAR_GAME|CVAR_INTEGER|CVAR_ARCHIVE, "Determines how many degrees the player is rotated per snap turn. Set to 0 to disable snap turning." );
 
 namespace {
 	struct actionName_t {

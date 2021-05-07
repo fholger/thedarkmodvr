@@ -65,5 +65,21 @@ windowDef VRSettingsControlsCanvas
 			CHOICE_DEF
 			toolTip("Choose the direction of movement. Depending on your choice, it will either be relative to the headset or to your off-hand controller orientation.")
 		}
+
+		windowDef SnapTurningIntervalText
+		{
+			rect		TEXT_X_OFFSET, 51+TT_OFFSET_Y, 230, MM_LINE_H
+			text		"Snap turning interval"
+			SETTINGS_TEXT
+		}
+		choiceDef SnapTurningInterval
+		{
+			rect		SETTINGS_X_OFFSET, 51+TT_OFFSET_Y, 80, MM_LINE_H
+			choices		"0;15;30;45;60;75;90"
+			values		"0;15;30;45;60;75;90"
+			cvar		"vr_inputSnapTurnInterval"
+			CHOICE_DEF
+			toolTip("Choose the amount of degrees the player is rotated whenever a snap turn is triggered. Set this to 0 to disable snap turning and enable smooth rotation.")
+		}
 	} // end windowDef VRSettingsControlsParent
 } // end windowDef VRSettingsControlsCanvas
