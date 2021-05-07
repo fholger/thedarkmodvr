@@ -462,7 +462,8 @@ int idCollisionModelManagerLocal::ContentsTrm( trace_t *results, const idVec3 &s
 	bool model_rotated, trm_rotated;
 	idMat3 invModelAxis, tmpAxis;
 	idVec3 dir;
-	ALIGN16( cm_traceWork_t tw );
+	idRaw<cm_traceWork_t> twRaw;
+	cm_traceWork_t &tw = twRaw.Get();
 
 	// fast point case
 	if ( !trm || ( trm->bounds[1][0] - trm->bounds[0][0] <= 0.0f &&
@@ -479,11 +480,10 @@ int idCollisionModelManagerLocal::ContentsTrm( trace_t *results, const idVec3 &s
 
 	idCollisionModelManagerLocal::checkCount++;
 
+	memset(&tw.trace, 0, sizeof(tw.trace));
 	tw.trace.fraction = 1.0f;
 	tw.trace.c.contents = 0;
 	tw.trace.c.type = CONTACT_NONE;
-	tw.trace.c.material = NULL; // TDM: Don't leave things uninitialised
-	tw.trace.c.id = 0;			// TDM: Don't leave things uninitialised
 	tw.contents = contentMask;
 	tw.isConvex = true;
 	tw.rotation = false;

@@ -775,7 +775,8 @@ void idCollisionModelManagerLocal::Translation( trace_t *results, const idVec3 &
 	cm_trmPolygon_t *poly;
 	cm_trmEdge_t *edge;
 	cm_trmVertex_t *vert;
-	ALIGN16( static cm_traceWork_t tw );
+	idRaw<cm_traceWork_t> twRaw;
+	cm_traceWork_t &tw = twRaw.Get();
 
 	assert( ((byte *)&start) < ((byte *)results) || ((byte *)&start) >= (((byte *)results) + sizeof( trace_t )) );
 	assert( ((byte *)&end) < ((byte *)results) || ((byte *)&end) >= (((byte *)results) + sizeof( trace_t )) );
@@ -800,11 +801,10 @@ void idCollisionModelManagerLocal::Translation( trace_t *results, const idVec3 &
 
 	idCollisionModelManagerLocal::checkCount++;
 
+	memset(&tw.trace, 0, sizeof(tw.trace));
 	tw.trace.fraction = 1.0f;
 	tw.trace.c.contents = 0;
 	tw.trace.c.type = CONTACT_NONE;
-	tw.trace.c.id = 0;			// TDM: Don't leave things uninitialised
-	tw.trace.c.material = NULL; // TDM: Don't leave things uninitialised
 	tw.contents = contentMask;
 	tw.isConvex = true;
 	tw.rotation = false;
