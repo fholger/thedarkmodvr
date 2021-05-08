@@ -43,12 +43,16 @@ public:
 		XR_JUMP,
 		XR_FROB,
 		XR_ATTACK,
+		XR_PARRY,
 		XR_MENU_OPEN,
 		XR_INVENTORY_OPEN,
 		XR_AIM,
+		XR_USE_ITEM,
+		XR_DROP_ITEM,
 
 		XR_MENU_AIM,
 		XR_MENU_CLICK,
+		XR_MENU_ESCAPE,
 
 		XR_NUM_ACTIONS,
 		XR_INVALID = -1,
@@ -57,6 +61,7 @@ private:
 	XrInstance instance = nullptr;
 	XrSession session = nullptr;
 	XrSpace hmdSpace = nullptr;
+	XrTime refActionTime = 0;
 
 	struct actionSpace_t {
 		Action action;
@@ -84,9 +89,12 @@ private:
 	void RegisterSuggestedBindings();
 	void AttachActionSets();
 	idStr ApplyDominantHandToActionPath( const idStr &profile, const idStr &path );
+	void SyncActions( const idList<XrActiveActionSet> &activeSets );
 
 	void HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<padActionChange_t> &actionChanges );
 	idVec2 FindGuiOverlayIntersection( XrPosef pointerPose );
+
+	void ClearInputState();
 
 	XrSpace FindActionSpace( Action action, XrPath subPath = XR_NULL_PATH );
 	std::pair<bool, bool> GetBool( Action action, XrPath subPath = XR_NULL_PATH );

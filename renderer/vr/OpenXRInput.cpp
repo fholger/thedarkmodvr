@@ -44,10 +44,14 @@ namespace {
 		{ OpenXRInput::XR_JUMP, "jump", "Player jump" },
 		{ OpenXRInput::XR_FROB, "frob", "Player frob" },
 		{ OpenXRInput::XR_ATTACK, "attack", "Attack" },
+		{ OpenXRInput::XR_PARRY, "parry", "Parry" },
 		{ OpenXRInput::XR_MENU_OPEN, "menu_open", "Open main menu" },
 		{ OpenXRInput::XR_INVENTORY_OPEN, "inventory_open", "Open inventory menu" },
+		{ OpenXRInput::XR_USE_ITEM, "use_item", "Use currently selected item" },
+		{ OpenXRInput::XR_DROP_ITEM, "drop_item", "Drop currently selected item" },
 		{ OpenXRInput::XR_MENU_AIM, "menu_aim", "Menu pointer aim" },
 		{ OpenXRInput::XR_MENU_CLICK, "menu_click", "Menu pointer click" },
+		{ OpenXRInput::XR_MENU_ESCAPE, "menu_escape", "Menu escape" },
 		{ OpenXRInput::XR_AIM, "aim", "Frob aim controller pose" },
 	};
 
@@ -211,13 +215,17 @@ void OpenXRInput::CreateAllActions() {
 	CreateAction( ingameActionSet, XR_JUMP, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_FROB, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_ATTACK, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_PARRY, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_MENU_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_INVENTORY_OPEN, XR_ACTION_TYPE_BOOLEAN_INPUT );
 	CreateAction( ingameActionSet, XR_AIM, XR_ACTION_TYPE_POSE_INPUT );
+	CreateAction( ingameActionSet, XR_USE_ITEM, XR_ACTION_TYPE_BOOLEAN_INPUT );
+	CreateAction( ingameActionSet, XR_DROP_ITEM, XR_ACTION_TYPE_BOOLEAN_INPUT );
 
 	menuActionSet = CreateActionSet( "menu" );
 	CreateAction( menuActionSet, XR_MENU_AIM, XR_ACTION_TYPE_POSE_INPUT, 2, handPaths );
 	CreateAction( menuActionSet, XR_MENU_CLICK, XR_ACTION_TYPE_BOOLEAN_INPUT, 2, handPaths );
+	CreateAction( menuActionSet, XR_MENU_ESCAPE, XR_ACTION_TYPE_BOOLEAN_INPUT, 2, handPaths );
 }
 
 void OpenXRInput::LoadSuggestedBindings() {
@@ -302,6 +310,17 @@ idStr OpenXRInput::ApplyDominantHandToActionPath( const idStr &profile, const id
 	return result;
 }
 
+void OpenXRInput::SyncActions( const idList<XrActiveActionSet> &activeSets ) {
+	XrActionsSyncInfo syncInfo {
+		XR_TYPE_ACTIONS_SYNC_INFO,
+		nullptr,
+		activeSets.Num(),
+		activeSets.Ptr(),
+	};
+	XrResult result = xrSyncActions( session, &syncInfo );
+	XR_CheckResult( result, "syncing actions", instance, false );
+}
+
 void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionChanges, poseInput_t &poseInput, XrSpace referenceSpace, XrTime time ) {
 	if ( !vr_useMotionControllers.GetBool() ) {
 		return;
@@ -315,15 +334,7 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	idList<XrActiveActionSet> activeActionSets {
 		{ ingameActionSet, XR_NULL_PATH },
 	};
-
-	XrActionsSyncInfo syncInfo {
-		XR_TYPE_ACTIONS_SYNC_INFO,
-		nullptr,
-		activeActionSets.Num(),
-		activeActionSets.Ptr(),
-	};
-	XrResult result = xrSyncActions( session, &syncInfo );
-	XR_CheckResult( result, "syncing actions", instance, false );
+	SyncActions( activeActionSets );
 
 	float forward = GetFloat( XR_FORWARD ).second;
 	float side = GetFloat( XR_SIDE ).second;
@@ -336,7 +347,7 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 
 	if ( vr_inputWalkHeadRelative.GetBool() ) {
 		XrSpaceLocation location { XR_TYPE_SPACE_LOCATION, nullptr };
-		result = xrLocateSpace( hmdSpace, referenceSpace, time, &location );
+		XrResult result = xrLocateSpace( hmdSpace, referenceSpace, time, &location );
 		XR_CheckResult( result, "getting HMD space", instance, false );
 		poseInput.movementAxis = QuatFromXr( location.pose.orientation );
 	} else {
@@ -350,10 +361,12 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	auto menuState = GetBool( XR_MENU_OPEN );
 	if ( menuState.first ) {
 		actionChanges.AddGrow( { UB_NONE, "escape", menuState.second } );
+		ClearInputState();
 	}
 	auto inventoryState = GetBool( XR_INVENTORY_OPEN );
 	if ( inventoryState.first ) {
 		actionChanges.AddGrow( { UB_INVENTORY_GRID, "", inventoryState.second } );
+		ClearInputState();
 	}
 	auto jumpState = GetBool( XR_JUMP );
 	if ( jumpState.first ) {
@@ -388,21 +401,28 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	if ( attackState.first ) {
 		actionChanges.AddGrow( { UB_ATTACK, "", attackState.second } );
 	}
+
+	auto parryState = GetBool( XR_PARRY );
+	if ( parryState.first ) {
+		actionChanges.AddGrow( { UB_PARRY_MANIPULATE, "", parryState.second } );
+	}
+
+	auto useItemState = GetBool( XR_USE_ITEM );
+	if ( useItemState.first ) {
+		actionChanges.AddGrow( { UB_INVENTORY_USE, "", useItemState.second } );
+	}
+
+	auto dropItemState = GetBool( XR_DROP_ITEM );
+	if ( dropItemState.first ) {
+		actionChanges.AddGrow( { UB_INVENTORY_DROP, "", dropItemState.second } );
+	}
 }
 
 void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<padActionChange_t> &actionChanges ) {
 	idList<XrActiveActionSet> activeActionSets {
 		{ menuActionSet, XR_NULL_PATH },
 	};
-
-	XrActionsSyncInfo syncInfo {
-		XR_TYPE_ACTIONS_SYNC_INFO,
-		nullptr,
-		activeActionSets.Num(),
-		activeActionSets.Ptr(),
-	};
-	XrResult result = xrSyncActions( session, &syncInfo );
-	XR_CheckResult( result, "syncing actions", instance, false );
+	SyncActions( activeActionSets );
 
 	auto handAimState = GetPose( XR_MENU_AIM, referenceSpace, time, handPaths[activeMenuHand] );
 	idPlayer *player = gameLocal.GetLocalPlayer();
@@ -442,6 +462,12 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<p
 	if ( altHandClick.first ) {
 		activeMenuHand = !activeMenuHand;
 	}
+
+	auto menuEscapeState = GetBool( XR_MENU_ESCAPE );
+	if ( menuEscapeState.first && gui ) {
+		actionChanges.AddGrow( { UB_NONE, "escape", menuEscapeState.second } );
+		ClearInputState();
+	}
 }
 
 idVec2 OpenXRInput::FindGuiOverlayIntersection( XrPosef pointerPose ) {
@@ -468,6 +494,31 @@ idVec2 OpenXRInput::FindGuiOverlayIntersection( XrPosef pointerPose ) {
 	intersection -= upperLeft;
 	intersection /= overlaySize;
 	return idVec2( intersection.x, 1 - intersection.y );
+}
+
+void OpenXRInput::ClearInputState() {
+	// hack: retrieve all boolean input action states so that the "change since last sync" is reset
+	// without this, buttons that are mapped to different action sets can immediately activate
+	// when switching between them, which is generally not what we want
+
+	idList<XrActiveActionSet> activeActionSets {
+		{ ingameActionSet, XR_NULL_PATH },
+		{ menuActionSet, XR_NULL_PATH },
+	};
+	SyncActions( activeActionSets );
+
+	GetBool( XR_SPRINT );
+	GetBool( XR_CROUCH );
+	GetBool( XR_JUMP );
+	GetBool( XR_FROB );
+	GetBool( XR_ATTACK );
+	GetBool( XR_PARRY );
+	GetBool( XR_MENU_OPEN );
+	GetBool( XR_INVENTORY_OPEN );
+	GetBool( XR_USE_ITEM );
+	GetBool( XR_DROP_ITEM );
+	GetBool( XR_MENU_CLICK );
+	GetBool( XR_MENU_ESCAPE );
 }
 
 XrSpace OpenXRInput::FindActionSpace( Action action, XrPath subPath ) {
