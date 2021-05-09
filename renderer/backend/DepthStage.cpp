@@ -96,6 +96,10 @@ void DepthStage::Init() {
 void DepthStage::Shutdown() {}
 
 void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, int numDrawSurfs ) {
+	if ( numDrawSurfs == 0 ) {
+		return;
+	}
+
 	GL_PROFILE( "DepthStage" );
 
 	idList<drawSurf_t *> subviewSurfs;
@@ -195,11 +199,14 @@ void DepthStage::GenericDepthPass( const idList<drawSurf_t *> drawSurfs, const v
 	qglEnable( GL_STENCIL_TEST );
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 
-	vertexCache.BindVertex();
-
 	BeginDrawBatch();
 
+	const drawSurf_t *curBatchCaches = drawSurfs[0];
 	for ( const drawSurf_t *drawSurf : drawSurfs ) {
+		if ( drawSurf->ambientCache.isStatic != curBatchCaches->ambientCache.isStatic || drawSurf->indexCache.isStatic != curBatchCaches->indexCache.isStatic ) {
+			ExecuteDrawCalls();
+		}
+		curBatchCaches = drawSurf;
 		DrawSurf( drawSurf );
 	}
 	ExecuteDrawCalls();
@@ -225,13 +232,14 @@ void DepthStage::FastDepthPass( const idList<drawSurf_t *> drawSurfs, const view
 	qglEnable( GL_STENCIL_TEST );
 	qglStencilFunc( GL_ALWAYS, 1, 255 );
 
-	vertexCache.BindVertex();
-
 	DrawBatch<idMat4> drawBatch = drawBatchExecutor->BeginBatch<idMat4>();
 	uint batchIdx = 0;
 
+	const drawSurf_t *curBatchCaches = drawSurfs[0];
 	for ( const drawSurf_t *surf : drawSurfs ) {
-		if ( batchIdx >= drawBatch.maxBatchSize ) {
+		if ( batchIdx >= drawBatch.maxBatchSize
+				|| surf->ambientCache.isStatic != curBatchCaches->ambientCache.isStatic
+				|| surf->indexCache.isStatic != curBatchCaches->indexCache.isStatic ) {
 			drawBatchExecutor->ExecuteDrawVertBatch( batchIdx );
 			batchIdx = 0;
 			drawBatch = drawBatchExecutor->BeginBatch<idMat4>();
@@ -240,6 +248,7 @@ void DepthStage::FastDepthPass( const idList<drawSurf_t *> drawSurfs, const view
 		memcpy( drawBatch.shaderParams[batchIdx].ToFloatPtr(), surf->space->modelViewMatrix, sizeof(idMat4) );
 		drawBatch.surfs[batchIdx] = surf;
 		++batchIdx;
+		curBatchCaches = surf;
 	}
 
 	drawBatchExecutor->ExecuteDrawVertBatch( batchIdx );

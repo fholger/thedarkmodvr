@@ -90,19 +90,8 @@ void ShadowMapStage::DrawShadowMap( const viewDef_t *viewDef ) {
 		qglViewport( page.x, page.y, 6*page.width, page.width );
 		qglScissor( page.x, page.y, 6*page.width, page.width );
 		BeginDrawBatch();
-		for ( drawSurf_t *surf = vLight->globalInteractions; surf; surf = surf->nextOnLight ) {
-			if ( !ShouldDrawSurf( surf ) ) {
-				continue;
-			}
-			DrawSurf( surf );			
-		}
-		for ( drawSurf_t *surf = vLight->localInteractions; surf; surf = surf->nextOnLight ) {
-			if ( !ShouldDrawSurf( surf ) ) {
-				continue;
-			}
-			DrawSurf( surf );			
-		}
-		ExecuteDrawCalls();
+		DrawLightInteractions( vLight->globalInteractions );
+		DrawLightInteractions( vLight->localInteractions );
 	}
 
 	for ( int i = 0; i < 4; i++ ) {
@@ -162,6 +151,21 @@ bool ShadowMapStage::ShouldDrawSurf( const drawSurf_t *surf ) const {
     }
     return stage != shader->GetNumStages();*/
 	return true;
+}
+
+void ShadowMapStage::DrawLightInteractions( const drawSurf_t *surfs ) {
+	const drawSurf_t *curBatchCaches = surfs;
+	for ( const drawSurf_t *surf = surfs; surf; surf = surf->nextOnLight ) {
+		if ( !ShouldDrawSurf( surf ) ) {
+			continue;
+		}
+		if ( surf->ambientCache.isStatic != curBatchCaches->ambientCache.isStatic || surf->indexCache.isStatic != curBatchCaches->indexCache.isStatic ) {
+			ExecuteDrawCalls();
+		}
+		curBatchCaches = surf;
+		DrawSurf( surf );
+	}
+	ExecuteDrawCalls();
 }
 
 void ShadowMapStage::DrawSurf( const drawSurf_t *surf ) {
