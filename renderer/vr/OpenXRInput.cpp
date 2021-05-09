@@ -361,12 +361,10 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	auto menuState = GetBool( XR_MENU_OPEN );
 	if ( menuState.first ) {
 		actionChanges.AddGrow( { UB_NONE, "escape", menuState.second } );
-		ClearInputState();
 	}
 	auto inventoryState = GetBool( XR_INVENTORY_OPEN );
 	if ( inventoryState.first ) {
 		actionChanges.AddGrow( { UB_INVENTORY_GRID, "", inventoryState.second } );
-		ClearInputState();
 	}
 	auto jumpState = GetBool( XR_JUMP );
 	if ( jumpState.first ) {
@@ -416,6 +414,8 @@ void OpenXRInput::UpdateInput( int axis[6], idList<padActionChange_t> &actionCha
 	if ( dropItemState.first ) {
 		actionChanges.AddGrow( { UB_INVENTORY_DROP, "", dropItemState.second } );
 	}
+
+	ClearInputState();
 }
 
 void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<padActionChange_t> &actionChanges ) {
@@ -466,8 +466,9 @@ void OpenXRInput::HandleMenuInput( XrSpace referenceSpace, XrTime time, idList<p
 	auto menuEscapeState = GetBool( XR_MENU_ESCAPE );
 	if ( menuEscapeState.first && gui ) {
 		actionChanges.AddGrow( { UB_NONE, "escape", menuEscapeState.second } );
-		ClearInputState();
 	}
+
+	ClearInputState();
 }
 
 idVec2 OpenXRInput::FindGuiOverlayIntersection( XrPosef pointerPose ) {
