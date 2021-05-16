@@ -398,7 +398,7 @@ windowDef MainMenuInGame
 		}
 	}
 
-// --------------------- Settings -------------------------------------------
+// --------------------- VR Settings -------------------------------------------
 	windowDef MMIGVRSettingsTextH
 	{
 		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
@@ -445,6 +445,53 @@ windowDef MainMenuInGame
 			// Switch to the settings menu
 			set "gui::targetmode" MM_STATE_VRSETTINGS;
 			resetTime "MainMenuModeSelect" 0;
+		}
+	}
+
+// --------------------- Quick Save ------------------------------------------
+
+	windowDef MMIGQuickSaveTextH
+	{
+		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(6+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		MM_FONT_GLOW
+		text		"Quick Save"		// Load/Save Game
+	}
+	windowDef MMIGQuickSaveText
+	{
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(6+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		MM_FONT
+		text		"Quick Save"		// Load/Save Game
+	}
+
+	windowDef MMIGQuickSaveAction
+	{
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(6+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		visible		1
+		float		exit;
+
+		onMouseEnter
+		{
+			set "exit" 0;
+			transition "MMIGQuickSaveText::forecolor" SNORMAL_COLOR SGLOW_WHITE_COLOR "50" ;
+			transition "MMIGQuickSaveTextH::forecolor" SINVISIBLE SGLOW_RED_COLOR "50" ;
+			set "cmd" "play sound/meta/menu/mnu_hover";
+		}
+
+		onMouseExit
+		{
+			if ( "exit" == 0 )
+			{
+				transition "MMIGQuickSaveText::forecolor" SGLOW_WHITE_COLOR SNORMAL_COLOR "50" ;
+				transition "MMIGQuickSaveTextH::forecolor" SGLOW_RED_COLOR SINVISIBLE "50" ;
+			}
+		}
+
+		onAction {
+			set "cmd" "quickSave";
+			// Switch back to main menu after save
+			set "gui::targetmode" MM_STATE_MAINMENU;
+			resetTime "MainMenuModeSelect" 0;
+			set "cmd" "close";
 		}
 	}
 
@@ -648,6 +695,7 @@ windowDef MainMenuInGame
 
 		onTime 350 {
 			transition "MMIGLoadGameText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+			transition "MMIGQuickSaveText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
 		}
 
 		onTime 400 {
