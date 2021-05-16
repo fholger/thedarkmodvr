@@ -482,6 +482,22 @@ bool idSessionLocal::HandleSaveGameMenuCommand( idCmdArgs &args, int &icmd ) {
 			idStr time = date.Right( date.Length() - tab - 1);
 			guiActive->SetStateString( "saveGameDate", date.Left( tab ) );
 			guiActive->SetStateString( "saveGameTime", time );
+		} else {
+			idStr suggestedSaveName = "save";
+			for ( int i = 0; i < 1000; ++i ) {
+				suggestedSaveName = idStr::Fmt( "save_%03d", i );
+				bool found = false;
+				for ( auto existingName : loadGameList ) {
+					if ( suggestedSaveName.Icmp( existingName ) == 0 ) {
+						found = true;
+						break;
+					}
+				}
+				if ( !found )
+					break;
+			}
+
+			guiActive->SetStateString( "saveGameName", suggestedSaveName );
 		}
 		return true;
 	}
