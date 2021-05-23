@@ -48,9 +48,9 @@ public:
 #if !defined GL_TIMESTAMP && defined GL_TIMESTAMP_EXT
 #  define GL_TIMESTAMP GL_TIMESTAMP_EXT
 #  define GL_QUERY_COUNTER_BITS GL_QUERY_COUNTER_BITS_EXT
-#  define glGetQueryObjectiv glGetQueryObjectivEXT
-#  define glGetQueryObjectui64v glGetQueryObjectui64vEXT
-#  define glQueryCounter glQueryCounterEXT
+#  define qglGetQueryObjectiv qglGetQueryObjectivEXT
+#  define qglGetQueryObjectui64v qglGetQueryObjectui64vEXT
+#  define qglQueryCounter qglQueryCounterEXT
 #endif
 
 #define TracyGpuContext tracy::InitRPMallocThread(); tracy::GetGpuCtx().ptr = (tracy::GpuCtx*)tracy::tracy_malloc( sizeof( tracy::GpuCtx ) ); new(tracy::GetGpuCtx().ptr) tracy::GpuCtx;
@@ -101,14 +101,14 @@ public:
     {
         assert( m_context != 255 );
 
-        glGenQueries( QueryCount, m_query );
+        qglGenQueries( QueryCount, m_query );
 
         int64_t tgpu;
-        glGetInteger64v( GL_TIMESTAMP, &tgpu );
+        qglGetInteger64v( GL_TIMESTAMP, &tgpu );
         int64_t tcpu = Profiler::GetTime();
 
         GLint bits;
-        glGetQueryiv( GL_TIMESTAMP, GL_QUERY_COUNTER_BITS, &bits );
+        qglGetQueryiv( GL_TIMESTAMP, GL_QUERY_COUNTER_BITS, &bits );
 
         const float period = 1.f;
         const auto thread = GetThreadHandle();
@@ -126,6 +126,11 @@ public:
 #endif
 
         TracyLfqCommit;
+    }
+
+    void RecreateQueries()
+    {
+        qglGenQueries( QueryCount, m_query );
     }
 
     void Name( const char* name, uint16_t len )
@@ -160,11 +165,11 @@ public:
         while( m_tail != m_head )
         {
             GLint available;
-            glGetQueryObjectiv( m_query[m_tail], GL_QUERY_RESULT_AVAILABLE, &available );
+            qglGetQueryObjectiv( m_query[m_tail], GL_QUERY_RESULT_AVAILABLE, &available );
             if( !available ) return;
 
             uint64_t time;
-            glGetQueryObjectui64v( m_query[m_tail], GL_QUERY_RESULT, &time );
+            qglGetQueryObjectui64v( m_query[m_tail], GL_QUERY_RESULT, &time );
 
             TracyLfqPrepare( QueueType::GpuTime );
             MemWrite( &item->gpuTime.gpuTime, (int64_t)time );
@@ -215,7 +220,7 @@ public:
         if( !m_active ) return;
 
         const auto queryId = GetGpuCtx().ptr->NextQueryId();
-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
+        qglQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
 
         TracyLfqPrepare( QueueType::GpuZoneBegin );
         MemWrite( &item->gpuZoneBegin.cpuTime, Profiler::GetTime() );
@@ -236,7 +241,7 @@ public:
         if( !m_active ) return;
 
         const auto queryId = GetGpuCtx().ptr->NextQueryId();
-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
+        qglQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
 
         GetProfiler().SendCallstack( depth );
 
@@ -260,7 +265,7 @@ public:
         if( !m_active ) return;
 
         const auto queryId = GetGpuCtx().ptr->NextQueryId();
-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
+        qglQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
 
         TracyLfqPrepare( QueueType::GpuZoneBeginAllocSrcLoc );
         const auto srcloc = Profiler::AllocSourceLocation( line, source, sourceSz, function, functionSz, name, nameSz );
@@ -282,7 +287,7 @@ public:
         if( !m_active ) return;
 
         const auto queryId = GetGpuCtx().ptr->NextQueryId();
-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
+        qglQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
 
         GetProfiler().SendCallstack( depth );
 
@@ -302,7 +307,7 @@ public:
         if( !m_active ) return;
 
         const auto queryId = GetGpuCtx().ptr->NextQueryId();
-        glQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
+        qglQueryCounter( GetGpuCtx().ptr->TranslateOpenGlQueryId( queryId ), GL_TIMESTAMP );
 
         TracyLfqPrepare( QueueType::GpuZoneEnd );
         MemWrite( &item->gpuZoneEnd.cpuTime, Profiler::GetTime() );
