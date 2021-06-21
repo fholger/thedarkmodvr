@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 
@@ -171,7 +171,6 @@ idCVar r_showIntensity( "r_showIntensity", "0", CVAR_RENDERER | CVAR_BOOL, "draw
 idCVar r_showImages( "r_showImages", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = show all images instead of rendering, 2 = show in proportional size", 0, 2, idCmdSystem::ArgCompletion_Integer<0, 2> );
 idCVar com_smp( "com_smp", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "run game modeling and renderer frontend in second thread, parallel to renderer backend" );
 idCVar r_showSmp( "r_showSmp", "0", CVAR_RENDERER | CVAR_BOOL, "show which end (front or back) is blocking" );
-idCVar r_logSmpTimings( "r_logSmpTimings", "0", CVAR_RENDERER | CVAR_BOOL, "log timings for frontend and backend rendering" );
 idCVarInt r_showLights( "r_showLights", "0", CVAR_RENDERER, "1 = just print volumes numbers, highlighting ones covering the view, 2 = also draw planes of each volume, 3 = also draw edges of each volume"/*, 0, 3, idCmdSystem::ArgCompletion_Integer<0, 3> */);
 idCVar r_showShadows( "r_showShadows", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = visualize the stencil shadow volumes, 2 = draw filled in, 3 = lines with depth test", -1, 3, idCmdSystem::ArgCompletion_Integer < -1, 3 > );
 idCVar r_showShadowCount( "r_showShadowCount", "0", CVAR_RENDERER | CVAR_INTEGER, "colors screen based on shadow volume depth complexity, >= 2 = print overdraw count based on stencil index values, 3 = only show turboshadows, 4 = only show static shadows", 0, 4, idCmdSystem::ArgCompletion_Integer<0, 4> );
@@ -232,7 +231,7 @@ idCVar r_glCoreProfile( "r_glCoreProfile", "2", CVAR_RENDERER | CVAR_ARCHIVE,
 	"  2: forward-compatible core profile\n"
 	"Note: restarting TDM is required after change!"
 );
-idCVar r_newFrob( "r_newFrob", "2", CVAR_RENDERER | CVAR_ARCHIVE,
+idCVar r_newFrob( "r_newFrob", "1", CVAR_RENDERER | CVAR_ARCHIVE,
 	"Controls how objects are frob-highlighted:\n"
 	"  0 = use material stages by parm11\n"
 	"  1 = use the frob shader\n"
@@ -328,6 +327,7 @@ void R_InitOpenGL( void ) {
 
 		if ( GLimp_Init( parms ) ) {
 			// it worked
+			InitOpenGLTracing();
 			break;
 		}
 

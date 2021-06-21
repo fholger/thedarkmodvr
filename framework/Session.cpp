@@ -1,16 +1,16 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
- 
- This file is part of the The Dark Mod Source Code, originally based 
- on the Doom 3 GPL Source Code as published in 2011.
- 
- The Dark Mod Source Code is free software: you can redistribute it 
- and/or modify it under the terms of the GNU General Public License as 
- published by the Free Software Foundation, either version 3 of the License, 
- or (at your option) any later version. For details, see LICENSE.TXT.
- 
- Project: The Dark Mod (http://www.thedarkmod.com/)
- 
+The Dark Mod GPL Source Code
+
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
+
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
+
+Project: The Dark Mod (http://www.thedarkmod.com/)
+
 ******************************************************************************/
 
 #include "precompiled.h"
@@ -22,7 +22,6 @@
 #include "../renderer/FrameBuffer.h"
 #include "../game/gamesys/SysCvar.h"
 #include "../game/Missions/MissionManager.h"
-#include "../renderer/Profiling.h"
 
 idCVar	idSessionLocal::com_showAngles( "com_showAngles", "0", CVAR_SYSTEM | CVAR_BOOL, "" );
 idCVar	idSessionLocal::com_minTics( "com_minTics", "1", CVAR_SYSTEM, "" );
@@ -2230,7 +2229,7 @@ idSessionLocal::SavegameValidity idSessionLocal::IsSavegameValid(const char *sav
 
 		RevisionTracker& RevTracker = RevisionTracker::Instance();
 
-		if (savegameVersion != SAVEGAME_VERSION || savegame.GetCodeRevision() != RevTracker.GetHighestRevision())
+		if (savegameVersion != SAVEGAME_VERSION || savegame.GetCodeRevision() != RevTracker.GetSavegameRevision())
 		{
 			common->Warning("Savegame Version mismatch!");
 			retVal = savegame_versionMismatch;
@@ -2980,6 +2979,8 @@ void idSessionLocal::RunGameTic(int timestepMs) {
 	logCmd_t	logCmd;
 	usercmd_t	cmd;
 
+	TRACE_CPU_SCOPE( "RunGameTic" )
+
 	// if we are doing a command demo, read or write from the file
 	if ( cmdDemoFile ) {
 		if ( !cmdDemoFile->Read( &logCmd, sizeof( logCmd ) ) ) {
@@ -3116,8 +3117,8 @@ void idSessionLocal::FrontendThreadFunction() {
 		// stgatilov #4550: update FPU props (e.g. NaN exceptions)
 		sys->ThreadHeartbeat();
 
-		double beginLoop = Sys_GetClockTicks();
 		{ // lock scope
+			TRACE_CPU_SCOPE_COLOR( "Frontend::Wait", TRACE_COLOR_IDLE )
 			std::unique_lock< std::mutex > lock( signalMutex );
 			// wait for render thread
 			while( !frontendActive && !shutdownFrontend ) {
@@ -3127,14 +3128,9 @@ void idSessionLocal::FrontendThreadFunction() {
 				return;
 			}
 		}
-		double endWaitForRenderThread = Sys_GetClockTicks();
-		double endGameTics = 0, endDraw = 0;
 		try {
 			RunGameTics();
-			endGameTics = Sys_GetClockTicks();
-
 			DrawFrame();
-			endDraw = Sys_GetClockTicks();
 		} catch( std::shared_ptr< ErrorReportedException > e ) {
 			frontendException = e;
 		} 
@@ -3143,15 +3139,6 @@ void idSessionLocal::FrontendThreadFunction() {
 			std::unique_lock< std::mutex > lock( signalMutex );
 			frontendActive = false;
 			signalMainThread.notify_one();
-		}
-		double endSignalRenderThread = Sys_GetClockTicks();
-
-		if( r_logSmpTimings.GetBool() ) {
-			const double TO_MICROS = 1000000 / Sys_ClockTicksPerSecond();
-			frontendTimeWaiting = (endWaitForRenderThread - beginLoop) * TO_MICROS;
-			frontendTimeGameTics = (endGameTics - endWaitForRenderThread) * TO_MICROS;
-			frontendTimeDrawing = (endDraw - endGameTics) * TO_MICROS;
-			frontendTimeSignal = (endSignalRenderThread - endDraw) * TO_MICROS;
 		}
 	}
 }
@@ -3166,11 +3153,6 @@ bool idSessionLocal::IsFrontend() const {
 	return Sys_GetCurrentThreadID() == frontendThread;
 #endif
 #endif
-}
-
-void idSessionLocal::LogFrontendTimings( idFile &logFile ) const {
-	logFile.Printf( "  Frontend: wait for signal %.2f us - gametics %.2f us - drawing %.2f us - signal backend %.2f us\n", 
-		frontendTimeWaiting, frontendTimeGameTics, frontendTimeDrawing, frontendTimeSignal );
 }
 
 /*
@@ -3203,7 +3185,7 @@ Waits for the frontend to finish preparing the next frame.
 */
 void idSessionLocal::WaitForFrontendCompletion() {
 	if( com_smp.GetBool() ) {
-		GL_PROFILE( "WaitForFrontend" );
+		TRACE_CPU_SCOPE_COLOR( "WaitForFrontend", TRACE_COLOR_IDLE );
 		std::unique_lock<std::mutex> lock( signalMutex );
 		if( r_showSmp.GetBool() )
 			backEnd.pc.waitedFor = frontendActive ? 'F' : '.';
@@ -3223,6 +3205,7 @@ void idSessionLocal::StartFrontendThread() {
 	frontendActive = shutdownFrontend = false;
 	auto func = []( void *x ) -> unsigned int {
 		idSessionLocal* s = (idSessionLocal*)x;
+		TRACE_THREAD_NAME( "Frontend" )
 		s->FrontendThreadFunction();
 		return 0; 
 	};

@@ -24,7 +24,6 @@
 #include "../FrameBufferManager.h"
 #include "../GLSLProgramManager.h"
 #include "../GLSLUniforms.h"
-#include "../Profiling.h"
 #include "../backend/RenderBackend.h"
 #include "../qgl.h"
 
@@ -396,7 +395,7 @@ idScreenRect VR_CalcLightScissorRectangle( viewLight_t *vLight, const viewDef_t 
 }
 
 void OpenXRBackend::UpdateRenderViewsForEye( const emptyCommand_t *cmds, int eye ) {
-	GL_PROFILE("UpdateRenderViewsForEye")
+	TRACE_GL_SCOPE("UpdateRenderViewsForEye")
 	
 	std::vector<viewDef_t *> views;
 	for ( const emptyCommand_t *cmd = cmds; cmd; cmd = ( const emptyCommand_t * )cmd->next ) {
@@ -562,7 +561,7 @@ struct MirrorUniforms : GLSLUniformGroup {
 };
 
 void OpenXRBackend::MirrorVrView( idImage *eyeTexture, idImage *uiTexture ) {
-	GL_PROFILE( "VrMirrorView" )
+	TRACE_GL_SCOPE( "VrMirrorView" )
 
 	GL_ViewportRelative( 0, 0, 1, 1 );
 	GL_ScissorRelative( 0, 0, 1, 1 );
@@ -880,7 +879,7 @@ bool OpenXRBackend::BeginFrame() {
 		return false;
 	}
 
-	GL_PROFILE("XrBeginFrame")
+	TRACE_GL_SCOPE("XrBeginFrame")
 	// await the next frame
 	XrFrameState frameState = {
 		XR_TYPE_FRAME_STATE,
@@ -928,7 +927,7 @@ bool OpenXRBackend::BeginFrame() {
 }
 
 void OpenXRBackend::PrepareFrame() {
-	GL_PROFILE("XrPrepareFrame")
+	TRACE_GL_SCOPE("XrPrepareFrame")
 
 	// poll xr events and react to them
 	XrEventDataBuffer event = {
@@ -981,7 +980,7 @@ void OpenXRBackend::SubmitFrame() {
 		return;
 	}
 
-	GL_PROFILE("XrSubmitFrame")
+	TRACE_GL_SCOPE("XrSubmitFrame")
 
 #ifdef __linux__
 	// hack: the SteamVR OpenXR runtime does not properly set viewport and scissor before copying render textures :(

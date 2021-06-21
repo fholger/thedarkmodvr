@@ -1,15 +1,15 @@
 /*****************************************************************************
-					The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 
@@ -1031,7 +1031,6 @@ extern idCVar r_showIntensity;			// draw the screen colors based on intensity, r
 extern idCVar r_showDefs;				// report the number of modeDefs and lightDefs in view
 extern idCVar r_showTrace;				// show the intersection of an eye trace with the world
 extern idCVar r_showSmp;				// show which end (front or back) is blocking
-extern idCVar r_logSmpTimings;			// log timings for frontend and backend rendering
 extern idCVar com_smp;					// enable SMP
 extern idCVar r_showDepth;				// display the contents of the depth buffer and the depth range
 extern idCVar r_showImages;				// draw all images to screen instead of rendering

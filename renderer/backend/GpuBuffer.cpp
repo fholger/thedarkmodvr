@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 #include "precompiled.h"
@@ -25,14 +25,11 @@ idCVar r_gpuBufferNonpersistentUpdateMode(
 
 const int GpuBuffer::NUM_FRAMES;
 
-void GpuBuffer::Init( GLenum type, GLuint size, GLuint alignment, byte *staticData, GLuint numStaticBytes ) {
-	assert( idMath::IsPowerOfTwo( alignment ) && "Alignment must be a power of 2" );
-	
+void GpuBuffer::Init( GLenum type, GLuint size, GLuint alignment ) {
 	if( bufferObject ) {
 		Destroy();
 	}
 
-	staticDataSize = ALIGN( numStaticBytes, alignment );
 	frameSize = ALIGN( size, alignment );
 	this->alignment = alignment;
 	this->type = type;
@@ -42,7 +39,7 @@ void GpuBuffer::Init( GLenum type, GLuint size, GLuint alignment, byte *staticDa
 
 	usesPersistentMapping = r_usePersistentMapping && GLAD_GL_ARB_buffer_storage;
 
-	totalSize = staticDataSize + NUM_FRAMES * frameSize;
+	totalSize = NUM_FRAMES * frameSize;
 	if ( usesPersistentMapping ) {
 		qglBufferStorage( type, totalSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
 		bufferContents = ( byte* )qglMapBufferRange( type, 0, totalSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT );
@@ -51,14 +48,16 @@ void GpuBuffer::Init( GLenum type, GLuint size, GLuint alignment, byte *staticDa
 		bufferContents = ( byte* )Mem_Alloc16( totalSize );
 	}
 
-	memcpy( bufferContents, staticData, numStaticBytes );
-	if ( !usesPersistentMapping ) {
-		qglBufferSubData( type, 0, numStaticBytes, staticData );
-	}
-	
-	currentFrame = 0;
+	currentWritingFrame = 0;
+	currentDrawingFrame = 0;
 	bytesCommittedInCurrentFrame = 0;
 }
+
+void GpuBuffer::InitWriteFrameAhead( GLenum type, GLuint size, GLuint alignment ) {
+	Init( type, size, alignment );
+	currentWritingFrame = 1;
+}
+
 
 void GpuBuffer::Destroy() {
 	if ( bufferObject == 0 ) {
@@ -131,27 +130,28 @@ const void * GpuBuffer::BufferOffset( const void *pointer ) {
 
 void GpuBuffer::SwitchFrame() {
 	// lock current frame contents in buffer
-	assert( frameFences[currentFrame] == nullptr );
-	frameFences[currentFrame] = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
+	assert( frameFences[currentDrawingFrame] == nullptr );
+	frameFences[currentDrawingFrame] = qglFenceSync( GL_SYNC_GPU_COMMANDS_COMPLETE, 0 );
 
-	currentFrame = ( currentFrame + 1 ) % NUM_FRAMES;
+	currentDrawingFrame = ( currentDrawingFrame + 1 ) % NUM_FRAMES;
+	currentWritingFrame = ( currentWritingFrame + 1 ) % NUM_FRAMES;
 	bytesCommittedInCurrentFrame = 0;
 
-	if ( frameFences[currentFrame] != nullptr ) {
+	if ( frameFences[currentWritingFrame] != nullptr ) {
 		// await lock for next frame region to ensure that data is not used by the GPU anymore
-		GLenum result = qglClientWaitSync( frameFences[currentFrame], 0, 0 );
+		GLenum result = qglClientWaitSync( frameFences[currentWritingFrame], 0, 0 );
 		while( result != GL_ALREADY_SIGNALED && result != GL_CONDITION_SATISFIED ) {
-			result = qglClientWaitSync( frameFences[currentFrame], GL_SYNC_FLUSH_COMMANDS_BIT, 1000000 );
+			result = qglClientWaitSync( frameFences[currentWritingFrame], GL_SYNC_FLUSH_COMMANDS_BIT, 1000000 );
 			if( result == GL_WAIT_FAILED ) {
 				assert( !"glClientWaitSync failed" );
 				break;
 			}
 		}
-		qglDeleteSync( frameFences[currentFrame] );
-		frameFences[currentFrame] = nullptr;
+		qglDeleteSync( frameFences[currentWritingFrame] );
+		frameFences[currentWritingFrame] = nullptr;
 	}
 }
 
 GLuint GpuBuffer::CurrentOffset() const {
-	return staticDataSize + currentFrame * frameSize + bytesCommittedInCurrentFrame;
+	return currentWritingFrame * frameSize + bytesCommittedInCurrentFrame;
 }

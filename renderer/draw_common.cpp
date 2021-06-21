@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 #include "precompiled.h"
@@ -18,7 +18,6 @@
 #include "tr_local.h"
 #include "glsl.h"
 #include "FrameBuffer.h"
-#include "Profiling.h"
 #include "GLSLProgram.h"
 #include "GLSLUniforms.h"
 #include "GLSLProgramManager.h"
@@ -262,7 +261,7 @@ void RB_STD_FillDepthBuffer( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	if ( r_skipDepthPass )
 		return;
 	
-	GL_PROFILE( "STD_FillDepthBuffer" );
+	TRACE_GL_SCOPE( "STD_FillDepthBuffer" );
 
 	RB_LogComment( "---------- RB_STD_FillDepthBuffer ----------\n" );
 
@@ -549,7 +548,7 @@ Frob shader stub
 ==================
 */
 ID_NOINLINE void RB_STD_T_RenderShaderPasses_Frob( const shaderStage_t *pStage, const drawSurf_t *surf ) {
-	if ( r_newFrob.GetInteger() != 1 )
+	//if ( r_newFrob.GetInteger() != 1 )
 		return;
 	if ( surf->sort >= SS_DECAL ) // otherwise fills black
 		return;
@@ -713,7 +712,7 @@ int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	if ( !numDrawSurfs ) {
 		return numDrawSurfs;
 	}
-	GL_PROFILE( "STD_DrawShaderPasses" );
+	TRACE_GL_SCOPE( "STD_DrawShaderPasses" );
 
 	RB_LogComment( "---------- RB_STD_DrawShaderPasses ----------\n" );
 
@@ -1032,7 +1031,7 @@ void RB_STD_FogAllLights( bool translucent ) {
 		r_showOverDraw.GetInteger() != 0 ) {
 		return;
 	}
-	GL_PROFILE( "STD_FogAllLights" );
+	TRACE_GL_SCOPE( "STD_FogAllLights" );
 
 	RB_LogComment( "---------- RB_STD_FogAllLights ----------\n" );
 
@@ -1060,7 +1059,7 @@ RB_STD_DrawView
 =============
 */
 void RB_STD_DrawView( void ) {
-	GL_PROFILE( "STD_DrawView" );
+	TRACE_GL_SCOPE( "STD_DrawView" );
 
 	drawSurf_t	 **drawSurfs;
 	int			numDrawSurfs, processed;

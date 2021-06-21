@@ -1,3 +1,17 @@
+/*****************************************************************************
+The Dark Mod GPL Source Code
+
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
+
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
+
+Project: The Dark Mod (http://www.thedarkmod.com/)
+
+******************************************************************************/
 #include "GuiGlobal.h"
 #include "GuiFluidAutoGen.h"
 #include "OsUtils.h"
@@ -31,6 +45,13 @@ void cb_Settings_ButtonReset(Fl_Widget *self) {
 
 void cb_RaiseInterruptFlag(Fl_Widget *self) {
 	ProgressIndicatorGui::Interrupt();
+}
+
+void cb_TryToExit(Fl_Widget *self) {
+	if (!GuiDeactivateGuard::IsAnyActive()) {
+		//no action in progress: close window and stop program
+		g_Window->hide();
+	}
 }
 
 //============================================================
@@ -94,6 +115,8 @@ static void GuiToInitialState() {
 }
 
 static void GuiInstallCallbacks() {
+	g_Window->callback(cb_TryToExit);
+
 	g_Settings_InputInstallDirectory->when(FL_WHEN_CHANGED);
 	g_Settings_InputInstallDirectory->callback(cb_Settings_InputInstallDirectory);
 	g_Settings_ButtonBrowseInstallDirectory->callback(cb_Settings_ButtonBrowseInstallDirectory);
@@ -109,6 +132,7 @@ static void GuiInstallCallbacks() {
 	g_Version_InputCustomManifestUrl->callback(cb_Version_InputCustomManifestUrl);
 	g_Version_ButtonRefreshInfo->callback(cb_Version_ButtonRefreshInfo);
 	g_Version_ButtonNext->callback(cb_Version_ButtonNext);
+	g_Version_ChoiceMirror->callback(cb_Version_ChoiceMirror);
 
 	g_Confirm_ButtonBack->callback(cb_Confirm_ButtonBack);
 	g_Confirm_ButtonStart->callback(cb_Confirm_ButtonStart);

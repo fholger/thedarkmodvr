@@ -20,7 +20,6 @@
 #include "../FrameBuffer.h"
 #include "../FrameBufferManager.h"
 #include "../Image.h"
-#include "../Profiling.h"
 
 void OpenXRSwapchainGL::Init( const idStr &name, int64_t format, int width, int height ) {
 	if ( swapchain != nullptr ) {

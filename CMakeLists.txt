@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.14)
 
 if (UNIX)
 	# we want debug symbols even with Release builds
@@ -18,8 +18,11 @@ include(ucm)
 include(PrecompiledHeader)
 include(SvnVersion)
 include(CheckCXXCompilerFlag)
+include(CheckPIESupported)
 
 project(TheDarkMod)
+# note: must be after project: https://gitlab.kitware.com/cmake/cmake/-/issues/14983
+check_pie_supported()
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -29,6 +32,7 @@ cmake_dependent_option(WITH_TOOLS "Compile with Tools" ON "MSVC" OFF)
 set(GAME_DIR "${PROJECT_SOURCE_DIR}/../darkmod" CACHE STRING "The directory where the game assets are stored")
 option(COPY_EXE "Copy executable to GAME_DIR after build" ON)
 set(THIRDPARTY_PLATFORM_OVERRIDE "" CACHE STRING "If you build conan dependencies yourself with custom platform_name, pass platform_name string here")
+option(ENABLE_TRACY "Enable tracy profiling support. Needs to be activated ingame by enabling the cvar com_enableTracing." ON)
 
 if (UNIX)
 	# configure sensible warnings
@@ -108,6 +112,7 @@ ucm_add_files(
 	"sys/sys_padinput.cpp"
 	"sys/sys_padinput.h"
 	"sys/sys_cpu.cpp"
+	"ThirdParty/artefacts/tracy/src/TracyClient.cpp"
 TO TDM_SOURCE_FILES)
 
 if (WITH_TOOLS)
@@ -165,7 +170,7 @@ endif ()
 # note TypeInfo.cpp must be excluded from precompiled header because it uses some dirty hacks
 add_precompiled_header(TheDarkMod
 		"idlib/precompiled.h" "idlib/precompiled.cpp" "precompiled.h"
-		EXCLUDE "game/gamesys/TypeInfo.cpp" "idlib/Token.cpp" "idlib/bv/Frustum_gcc.cpp" "sys/win32/rc/CreateResourceIDs.cpp"
+		EXCLUDE "game/gamesys/TypeInfo.cpp" "idlib/Token.cpp" "idlib/bv/Frustum_gcc.cpp" "sys/win32/rc/CreateResourceIDs.cpp" "ThirdParty/artefacts/tracy/src/TracyClient.cpp"
 )
 
 add_compile_definitions(
@@ -175,6 +180,16 @@ add_compile_definitions(
 		CURL_STATICLIB
 		AL_LIBTYPE_STATIC
 )
+if (ENABLE_TRACY)
+	add_compile_definitions(
+			"$<$<CONFIG:RELEASE>:TRACY_ENABLE>"
+			TRACY_DELAYED_INIT
+			TRACY_MANUAL_LIFETIME
+			TRACY_ON_DEMAND
+			TRACY_NO_BROADCAST
+			TRACY_ONLY_LOCALHOST
+	)
+endif()
 
 if (THIRDPARTY_PLATFORM_OVERRIDE)
 	if (UNIX)
@@ -184,9 +199,6 @@ if (THIRDPARTY_PLATFORM_OVERRIDE)
 	endif ()
 elseif (UNIX)
 	if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-		# ffmpeg dep was compiled without -fPIC, so need to disable on 64bit builds
-		set_target_properties(TheDarkMod PROPERTIES POSITION_INDEPENDENT_CODE OFF)
-		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -no-pie")
 		set_target_properties(TheDarkMod PROPERTIES OUTPUT_NAME "thedarkmodvr.x64")
 	else ()
 		set_target_properties(TheDarkMod PROPERTIES OUTPUT_NAME "thedarkmodvr.x86")
@@ -198,6 +210,8 @@ elseif (MSVC)
 		set_target_properties(TheDarkMod PROPERTIES OUTPUT_NAME "TheDarkModVR")
 	endif ()
 endif ()
+# ffmpeg dep was compiled without -fPIC, so need to disable PIE on 64bit builds
+set_target_properties(TheDarkMod PROPERTIES POSITION_INDEPENDENT_CODE OFF)	# see also CMP0083
 ucm_set_runtime(STATIC)
 
 find_package(zlib REQUIRED)
@@ -219,6 +233,10 @@ include_directories(
 		"${PROJECT_SOURCE_DIR}/idlib"
 		"${PROJECT_SOURCE_DIR}/framework"
 		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/doctest/include"
+		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/tracy/include"
+		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/tracy/include/common"
+		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/tracy/include/client"
+		"${PROJECT_SOURCE_DIR}/ThirdParty/artefacts/tracy/include/libbacktrace"
 		${zlib_INCLUDE_DIRS}
 		${libcurl_INCLUDE_DIRS}
 		${openal_INCLUDE_DIRS}

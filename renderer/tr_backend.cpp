@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 #include "precompiled.h"
@@ -20,7 +20,6 @@
 #include "glsl.h"
 #include "GLSLProgramManager.h"
 #include "backend/RenderBackend.h"
-#include "Profiling.h"
 #include "BloomStage.h"
 #include "FrameBufferManager.h"
 
@@ -664,7 +663,7 @@ void RB_Bloom( bloomCommand_t *cmd ) {
 		return;
 	}
 
-	GL_PROFILE("Postprocess")
+	TRACE_GL_SCOPE("Postprocess")
 	frameBuffers->UpdateCurrentRenderCopy();
 	bloom->ComputeBloomFromRenderImage();
 	frameBuffers->LeavePrimary( false );
@@ -678,7 +677,7 @@ void RB_Tonemap() {
 	if ( !r_tonemap ) {
 		return;
 	}
-	GL_PROFILE("Tonemap")
+	TRACE_GL_SCOPE("Tonemap")
 
 	frameBuffers->defaultFbo->Bind();
 	GL_ViewportRelative( 0, 0, 1, 1 );
@@ -754,6 +753,8 @@ RB_SwapBuffers
 =============
 */
 const void	RB_SwapBuffers( const void *data ) {
+	TRACE_GL_SCOPE( "SwapBuffers" )
+
 	// texture swapping test
 	if ( r_showImages.GetInteger() != 0 ) {
 		RB_ShowImages();
@@ -799,7 +800,7 @@ Draws a single surface
 void RB_DrawSingleSurface( drawSurfCommand_t *cmd ) {
 	extern void RB_STD_T_RenderShaderPasses( const drawSurf_t *surf );
 
-	GL_PROFILE("RB_DrawSingleSurface")
+	TRACE_GL_SCOPE("RB_DrawSingleSurface")
 
 	// we need to setup a backEnd.viewDef, otherwise the draw command may crash or misbehave
 	viewDef_t viewDef;

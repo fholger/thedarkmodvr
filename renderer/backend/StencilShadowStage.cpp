@@ -1,22 +1,21 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 
 #include "precompiled.h"
 
 #include "StencilShadowStage.h"
-#include "../Profiling.h"
 #include "DrawBatchExecutor.h"
 #include "../FrameBuffer.h"
 #include "../GLSLProgram.h"
@@ -45,7 +44,7 @@ void StencilShadowStage::DrawStencilShadows( viewLight_t *vLight, const drawSurf
 	if ( !shadowSurfs || !r_shadows.GetInteger() ) {
 		return;
 	}
-	GL_PROFILE( "StencilShadowPass" );
+	TRACE_GL_SCOPE( "StencilShadowPass" );
 
 	if ( r_shadowPolygonFactor.GetFloat() || r_shadowPolygonOffset.GetFloat() ) {
 		qglPolygonOffset( r_shadowPolygonFactor.GetFloat(), -r_shadowPolygonOffset.GetFloat() );

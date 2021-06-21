@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 
@@ -1110,41 +1110,6 @@ void R_LoadImage( const char *cname, byte **pic, int *width, int *height, ID_TIM
 			*pic = 0;
 		}
 	}
-
-//duzenko: modern GPUs all support NPOT textures "as is"
-//this software rescaling is being removed
-#if 0
-	//
-	// convert to exact power of 2 sizes
-	//
-	if ( pic && *pic && makePowerOf2 ) {
-		int		w, h;
-		int		scaled_width, scaled_height;
-		byte	*resampledBuffer;
-
-		w = *width;
-		h = *height;
-
-		// make sure it is a power of 2
-		scaled_width = idMath::CeilPowerOfTwo(w);
-		scaled_height = idMath::CeilPowerOfTwo(h);
-
-		if ( scaled_width != w || scaled_height != h ) {
-			if ( globalImages->image_roundDown.GetBool() && scaled_width > w ) {
-				scaled_width >>= 1;
-			}
-
-			if ( globalImages->image_roundDown.GetBool() && scaled_height > h ) {
-				scaled_height >>= 1;
-			}
-			resampledBuffer = R_ResampleTexture( *pic, w, h, scaled_width, scaled_height );
-			R_StaticFree( *pic );
-			*pic = resampledBuffer;
-			*width = scaled_width;
-			*height = scaled_height;
-		}
-	}
-#endif
 }
 
 static idMat3 cubeAxis[6];

@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 
@@ -18,7 +18,6 @@
 #include "InteractionStage.h"
 
 #include "RenderBackend.h"
-#include "../Profiling.h"
 #include "../glsl.h"
 #include "../GLSLProgramManager.h"
 #include "../FrameBuffer.h"
@@ -43,9 +42,9 @@ struct InteractionStage::ShaderParams {
 	idVec4 ambientRimColor;
 	// bindless texture handles, if supported
 	uint64_t normalTexture;
+	uint64_t padding;
 	uint64_t diffuseTexture;
 	uint64_t specularTexture;
-	uint64_t padding;
 };
 
 namespace {
@@ -165,7 +164,7 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 		return;
 	}
 
-	GL_PROFILE( "DrawInteractions" );
+	TRACE_GL_SCOPE( "DrawInteractions" );
 
 	PreparePoissonSamples();
 
@@ -230,8 +229,10 @@ void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *
 			if ( surf->dsFlags & DSF_SHADOW_MAP_ONLY ) {
 				continue;
 			}
-			if ( !surf->ambientCache.IsValid() ) {
-				common->Warning( "Found invalid ambientCache!" );
+			if ( !surf->ambientCache.IsValid() || !surf->indexCache.IsValid() ) {
+#ifdef _DEBUG
+				common->Printf( "InteractionStage: missing vertex or index cache\n" );
+#endif
 				continue;
 			}
 

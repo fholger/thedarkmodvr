@@ -1,15 +1,15 @@
 /*****************************************************************************
-					The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 
@@ -22,7 +22,6 @@
 #include "tr_local.h"
 #include "GLSLProgramManager.h"
 #include "GLSLProgram.h"
-#include "Profiling.h"
 #include "GLSLUniforms.h"
 #include "glsl.h"
 #include "FrameBufferManager.h"
@@ -173,7 +172,7 @@ extern GLuint fboPrimary;
 extern bool primaryOn;
 
 void AmbientOcclusionStage::ComputeSSAOFromDepth() {
-	GL_PROFILE("AmbientOcclusionStage");
+	TRACE_GL_SCOPE("AmbientOcclusionStage");
 
 	if (ssaoFBO == nullptr) {
 		Init();
@@ -188,7 +187,7 @@ void AmbientOcclusionStage::ComputeSSAOFromDepth() {
 }
 
 void AmbientOcclusionStage::SSAOPass() {
-	GL_PROFILE("SSAOPass");
+	TRACE_GL_SCOPE("SSAOPass");
 
 	ssaoFBO->Bind();
 	qglClearColor(1, 1, 1, 1);
@@ -202,7 +201,7 @@ void AmbientOcclusionStage::SSAOPass() {
 }
 
 void AmbientOcclusionStage::BlurPass() {
-	GL_PROFILE("BlurPass");
+	TRACE_GL_SCOPE("BlurPass");
 
 	ssaoBlurShader->Activate();
 	BlurUniforms *uniforms = ssaoBlurShader->GetUniformGroup<BlurUniforms>();
@@ -241,7 +240,7 @@ bool AmbientOcclusionStage::ShouldEnableForCurrentView() const {
 }
 
 void AmbientOcclusionStage::PrepareDepthPass() {
-	GL_PROFILE("PrepareDepthPass");
+	TRACE_GL_SCOPE("PrepareDepthPass");
 
 	depthMipFBOs[0]->Bind();
 	GL_ScissorRelative( 0, 0, 1, 1 );
@@ -253,7 +252,7 @@ void AmbientOcclusionStage::PrepareDepthPass() {
 	RB_DrawFullScreenTri();
 
 	if (r_ssao.GetInteger() > 1) {
-		GL_PROFILE("DepthMips");
+		TRACE_GL_SCOPE("DepthMips");
 		// generate mip levels - used by the AO shader for distant samples to ensure we hit the texture cache as much as possible
 		depthMipShader->Activate();
 		DepthMipUniforms *uniforms = depthMipShader->GetUniformGroup<DepthMipUniforms>();

@@ -1,3 +1,17 @@
+/*****************************************************************************
+The Dark Mod GPL Source Code
+
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
+
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
+
+Project: The Dark Mod (http://www.thedarkmod.com/)
+
+******************************************************************************/
 #include "Actions.h"
 #include "StdFilesystem.h"
 #include "StdString.h"
@@ -403,6 +417,8 @@ Actions::VersionInfo Actions::RefreshVersionInfo(const std::string &targetVersio
 	g_logger->infof("Evaluating version %s", targetVersion.c_str());
 	if (!customManifestUrl.empty())
 		g_logger->infof("With custom manifest URL: %s", customManifestUrl.c_str());
+	if (!g_state->_preferredMirror.empty())
+		g_logger->infof("Preferred mirror: %s", g_state->_preferredMirror.c_str());
 
 	//these arrays are same-indexed
 	//0-th manifest is "target" one, all the others are "provided"

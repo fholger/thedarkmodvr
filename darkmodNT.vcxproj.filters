@@ -1372,9 +1372,6 @@
     <ClInclude Include="renderer\FrameBuffer.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="renderer\BufferObject.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="idlib\math\Simd_AVX.h">
       <Filter>idLib\Math</Filter>
     </ClInclude>
@@ -1392,9 +1389,6 @@
     </ClInclude>
     <ClInclude Include="sound\snd_efxpresets.h">
       <Filter>Sound</Filter>
-    </ClInclude>
-    <ClInclude Include="renderer\Profiling.h">
-      <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="game\FrobHelper.h">
       <Filter>Game</Filter>
@@ -1524,6 +1518,9 @@
     </ClInclude>
     <ClInclude Include="renderer\backend\FrobOutlineStage.h">
       <Filter>Renderer\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="framework\Tracing.h">
+      <Filter>Framework</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2845,9 +2842,6 @@
     <ClCompile Include="renderer\draw_stencil.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="renderer\BufferObject.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="idlib\math\Simd_AVX.cpp">
       <Filter>idLib\Math</Filter>
     </ClCompile>
@@ -2862,9 +2856,6 @@
     </ClCompile>
     <ClCompile Include="sound\snd_efxpresets.cpp">
       <Filter>Sound</Filter>
-    </ClCompile>
-    <ClCompile Include="renderer\Profiling.cpp">
-      <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="idlib\containers\LinkList.cpp">
       <Filter>idLib\Containers</Filter>
@@ -2994,6 +2985,12 @@
     </ClCompile>
     <ClCompile Include="idlib\math\Simd_IdAsm.cpp">
       <Filter>idLib\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="framework\Tracing.cpp">
+      <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdParty\artefacts\tracy\src\TracyClient.cpp">
+      <Filter>idLib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

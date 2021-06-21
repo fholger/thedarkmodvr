@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 
@@ -18,7 +18,6 @@
 #include "ManyLightInteractionStage.h"
 
 #include "RenderBackend.h"
-#include "../Profiling.h"
 #include "../glsl.h"
 #include "../GLSLProgramManager.h"
 #include "../FrameBuffer.h"
@@ -171,7 +170,7 @@ void ManyLightInteractionStage::Shutdown() {
 }
 
 void ManyLightInteractionStage::DrawInteractions( const viewDef_t *viewDef ) {
-	GL_PROFILE( "DrawInteractionsMultiLight" );
+	TRACE_GL_SCOPE( "DrawInteractionsMultiLight" );
 
 	PreparePoissonSamples();
 	SetGlState(GLS_DEPTHFUNC_EQUAL);

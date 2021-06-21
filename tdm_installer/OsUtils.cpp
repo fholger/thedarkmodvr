@@ -1,9 +1,25 @@
+/*****************************************************************************
+The Dark Mod GPL Source Code
+
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
+
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
+
+Project: The Dark Mod (http://www.thedarkmod.com/)
+
+******************************************************************************/
 #include "OsUtils.h"
 #include "StdFilesystem.h"
 #include "Utils.h"
 #include "StdString.h"
 #include "LogUtils.h"
 #include <string.h>
+#include "GuiFluidAutoGen.h"
+#include <FL/x.h>
 
 std::string OsUtils::_argv0;
 
@@ -14,6 +30,10 @@ std::string OsUtils::_argv0;
 #include <shobjidl.h>	//shortcuts
 #include <shlguid.h>	//shortcuts
 #include <shlobj.h>		//getting desktop path
+#include <Shobjidl.h>
+
+CComPtr<ITaskbarList3> m_spTaskbarList;
+
 static void ThrowWinApiError() {
 	LPVOID lpMsgBuf;
 	FormatMessage(
@@ -66,6 +86,28 @@ std::string OsUtils::GetExecutableName() {
 	return exeFn.string();
 }
 
+void OsUtils::ShowSystemProgress( int percent ) {
+#ifdef _WIN32
+	if ( !m_spTaskbarList ) {
+		EnsureComInitialized();
+		HRESULT hr = ::CoCreateInstance( CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER,
+			__uuidof( ITaskbarList3 ), reinterpret_cast<void**>( &m_spTaskbarList ) );
+
+		if ( SUCCEEDED( hr ) ) {
+			hr = m_spTaskbarList->HrInit();
+		}
+	}
+	if ( !m_spTaskbarList )
+		return;
+	auto h = fl_xid( g_Window );
+	if ( !h ) return;
+	if ( percent < 100 ) {
+		m_spTaskbarList.p->SetProgressState( h, TBPF_NORMAL );
+		m_spTaskbarList.p->SetProgressValue( h, percent, 100 );
+	} else
+		m_spTaskbarList.p->SetProgressState( h, TBPF_NOPROGRESS );
+#endif
+}
 
 std::string OsUtils::GetCwd() {
 	return stdext::current_path().string();

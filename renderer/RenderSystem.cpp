@@ -1,15 +1,15 @@
 /*****************************************************************************
-                    The Dark Mod GPL Source Code
+The Dark Mod GPL Source Code
 
- This file is part of the The Dark Mod Source Code, originally based
- on the Doom 3 GPL Source Code as published in 2011.
+This file is part of the The Dark Mod Source Code, originally based
+on the Doom 3 GPL Source Code as published in 2011.
 
- The Dark Mod Source Code is free software: you can redistribute it
- and/or modify it under the terms of the GNU General Public License as
- published by the Free Software Foundation, either version 3 of the License,
- or (at your option) any later version. For details, see LICENSE.TXT.
+The Dark Mod Source Code is free software: you can redistribute it
+and/or modify it under the terms of the GNU General Public License as
+published by the Free Software Foundation, either version 3 of the License,
+or (at your option) any later version. For details, see LICENSE.TXT.
 
- Project: The Dark Mod (http://www.thedarkmod.com/)
+Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 #include "precompiled.h"
@@ -18,7 +18,6 @@
 #include "tr_local.h"
 #include "FrameBuffer.h"
 #include "glsl.h"
-#include "Profiling.h"
 #include "backend/RenderBackend.h"
 #include "FrameBufferManager.h"
 #include "vr/OpenXRBackend.h"
@@ -122,6 +121,9 @@ Called by R_EndFrame each frame
 ====================
 */
 void R_IssueRenderCommands( frameData_t *frameData ) {
+	TRACE_CPU_SCOPE( "R_IssueRenderCommands" )
+	TRACE_GL_SCOPE( "RenderFrame" )
+
 	emptyCommand_t *cmds = frameData->cmdHead;
 	if ( cmds->commandId == RC_NOP
 	        && !cmds->next ) {
@@ -625,50 +627,22 @@ Returns the number of msec spent in the back end
 =============
 */
 void idRenderSystemLocal::EndFrame( int *frontEndMsec, int *backEndMsec ) {
-	static idFile *smpTimingsLogFile = nullptr;
-
 	if ( !glConfig.isInitialized ) {
 		return;
 	}
 
 	try {
 		RB_CopyDebugPrimitivesToBackend();
-		ProfilingBeginFrame();
 		common->SetErrorIndirection( true );
 		vrBackend->PrepareFrame();
-		double startLoop = Sys_GetClockTicks();
 		session->ActivateFrontend();
-		double endSignal = Sys_GetClockTicks();
 		frameBuffers->BeginFrame();
 		// start the back end up again with the new command list
 		R_IssueRenderCommands( backendFrameData );
 		renderBackend->EndFrame();
-		double endRender = Sys_GetClockTicks();
 		session->WaitForFrontendCompletion();
-		double endWait = Sys_GetClockTicks();
 		common->SetErrorIndirection( false );
-		ProfilingEndFrame();
-
-		if ( r_logSmpTimings.GetBool() ) {
-			if ( !smpTimingsLogFile ) {
-				idStr fileName;
-				uint64_t currentTime = Sys_GetTimeMicroseconds();
-				sprintf( fileName, "smp_timings_%.20llu.txt", currentTime );
-				smpTimingsLogFile = fileSystem->OpenFileWrite( fileName, "fs_savepath", "" );
-			}
-			const double TO_MICROS = 1000000 / Sys_ClockTicksPerSecond();
-			static double lastEndTime = Sys_GetClockTicks();
-			double signalFrontend = ( endSignal - startLoop ) * TO_MICROS;
-			double render = ( endRender - endSignal ) * TO_MICROS;
-			double waitForFrontend = ( endWait - endRender ) * TO_MICROS;
-			double framePrep = ( startLoop - lastEndTime ) * TO_MICROS;
-			double totalFrameTime = ( endWait - lastEndTime ) * TO_MICROS;
-			lastEndTime = endWait;
-
-			smpTimingsLogFile->Printf( "Frame %.7d: preparation %.2f - total frame time %.2f us\n", frameCount, framePrep, totalFrameTime );
-			smpTimingsLogFile->Printf( "  Backend: signal frontend %.2f us - render %.2f us - wait for frontend %.2f us\n", signalFrontend, render, waitForFrontend );
-			session->LogFrontendTimings( *smpTimingsLogFile );
-		}
+		TracingEndFrame();
 	} catch ( std::shared_ptr<ErrorReportedException> e ) {
 		session->WaitForFrontendCompletion();
 		common->SetErrorIndirection( false );

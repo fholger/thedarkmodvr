@@ -21,7 +21,6 @@
 #include "../GLSLProgramManager.h"
 #include "../GLSLUniforms.h"
 #include "../Image.h"
-#include "../Profiling.h"
 
 idCVar vr_useFixedFoveatedRendering("vr_useFixedFoveatedRendering", "0", CVAR_INTEGER|CVAR_RENDERER|CVAR_ARCHIVE, "Enable fixed foveated rendering.");
 idCVar vr_foveatedInnerRadius("vr_foveatedInnerRadius", "0.3", CVAR_FLOAT|CVAR_RENDERER|CVAR_ARCHIVE, "Inner foveated radius to render at full resolution");
@@ -177,7 +176,7 @@ void VRFoveatedRendering::DrawRadialDensityMaskToDepth( int eye ) {
 }
 
 void VRFoveatedRendering::ReconstructImageFromRdm( int eye ) {
-	GL_PROFILE("RdmReconstruction")
+	TRACE_GL_SCOPE("RdmReconstruction")
 
 	rdmReconstructionFbo->Bind();
 

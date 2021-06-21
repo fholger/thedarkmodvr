@@ -21,7 +21,6 @@
 #include "xr_loader.h"
 #include "../FrameBuffer.h"
 #include "../FrameBufferManager.h"
-#include "../Profiling.h"
 
 void OpenXRSwapchainDX::Init( const idStr &name, int64_t format, int width, int height ) {
 	if ( swapchain != nullptr ) {
