@@ -43,18 +43,16 @@ Used for determining memory utilization
 */
 int idImage::BitsForInternalFormat( int internalFormat ) const {
 	switch ( internalFormat ) {
-		//case GL_INTENSITY8:
 		case GL_R8:
-		case 1:
+		case 1: // FIXME: legacy OpenGL 1.0 format - remove?
 			return 8;
-		case 2:
-		//case GL_LUMINANCE8_ALPHA8:
+		case 2: // FIXME: legacy OpenGL 1.0 format - remove?
 		case GL_RG8:
 		case GL_RGB565:
 			return 16;
-		case 3:
+		case 3: // FIXME: legacy OpenGL 1.0 format - remove?
 			return 32;		// on some future hardware, this may actually be 24, but be conservative
-		case 4:
+		case 4: // FIXME: legacy OpenGL 1.0 format - remove?
 			return 32;
 		case GL_ALPHA8:
 			return 8;
@@ -68,17 +66,12 @@ int idImage::BitsForInternalFormat( int internalFormat ) const {
 		case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
 			return 4;
 		case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
-			return 8;
 		case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-			return 8;
 		case GL_COMPRESSED_LUMINANCE_LATC1_EXT: // TODO Serp: check this, derp
-			return 8;
 		case GL_COMPRESSED_LUMINANCE_ALPHA_LATC2_EXT:
-			return 8;
 		case GL_COMPRESSED_RG_RGTC2:
 			return 8;
 		case GL_RGBA4:
-			return 16;
 		case GL_RGB5:
 			return 16;
 		case GL_COMPRESSED_RGB_ARB:
@@ -90,11 +83,13 @@ int idImage::BitsForInternalFormat( int internalFormat ) const {
 		case GL_DEPTH24_STENCIL8:		// current depth texture
 		case GL_DEPTH_COMPONENT32F:		// shadow atlas
 			return 32;
+		case GL_RGBA16F: // current render texture, 64-bit
+			return 64;
 		case GL_DEPTH:
 		case GL_STENCIL:
 			return 0;
 		default:
-			common->Warning( "\nR_BitsForInternalFormat: bad internalFormat:%i", internalFormat );
+			common->Warning( "\nR_BitsForInternalFormat: bad internalFormat (%i)", internalFormat );
 	}
 	return 0;
 }
@@ -1238,6 +1233,7 @@ void idImage::UploadPrecompressedImage( byte *data, int len ) {
 }
 
 void R_LoadImageData( idImage& image ) {
+	TRACE_CPU_SCOPE_STR("Load:Image", image.imgName)
 	imageBlock_t& cpuData = image.cpuData;
 
 	if ( image.cubeFiles != CF_2D ) {
@@ -1273,6 +1269,7 @@ void R_LoadImageData( idImage& image ) {
 }
 
 void R_UploadImageData( idImage& image ) {
+	TRACE_CPU_SCOPE_STR("Upload:Image", image.imgName)
 	auto& cpuData = image.cpuData;
 	for (int s = 0; s < cpuData.sides; s++) {
 		if ( cpuData.pic[s] == NULL ) {

@@ -288,10 +288,6 @@ void idGameLocal::Clear( void )
 	{
 		m_ModelGenerator->Clear();
 	}
-	if (m_ImageMapManager)
-	{
-		m_ImageMapManager->Clear();
-	}
 	if (m_LightController)
 	{
 		m_LightController->Clear();
@@ -533,13 +529,6 @@ void idGameLocal::Init( void ) {
 	Printf( "--------------------------------------\n" );
 	Printf( "Parsing material files\n" );
 
-	LoadLightMaterial("materials/lights.mtr", &g_Global.m_LightMaterial);
-
-	// grayman #3584 - load light textures found in other files
-	LoadLightMaterial("materials/tdm_light_textures.mtr",    &g_Global.m_LightMaterial);
-	LoadLightMaterial("materials/tdm_ai_steambots.mtr",      &g_Global.m_LightMaterial);
-	LoadLightMaterial("materials/tdm_lights_d3_leftover.mtr",&g_Global.m_LightMaterial);
-
 	m_MissionData = CMissionDataPtr(new CMissionData);
 	m_CampaignStats = CampaignStatsPtr(new CampaignStats);
 	m_RelationsManager = CRelationsPtr(new CRelations);
@@ -565,10 +554,6 @@ void idGameLocal::Init( void ) {
 	// Initialise the model generator
 	m_ModelGenerator = CModelGeneratorPtr(new CModelGenerator);
 	m_ModelGenerator->Init();
-
-	// Initialise the image map manager
-	m_ImageMapManager = ImageMapManagerPtr(new ImageMapManager);
-	m_ImageMapManager->Init();
 
 	// Initialise the light controller
 	m_LightController = CLightControllerPtr(new CLightController);
@@ -717,9 +702,6 @@ void idGameLocal::Shutdown( void ) {
 	// Destroy the model generator
 	m_ModelGenerator.reset();
 
-	// Destroy the image map manager
-	m_ImageMapManager.reset();
-
 	// Destroy the light controller
 	m_LightController.reset();
 
@@ -851,9 +833,6 @@ void idGameLocal::SaveGame( idFile *f ) {
 
 	// Save whatever the model generator needs
 	m_ModelGenerator->Save(&savegame);
-
-	// Save whatever the image map manager needs
-	m_ImageMapManager->Save(&savegame);
 
 	// Save whatever the light controller needs
 	m_LightController->Save(&savegame);
@@ -1156,17 +1135,6 @@ idStr idGameLocal::triggeredSave()
 	idStr sgn = cvarSystem->GetCVarString("saveGameName");
 	cvarSystem->SetCVarString("saveGameName","");
 	return sgn;	
-}
-
-/*
-=============
-idGameLocal::incrementSaveCount
-=============
-*/
-
-void idGameLocal::incrementSaveCount()
-{
-	m_MissionData->incrementSavegameCounter();
 }
 
 /*
@@ -2004,7 +1972,6 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 	savegame.ReadObject( reinterpret_cast<idClass*&>(m_Grabber) );
 
 	m_ModelGenerator->Restore(&savegame);
-	m_ImageMapManager->Restore(&savegame);
 	m_LightController->Restore(&savegame);
 
 	m_DifficultyManager.Restore(&savegame);
@@ -2045,6 +2012,7 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 		const char *entName = mapEnt->epairs.GetString("name");
 
 		if ( !InhibitEntitySpawn( mapEnt->epairs ) ) {
+			TRACE_CPU_SCOPE_TEXT("Entity:Spawn", entName)
 			declManager->BeginEntityLoad(mapEnt);
 			CacheDictionaryMedia( &mapEnt->epairs );
 			const char *classname = mapEnt->epairs.GetString( "classname" );
@@ -2468,10 +2436,6 @@ void idGameLocal::MapShutdown( void ) {
 	{
 		m_ModelGenerator->Print();
 		m_ModelGenerator->Clear();
-	}
-	if (m_ImageMapManager != NULL)
-	{
-		m_ImageMapManager->Clear();
 	}
 	
 	if (m_LightController != NULL)
@@ -3169,7 +3133,6 @@ idGameLocal::RunFrame
 gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds, int timestepMs ) {
 	idEntity *	ent;
 	int			num(-1);
-	float		ms;
 	idTimer		timer_think, timer_events, timer_singlethink;
 	gameReturn_t ret;
 	idPlayer	*player;
@@ -3269,15 +3232,13 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds, int timestepMs 
 			// create a merged pvs for all players
 			SetupPlayerPVS();
 
-			idTimer lasTimer;
-			lasTimer.Clear();
-			lasTimer.Start();
-			// The Dark Mod
-			// 10/9/2005: SophisticatedZombie
-			// Update the Light Awareness System
-			LAS.updateLASState();
-			lasTimer.Stop();
-			DM_LOG(LC_LIGHT, LT_INFO)LOGSTRING("Time to update LAS: %lf\r", lasTimer.Milliseconds());
+			{
+				TRACE_CPU_SCOPE( "Update:LAS" )
+				// The Dark Mod
+				// 10/9/2005: SophisticatedZombie
+				// Update the Light Awareness System
+				LAS.updateLASState();
+			}
 
 			unsigned int ticks = static_cast<unsigned int>(sys->GetClockTicks());
 
@@ -3296,55 +3257,45 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds, int timestepMs 
 			timer_think.Clear();
 			timer_think.Start();
 
-			// let entities think
-			if ( g_timeentities.GetFloat() ) {
+			{ // let entities think
+				TRACE_CPU_SCOPE( "ThinkAllEntities" )
 				num = 0;
+				bool timeentities = (g_timeentities.GetFloat() > 0.0);
 				for( ent = activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
-					if ( g_cinematic.GetBool() && inCinematic && !ent->cinematic ) {
+					if ( inCinematic && g_cinematic.GetBool() && !ent->cinematic ) {
 						ent->GetPhysics()->UpdateTime( time );
-						if (ent->IsType(idAI::Type)) // grayman #2654 - update m_lastThinkTime to keep non-cinematic AI from dying at CrashLand()
-						{
+						// grayman #2654 - update m_lastThinkTime to keep non-cinematic AI from dying at CrashLand()
+						if (ent->IsType(idAI::Type)) {
 							static_cast<idAI*>(ent)->m_lastThinkTime = time;
 						}
 						continue;
 					}
-					timer_singlethink.Clear();
-					timer_singlethink.Start();
-					ent->Think();
-					timer_singlethink.Stop();
-					ms = timer_singlethink.Milliseconds();
-					if ( ms >= g_timeentities.GetFloat() ) {
-						Printf( "%d: entity '%s': %.1f ms\n", time, ent->name.c_str(), ms );
-						DM_LOG(LC_ENTITY, LT_INFO)LOGSTRING("%d: entity '%s': %.3f ms\r", time, ent->name.c_str(), ms );
+
+					if ( timeentities ) {
+						timer_singlethink.Clear();
+						timer_singlethink.Start();
 					}
-					num++;
-				}
-			} else {
-				if ( inCinematic ) {
-					num = 0;
-					for( ent = activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
-						if ( g_cinematic.GetBool() && !ent->cinematic ) {
-							ent->GetPhysics()->UpdateTime( time );
-							if (ent->IsType(idAI::Type)) // grayman #2654 - update m_lastThinkTime to keep non-cinematic AI from dying at CrashLand()
-							{
-								static_cast<idAI*>(ent)->m_lastThinkTime = time;
-							}
-							continue;
+
+					{
+						TRACE_CPU_SCOPE_STR("Entity:Think", ent->name)
+						ent->Think();
+						num++;
+					}
+
+					if ( timeentities ) {
+						timer_singlethink.Stop();
+						float ms = timer_singlethink.Milliseconds();
+						if ( ms >= g_timeentities.GetFloat() ) {
+							Printf( "%d: entity '%s': %.1f ms\n", time, ent->name.c_str(), ms );
+							DM_LOG(LC_ENTITY, LT_INFO)LOGSTRING("%d: entity '%s': %.3f ms\r", time, ent->name.c_str(), ms );
 						}
-						ent->Think();
-						num++;
-					}
-				} else {
-					num = 0;
-					for( ent = activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
-						ent->Think();
-						num++;
 					}
 				}
 			}
 
 			// remove any entities that have stopped thinking
 			if ( numEntitiesToDeactivate ) {
+				TRACE_CPU_SCOPE( "DeactivateEntities" )
 				idEntity *next_ent;
 				int c = 0;
 				for( ent = activeEntities.Next(); ent != NULL; ent = next_ent ) {
@@ -3705,7 +3656,11 @@ void idGameLocal::UpdateWidescreenModeFromScreenResolution(idUserInterface* gui)
 
 void idGameLocal::HandleGuiMessages(idUserInterface* ui)
 {
-	if (m_GuiMessages.Num() == 0) return;
+	//stgatilov #5661: don't drop message until previous one is closed
+	if (ui->GetStateBool("MsgBoxVisible"))
+		return;
+	if (m_GuiMessages.Num() == 0)
+		return;
 
 	const GuiMessage& msg = m_GuiMessages[0];
 
@@ -5228,6 +5183,7 @@ bool idGameLocal::SpawnEntityDef( const idDict &args, idEntity **ent, bool setDe
 	if ( spawnArgs.GetString( "name", "", &name ) ) {
 		sprintf( error, " on '%s'", name);
 	}
+	TRACE_CPU_SCOPE_TEXT("EntDef:Spawn", name);
 
 	spawnArgs.GetString( "classname", NULL, &classname );
 	const idDeclEntityDef *def = FindEntityDef( classname, false );
@@ -5462,6 +5418,7 @@ void idGameLocal::SpawnMapEntities( void )
 
 		if (!InhibitEntitySpawn(args))
 		{
+			TRACE_CPU_SCOPE_TEXT("Entity:Spawn", entName)
 			declManager->BeginEntityLoad(mapEnt);
 			// precache any media specified in the map entity
 			CacheDictionaryMedia(&args);
@@ -6735,134 +6692,6 @@ void idGameLocal::GetMapLoadingGUI( char gui[ MAX_STRING_CHARS ] )
 {
 }
 
-void idGameLocal::LoadLightMaterial(const char *pFN, idList<CLightMaterial *> *ml)
-{
-	idToken token;
-	idLexer src;
-	idStr Material, FallOff, Map, *add;
-	int level;		// Nestinglevel for brackets
-	bool bAmbient;
-	CLightMaterial *mat;
-
-	if(pFN == NULL || ml == NULL)
-		goto Quit;
-
-	src.LoadFile(pFN);
-
-	level = 0;
-	add = NULL;
-	bAmbient = false;
-
-	while(1)
-	{
-		if(!src.ReadToken(&token))
-			goto Quit;
-
-//		DM_LOG(LC_SYSTEM, LT_DEBUG)LOGSTRING("Token: [%s]\r", token.c_str());
-
-		if(token == "table")
-		{
-			src.SkipBracedSection(true);
-			continue;
-		}
-
-		if(token == "lights")
-		{
-			Material = token;
-			while(src.ReadTokenOnLine(&token) == true)
-			{
-				Material += token;
-//				DM_LOG(LC_SYSTEM, LT_DEBUG)LOGSTRING("Material: [%s]\r", token.c_str());
-			}
-
-			continue;
-		}
-		else if(level == 1 && token == "ambientLight")
-		{
-			bAmbient = true;
-			continue;
-		}
-		else if(token == "{")
-		{
-			level++;
-			if(level == 1)
-				bAmbient = false;
-
-			continue;
-		}
-		else if(token == "}")
-		{
-			level--;
-			if(level == 0)
-			{
-				if(FallOff.Length()  == 0 && Map.Length() == 0)
-					continue;
-
-				mat = new CLightMaterial(Material, FallOff, Map);
-				mat->m_AmbientLight = bAmbient;
-				ml->Append(mat);
-				DM_LOG(LC_SYSTEM, LT_INFO)LOGSTRING("Texture: [%s] - [%s]/[%s] - Ambient: %u\r", Material.c_str(), FallOff.c_str(), Map.c_str(), bAmbient);
-			}
-			continue;
-		}
-		else if(token == "map")
-		{
-			Map = "";
-			while(src.ReadTokenOnLine(&token) == true)
-			{
-				if(token == "makeintensity")
-					continue;
-				else if(token == "(")
-					continue;
-				else if(token == ")")
-					break;
-				else
-					Map += token;
-//				DM_LOG(LC_SYSTEM, LT_DEBUG)LOGSTRING("Map: [%s]\r", token.c_str());
-			}
-			continue;
-		}
-		else if(token == "lightFalloffImage")
-		{
-			FallOff = "";
-
-			while(1)
-			{
-				if(!src.ReadToken(&token))
-				{
-					DM_LOG(LC_SYSTEM, LT_ERROR)LOGSTRING("Invalid material file structure on line %u\r", src.GetLineNum());
-					goto Quit;
-				}
-
-				// Ignore makeintensity tag
-				if(token == "makeintensity")
-					continue;
-				else if(token == "(")
-					continue;
-				else if(token == ")")
-					break;
-				else
-				{
-					do
-					{
-						if(token == ")")
-							break;
-
-						FallOff += token;
-//						DM_LOG(LC_SYSTEM, LT_DEBUG)LOGSTRING("FallOff: [%s]\r", token.c_str());
-					}
-					while(src.ReadTokenOnLine(&token) == true);
-					break;
-				}
-			}
-			continue;
-		}
-	}
-
-Quit:
-	return;
-}
-
 int idGameLocal::CheckStimResponse(idList< idEntityPtr<idEntity> > &list, idEntity *e)
 {
 	// Construct an idEntityPtr with the given entity
@@ -7398,6 +7227,7 @@ void idGameLocal::ProcessStimResponse(unsigned int ticks)
 		return; // S/R disabled, skip this
 	}
 
+	TRACE_CPU_SCOPE( "ProcessStimResponse" )
 	idTimer srTimer;
 	srTimer.Clear();
 	srTimer.Start();
@@ -7439,6 +7269,8 @@ void idGameLocal::ProcessStimResponse(unsigned int ticks)
 		idEntity* entity = m_StimEntity[i].GetEntity();
 
 		if (entity == NULL) continue;
+
+		TRACE_CPU_SCOPE_STR( "Process:Stim", entity->name );
 
 		// greebo: Get the S/R collection, this is always non-NULL
 		CStimResponseCollection* srColl = entity->GetStimResponseCollection();

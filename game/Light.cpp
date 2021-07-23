@@ -263,8 +263,6 @@ idLight::idLight()
 	fadeEnd				= 0;
 	soundWasPlaying		= false;
 	m_MaxLightRadius	= 0.0f;
-	m_MaterialName = NULL;
-	m_LightMaterial		= NULL;
 	m_BlendlightTexture = NULL; // SteveL #3752
 
 	/*!
@@ -456,12 +454,6 @@ void idLight::Restore( idRestoreGame *savefile ) {
 	lightDefHandle = -1;
 
 	SetLightLevel();
-
-	m_MaterialName = NULL;
-	spawnArgs.GetString( "texture", "lights/squarelight1", &m_MaterialName);
-
-	// Re-acquire light material, now that the material name is known
-	m_LightMaterial = g_Global.GetMaterial(m_MaterialName);
 }
 
 /*
@@ -557,13 +549,6 @@ void idLight::Spawn( void )
 		m_MaxLightRadius = max.Length();
 	}
 	DM_LOG(LC_LIGHT, LT_DEBUG)LOGSTRING("this: %08lX [%s] MaxLightRadius: %f\r", this, name.c_str(), m_MaxLightRadius);
-
-	m_MaterialName = NULL;
-	spawnArgs.GetString( "texture", "lights/squarelight1", &m_MaterialName);
-	if ( m_MaterialName != NULL )
-	{
-		DM_LOG(LC_LIGHT, LT_DEBUG)LOGSTRING("Light has a texture (m_MaterialName): %s\r", m_MaterialName);
-	}
 
 	idImage *pImage;
 	if ( ( renderLight.shader != NULL ) && ( (pImage = renderLight.shader->LightFalloffImage()) != NULL ) )
@@ -1791,6 +1776,10 @@ float idLight::GetDistanceColor(float fDistance, float fx, float fy)
 	const unsigned char *img = NULL;
 	const unsigned char *fot = NULL;
 
+	//stgatilov #5665: this is dead code since earlier than 2.00 
+	//in reality, the pointers were always NULL here
+	//see https://forums.thedarkmod.com/index.php?/topic/21002-devil-and-images-infrastructure/&do=findComment&comment=462706
+#if 0
 	if (m_LightMaterial == NULL)
 	{
 		if ( (m_LightMaterial = g_Global.GetMaterial(m_MaterialName)) != NULL )
@@ -1805,6 +1794,7 @@ float idLight::GetDistanceColor(float fDistance, float fx, float fy)
 		fot = m_LightMaterial->GetFallOffTexture(fw, fh, fbpp);
 		img = m_LightMaterial->GetImage(iw, ih, ibpp);
 	}
+#endif
 
 	// baseColor gives the current color (intensity)
 
@@ -1863,14 +1853,9 @@ float idLight::GetDistanceColor(float fDistance, float fx, float fy)
 
 bool idLight::CastsShadow(void)
 {
-	if(m_LightMaterial == NULL)
-		m_LightMaterial = g_Global.GetMaterial(m_MaterialName);
-
-	if(m_LightMaterial != NULL)
-	{
-		if(m_LightMaterial->m_AmbientLight == true)
-			return false;
-	}
+	//stgatilov #5665: use idMaterial to check for ambient light
+	if (renderLight.shader && renderLight.shader->IsAmbientLight())
+		return false;
 
 	return !renderLight.noShadows; 
 }

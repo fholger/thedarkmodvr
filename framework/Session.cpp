@@ -1430,6 +1430,28 @@ bool idSessionLocal::ExecuteMapChange(idFile* savegameFile, bool noFadeWipe ) {
 	int		i;
 	bool	reloadingSameMap;
 
+	// extract the map name from serverinfo
+	idStr mapString = mapSpawnData.serverInfo.GetString( "si_map" );
+
+	idStr fullMapName = "maps/";
+	fullMapName += mapString;
+	fullMapName.StripFileExtension();
+
+	// don't do the deferred caching if we are reloading the same map
+	if ( fullMapName == currentMapName ) {
+		reloadingSameMap = true;
+	} else {
+		reloadingSameMap = false;
+		currentMapName = fullMapName;
+	}
+
+	idStr traceText = va("map %s", mapString.c_str());
+	if (savegameFile)
+		traceText += va("\nload %s", savegameFile->GetName());
+	if (reloadingSameMap)
+		traceText += "\n(samemap)";
+	TRACE_CPU_SCOPE_STR("idSessionLocal::ExecuteMapChange", traceText);
+
 	// close console and remove any prints from the notify lines
 	console->Close();
 
@@ -1454,26 +1476,11 @@ bool idSessionLocal::ExecuteMapChange(idFile* savegameFile, bool noFadeWipe ) {
 		CompleteWipe();
 	}
 
-	// extract the map name from serverinfo
-	idStr mapString = mapSpawnData.serverInfo.GetString( "si_map" );
-
-	idStr fullMapName = "maps/";
-	fullMapName += mapString;
-	fullMapName.StripFileExtension();
-
 	// shut down the existing game if it is running
 	UnloadMap();
 
 	R_ToggleSmpFrame(); // duzenko 4848: FIXME find a better place to clear the "next frame" data
 	R_ToggleSmpFrame();	// duzenko 5065: apparently R_ToggleSmpFrame does not like being called once
-
-	// don't do the deferred caching if we are reloading the same map
-	if ( fullMapName == currentMapName ) {
-		reloadingSameMap = true;
-	} else {
-		reloadingSameMap = false;
-		currentMapName = fullMapName;
-	}
 
 	// note which media we are going to need to load
 	if ( !reloadingSameMap ) {
@@ -1893,16 +1900,6 @@ bool idSessionLocal::SaveGame( const char *saveName, bool autosave, bool skipChe
 		soundSystem->SetPlayingSoundWorld( NULL );
 	}
 
-	//stgatilov: choose preview image format
-	idStr previewExtension = com_savegame_preview_format.GetString();
-	Image::Format previewFormat = Image::GetFormatFromString( previewExtension.c_str() );
-	//note: only tga and jpg are currently supported
-	if ( previewFormat != Image::JPG && previewFormat != Image::TGA ) {
-		common->Warning( "Unknown preview image extension %s, falling back to default.", previewExtension.c_str() );
-		previewFormat = Image::TGA;
-		previewExtension = "tga";
-	}
-
 	// setup up paths
 	
 	ScrubSaveGameFileName( gameFile );
@@ -1910,6 +1907,11 @@ bool idSessionLocal::SaveGame( const char *saveName, bool autosave, bool skipChe
 	gameFile = "savegames/" + gameFile;
 	gameFile.SetFileExtension( ".save" );
 
+	idStr previewExtension = com_savegame_preview_format.GetString();
+	if ( !(previewExtension == "jpg" || previewExtension == "tga") ) {
+		common->Warning( "Unknown preview image extension %s, falling back to default.", previewExtension.c_str() );
+		previewExtension = "tga";
+	}
 	previewFile = gameFile;
 	previewFile.SetFileExtension( previewExtension.c_str() );
 
@@ -1926,10 +1928,6 @@ bool idSessionLocal::SaveGame( const char *saveName, bool autosave, bool skipChe
 		}
 		return false;
 	}
-
-	// Obsttorte increment the savegame counter
-	
-	game->incrementSaveCount();
 
 	// Write SaveGame Header: 
 	// Game Name / Version / Map Name / Persistant Player Info
@@ -1974,8 +1972,7 @@ bool idSessionLocal::SaveGame( const char *saveName, bool autosave, bool skipChe
 		// need to make the changes to the vertex cache accessible to the backend
 		vertexCache.EndFrame();
 
-		//stgatilov: render image to buffer and save via devIL
-		Image image;
+		//stgatilov: render image to buffer
 		int width, height, bpp = 3;
 		renderSystem->GetCurrentRenderCropSize(width, height);
 		/*if ( r_useFbo.GetBool() ) { // 4676
@@ -1983,10 +1980,16 @@ bool idSessionLocal::SaveGame( const char *saveName, bool autosave, bool skipChe
 			height /= r_fboResolution.GetFloat();
 		}*/
 		width = (width + 3) & ~3; //opengl wants width padded to 4x
-		image.Init(width, height, bpp);
-		renderSystem->CaptureRenderToBuffer( image.GetImageData() );
-		idStr previewPath = fileSystem->RelativePathToOSPath(previewFile.c_str(), "fs_modSavePath");
-		image.SaveImageToFile(previewPath.c_str(), previewFormat);
+		byte *imgData = (byte*)Mem_Alloc(height * width * bpp);
+		renderSystem->CaptureRenderToBuffer( imgData );
+
+		//save image to file
+		idImageWriter wr;
+		wr.Source(imgData, width, height, bpp);
+		wr.Dest(fileSystem->OpenFileWrite(previewFile.c_str(), "fs_modSavePath"));
+		wr.Flip();
+		wr.WriteExtension(previewExtension.c_str());
+		Mem_Free(imgData);
 
 		renderSystem->UnCrop();
 		R_ClearCommandChain( frameData );
@@ -2776,6 +2779,7 @@ void idSessionLocal::Frame() {
 	//nbohr1more: disable SMP for debug render tools
 	if (r_showSurfaceInfo.GetBool() ||
 		r_showDepth.GetBool() ||
+		r_showViewEntitys.GetBool() || // frontend may invalidate viewEntity pointers, e.g. when LOD model changes
         r_materialOverride.GetString()[0] != '\0'
 	) {
 		no_smp = true;

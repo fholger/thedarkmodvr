@@ -145,6 +145,9 @@
     <Filter Include="Renderer\VR">
       <UniqueIdentifier>{5b341bd6-6338-44a1-8fd6-6107d376be26}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sound\SubtitleParser">
+      <UniqueIdentifier>{02e407ed-a63e-4943-a7c0-d49689e23c1f}</UniqueIdentifier>
+    </Filter>
     <Filter Include="hlprogs">
       <UniqueIdentifier>{ef664ff5-2c6b-4623-a225-5e7ed9f8f34d}</UniqueIdentifier>
     </Filter>
@@ -1062,9 +1065,6 @@
     <ClInclude Include="game\IK.h">
       <Filter>Game</Filter>
     </ClInclude>
-    <ClInclude Include="game\ImageMapManager.h">
-      <Filter>Game</Filter>
-    </ClInclude>
     <ClInclude Include="game\IniFile.h">
       <Filter>Game</Filter>
     </ClInclude>
@@ -1350,6 +1350,24 @@
     </ClInclude>
     <ClInclude Include="framework\Tracing.h">
       <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\SubtitleParser\subparser.h">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\SubtitleParser\SubRipParser.h">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\SubtitleParser\SubtitleItem.h">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\SubtitleParser\SubtitleParser.h">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\SubtitleParser\SubtitleParserFactory.h">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClInclude>
+    <ClInclude Include="sound\SubtitleParser\SubtitleWord.h">
+      <Filter>Sound\SubtitleParser</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2844,9 +2862,6 @@
     <ClCompile Include="game\IK.cpp">
       <Filter>Game</Filter>
     </ClCompile>
-    <ClCompile Include="game\ImageMapManager.cpp">
-      <Filter>Game</Filter>
-    </ClCompile>
     <ClCompile Include="game\IniFile.cpp">
       <Filter>Game</Filter>
     </ClCompile>
@@ -3111,6 +3126,24 @@
     </ClCompile>
     <ClCompile Include="framework\Tracing.cpp">
       <Filter>Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\SubtitleParser\subparser.cpp">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\SubtitleParser\SubRipParser.cpp">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\SubtitleParser\SubtitleItem.cpp">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\SubtitleParser\SubtitleParser.cpp">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\SubtitleParser\SubtitleParserFactory.cpp">
+      <Filter>Sound\SubtitleParser</Filter>
+    </ClCompile>
+    <ClCompile Include="sound\SubtitleParser\SubtitleWord.cpp">
+      <Filter>Sound\SubtitleParser</Filter>
     </ClCompile>
     <ClCompile Include="renderer\vr\OpenXRSwapchainGL.cpp">
       <Filter>Renderer\VR</Filter>
