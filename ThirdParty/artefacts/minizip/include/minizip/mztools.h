@@ -22,7 +22,7 @@ extern "C" {
    fileOut: output file after recovery
    fileOutTmp: temporary file name used for recovery
 */
-MINIZIP_EXTERN int ZEXPORT unzRepair(const char* file,
+extern int ZEXPORT unzRepair(const char* file,
                              const char* fileOut,
                              const char* fileOutTmp,
                              uLong* nRecovered,
