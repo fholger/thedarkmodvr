@@ -308,26 +308,21 @@ typedef void noreturn_t;
 #endif
 
 
-/*
- * On a few systems, type boolean and/or its values FALSE, TRUE may appear
- * in standard header files.  Or you may have conflicts with application-
- * specific header files that you want to include together with these files.
- * Defining HAVE_BOOLEAN before including jpeglib.h should make it work.
+#ifndef HAVE_BOOLEAN
+/* stgatilov: always set boolean as unsigned char!
+ * So that same headers can be used for all platforms.
  */
 
-#ifndef HAVE_BOOLEAN
-#if defined FALSE || defined TRUE || defined QGLOBAL_H
-/* Qt3 defines FALSE and TRUE as "const" variables in qglobal.h */
-typedef int boolean;
+#ifndef __RPCNDR_H__		/* don't conflict if rpcndr.h already read */
+typedef unsigned char boolean;
+#endif
 #ifndef FALSE			/* in case these macros already exist */
 #define FALSE	0		/* values of boolean */
 #endif
 #ifndef TRUE
 #define TRUE	1
 #endif
-#else
-typedef enum { FALSE = 0, TRUE = 1 } boolean;
-#endif
+
 #endif
 
 
