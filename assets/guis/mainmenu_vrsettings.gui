@@ -104,14 +104,14 @@ windowDef VRSettingsRootMenu
 				set "VRSettingsGeneralText::forecolor" SBOLDGLOW_WHITE_COLOR;
 				set "VRSettingsGeneralTextH::forecolor" SGLOW_DARKRED_COLOR;
 			}
-			else if ("gui::vrsettingspage" == VRSETTINGS_PAGE_CONTROLS)
+			/*else if ("gui::vrsettingspage" == VRSETTINGS_PAGE_CONTROLS)
 			{
 				set "cmd" "log 'Selecting VRSETTINGS_PAGE_CONTROLS.'";
 
 				set "VRSettingsControlsCanvas::visible" 1;
 				set "VRSettingsControlsText::forecolor" SBOLDGLOW_WHITE_COLOR;
 				set "VRSettingsControlsTextH::forecolor" SGLOW_DARKRED_COLOR;
-			}
+			}*/
 			else
 			{
 				set "cmd" "log 'Error: Unknown vrsettingspage value.'";
@@ -168,7 +168,7 @@ windowDef VRSettingsRootMenu
 		}
 	}
 
-	windowDef VRSettingsControlsTextH
+	/*windowDef VRSettingsControlsTextH
 	{
 		rect	398, 100, 85, 21
 		MM_FONT_CENTER_GLOW
@@ -214,7 +214,7 @@ windowDef VRSettingsRootMenu
 			set "gui::vrsettingspage" VRSETTINGS_PAGE_CONTROLS;
 			resetTime "VRSettingsPageSelect" 0;
 		}
-	}
+	}*/
 
 	windowDef VRSettingsBackH
 	{
