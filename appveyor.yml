@@ -1,7 +1,7 @@
-version: 2.09.{build}
+version: 2.10.{build}
 
 image:
-- Visual Studio 2019
+- Visual Studio 2022
 - Ubuntu1804
 
 configuration:
