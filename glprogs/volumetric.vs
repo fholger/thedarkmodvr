@@ -12,19 +12,14 @@ or (at your option) any later version. For details, see LICENSE.TXT.
 Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
-#version 430
+#version 330
 
-layout(location = 0) in vec4 attr_Vertex;
+#pragma tdm_include "tdm_transform.glsl"
+INATTR_POSITION  //in vec4 attr_Position;
 
-layout (location = 0) uniform mat4[2] u_MVP;
-
-out vec4 csThis;
-out vec4 lightProject;
 out vec4 worldPosition;
 
 void main() {
-	gl_Position = u_MVP[1] * u_MVP[0] * attr_Vertex;
-	worldPosition = attr_Vertex;
-	// fragment position in clip space
-	csThis = u_MVP[1] * u_MVP[0] * attr_Vertex;
+	gl_Position = tdm_transform(attr_Position);
+	worldPosition = attr_Position;
 }

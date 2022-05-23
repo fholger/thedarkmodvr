@@ -383,8 +383,7 @@ typedef struct viewLight_s {
 	bool					pointLight;
 	bool					noShadows;
 	bool					noSpecular;
-
-	float					radius;
+	bool					volumetricNoshadows;		// stgatilov #5816: ignore shadows in volumetric light
 
 	idVec3					globalLightOrigin;			// global light origin used by backend
 	idPlane					lightProject[4];			// light project used by backend
@@ -394,6 +393,7 @@ typedef struct viewLight_s {
 	const idMaterial 		*lightShader;				// light shader used by backend
 	const float				*shaderRegisters;			// shader registers used by backend
 	idImage 				*falloffImage;				// falloff image used by backend
+	float					volumetricDust;				// stgatilov #5816: strength of volumetric light
 
 	/*const */struct drawSurf_s	*globalShadows;				// shadow everything
 	/*const */struct drawSurf_s	*localInteractions;			// don't get local shadows
@@ -468,6 +468,7 @@ typedef struct viewDef_s {
 	bool				isSubview;				// true if this view is not the main view
 	bool				isMirror;				// the portal is a mirror, invert the face culling
 	xrayEntityMask_t	xrayEntityMask;
+	bool				hasXraySubview;
 
 	bool				isEditor;
 
@@ -542,10 +543,10 @@ typedef struct {
 										// (not a bool just to avoid an uninitialized memory check of the pad region by valgrind)
 	int					cubicLight;		// nbohr1more #3881: dedicated cubemap light // probably not needed
 
-	// these are loaded into the vertex program
 	idVec4				localLightOrigin;
 	idVec4				localViewOrigin;
-	idVec4				lightProjection[4];	// in local coordinates, possibly with a texture matrix baked in
+	idVec4				lightProjection[4];		// transforms object coords into light-volume coords
+	idVec4				lightTextureMatrix[2];	// transforms light-volume coords into lightImage texcoords
 	idVec4				bumpMatrix[2];
 	idVec4				diffuseMatrix[2];
 	idVec4				specularMatrix[2];
@@ -767,7 +768,6 @@ typedef struct {
 
 	viewLight_t 		*vLight;
 	int					depthFunc;			// GLS_DEPTHFUNC_EQUAL, or GLS_DEPTHFUNC_LESS for translucent
-	float				lightTextureMatrix[16];	// only if lightStage->texture.hasMatrix
 	float				lightColor[4];		// evaluation of current light's color stage
 
 	float				lightScale;			// Every light color calaculation will be multiplied by this,
@@ -1109,6 +1109,10 @@ extern idCVar r_cinematic_legacyRoq;
 //stgatilov: temporary cvars, to be removed when ARB->GLSL migration is complete and settled
 extern idCVar r_glCoreProfile;
 
+//stgatilov #5816: volumetric light config
+extern idCVar r_volumetricSamples;
+extern idCVar r_volumetricDither;
+
 /*
 ====================================================================
 
@@ -1417,6 +1421,7 @@ POLYTOPE
 */
 
 srfTriangles_t *R_PolytopeSurface( int numPlanes, const idPlane *planes, idWinding *windings );
+bool R_PolytopeSurfaceFrustumLike( const idPlane planes[6], idVec3 vertices[8], idWinding windings[6], srfTriangles_t* *surface = NULL );
 
 /*
 ============================================================
@@ -1575,6 +1580,7 @@ void				R_ReferenceStaticTriSurfIndexes( srfTriangles_t *tri, const srfTriangles
 void				R_FreeStaticTriSurfSilIndexes( srfTriangles_t *tri );
 void				R_FreeStaticTriSurf( srfTriangles_t *tri );
 void				R_FreeStaticTriSurfVertexCaches( srfTriangles_t *tri );
+void				R_FreeStaticTriSurfIndexes( srfTriangles_t *tri );
 void				R_ReallyFreeStaticTriSurf( srfTriangles_t *tri );
 void				R_FreeDeferredTriSurfs( frameData_t *frame );
 int					R_TriSurfMemory( const srfTriangles_t *tri );

@@ -19,8 +19,6 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 
 #include "snd_local.h"
-#include "SubtitleParser/SubtitleParserFactory.h"
-#include "SubtitleParser/SubtitleParser.h"
 
 
 /*
@@ -176,7 +174,7 @@ void idSoundChannel::Clear( void ) {
 	memset( &parms, 0, sizeof(parms) );
 
 	triggered = false;
-	openalSource = NULL;
+	openalSource = 0;
 	openalStreamingOffset = 0;
 	openalStreamingBuffer[0] = openalStreamingBuffer[1] = openalStreamingBuffer[2] = 0;
 	lastopenalStreamingBuffer[0] = lastopenalStreamingBuffer[1] = lastopenalStreamingBuffer[2] = 0;
@@ -191,17 +189,6 @@ void idSoundChannel::Start( void ) {
 	triggerState = true;
 	if ( decoder == NULL ) {
 		decoder = idSampleDecoder::Alloc();
-	}
-	if ( leadinSample ) {
-		idStr srtFileName = leadinSample->name;
-		srtFileName.SetFileExtension( ".srt" );
-		if ( fileSystem->ReadFile( srtFileName.c_str(), nullptr, nullptr ) != -1 ) {
-			auto osPath = fileSystem->RelativePathToOSPath( srtFileName.c_str(), "fs_modSavePath" );
-			auto subParserFactory = new SubtitleParserFactory( osPath );
-			auto parser = subParserFactory->getParser();
-			auto x = parser->getFileData();
-			subtitles = parser->getSubtitles();
-		}
 	}
 }
 
@@ -259,18 +246,6 @@ samples and leadins
 void idSoundChannel::GatherChannelSamples( int sampleOffset44k, int sampleCount44k, float *dest ) const {
 	float	*dest_p = dest;
 	int		len;
-
-	if ( leadinSample && !subtitles.empty() )
-	if ( idUserInterface* guiActive = session->GetGui( idSession::gtActive ) ) {
-		guiActive->SetStateString( "subtitle", "" );
-		for ( auto& subtitle : subtitles ) {
-			if ( sampleOffset44k / 44.1 > subtitle->getStartTime() && sampleOffset44k / 44.1 < subtitle->getEndTime() ) {
-				guiActive->SetStateString( "subtitle", subtitle->getText().c_str() );
-				break;
-			}
-		}
-	}
-//Sys_DebugPrintf( "msec:%i sample:%i : %i : %i\n", Sys_Milliseconds(), soundSystemLocal.GetCurrent44kHzTime(), sampleOffset44k, sampleCount44k );	//!@#
 
 	// negative offset times will just zero fill
 	if ( sampleOffset44k < 0 ) {
@@ -338,6 +313,53 @@ void idSoundChannel::GatherChannelSamples( int sampleOffset44k, int sampleCount4
 		sampleCount44k -= len;
 		sampleOffset44k += len;
 	}
+}
+
+/*
+===================
+idSoundChannel::GatherSubtitles
+
+Gets subtitles to show at given moment.
+Handles looping between multiple different samples and leadins.
+Return values are appended to "matches" array, their number is returned.
+
+Note: sampleOffset44k is multiplied by number of channels, like in GatherChannelSamples.
+===================
+*/
+int idSoundChannel::GatherSubtitles( int sampleOffset44k, idList<SubtitleMatch> &matches, int level ) const {
+	// grab part of the leadin sample
+	idSoundSample *leadin = leadinSample;
+	if ( !leadin || sampleOffset44k < 0 ) {
+		return 0;
+	}
+	if ( leadin->subtitlesVerbosity > level ) {
+		return 0;
+	}
+
+	int addedNum = 0;
+	// if current moment is in leadin sample
+	if ( sampleOffset44k < leadin->LengthIn44kHzSamples() ) {
+		addedNum = leadin->FetchSubtitles( sampleOffset44k / leadin->objectInfo.nChannels, matches );
+	}
+	else {
+		// is it looping?
+		if ( !soundShader || !( parms.soundShaderFlags & SSF_LOOPING ) ) {
+			return 0;
+		}
+		idSoundSample *loop = soundShader->entries[0];
+		if ( !loop ) {
+			return 0;
+		}
+
+		// if current moment is in looping sample
+		int remainderOffset = ( sampleOffset44k - leadin->LengthIn44kHzSamples() ) % loop->LengthIn44kHzSamples();
+		addedNum = leadin->FetchSubtitles( remainderOffset / leadin->objectInfo.nChannels, matches );
+	}
+
+	// save channel in generated matches
+	for ( int i = matches.Num() - addedNum; i < matches.Num(); i++ )
+		matches[i].channel = this;
+	return addedNum;
 }
 
 

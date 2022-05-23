@@ -21,23 +21,9 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "math/Line.h"
 #include "../Game_local.h"
 
-#define	MAX_SECTOR_DEPTH				12
-#define MAX_SECTORS						((1<<(MAX_SECTOR_DEPTH+1))-1)
-
-typedef struct clipSector_s {
-	int						axis;		// -1 = leaf node
-	float					dist;
-	struct clipSector_s *	children[2];
-	struct clipLink_s *		clipLinks;
-} clipSector_t;
-
-typedef struct clipLink_s {
-	idClipModel *			clipModel;
-	struct clipSector_s *	sector;
-	struct clipLink_s *		prevInSector;
-	struct clipLink_s *		nextInSector;
-	struct clipLink_s *		nextLink;
-} clipLink_t;
+//stgatilov: record some information into trace events for idClip calls
+//unfortunately, it adds considerable overhead time, so is disabled by default
+#define TRACE_CLIP_INFO 0
 
 typedef struct trmCache_s {
 	idTraceModel			trm;
@@ -49,7 +35,6 @@ typedef struct trmCache_s {
 
 idVec3 vec3_boxEpsilon( CM_BOX_EPSILON, CM_BOX_EPSILON, CM_BOX_EPSILON );
 
-idBlockAlloc<clipLink_t, 1024>	clipLinkAllocator;
 
 
 /*
@@ -227,7 +212,7 @@ bool idClipModel::LoadModel( const char *name, const idDeclSkin* skin )
 		traceModelIndex = -1;
 	}
 	collisionModelHandle = collisionModelManager->LoadModel( name, false, skin );
-	if ( collisionModelHandle ) {
+	if ( collisionModelHandle >= 0 ) {
 		collisionModelManager->GetModelBounds( collisionModelHandle, bounds );
 		collisionModelManager->GetModelContents( collisionModelHandle, contents );
 		return true;
@@ -291,7 +276,6 @@ void idClipModel::Init( void ) {
 	collisionModelHandle = 0;
 	renderModelHandle = -1;
 	traceModelIndex = -1;
-	clipLinks = NULL;
 	touchCount = -1;
 }
 
@@ -368,7 +352,6 @@ idClipModel::idClipModel( const idClipModel *model ) {
 		LoadModel( *GetCachedTraceModel( model->traceModelIndex ) );
 	}
 	renderModelHandle = model->renderModelHandle;
-	clipLinks = NULL;
 	touchCount = -1;
 }
 
@@ -407,7 +390,7 @@ void idClipModel::Save( idSaveGame *savefile ) const {
 		savefile->WriteString( "" );
 	}
 	savefile->WriteInt( traceModelIndex );
-	savefile->WriteBool( clipLinks != NULL );
+	savefile->WriteBool( IsLinked() );
 	savefile->WriteInt( touchCount );
 }
 
@@ -452,7 +435,6 @@ void idClipModel::Restore( idRestoreGame *savefile ) {
 
 	// the render model will be set when the clip model is linked, so do not restore it
 	renderModelHandle = -1;
-	clipLinks = NULL;
 	touchCount = -1;
 
 	if ( linked ) {
@@ -466,7 +448,7 @@ idClipModel::SetPosition
 ================
 */
 void idClipModel::SetPosition( const idVec3 &newOrigin, const idMat3 &newAxis ) {
-	if ( clipLinks ) {
+	if ( IsLinked() ) {
 		Unlink();	// unlink from old position
 	}
 	origin = newOrigin;
@@ -512,53 +494,15 @@ void idClipModel::GetMassProperties( const float density, float &mass, idVec3 &c
 idClipModel::Unlink
 ===============
 */
-void idClipModel::Unlink( void ) {
-	clipLink_t *link;
+void idClipModel::Unlink() {
+	// stgatilov: this is a bit hacky,
+	// but we only ever use one instance of idClip,
+	// and storing additional pointer would be unnecessary waste of memory
+	idClip &clp = gameLocal.clip;
 
-	for ( link = clipLinks; link; link = clipLinks ) {
-		clipLinks = link->nextLink;
-		if ( link->prevInSector ) {
-			link->prevInSector->nextInSector = link->nextInSector;
-		} else {
-			link->sector->clipLinks = link->nextInSector;
-		}
-		if ( link->nextInSector ) {
-			link->nextInSector->prevInSector = link->prevInSector;
-		}
-		clipLinkAllocator.Free( link );
-	}
-}
+	clp.octree.Remove( this );
 
-/*
-===============
-idClipModel::Link_r
-===============
-*/
-void idClipModel::Link_r( struct clipSector_s *node ) {
-	clipLink_t *link;
-
-	while( node->axis != -1 ) {
-		if ( absBounds[0][node->axis] > node->dist ) {
-			node = node->children[0];
-		} else if ( absBounds[1][node->axis] < node->dist ) {
-			node = node->children[1];
-		} else {
-			Link_r( node->children[0] );
-			node = node->children[1];
-		}
-	}
-
-	link = clipLinkAllocator.Alloc();
-	link->clipModel = this;
-	link->sector = node;
-	link->nextInSector = node->clipLinks;
-	link->prevInSector = NULL;
-	if ( node->clipLinks ) {
-		node->clipLinks->prevInSector = link;
-	}
-	node->clipLinks = link;
-	link->nextLink = clipLinks;
-	clipLinks = link;
+	assert( !octreeHandle.IsLinked() );
 }
 
 /*
@@ -573,11 +517,9 @@ void idClipModel::Link( idClip &clp ) {
 		return;
 	}
 
-	if ( clipLinks ) {
-		Unlink();	// unlink from old position
-	}
 
 	if ( bounds.IsCleared() ) {
+		Unlink();	// unlink from old position
 		return;
 	}
 
@@ -596,7 +538,7 @@ void idClipModel::Link( idClip &clp ) {
 	absBounds[0] -= vec3_boxEpsilon;
 	absBounds[1] += vec3_boxEpsilon;
 
-	Link_r( clp.clipSectors );
+	clp.octree.Update( this, absBounds );
 }
 
 /*
@@ -645,60 +587,16 @@ idClip::idClip
 ===============
 */
 idClip::idClip( void ) {
-	numClipSectors = 0;
-	clipSectors = NULL;
 	worldBounds.Zero();
 	numRotations = numTranslations = numMotions = numRenderModelTraces = numContents = numContacts = 0;
 }
 
 /*
 ===============
-idClip::CreateClipSectors_r
-
-Builds a uniformly subdivided tree for the given world size
+idClip::idClip
 ===============
 */
-clipSector_t *idClip::CreateClipSectors_r( const int depth, const idBounds &bounds, idVec3 &maxSector ) {
-	int				i;
-	clipSector_t	*anode;
-	idVec3			size;
-	idBounds		front, back;
-
-	anode = &clipSectors[idClip::numClipSectors];
-	idClip::numClipSectors++;
-
-	if ( depth == MAX_SECTOR_DEPTH ) {
-		anode->axis = -1;
-		anode->children[0] = anode->children[1] = NULL;
-
-		for ( i = 0; i < 3; i++ ) {
-			if ( bounds[1][i] - bounds[0][i] > maxSector[i] ) {
-				maxSector[i] = bounds[1][i] - bounds[0][i];
-			}
-		}
-		return anode;
-	}
-
-	size = bounds[1] - bounds[0];
-	if ( size[0] >= size[1] && size[0] >= size[2] ) {
-		anode->axis = 0;
-	} else if ( size[1] >= size[0] && size[1] >= size[2] ) {
-		anode->axis = 1;
-	} else {
-		anode->axis = 2;
-	}
-
-	anode->dist = 0.5f * ( bounds[1][anode->axis] + bounds[0][anode->axis] );
-
-	front = bounds;
-	back = bounds;
-	
-	front[0][anode->axis] = back[1][anode->axis] = anode->dist;
-	
-	anode->children[0] = CreateClipSectors_r( depth+1, front, maxSector );
-	anode->children[1] = CreateClipSectors_r( depth+1, back, maxSector );
-
-	return anode;
+idClip::~idClip( void ) {
 }
 
 /*
@@ -707,23 +605,27 @@ idClip::Init
 ===============
 */
 void idClip::Init( void ) {
-	cmHandle_t h;
-	idVec3 size, maxSector = vec3_origin;
-
-	// clear clip sectors
-	clipSectors = new clipSector_t[MAX_SECTORS];
-	memset( clipSectors, 0, MAX_SECTORS * sizeof( clipSector_t ) );
-	numClipSectors = 0;
-	touchCount = -1;
 	// get world map bounds
-	h = collisionModelManager->LoadModel( "worldMap", false );
+	//stgatilov: name of collision model equals "name" spawnarg of worldspawn entity (and "worldMap" if not specified)
+	//however, it is certain that world collision model is always the first one (that's how it worked before rev 9592)
+	cmHandle_t h = 0;	//collisionModelManager->LoadModel( "worldMap", false );
+	const char *cmname = collisionModelManager->GetModelName( h );	//should be "worldMap" or whatever worldspawn's name is
 	collisionModelManager->GetModelBounds( h, worldBounds );
-	// create world sectors
-	CreateClipSectors_r( 0, worldBounds, maxSector );
 
-	size = worldBounds[1] - worldBounds[0];
+	idVec3 size = worldBounds[1] - worldBounds[0];
 	gameLocal.Printf( "map bounds are (%1.1f, %1.1f, %1.1f)\n", size[0], size[1], size[2] );
-	gameLocal.Printf( "max clip sector is (%1.1f, %1.1f, %1.1f)\n", maxSector[0], maxSector[1], maxSector[2] );
+
+	// expand world bounds to cubic shape (same size by all coords) with same center
+	idVec3 worldCenter = worldBounds.GetCenter();
+	float worldRadius = size.Max() * 0.5f;
+	idBounds worldCube(worldCenter);
+	worldCube.ExpandSelf(worldRadius);
+
+	// initialize octree
+	touchCount = -1;
+	octree.Init(worldCube, [](idBoxOctree::Pointer ptr) -> idBoxOctreeHandle& {
+		return ((idClipModel*)ptr)->GetOctreeHandle();
+	});
 
 	// initialize a default clip model
 	defaultClipModel.LoadModel( idTraceModel( idBounds( idVec3( 0, 0, 0 ) ).Expand( 8 ) ) );
@@ -734,12 +636,20 @@ void idClip::Init( void ) {
 
 /*
 ===============
+idClip::Optimize
+===============
+*/
+void idClip::Optimize( void ) {
+	octree.Condense();
+}
+
+/*
+===============
 idClip::Shutdown
 ===============
 */
 void idClip::Shutdown( void ) {
-	delete[] clipSectors;
-	clipSectors = NULL;
+	octree.Clear();
 
 	// free the trace model used for the temporaryClipModel
 	if ( temporaryClipModel.traceModelIndex != -1 ) {
@@ -752,137 +662,6 @@ void idClip::Shutdown( void ) {
 		idClipModel::FreeTraceModel( defaultClipModel.traceModelIndex );
 		defaultClipModel.traceModelIndex = -1;
 	}
-
-	clipLinkAllocator.Shutdown();
-}
-
-/*
-====================
-idClip::ClipModelsTouchingBounds_r
-====================
-*/
-typedef struct listParms_s {
-	idBounds		bounds;
-	int				contentMask;
-	idClip_ClipModelList *list;
-} listParms_t;
-
-void idClip::ClipModelsTouchingBounds_r( const struct clipSector_s *node, listParms_t &parms ) const {
-
-	while( node->axis != -1 ) {
-		if ( parms.bounds[0][node->axis] > node->dist ) {
-			node = node->children[0];
-		} else if ( parms.bounds[1][node->axis] < node->dist ) {
-			node = node->children[1];
-		} else {
-			ClipModelsTouchingBounds_r( node->children[0], parms );
-			node = node->children[1];
-		}
-	}
-
-	for ( clipLink_t *link = node->clipLinks; link; link = link->nextInSector ) {
-		idClipModel	*check = link->clipModel;
-
-		// if the clip model is enabled
-		if ( !check->enabled ) {
-			continue;
-		}
-
-		// avoid duplicates in the list
-		if ( check->touchCount == touchCount ) {
-			continue;
-		}
-
-		// if the clip model does not have any contents we are looking for
-		if ( !( check->contents & parms.contentMask ) ) {
-			continue;
-		}
-
-		// if the bounds really do overlap
-		if ( !check->absBounds.IntersectsBounds(parms.bounds) ) {
-			continue;
-		}
-
-		check->touchCount = touchCount;
-		parms.list->AddGrow(check);
-	}
-}
-
-/*
-====================
-idClip::ClipModelsTouchingMovingBounds_r
-====================
-*/
-struct listParmsMoving : public listParms_t {
-	//line segment defining movement of object
-	idVec3 start;
-	idVec3 invDir;
-	//thickess of the moving bounds
-	idVec3 extent;
-	//for each output clipmodel: lower bound on fraction of an intersection point
-	idClip_FloatList *fractionLowers;
-
-	ID_INLINE bool IntersectsBounds(const idBounds &objBounds, float range[2]) const {
-		range[0] = 0.0f, range[1] = 1.0f;
-		return MovingBoundsIntersectBounds(start, invDir, extent, objBounds, range);
-	}
-};
-
-void idClip::ClipModelsTouchingMovingBounds_r( const clipSector_s *node, idBounds &nodeBounds, listParmsMoving &parms ) const {
-	float tempRange[2];
-	if (!parms.IntersectsBounds(nodeBounds, tempRange))
-		return;
-
-	if (node->axis != -1) {
-		if ( parms.bounds[0][node->axis] <= node->dist ) {
-			float &coord = nodeBounds[1][node->axis];
-			float old = coord;
-			coord = node->dist;
-			ClipModelsTouchingMovingBounds_r( node->children[1], nodeBounds, parms );
-			coord = old;
-		}
-		if ( parms.bounds[1][node->axis] >= node->dist ) {
-			float &coord = nodeBounds[0][node->axis];
-			float old = coord;
-			coord = node->dist;
-			ClipModelsTouchingMovingBounds_r( node->children[0], nodeBounds, parms );
-			coord = old;
-		}
-		return;
-	}
-
-	for ( clipLink_t *link = node->clipLinks; link; link = link->nextInSector ) {
-		idClipModel	*check = link->clipModel;
-
-		// if the clip model is enabled
-		if ( !check->enabled ) {
-			continue;
-		}
-
-		// avoid duplicates in the list
-		if ( check->touchCount == touchCount ) {
-			continue;
-		}
-
-		// if the clip model does not have any contents we are looking for
-		if ( !( check->contents & parms.contentMask ) ) {
-			continue;
-		}
-
-		// if the bounds really do overlap
-		if ( !check->absBounds.IntersectsBounds(parms.bounds) ) {
-			continue;
-		}
-
-		// if moving bounds intersect with entity bounds
-		if ( !parms.IntersectsBounds(check->absBounds, tempRange) ) {
-			continue;
-		}
-
-		check->touchCount = touchCount;
-		parms.list->AddGrow(check);
-		parms.fractionLowers->AddGrow(tempRange[0]);
-	}
 }
 
 /*
@@ -891,22 +670,53 @@ idClip::ClipModelsTouchingBounds
 ================
 */
 int idClip::ClipModelsTouchingBounds( const idBounds &bounds, int contentMask, idClip_ClipModelList &clipModelList ) const {
-	listParms_t parms;
-
-	if (	bounds.IsBackwards() ) {
+	if ( bounds.IsBackwards() ) {
 		// we should not go through the tree for degenerate or backwards bounds
 		assert( false );
 		return 0;
 	}
 
-	parms.bounds[0] = bounds[0] - vec3_boxEpsilon;
-	parms.bounds[1] = bounds[1] + vec3_boxEpsilon;
-	parms.contentMask = contentMask;
-	parms.list = &clipModelList;
-	clipModelList.Clear();
+	idBounds queryBox = bounds;
+	queryBox.ExpandSelf(vec3_boxEpsilon);
 
+	idBoxOctree::QueryResult res;
+	octree.QueryInBox(queryBox, res);
+
+	clipModelList.Clear();
 	touchCount++;
-	ClipModelsTouchingBounds_r( clipSectors, parms );
+
+	for ( int i = 0; i < res.Num(); i++ ) {
+		auto chunk = res[i];
+
+		for ( int j = 0; j < chunk->num; j++ ) {
+			idClipModel *check = (idClipModel*)chunk->arr[j].object;
+			const idBounds &absBounds = chunk->arr[j].bounds;
+			assert(absBounds == check->absBounds);
+
+			// if the bounds really do overlap
+			if ( !absBounds.IntersectsBounds(queryBox) ) {
+				continue;
+			}
+
+			// if the clip model does not have any contents we are looking for
+			if ( !( check->contents & contentMask ) ) {
+				continue;
+			}
+
+			// if the clip model is enabled
+			if ( !check->enabled ) {
+				continue;
+			}
+
+			// avoid duplicates in the list
+			if ( check->touchCount == touchCount ) {
+				continue;
+			}
+
+			check->touchCount = touchCount;
+			clipModelList.AddGrow(check);
+		}
+	}
 
 	return clipModelList.Num();
 }
@@ -921,29 +731,65 @@ int idClip::ClipModelsTouchingMovingBounds(
 			int contentMask,
 			idClip_ClipModelList &clipModelList, idClip_FloatList &fractionLowers ) const
 {
-	listParmsMoving parms;
-
-	if (	absBounds.IsBackwards() ) {
+	if ( absBounds.IsBackwards() ) {
 		// we should not go through the tree for degenerate or backwards bounds
 		assert( false );
 		return 0;
 	}
 
-	parms.bounds[0] = absBounds[0] - vec3_boxEpsilon;
-	parms.bounds[1] = absBounds[1] + vec3_boxEpsilon;
-	parms.contentMask = contentMask;
-	parms.list = &clipModelList;
+	idBounds queryBox = absBounds;
+	queryBox.ExpandSelf(vec3_boxEpsilon);
+
+	idVec3 queryStart = start + stillBounds.GetCenter();
+	idVec3 queryExtent = stillBounds.GetSize() * 0.5f + vec3_boxEpsilon;
+	idVec3 queryInvDir = GetInverseMovementVelocity(start, end);
+
+	idBoxOctree::QueryResult res;
+	octree.QueryInMovingBox(queryBox, queryStart, queryInvDir, queryExtent, res);
+
 	clipModelList.Clear();
-
-	parms.fractionLowers = &fractionLowers;
 	fractionLowers.Clear();
-	parms.start = start + stillBounds.GetCenter();
-	parms.extent = stillBounds.GetSize() * 0.5f + vec3_boxEpsilon;
-	parms.invDir = GetInverseMovementVelocity(start, end);
-
 	touchCount++;
-	idBounds nodeBounds(idVec3(-1e+10f), idVec3(1e+10f));
-	ClipModelsTouchingMovingBounds_r( clipSectors, nodeBounds, parms );
+
+	for ( int i = 0; i < res.Num(); i++ ) {
+		auto chunk = res[i];
+
+		for ( int j = 0; j < chunk->num; j++ ) {
+			idClipModel *check = (idClipModel*)chunk->arr[j].object;
+			const idBounds &absBounds = chunk->arr[j].bounds;
+			assert(absBounds == check->absBounds);
+
+			// if the bounds really do overlap
+			if ( !absBounds.IntersectsBounds(queryBox) ) {
+				continue;
+			}
+
+			// if moving bounds intersect with entity bounds
+			float range[2] = {0.0f, 1.0f};
+			if ( !MovingBoundsIntersectBounds(start, queryInvDir, queryExtent, absBounds, range) ) {
+				continue;
+			}
+
+			// if the clip model does not have any contents we are looking for
+			if ( !( check->contents & contentMask ) ) {
+				continue;
+			}
+
+			// if the clip model is enabled
+			if ( !check->enabled ) {
+				continue;
+			}
+
+			// avoid duplicates in the list
+			if ( check->touchCount == touchCount ) {
+				continue;
+			}
+
+			check->touchCount = touchCount;
+			clipModelList.AddGrow(check);
+			fractionLowers.AddGrow(range[0]);
+		}
+	}
 
 	// sort clip models by lower bound on intersection time
 	int n = clipModelList.Num();
@@ -1147,8 +993,19 @@ bool idClip::Translation( trace_t &results, const idVec3 &start, const idVec3 &e
 	if ( TestHugeTranslation( results, mdl, start, end, trmAxis ) ) {
 		return true;
 	}
+	TRACE_CPU_SCOPE("Clip:Translate");
 
 	trm = TraceModelForClipModel( mdl );
+
+#if TRACE_CLIP_INFO
+	TRACE_ATTACH_FORMAT("(%0.2f %0.2f %0.2f) -> (%0.2f %0.2f %0.2f)\nContMask: 0x%x\nTrm: V%d\nIgnore: %s %s\n",
+		start.x, start.y, start.z, end.x, end.y, end.z,
+		contentMask, 
+		(trm ? trm->numVerts: -1),
+		(ignoreWorld ? "ignoreWorld" : ""),
+		(passEntity ? passEntity->name.c_str() : "")
+	)
+#endif
 
 	if ( !ignoreWorld && (!passEntity || passEntity->entityNumber != ENTITYNUM_WORLD) ) {
 		// test world
@@ -1232,6 +1089,15 @@ bool idClip::Translation( trace_t &results, const idVec3 &start, const idVec3 &e
 		}
 	}
 
+#if TRACE_CLIP_INFO
+	TRACE_ATTACH_FORMAT("%s#cand: %d\nFrac: %0.3f\nHitEnt: %s\nCont:0x%d",
+		movingClipCheck ? "Moving check\n" : "",
+		num,
+		results.fraction,
+		(results.c.entityNum == ENTITYNUM_NONE || !gameLocal.entities[results.c.entityNum] ? "[none]" : gameLocal.entities[results.c.entityNum]->name.c_str()),
+		results.c.contents
+	)
+#endif
 	return ( results.fraction < 1.0f );
 }
 
@@ -1247,6 +1113,8 @@ bool idClip::Rotation( trace_t &results, const idVec3 &start, const idRotation &
 	idBounds traceBounds;
 	trace_t trace;
 	const idTraceModel *trm;
+
+	TRACE_CPU_SCOPE("Clip:Rotate");
 
 	trm = TraceModelForClipModel( mdl );
 
@@ -1324,6 +1192,8 @@ bool idClip::Motion( trace_t &results, const idVec3 &start, const idVec3 &end, c
 	if ( TestHugeTranslation( results, mdl, start, end, trmAxis ) ) {
 		return true;
 	}
+
+	TRACE_CPU_SCOPE("Clip:Motion");
 
 	if ( mdl != NULL && rotation.GetAngle() != 0.0f && rotation.GetVec() != vec3_origin ) {
 		// if no translation
@@ -1478,7 +1348,18 @@ int idClip::Contacts( contactInfo_t *contacts, const int maxContacts, const idVe
 	idBounds traceBounds;
 	const idTraceModel *trm;
 
+	TRACE_CPU_SCOPE("Clip:Contacts");
+
 	trm = TraceModelForClipModel( mdl );
+
+#if TRACE_CLIP_INFO
+	TRACE_ATTACH_FORMAT("(%0.2f %0.2f %0.2f): (%0.2f %0.2f %0.2f  %0.2f %0.2f %0.2f) D%0.2f\nContMask: 0x%x\nTrm: V%d\nIgnore: %s\n",
+		start.x, start.y, start.z, dir[0], dir[1], dir[2], dir[3], dir[4], dir[5], depth,
+		contentMask, 
+		(trm ? trm->numVerts: -1),
+		(passEntity ? passEntity->name.c_str() : "")
+	)
+#endif
 
 	if ( !passEntity || passEntity->entityNumber != ENTITYNUM_WORLD ) {
 		// test world
@@ -1535,6 +1416,12 @@ int idClip::Contacts( contactInfo_t *contacts, const int maxContacts, const idVe
 		}
 	}
 
+#if TRACE_CLIP_INFO
+	TRACE_ATTACH_FORMAT("#cand: %d\n#contacts: %d\n",
+		num,
+		numContacts
+	)
+#endif
 	return numContacts;
 }
 
@@ -1549,7 +1436,18 @@ int idClip::Contents( const idVec3 &start, const idClipModel *mdl, const idMat3 
 	idBounds traceBounds;
 	const idTraceModel *trm;
 
+	TRACE_CPU_SCOPE("Clip:Contents");
+
 	trm = TraceModelForClipModel( mdl );
+
+#if TRACE_CLIP_INFO
+	TRACE_ATTACH_FORMAT("(%0.2f %0.2f %0.2f)\nContMask: 0x%x\nTrm: V%d\nIgnore: %s\n",
+		start.x, start.y, start.z,
+		contentMask, 
+		(trm ? trm->numVerts: -1),
+		(passEntity ? passEntity->name.c_str() : "")
+	)
+#endif
 
 	if ( !passEntity || passEntity->entityNumber != ENTITYNUM_WORLD ) {
 		// test world
@@ -1600,6 +1498,12 @@ int idClip::Contents( const idVec3 &start, const idClipModel *mdl, const idMat3 
 		}
 	}
 
+#if TRACE_CLIP_INFO
+	TRACE_ATTACH_FORMAT("#cand: %d\n#contents: 0x%x\n",
+		num,
+		contents
+	)
+#endif
 	return contents;
 }
 

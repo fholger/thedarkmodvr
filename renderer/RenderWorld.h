@@ -175,6 +175,9 @@ typedef struct renderLight_s {
 	// which can allow player gun gui lights and such to not effect everyone
 	int						allowLightInViewID;
 
+	// this is different to *InViewID because a subview can still be VID_PLAYER_VIEW
+	int						suppressInSubview; // bitmask: 0 - suppress in subviews, 1 - supress in player views
+
 	// I am sticking the four bools together so there are no unused gaps in
 	// the padded structure, which could confuse the memcmp that checks for redundant
 	// updates
@@ -187,7 +190,6 @@ typedef struct renderLight_s {
 	idVec3					lightRadius;		// xyz radius for point lights
 	idVec3					lightCenter;		// offset the lighting direction for shading and
 												// shadows, relative to origin
-	float					radius;				// emitter halfsize
 
 	// frustum definition for projected lights, all relative to origin
 	// FIXME: we should probably have real plane equations here, and offer
@@ -214,6 +216,9 @@ typedef struct renderLight_s {
 	
 	int						spectrum;			//nbohr1more: #4956 spectrum entity arg
 	renderEntity_s::areaLock_t areaLock;
+
+	float					volumetricDust;		//stgatilov #5816: strength of volumetric light (in color per meter)
+	int						volumetricNoshadows;//stgatilov #5816: use shadows or disable volumetric light?
 
 } renderLight_t;
 

@@ -68,6 +68,13 @@ typedef enum {
 	TD_YES_THEN_QUIT
 } timeDemo_t;
 
+typedef enum {
+	MMSS_MAINMENU,
+	MMSS_SUCCESS,
+	MMSS_FAILURE,
+	MMSS_BRIEFING,
+} mainMenuStartState_t;
+
 const int USERCMD_PER_DEMO_FRAME	= 2;
 const int CONNECT_TRANSMIT_TIME		= 1000;
 const int MAX_LOGGED_USERCMDS		= 60*60*60;	// one hour of single player, 15 minutes of four player
@@ -172,6 +179,7 @@ public:
 	static idCVar		com_showTics;
 	static idCVar		com_minTics;
 	static idCVar		com_fixedTic;
+	static idCVar		com_maxFPS;
 	static idCVar		com_maxTicTimestep;
 	static idCVar		com_maxTicsPerFrame;
 	static idCVar		com_showDemo;
@@ -212,6 +220,7 @@ public:
 	mapSpawnData_t		mapSpawnData;
 	idStr				currentMapName;			// for checking reload on same level
 	bool				mapSpawned;				// cleared on Stop()
+	mainMenuStartState_t mainMenuStartState;	// stgatilov: which state of main menu to start with when it activates?
 
 	int					numClients;				// from serverInfo
 
@@ -255,7 +264,6 @@ public:
 	idUserInterface *	guiInGame;
 	idUserInterface *	guiMainMenu;
 	idListGUI *			guiMainMenu_MapList;		// easy map list handling
-	idUserInterface *	guiRestartMenu;
 	idUserInterface *	guiLoading;
 	idUserInterface *	guiTest;
 	
@@ -279,9 +287,8 @@ public:
 	int					emptyDrawCount;				// watchdog to force the main menu to restart
 #endif
 
-	int64_t				lastFrameTimestamp;	// in ms, updated every frame
-	int					currentTimestep;	// in ms
-	int					gameTicsToRun;
+	int					gameTicsToRun;			// how many game ticks to run this frame
+	int					gameTimestepTotal;		// total timestep for all game tics to be run this frame (in milliseconds)
 	uintptr_t			frontendThread;
 	std::condition_variable signalFrontendThread;
 	std::condition_variable signalMainThread;
@@ -351,6 +358,9 @@ public:
 	void				HandleMsgCommands( const char *menuCommand );
 	void				GetSaveGameList( idStrList &fileList, idList<fileTIME_T> &fileTimes );
 	void				UpdateMPLevelShot( void );
+	void				ResetMainMenu() override;
+	void				CreateMainMenu();
+	void				SetMainMenuStartAtBriefing() override;
 
 	void				SetSaveGameGuiVars( void );
 	void				SetMainMenuGuiVars( void );

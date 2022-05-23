@@ -763,8 +763,6 @@ static void RB_ShowTris( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		return;
 	}
 
-	//qglDisable( GL_TEXTURE_2D );
-	globalImages->whiteImage->Bind();
 	qglDisable( GL_STENCIL_TEST );
 
 	GL_FloatColor( 1, 1, 1 );
@@ -948,7 +946,7 @@ static void RB_ShowEntityDraws() {
 	}
 
 	const bool group = r_showEntityDraws & 2;
-	const bool verts = r_showEntityDraws & 3;
+	const bool verts = r_showEntityDraws & 4;
 	idStrList list;
 	struct entityCalls {
 		int index, calls;
@@ -971,7 +969,7 @@ static void RB_ShowEntityDraws() {
 			entityCalls calls{ vModels->entityDef->index, vModels->drawCalls, name, };
 			stats.Append( calls );
 		} else {
-			if ( verts )
+			if ( verts ) // vModels->drawCalls double serves as vertex count (huge number) in this mode
 				list.Append( idStr::Fmt( "%6i %4i %s\n", vModels->drawCalls, vModels->entityDef->index, name.c_str() ) );
 			else
 				list.Append( idStr::Fmt( "%3i %4i %s\n", vModels->drawCalls, vModels->entityDef->index, name.c_str() ) );
@@ -985,7 +983,7 @@ static void RB_ShowEntityDraws() {
 			grp.entities++;
 		}
 		for ( auto& iterator : grouped )
-			list.Append( idStr::Fmt( "%3i %2i %s\n", iterator.second.calls, iterator.second.entities, iterator.first.c_str() ) );
+			list.Append( idStr::Fmt( "%5i %2i %s\n", iterator.second.calls, iterator.second.entities, iterator.first.c_str() ) );
 	}
 	list.Sort();
 	int runningTotal = 0;
@@ -1576,9 +1574,9 @@ void RB_ShowLightScissors( void ) {
 RB_ShowLights
 
 Visualize all light volumes used in the current scene
-r_showLights 1	: just print volumes numbers, highlighting ones covering the view
-r_showLights 2	: also draw planes of each volume
-r_showLights 3	: also draw edges of each volume
+r_showLights bit 1	: print volumes numbers, highlighting ones covering the view
+r_showLights bit 2	: draw planes of each volume
+r_showLights bit 3	: draw edges of each volume
 ==============
 */
 void RB_ShowLights( void ) {
@@ -1588,6 +1586,12 @@ void RB_ShowLights( void ) {
 	if ( !r_showLights.GetInteger() ) {
 		return;
 	}
+	programManager->oldStageShader->Activate();
+	OldStageUniforms* oldStageUniforms = programManager->oldStageShader->GetUniformGroup<OldStageUniforms>();
+	const float zero[4] = { 0, 0, 0, 0 };
+	static const float one[4] = { 1, 1, 1, 1 };
+	oldStageUniforms->colorMul.Set( one );
+	oldStageUniforms->colorAdd.Set( zero );
 
 	// all volumes are expressed in world coordinates
 	GL_CheckErrors();
@@ -1596,7 +1600,6 @@ void RB_ShowLights( void ) {
 	qglDisable( GL_STENCIL_TEST );
 
 	GL_Cull( CT_TWO_SIDED );
-	qglDisable( GL_DEPTH_TEST );
 	GL_CheckErrors();
 
 	idStr output = "volumes:";
@@ -1605,37 +1608,65 @@ void RB_ShowLights( void ) {
 
 	for ( vLight = backEnd.viewDef->viewLights ; vLight ; vLight = vLight->next ) {
 		GL_CheckErrors();
-		//light = vLight->lightDef;
 		count++;
 		srfTriangles_t& tri = *vLight->frustumTris;
-
 		int index = backEnd.viewDef->renderWorld->lightDefs.FindIndex( vLight->lightDef );
 		
 		// non-hidden lines
 		if ( tri.ambientCache.IsValid() ) {
 			vertexCache.VertexPosition( tri.ambientCache );
-
-			// depth buffered planes
-			if ( r_showLights.GetInteger() >= 3 ) {
-				GL_State( GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHMASK );
-				GL_FloatColor( 0, 0, 1, 0.25 );
-				qglEnable( GL_DEPTH_TEST );
+			// depth-tested planes
+			if ( r_showLights.GetInteger() & 2 ) {
+				auto color = vLight->lightShader->IsAmbientLight() ? idVec4( 0, .5, .5, 0.25 )
+					: vLight->lightShader->LightCastsShadows() ? idVec4( 0, .5, .5, 0.25 )
+					: idVec4( .5, 0, .5, 0.25 );
+				GL_FloatColor( color );
+				GL_State( GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHFUNC_LESS );
+				RB_DrawTriangles( tri );
+				color.w /= 4;
+				GL_FloatColor( color );
+				GL_State( GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHFUNC_ALWAYS );
 				RB_DrawTriangles( tri );
 			}
-
-			if ( r_showLights.GetInteger() == 2 ) {
-				GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK );
-				qglDisable( GL_DEPTH_TEST );
-				GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA );
+			// no-depth wireframe
+			if ( r_showLights.GetInteger() & 4 ) {
+				GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHFUNC_ALWAYS );
 				int c = index % 7 + 1;
-				GL_FloatColor( c & 1, c & 2, c & 4, 0.4f );
-				qglDisable( GL_DEPTH_TEST );
-				GL_CheckErrors();
+				GL_FloatColor( c & 1, c & 2, c & 4, 0.1f );
 				RB_DrawTriangles( tri );
-				GL_CheckErrors();
-				GL_FloatColor( c & 1, c & 2, c & 4 );
-				qglEnable( GL_DEPTH_TEST );
+				GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHFUNC_LESS );
+				GL_FloatColor( c & 1, c & 2, c & 4, 0.3f );
+				RB_DrawTriangles( tri );
 			}
+			GL_CheckErrors();
+		}
+
+		if ( r_showLights.GetInteger() & 8 ) {
+			// stgatilov: BFG-style frustums (may be a bit larger than normal frustums)
+			ALIGNTYPE16 frustumCorners_t corners;
+			idRenderMatrix bfgMatrix = vLight->lightDef->inverseBaseLightProject;
+			idRenderMatrix::GetFrustumCorners( corners, bfgMatrix, bounds_zeroOneCube );
+			ImmediateRendering ir;
+			auto RenderLines = [&corners,&ir]() {
+				ir.glBegin(GL_LINES);
+				for ( int v = 0; v < 8; v++ )
+					for ( int d = 0; d < 3; d++ ) {
+						int u = v ^ (1 << d);
+						if (u < v)
+							continue;
+						ir.glVertex3f(corners.x[v], corners.y[v], corners.z[v]);
+						ir.glVertex3f(corners.x[u], corners.y[u], corners.z[u]);
+					}
+				ir.glEnd();
+				ir.Flush();
+			};
+			GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHFUNC_ALWAYS );
+			int c = index % 7 + 1;
+			ir.glColor4f( c & 1, c & 2, c & 4, 0.1f );
+			RenderLines();
+			GL_State( GLS_POLYMODE_LINE | GLS_DEPTHMASK | GLS_SRCBLEND_SRC_ALPHA | GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA | GLS_DEPTHFUNC_LESS );
+			ir.glColor4f( c & 1, c & 2, c & 4, 0.3f );
+			RenderLines();
 		}
 
 		output += idStr::Fmt( " %i", index );
@@ -1652,14 +1683,11 @@ void RB_ShowLights( void ) {
 		GL_CheckErrors();
 	}
 
-	qglEnable( GL_DEPTH_TEST );
-	qglDisable( GL_POLYGON_OFFSET_LINE );
-
-	qglDepthRange( 0, 1 );
 	GL_State( GLS_DEFAULT );
 	GL_Cull( CT_FRONT_SIDED );
 
-	common->Printf( "%s = %i total\n", output.c_str(), count );
+	if ( r_showLights.GetInteger() & 1 )
+		common->Printf( "%s = %i total\n", output.c_str(), count );
 	GL_CheckErrors();
 }
 
@@ -1944,7 +1972,7 @@ RB_ShowDebugLines
 ================
 */
 void RB_ShowDebugLines( void ) {
-	if ( rb_debug.lines.Num() == 0 ) {
+	if ( rb_debug.lines.Num() == 0 || backEnd.viewDef->renderView.viewID != VID_PLAYER_VIEW ) {
 		return;
 	}
 
@@ -2026,7 +2054,7 @@ RB_ShowDebugPolygons
 ================
 */
 void RB_ShowDebugPolygons( void ) {
-	if ( !rb_debug.polygons.Num() == 0 ) {
+	if ( rb_debug.polygons.Num() == 0 ) {
 		return;
 	}
 
@@ -2454,6 +2482,7 @@ void RB_RenderDebugTools( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 	OldStageUniforms* oldStageUniforms = programManager->oldStageShader->GetUniformGroup<OldStageUniforms>();
 	oldStageUniforms->colorMul.Set( 1, 1, 1, 1 );
 	oldStageUniforms->colorAdd.Set( 0, 0, 0, 0 );
+	GL_SelectTexture(0);
 	globalImages->whiteImage->Bind();
 
 	RB_ShowLightCount();

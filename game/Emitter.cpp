@@ -47,8 +47,6 @@ idFuncEmitter::idFuncEmitter
 idFuncEmitter::idFuncEmitter( void ) {
 	
 	hidden = false;
-	m_LODHandle = 0;
-
 	m_models.Clear();
 }
 
@@ -141,16 +139,6 @@ idFuncEmitter::Present
 */
 void idFuncEmitter::Present( void ) 
 {
-
-   //nbohr1more: #4372: Allow lod_bias args for func_emitter entities
-   float lodbias = cv_lod_bias.GetFloat();
-	
-	if ( (m_MinLODBias > 0 || m_MaxLODBias < 10) && (lodbias < m_MinLODBias || lodbias > m_MaxLODBias) )
-	   {
-		renderEntity.bounds.Zero();
-		BecomeInactive( TH_UPDATEVISUALS );
-	   } 
-	
 	if( m_bFrobable )
 	{
 		UpdateFrobState();
@@ -172,7 +160,8 @@ void idFuncEmitter::Present( void )
 	renderEntity.bodyId = 0;
 	
 	// give each instance of the particle effect a unique seed -- SteveL #3945
-	renderEntity.shaderParms[ SHADERPARM_DIVERSITY ] = gameLocal.random.CRandomFloat();
+	if ( !renderEntity.shaderParms[SHADERPARM_DIVERSITY] ) // 2.10: but not when it moves bound to another entity, otherwise animation breaks
+		renderEntity.shaderParms[SHADERPARM_DIVERSITY] = gameLocal.random.CRandomFloat();
 
 	if ( !renderEntity.hModel || IsHidden() ) { // copy the default behaviour in idEntity::Present - don't re-create render entities when hidden by LOD triggers
 		return;

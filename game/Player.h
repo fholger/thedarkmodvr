@@ -57,6 +57,7 @@ extern const idEventDef EV_TriggerMissionEnd;
 extern const idEventDef EV_Player_GetLocation;
 extern const idEventDef EV_Player_GetFrobbed;
 extern const idEventDef EV_Player_SetFrobOnlyUsedByInv;
+extern const idEventDef EV_Player_GetCalibratedLightgemValue;
 
 // tels: #3282
 extern const idEventDef EV_Player_GetShouldered;
@@ -965,6 +966,7 @@ public:
 
 	// Returns the current lightgem value
 	int GetCurrentLightgemValue() { return m_LightgemValue; }
+	float GetCalibratedLightgemValue();
 
 	// Runs the (strong) lightgem calculation, returns the resulting value
 	int		ProcessLightgem(bool processing);
@@ -995,6 +997,9 @@ public:
 
 	// Runs the "Click when ready" GUI, returns TRUE if the player is ready
 	bool			WaitUntilReady();
+
+	// stgatilov #2454: enable/disable subtitles overlay and update active text to be displayed
+	void			UpdateSubtitlesGUI();
 
 	/**
 	* greebo: Sets the time between health "pulses" if the healthPool > 0
@@ -1097,6 +1102,9 @@ private:
 
 	// The GUI handle used by the in-game inventory grid display -- Durandall #4286
 	int						inventoryGridOverlay;
+
+	// The GUI handle used by the in-game subtitles -- stgatilov #2454
+	int						subtitlesOverlay;
 
 	idInterpolate<float>	zoomFov;
 	idInterpolate<float>	centerView;
@@ -1303,8 +1311,8 @@ private:
 	void					Event_Gibbed( void );
 	void					Event_GetIdealWeapon( void );
 	void					Event_RopeRemovalCleanup( idEntity *RopeEnt );
-
-
+	void					Event_GetCalibratedLightgemValue( void );
+	
 /**
 * TDM Events
 **/

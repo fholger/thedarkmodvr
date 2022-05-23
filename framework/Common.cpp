@@ -28,6 +28,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "../renderer/backend/RenderBackend.h"
 #include "LoadStack.h"
 #include "../game/Missions/MissionManager.h"
+#include "../tests/TestRun.h"
 
 #define MAX_WARNING_LIST	256
 
@@ -99,7 +100,7 @@ idCVar com_asyncSound( "com_asyncSound", "1", CVAR_INTEGER|CVAR_SYSTEM, ASYNCSOU
 idCVar com_forceGenericSIMD( "com_forceGenericSIMD", "0", CVAR_SYSTEM | CVAR_NOCHEAT,
 	"Force specified implementation of SIMD processor (if supported)\n"
 	"Value 1 or Generic forces slow platform-independent implementation. "
-	"Other options include: SSE, SSE2, SSE3, AVX, AVX2, [Win32]:IdAsm)"
+	"Other options include: SSE, SSE2, SSSE3, AVX, AVX2, [Win32]:IdAsm)"
 );
 idCVar com_fpexceptions( "com_fpexceptions", "0", CVAR_BOOL | CVAR_SYSTEM, "enable FP exceptions: throw exception when NaN or Inf value is produced" );
 idCVar com_developer( "developer", "0", CVAR_BOOL|CVAR_SYSTEM|CVAR_NOCHEAT, "developer mode" );
@@ -130,8 +131,8 @@ int				time_backend;			// renderSystem backend time
 int				time_frontendLast;
 int				time_backendLast;
 
-int				com_frameTime;			// time for the current frame in milliseconds
-int				com_frameMsec;
+int				com_frameTime;			// time moment of the current frame in milliseconds
+int				com_frameDelta;			// time elapsed since previous frame in milliseconds
 int				com_frameNumber;		// variable frame number
 std::atomic<int>	com_ticNumber;			// 60 hz tics
 int				com_editors;			// currently opened editor(s)
@@ -2362,32 +2363,6 @@ void Com_FinishBuild_f( const idCmdArgs &args ) {
 }
 
 /*
-==============
-Com_Help_f
-==============
-*/
-void Com_Help_f( const idCmdArgs &args ) {
-	common->Printf( "\nCommonly used commands:\n" );
-	common->Printf( "  spawnServer      - start the server.\n" );
-	common->Printf( "  disconnect       - shut down the server.\n" );
-	common->Printf( "  listCmds         - list all console commands.\n" );
-	common->Printf( "  listCVars        - list all console variables.\n" );
-	common->Printf( "  kick             - kick a client by number.\n" );
-	common->Printf( "  gameKick         - kick a client by name.\n" );
-	common->Printf( "  serverNextMap    - immediately load next map.\n" );
-	common->Printf( "  serverMapRestart - restart the current map.\n" );
-	common->Printf( "  serverForceReady - force all players to ready status.\n" );
-	common->Printf( "\nCommonly used variables:\n" );
-	common->Printf( "  si_name          - server name (change requires a restart to see)\n" );
-	common->Printf( "  si_gametype      - type of game.\n" );
-	common->Printf( "  si_fragLimit     - max kills to win (or lives in Last Man Standing).\n" );
-	common->Printf( "  si_timeLimit     - maximum time a game will last.\n" );
-	common->Printf( "  si_warmup        - do pre-game warmup.\n" );
-	common->Printf( "  g_mapCycle       - name of .scriptcfg file for cycling maps.\n" );
-	common->Printf( "See mapcycle.scriptcfg for an example of a mapcyle script.\n\n" );
-}
-
-/*
 =================
 idCommonLocal::InitCommands
 =================
@@ -2400,10 +2375,7 @@ void idCommonLocal::InitCommands( void ) {
 	cmdSystem->AddCommand( "exit", Com_Quit_f, CMD_FL_SYSTEM, "exits the game" );
 	cmdSystem->AddCommand( "writeConfig", Com_WriteConfig_f, CMD_FL_SYSTEM, "writes a config file" );
 	cmdSystem->AddCommand( "reloadEngine", Com_ReloadEngine_f, CMD_FL_SYSTEM, "reloads the engine down to including the file system" );
-/*	cmdSystem->AddCommand( "setMachineSpec", Com_SetMachineSpec_f, CMD_FL_SYSTEM, "detects system capabilities and sets com_machineSpec to appropriate value" );
-	cmdSystem->AddCommand( "execMachineSpec", Com_ExecMachineSpec_f, CMD_FL_SYSTEM, "execs the appropriate config files and sets cvars based on com_machineSpec" );*/
 
-#if !defined( ID_DEDICATED )
 	// compilers
 	cmdSystem->AddCommand( "dmap", Dmap_f, CMD_FL_TOOL, "compiles a map", idCmdSystem::ArgCompletion_MapName );
 	cmdSystem->AddCommand( "renderbump", RenderBump_f, CMD_FL_TOOL, "renders a bump map", idCmdSystem::ArgCompletion_ModelName );
@@ -2413,7 +2385,6 @@ void idCommonLocal::InitCommands( void ) {
 	cmdSystem->AddCommand( "runReach", RunReach_f, CMD_FL_TOOL, "calculates reachability for an AAS file", idCmdSystem::ArgCompletion_MapName );
 	cmdSystem->AddCommand( "roq", RoQFileEncode_f, CMD_FL_TOOL, "encodes a roq file" );
 	cmdSystem->AddCommand( "runParticle", RunParticle_f, CMD_FL_TOOL, "calculates static collision for particle systems ('collisionStatic' in .prt files)", idCmdSystem::ArgCompletion_MapName );
-#endif
 
 #ifdef ID_ALLOW_TOOLS
 	// editors
@@ -2455,10 +2426,6 @@ void idCommonLocal::InitCommands( void ) {
 	// build helpers
 	cmdSystem->AddCommand( "startBuild", Com_StartBuild_f, CMD_FL_SYSTEM|CMD_FL_CHEAT, "prepares to make a build" );
 	cmdSystem->AddCommand( "finishBuild", Com_FinishBuild_f, CMD_FL_SYSTEM|CMD_FL_CHEAT, "finishes the build process" );
-
-#ifdef ID_DEDICATED
-	cmdSystem->AddCommand( "help", Com_Help_f, CMD_FL_SYSTEM, "shows help" );
-#endif
 }
 
 /*
@@ -2528,19 +2495,43 @@ void idCommonLocal::Frame( void ) {
 		}
 
 		eventLoop->RunEventLoop();
-			
-			
-		// duzenko #4409 - need frame time msec to pass to game tic
-		static int	lastTime;
-		const int	nowTime = Sys_Milliseconds();
-		com_frameMsec = nowTime - lastTime;
-		lastTime = nowTime;
 
-		if (sessLocal.com_fixedTic.GetBool() )
-			com_frameTime += com_frameMsec;
-		else
-			//com_frameTime = com_ticNumber * USERCMD_MSEC;
-			com_frameTime += USERCMD_MSEC; // Max(USERCMD_MSEC, (1000 / Max(1, com_maxFPS.GetInteger()) ) );
+		static int64_t com_frameTimeMicro = 0;		//same as com_frameTime, but in microseconds
+		static int64_t lastFrameAstroTime = Sys_Microseconds();
+		if (sessLocal.com_fixedTic.GetBool()) {
+			//stgatilov #4865: impose artificial FPS limit
+			int64_t minDeltaTime = 1000000 / sessLocal.com_maxFPS.GetInteger();
+			int64_t currFrameAstroTime;
+			while (1) {
+				currFrameAstroTime = Sys_Microseconds();
+				if (currFrameAstroTime - lastFrameAstroTime > minDeltaTime)
+					break;
+				//note: this is busy-wait loop
+				#ifdef __SSE2__
+					_mm_pause();
+				#else
+					currFrameAstroTime = currFrameAstroTime;	//NOP
+				#endif
+			}
+			//see how much passed in microseconds
+			int deltaTime = currFrameAstroTime - lastFrameAstroTime;
+			lastFrameAstroTime = currFrameAstroTime;
+
+			//update precise time in microseconds, then round it to milliseconds
+			com_frameTimeMicro += deltaTime * com_timescale.GetFloat();
+			int newFrameTime = com_frameTimeMicro / 1000;
+			com_frameDelta = newFrameTime - com_frameTime;
+			com_frameTime = newFrameTime;
+		}
+		else {
+			//synchronize common time to async tic number
+			//(which is synced to astronomical time in idCommonLocal::SingleAsyncTic)
+			com_frameTime = com_ticNumber * USERCMD_MSEC;	//com_frameTime += USERCMD_MSEC;
+			com_frameDelta = USERCMD_MSEC;
+			//these variables are not used now, but they will be needed if we switch to uncapped FPS mode
+			com_frameTimeMicro = com_frameTime * 1000;
+			lastFrameAstroTime = Sys_Microseconds();
+		}
 
 		{
 			session->Frame();
@@ -2551,7 +2542,7 @@ void idCommonLocal::Frame( void ) {
 
 		// report timing information
 		if ( com_speeds.GetBool() ) {
-			Printf("frame:%i all:%3i gfr:%3i fr:%3i(%d) br:%3i(%d)\n", com_frameNumber, com_frameMsec, time_gameFrame, time_frontend, time_frontendLast, time_backend, time_backendLast);
+			Printf("frame:%i all:%3i gfr:%3i fr:%3i(%d) br:%3i(%d)\n", com_frameNumber, com_frameDelta, time_gameFrame, time_frontend, time_frontendLast, time_backend, time_backendLast);
 			time_gameFrame = 0;
 			time_gameDraw = 0;
 		}	
@@ -2835,6 +2826,7 @@ void idCommonLocal::Init( int argc, const char **argv, const char *cmdline )
 
 		// init console command system
 		cmdSystem->Init();
+		TestsInit();
 
 		// init CVar system
 		cvarSystem->Init();
@@ -2896,10 +2888,6 @@ void idCommonLocal::Init( int argc, const char **argv, const char *cmdline )
 
 		// print all warnings queued during initialization
 		PrintWarnings();
-
-#ifdef	ID_DEDICATED
-		Printf( "\nType 'help' for dedicated server info.\n\n" );
-#endif
 
 		// remove any prints from the notify lines
 		console->ClearNotifyLines();
@@ -2995,22 +2983,6 @@ void idCommonLocal::InitGame( void )
 	// force r_fullscreen 0 if running a tool
 	CheckToolMode();
 
-    // greebo: the config.spec file is saved to the mod save path in darkmod/fms/<fs_game>/
-	/*idFile *file = fileSystem->OpenExplicitFileRead( fileSystem->RelativePathToOSPath( CONFIG_SPEC, "fs_savepath", "" ) );
-	bool sysDetect = ( file == NULL );
-	if ( file ) {
-		fileSystem->CloseFile( file );
-	} else {
-		file = fileSystem->OpenFileWrite( CONFIG_SPEC, "fs_savepath", "" );
-		fileSystem->CloseFile( file );
-	}
-
-	idCmdArgs args;
-	if ( sysDetect ) {
-		SetMachineSpec();
-		Com_ExecMachineSpec_f( args );
-	}*/
-
 	// initialize the renderSystem data structures, but don't start OpenGL yet
 	renderSystem->Init();
 
@@ -3073,20 +3045,9 @@ void idCommonLocal::InitGame( void )
 
 	//PrintLoadingMessage( Translate( "#str_04347" ) );
 
-#ifdef	ID_DEDICATED
-	// init async network
-	idAsyncNetwork::Init();
-
-	idAsyncNetwork::server.InitPort();
-	cvarSystem->SetCVarBool( "s_noSound", true );
-#else
-
-	{
-		// init OpenGL, which will open a window and connect sound and input hardware
-		//PrintLoadingMessage( Translate( "#str_04348" ) );
-		InitRenderSystem();
-	}
-#endif
+	// init OpenGL, which will open a window and connect sound and input hardware
+	//PrintLoadingMessage( Translate( "#str_04348" ) );
+	InitRenderSystem();
 
 	// initialize the user interfaces
 	uiManager->Init();

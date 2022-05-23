@@ -236,6 +236,17 @@ void idImageReader::LoadTGA() {
 			realrow = h - realrow - 1;
 		}
 		dst = data + realrow * w * 4;
+
+		//stgatilov: fast path for plain 8/24/32-bit images
+		if ( !mapped && !rlencoded ) {
+			if ( SIMDProcessor->ConvertTargaRowToRGBA8(buf_p, w, pixel_size, dst) ) {
+				int pixBytes = ((pixel_size + 1) >> 3);
+				buf_p += pixBytes * w;
+				dst += 4 * w;
+				goto RowFinished;
+			}
+		}
+
 		for ( x = 0; x < w; x++ ) {
 			/* check if run length encoded. */
 			if ( rlencoded )	{
@@ -320,6 +331,7 @@ PixEncode:
 				*dst++ = a;
 			}
 		}
+RowFinished:
 
 		if ( interleave == TGA_IL_Four ) {
 			truerow += 4;
@@ -668,7 +680,7 @@ bool idImageWriter::WriteJPG(int quality) {
 	 * VERY IMPORTANT: use "b" option to fopen() if you are on a machine that
 	 * requires it in order to write binary files.
 	 */
-	unsigned long outputSize;
+	size_t outputSize;
 	jpeg_mem_dest(&cinfo, &outputBuffer, &outputSize);
 
 	/* Step 3: set parameters for compression */
@@ -1457,6 +1469,138 @@ void idImageWriter::Postamble() {
 	}
 }
 
+/*
+===================================================================
+
+DDS AND COMPRESSED TEXTURES
+
+===================================================================
+*/
+
+/*
+================
+R_LoadCompressedImage
+================
+*/
+void R_LoadCompressedImage( const char *filename, imageCompressedData_t **pic, ID_TIME_T *timestamp ) {
+	if ( pic )
+		*pic = nullptr;
+	if ( timestamp )
+		*timestamp = -1;
+
+	// get the file timestamp
+	ID_TIME_T fileTimestamp;
+	fileSystem->ReadFile( filename, NULL, &fileTimestamp );
+
+	if ( timestamp )
+		*timestamp = fileTimestamp;
+	if ( fileTimestamp == FILE_NOT_FOUND_TIMESTAMP )
+		return;
+	if ( !pic )
+		return;	//no need to load, just checking timestamp
+
+	// open it and read the header
+	idFile *f = fileSystem->OpenFileRead( filename );
+	if ( !f )
+		return;
+	int	len = f->Length();
+
+	if ( len < 4 + sizeof( ddsFileHeader_t ) ) {
+		fileSystem->CloseFile( f );
+		return;
+	}
+
+	imageCompressedData_t *compData = (imageCompressedData_t*) R_StaticAlloc(
+		imageCompressedData_t::TotalSizeFromFileSize( len )
+	);
+
+	compData->fileSize = len;
+	f->Read( compData->GetFileData(), len );
+
+	fileSystem->CloseFile( f );
+
+	if ( compData->magic != DDS_MAKEFOURCC( 'D', 'D', 'S', ' ' ) ) {
+		common->Printf( "R_LoadCompressedImage( %s ): magic != 'DDS '\n", filename );
+		R_StaticFree( compData );
+		return;
+	}
+
+	ddsFileHeader_t	*header = &compData->header;
+	// ( not byte swapping dwReserved1 dwReserved2 )
+	header->dwSize = LittleInt( header->dwSize );
+	header->dwFlags = LittleInt( header->dwFlags );
+	header->dwHeight = LittleInt( header->dwHeight );
+	header->dwWidth = LittleInt( header->dwWidth );
+	header->dwPitchOrLinearSize = LittleInt( header->dwPitchOrLinearSize );
+	header->dwDepth = LittleInt( header->dwDepth );
+	header->dwMipMapCount = LittleInt( header->dwMipMapCount );
+	header->dwCaps1 = LittleInt( header->dwCaps1 );
+	header->dwCaps2 = LittleInt( header->dwCaps2 );
+	header->ddspf.dwSize = LittleInt( header->ddspf.dwSize );
+	header->ddspf.dwFlags = LittleInt( header->ddspf.dwFlags );
+	header->ddspf.dwFourCC = LittleInt( header->ddspf.dwFourCC );
+	header->ddspf.dwRGBBitCount = LittleInt( header->ddspf.dwRGBBitCount );
+	header->ddspf.dwRBitMask = LittleInt( header->ddspf.dwRBitMask );
+	header->ddspf.dwGBitMask = LittleInt( header->ddspf.dwGBitMask );
+	header->ddspf.dwBBitMask = LittleInt( header->ddspf.dwBBitMask );
+	header->ddspf.dwABitMask = LittleInt( header->ddspf.dwABitMask );
+
+	*pic = compData;
+}
+
+/*
+================
+imageCompressedData_s::ComputeUncompressedData
+================
+*/
+byte *imageCompressedData_s::ComputeUncompressedData() const {
+	int w = header.dwWidth;
+	int h = header.dwHeight;
+
+	TRACE_CPU_SCOPE( "Decompress:DDS" )
+
+	byte *resData = (byte*) R_StaticAlloc(w * h * 4);
+
+	if ( header.ddspf.dwFlags & DDSF_FOURCC ) {
+		switch ( header.ddspf.dwFourCC ) {
+		case DDS_MAKEFOURCC( 'D', 'X', 'T', '1' ):
+			if ( header.ddspf.dwFlags & DDSF_ALPHAPIXELS ) {
+				SIMDProcessor->DecompressRGBA8FromDXT1( contents, w, h, resData, 4 * w, true );
+			} else {
+				SIMDProcessor->DecompressRGBA8FromDXT1( contents, w, h, resData, 4 * w, false );
+			}
+			return resData;
+		case DDS_MAKEFOURCC( 'D', 'X', 'T', '3' ):
+			SIMDProcessor->DecompressRGBA8FromDXT3( contents, w, h, resData, 4 * w );
+			return resData;
+		case DDS_MAKEFOURCC( 'D', 'X', 'T', '5' ):
+			SIMDProcessor->DecompressRGBA8FromDXT5( contents, w, h, resData, 4 * w );
+			return resData;
+		case DDS_MAKEFOURCC( 'R', 'X', 'G', 'B' ):
+			SIMDProcessor->DecompressRGBA8FromDXT5( contents, w, h, resData, 4 * w );
+			return resData;
+		case DDS_MAKEFOURCC( 'A', 'T', 'I', '2' ):
+			SIMDProcessor->DecompressRGBA8FromRGTC( contents, w, h, resData, 4 * w );
+			return resData;
+		}
+	} else if ( ( header.ddspf.dwFlags & DDSF_RGBA ) && header.ddspf.dwRGBBitCount == 32 ) {
+		SIMDProcessor->ConvertTargaRowToRGBA8( contents, w * h, 32, resData );
+		return resData;
+	} else if ( ( header.ddspf.dwFlags & DDSF_RGB ) && header.ddspf.dwRGBBitCount == 32 ) {
+		SIMDProcessor->ConvertTargaRowToRGBA8( contents, w * h, 32, resData );
+		return resData;
+	} else if ( ( header.ddspf.dwFlags & DDSF_RGB ) && header.ddspf.dwRGBBitCount == 24 ) {
+		SIMDProcessor->ConvertTargaRowToRGBA8( contents, w * h, 24, resData );
+		return resData;
+	} else if ( header.ddspf.dwRGBBitCount == 8 ) {
+		SIMDProcessor->ConvertTargaRowToRGBA8( contents, w * h, 8, resData );
+		return resData;
+	}
+
+	//unsupported format
+	R_StaticFree( resData );
+	return nullptr;
+}
 
 /*
 ===================================================================

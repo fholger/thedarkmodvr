@@ -20,6 +20,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "snd_local.h"
 #include <limits.h>
 #include "LoadStack.h"
+#include "DeclSubtitles.h"
 
 #define USE_SOUND_CACHE_ALLOCATOR
 
@@ -32,14 +33,147 @@ static idDynamicAlloc<byte, 1<<20, 1<<10>		soundCacheAllocator;
 
 /*
 ===================
+LoadSrtFile
+===================
+*/
+static bool LoadSrtFile( const char *filename, idList<Subtitle> &subtitles ) {
+	subtitles.Clear();
+	TRACE_CPU_SCOPE_TEXT( "LoadSrtFile", filename );
+
+	char *buffer = nullptr;
+	int len = fileSystem->ReadFile( filename, (void**)&buffer );
+	if ( len < 0 ) {
+		return false;
+	}
+	idStr text( buffer, 0, len );
+	fileSystem->FreeFile( buffer );
+
+	auto ParseTimeOffset = []( const char *text, int &offset ) -> bool {
+		static const char FORMAT[13] = "dd:dd:dd,ddd";
+		static const int MULTIPLIER[12] = { 10, 10, 0, 6, 10, 0, 6, 10, 0, 10, 10, 10 };
+		uint64_t millis = 0;
+		for ( int i = 0; i < 12; i++ ) {
+			char ch = text[i], fmt = FORMAT[i];
+			if ( fmt == 'd' ) {
+				if ( ch >= '0' && ch < '0' + MULTIPLIER[i] ) {
+					millis = millis * MULTIPLIER[i] + ( ch - '0' );
+				} else {
+					return false;
+				}
+			} else if ( ch != fmt ) {
+				return false;
+			}
+		}
+		offset = int( millis * PRIMARYFREQ / 1000 );
+		return true;
+	};
+
+	idStrList lines = text.SplitLines();
+	int lineno = 0;
+	while ( lineno + 2 <= lines.Num() ) {
+		const idStr &lineSeqno = lines[lineno++];
+		const idStr &lineTiming = lines[lineno++];
+
+		int seqno = atoi( lineSeqno.c_str() );
+		if ( seqno != subtitles.Num() + 1 ) {
+			common->Warning( "Wrong sequence number %d in %s", seqno, filename );
+			return false;
+		}
+
+		if ( lineTiming.Length() != 29 || idStr::Cmpn(lineTiming.c_str() + 12, " --> ", 5) != 0 ) {
+			common->Warning( "Bad timing at seqno %d in %s", seqno, filename );
+			return false;
+		}
+		Subtitle sub;
+		if ( !ParseTimeOffset(lineTiming.c_str() + 0, sub.offsetStart) || !ParseTimeOffset(lineTiming.c_str() + 17, sub.offsetEnd) ) {
+			common->Warning( "Failed to parse timing at seqno %d in %s", seqno, filename );
+			return false;
+		}
+
+		while ( lineno < lines.Num() && lines[lineno].Length() > 0 ) {
+			if ( sub.text.Length() > 0 )
+				sub.text += '\n';
+			sub.text += lines[lineno++];
+		}
+		lineno++;
+
+		if ( sub.offsetStart >= sub.offsetEnd ) {
+			common->Warning( "Subtitle %d discarded in %s", seqno, filename );
+			continue;
+		}
+		subtitles.Append( sub );
+	}
+
+	bool sorted = true;
+	for ( int i = 1; i < subtitles.Num(); i++ )
+		if ( subtitles[i-1].offsetStart > subtitles[i].offsetStart ) {
+			common->Warning( "Subtitles %d and %d not sorted by start offset", i, i+1 );
+			sorted = false;
+			break;
+		}
+	if ( !sorted ) {
+		auto CmpSub = [](const Subtitle *a, const Subtitle *b) -> int {
+			int diff = a->offsetStart - b->offsetStart;
+			return ( diff < 0 ? -1 : ( diff > 0 ? 1 : 0 ) );
+		};
+		subtitles.Sort( CmpSub );
+	}
+
+	return true;
+}
+
+/*
+===================
+idSoundCache::LoadSubtitles()
+===================
+*/
+void idSoundSample::LoadSubtitles() {
+	subtitles.Clear();
+	subtitlesVerbosity = SUBL_MISSING;
+
+	const idDeclSubtitles *allSubs = (idDeclSubtitles *) declManager->FindType( DECL_SUBTITLES, "tdm_root" );
+	if ( !allSubs )
+		return;
+
+	const subtitleMapping_t *mapping = allSubs->FindSubtitleForSound( name.c_str() );
+	if ( !mapping )
+		return;
+
+	subtitlesVerbosity = mapping->verbosityLevel;
+
+	if ( mapping->srtFileName.Length() ) {
+		const char *srtname = mapping->srtFileName.c_str();
+		// load .srt file
+		if ( !LoadSrtFile( srtname, subtitles ) ) {
+			common->Warning(
+				"Couldn't load SRT file '%s' for sound '%s' according to decl '%s'",
+				srtname, name.c_str(), mapping->owner->GetName()
+			);
+			subtitles.Clear();
+			subtitlesVerbosity = SUBL_MISSING;
+		}
+	}
+	else {
+		// inline subtitle
+		Subtitle sub;
+		sub.offsetStart = 0;
+		sub.offsetEnd = LengthIn44kHzSamples();
+		sub.text = mapping->inlineText;
+		subtitles.Append(sub);
+	}
+}
+
+/*
+===================
 idSoundCache::idSoundCache()
 ===================
 */
 idSoundCache::idSoundCache() {
 	soundCacheAllocator.Init();
 	soundCacheAllocator.SetLockMemory( true );
-	listCache.AssureSize( 1024, NULL );
 	listCache.SetGranularity( 256 );
+	cacheHash.ClearFree( 1024, 1024 );
+	cacheHash.SetGranularity( 256 );
 	insideLevelLoad = false;
 }
 
@@ -50,6 +184,7 @@ idSoundCache::~idSoundCache()
 */
 idSoundCache::~idSoundCache() {
 	listCache.DeleteContents( true );
+	cacheHash.ClearFree();
 	soundCacheAllocator.Shutdown();
 }
 
@@ -61,7 +196,7 @@ returns a single cached object pointer
 ===================
 */
 const idSoundSample* idSoundCache::GetObject( const int index ) const {
-	if (index<0 || index>listCache.Num()) {
+	if (index < 0 || index >= listCache.Num()) {
 		return NULL;
 	}
 	return listCache[index]; 
@@ -84,9 +219,11 @@ idSoundSample *idSoundCache::FindSound( const idStr& filename, bool loadOnDemand
 	declManager->MediaPrint( "%s\n", fname.c_str() );
 
 	// check to see if object is already in cache
-	for( int i = 0; i < listCache.Num(); i++ ) {
+	int hash = cacheHash.GenerateKey( fname, true );
+	for ( int i = cacheHash.First( hash ); i != -1; i = cacheHash.Next( i ) ) {
 		idSoundSample *def = listCache[i];
-		if ( def && def->name == fname ) {
+		assert( def );
+		if ( def->name == fname ) {
 			def->levelLoadReferenced = true;
 			if ( def->purged && !loadOnDemandOnly ) {
 				def->Load();
@@ -95,15 +232,20 @@ idSoundSample *idSoundCache::FindSound( const idStr& filename, bool loadOnDemand
 		}
 	}
 
+#if _DEBUG
+	// verify that hash index is correct and we don't miss sound
+	for( int i = 0; i < listCache.Num(); i++ ) {
+		idSoundSample *def = listCache[i];
+		assert( !( def && def->name == fname ) );
+	}
+#endif
+
 	// create a new entry
 	idSoundSample *def = new idSoundSample;
 
-	int shandle = listCache.FindNull();
-	if ( shandle != -1 ) {
-		listCache[shandle] = def;
-	} else {
-		shandle = listCache.Append( def );
-	}
+	assert( listCache.FindNull() == -1 );
+	int shandle = listCache.Append( def );
+	cacheHash.Add( hash, shandle );
 
 	def->name = fname;
 	def->levelLoadReferenced = true;
@@ -126,12 +268,24 @@ Completely nukes the current cache
 ===================
 */
 void idSoundCache::ReloadSounds( bool force ) {
-	int i;
-
-	for( i = 0; i < listCache.Num(); i++ ) {
+	for( int i = 0; i < listCache.Num(); i++ ) {
 		idSoundSample *def = listCache[i];
 		if ( def ) {
 			def->Reload( force );
+		}
+	}
+}
+
+/*
+===================
+idSoundCache::ReloadSubtitles
+===================
+*/
+void idSoundCache::ReloadSubtitles() {
+	for( int i = 0; i < listCache.Num(); i++ ) {
+		idSoundSample *def = listCache[i];
+		if ( def ) {
+			def->LoadSubtitles();
 		}
 	}
 }
@@ -284,13 +438,14 @@ idSoundSample::idSoundSample() {
 	objectMemSize = 0;
 	nonCacheData = NULL;
 	amplitudeData = NULL;
-	openalBuffer = NULL;
+	openalBuffer = 0;
 	hardwareBuffer = false;
 	defaultSound = false;
 	onDemand = false;
 	purged = false;
 	levelLoadReferenced = false;
 	cinematic = NULL;
+	subtitlesVerbosity = SUBL_MISSING;
 }
 
 /*
@@ -364,6 +519,9 @@ void idSoundSample::MakeDefault( void ) {
 	}
 
 	defaultSound = true;
+
+	subtitles.Clear();
+	subtitlesVerbosity = SUBL_MISSING;
 }
 
 /*
@@ -439,6 +597,8 @@ void idSoundSample::LoadFromCinematic(idCinematic *cin) {
 
 	//cinematic decides when it ends: set infinite duration here
 	objectSize = INT_MAX / 2;
+
+	LoadSubtitles();
 }
 
 /*
@@ -455,25 +615,18 @@ void idSoundSample::Load( void ) {
 	hardwareBuffer = false;
 
 	//stgatilov #4847: check if this sound was created via testVideo command
-	if (name.CmpPrefix("__testvideo") == 0) {
+	if (name.IcmpPrefix("fromVideo __testvideo") == 0) {
 		idCinematic *cin = 0;
-		sscanf(name.c_str(), "__testvideo:%p__", &cin);
-		return LoadFromCinematic(cin);
+		if (sscanf(name.c_str() + 22, "%p__", &cin) == 1)
+			return LoadFromCinematic(cin);
 	}
-	//stgatilov #4534: material name may be specified instead of sound file
-	//in such case this material must have cinematics, and sound is taken from there
-	if (const idMaterial *material = declManager->FindMaterial(name, false)) {
+	if (name.IcmpPrefix("fromVideo ") == 0) {
+		//stgatilov #4534: material name is specified after "fromVideo" prefix
+		//in such case this material must have cinematics, and sound is taken from there
+		const char *materialName = name.c_str() + 10;
+		const idMaterial *material = declManager->FindMaterial(materialName);
 		idCinematic *cin = material->GetCinematic();
 		return LoadFromCinematic(cin);
-	}
-
-	timestamp = GetNewTimeStamp();
-
-	if ( timestamp == FILE_NOT_FOUND_TIMESTAMP ) {
-		common->Warning( "Couldn't load sound '%s' using default", name.c_str() );
-		declManager->GetLoadStack().PrintStack(2, LoadStack::LevelOf(this));
-		MakeDefault();
-		return;
 	}
 
 	// load it
@@ -482,9 +635,14 @@ void idSoundSample::Load( void ) {
 
 	if ( fh.Open( name, &info ) == -1 ) {
 		common->Warning( "Couldn't load sound '%s' using default", name.c_str() );
+		declManager->GetLoadStack().PrintStack(2, LoadStack::LevelOf(this));
+		timestamp = -1;
 		MakeDefault();
 		return;
 	}
+
+	// save timestamp of opened file
+	timestamp = fh.Timestamp();
 
 	if ( info.nChannels != 1 && info.nChannels != 2 ) {
 		common->Warning( "idSoundSample: %s has %i channels, using default", name.c_str(), info.nChannels );
@@ -605,6 +763,8 @@ void idSoundSample::Load( void ) {
 	}
 
 	fh.Close();
+
+	LoadSubtitles();
 }
 
 /*
@@ -696,5 +856,30 @@ bool idSoundSample::FetchFromCache( int offset, const byte **output, int *positi
 
 bool idSoundSample::FetchFromCinematic(int sampleOffset, int *sampleSize, float *output) {
 	assert(cinematic);
-	return cinematic->SoundForTimeInterval(sampleOffset, sampleSize, PRIMARYFREQ, output);
+	return cinematic->SoundForTimeInterval(sampleOffset, sampleSize, output);
+}
+
+int idSoundSample::FetchSubtitles( int offset, idList<SubtitleMatch> &matches ) {
+	if (cinematic) {
+		//ask cinematic about current video time
+		//otherwise subtitles will get out of sync with sound and video
+		//easy to check by pausing with debugger while video is playing
+		offset = cinematic->GetRealSoundOffset(offset);
+	}
+
+	//note: if this ever becomes too slow, we can implement "decoder" for subtitles
+	//it can keep track of currently active matches, and position of current offset in the array...
+
+	int cnt = 0;
+	for ( int i = 0; i < subtitles.Num(); i++ ) {
+		if ( offset >= subtitles[i].offsetStart && offset < subtitles[i].offsetEnd ) {
+			SubtitleMatch m;
+			m.subtitle = &subtitles[i];
+			m.channel = nullptr;	// will be set by caller
+			matches.AddGrow( m );
+			cnt++;
+		}
+	}
+
+	return cnt;
 }

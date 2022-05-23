@@ -19,7 +19,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "Simd_Generic.h"
 #include "Simd_SSE.h"
 #include "Simd_SSE2.h"
-#include "Simd_SSE3.h"
+#include "Simd_SSSE3.h"
 #include "Simd_AVX.h"
 #include "Simd_AVX2.h"
 #include "Simd_IdAsm.h"
@@ -65,6 +65,22 @@ void idSIMD::InitProcessor( const char *module, const char *forceImpl ) {
 	#ifdef __SSE2__
 		cpuid |= CPUID_SSE2;
 	#endif
+	#ifdef __SSE3__
+		cpuid |= CPUID_SSE3;
+	#endif
+	#ifdef __SSSE3__
+		cpuid |= CPUID_SSSE3;
+	#endif
+	#ifdef __SSE4_1__ 
+		cpuid |= CPUID_SSE41;
+	#endif
+	#ifdef __AVX__
+		cpuid |= CPUID_AVX;
+	#endif
+	#ifdef __AVX2__
+		cpuid |= CPUID_AVX2;
+		cpuid |= CPUID_FMA3;
+	#endif
 
 	// Print what we found to console
 	idLib::common->Printf( "Found %s CPU, features:%s%s%s%s%s%s%s%s\n",
@@ -105,8 +121,8 @@ void idSIMD::InitProcessor( const char *module, const char *forceImpl ) {
 	} else if ( upToSSE3 && (forceImpl && idStr::Icmp(forceImpl, "IdAsm") == 0) ) {
 		processor = new idSIMD_IdAsm;
 #endif
-	} else if ( upToSSE3 && (!forceImpl || idStr::Icmp(forceImpl, "SSE3") == 0) ) {
-		processor = new idSIMD_SSE3;
+	} else if ( upToSSSE3 && (!forceImpl || idStr::Icmp(forceImpl, "SSSE3") == 0) ) {
+		processor = new idSIMD_SSSE3;
 	} else if ( upToSSE2 && (!forceImpl || idStr::Icmp(forceImpl, "SSE2") == 0) ) {
 		processor = new idSIMD_SSE2;
 	} else if ( upToSSE && (!forceImpl || idStr::Icmp(forceImpl, "SSE") == 0) ) {
@@ -3015,6 +3031,87 @@ void TestCreateShadowCache( void ) {
 
 /*
 ============
+TestConvertRGTCFromRGBA8
+============
+*/
+void TestConvertRGTCFromRGBA8() {
+	idRandom rnd(RANDOM_SEED);
+
+	static const int SIZE = 64;
+	idList<byte> inputData, outputGeneric, outputSIMD;
+	inputData.SetNum(SIZE * SIZE * 4);
+	outputGeneric.SetNum(SIZE * SIZE);
+	outputSIMD.SetNum(SIZE * SIZE);
+	for (int i = 0; i < inputData.Num(); i++)
+		inputData[i] = rnd.RandomInt(256);
+
+	TIME_TYPE start, end;
+	TIME_TYPE bestClocksGeneric = 0;
+	for ( int i = 0; i < NUMTESTS; i++ ) {
+		StartRecordTime( start );
+		p_generic->CompressRGTCFromRGBA8((const byte*)inputData.Ptr(), SIZE, SIZE, 4 * SIZE, outputGeneric.Ptr());
+		StopRecordTime( end );
+		GetBest( start, end, bestClocksGeneric );
+	}
+	PrintClocks( va( "generic->CompressRGTCFromRGBA8( %d )", SIZE ), SIZE * SIZE, bestClocksGeneric );
+
+	TIME_TYPE bestClocksSIMD = 0;
+	for ( int i = 0; i < NUMTESTS; i++ ) {
+		StartRecordTime( start );
+		p_simd->CompressRGTCFromRGBA8((const byte*)inputData.Ptr(), SIZE, SIZE, 4 * SIZE, outputSIMD.Ptr());
+		StopRecordTime( end );
+		GetBest( start, end, bestClocksSIMD );
+	}
+
+	int diffPos = -1;
+	for (int i = 0; i < outputGeneric.Num(); i++)
+		if (outputGeneric[i] != outputSIMD[i]) {
+			diffPos = i;
+			break;
+		}
+	const char *result = diffPos < 0 ? "ok" : S_COLOR_RED"X";
+	PrintClocks( va( "   simd->CompressRGTCFromRGBA8( %d ) %s", SIZE, result ), SIZE * SIZE, bestClocksSIMD, bestClocksGeneric );
+
+	// Additional tests: various image sizes, better value distributions
+
+	for (int h = 1; h <= 43; h++) {
+		for (int w = 1; w <= 43; w++) {
+			int stride = w + rnd.RandomInt(10);
+			idList<dword> rgbaPixels;
+			rgbaPixels.SetNum(h * stride);
+
+			idVec2 avg;
+			avg.x = rnd.RandomFloat();
+			avg.y = rnd.RandomFloat();
+			for (int i = 0; i < h; i++)
+				for (int j = 0; j < w; j++) {
+					float radius = float(i + j) / (h + w);
+					idVec2 val;
+					val.x = idMath::ClampFloat(0, 1, avg.x + radius * rnd.CRandomFloat());
+					val.y = idMath::ClampFloat(0, 1, avg.y + radius * rnd.CRandomFloat());
+					dword red = idMath::Rint(val.x * 255.0f);
+					dword green = idMath::Rint(val.y * 255.0f);
+					dword blue = rnd.RandomInt(256);
+					dword alpha = rnd.RandomInt(256);
+					rgbaPixels[i * stride + j] = red + (green << 8) + (blue << 16) + (alpha << 24);
+				}
+
+			int outSize = ((h + 3) / 4) * ((w + 3) / 4) * 16;
+			idList<byte> outputGen, outputFast;
+			outputGen.SetNum(outSize);
+			outputFast.SetNum(outSize);
+
+			p_generic->CompressRGTCFromRGBA8((const byte*)rgbaPixels.Ptr(), w, h, 4 * stride, outputGen.Ptr());
+			p_simd->CompressRGTCFromRGBA8((const byte*)rgbaPixels.Ptr(), w, h, 4 * stride, outputFast.Ptr());
+
+			if (memcmp(outputGen.Ptr(), outputFast.Ptr(), outSize) != 0)
+				common->Error("TestConvertRGTCFromRGBA8 output mismatch");
+		}
+	}
+}
+
+/*
+============
 TestSoundUpSampling
 ============
 */
@@ -3826,6 +3923,7 @@ void idSIMD::Test_f( const idCmdArgs &args ) {
 		TestDeriveUnsmoothedTangents();
 		TestNormalizeTangents();
 		TestCreateShadowCache();
+		TestConvertRGTCFromRGBA8();
 	}
 
 	if ( testBits & 8 ) {

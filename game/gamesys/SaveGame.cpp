@@ -374,6 +374,7 @@ void idSaveGame::WriteRenderLight( const renderLight_t &renderLight ) {
 	WriteVec3( renderLight.origin );
 
 	WriteInt( renderLight.suppressLightInViewID );
+	WriteInt( renderLight.suppressInSubview );
 	WriteInt( renderLight.allowLightInViewID );
 	WriteBool( renderLight.noShadows );
 	WriteBool( renderLight.noSpecular );
@@ -383,7 +384,6 @@ void idSaveGame::WriteRenderLight( const renderLight_t &renderLight ) {
 
 	WriteVec3( renderLight.lightRadius );
 	WriteVec3( renderLight.lightCenter );
-	WriteFloat( renderLight.radius );
 
 	WriteVec3( renderLight.target );
 	WriteVec3( renderLight.right );
@@ -410,6 +410,9 @@ void idSaveGame::WriteRenderLight( const renderLight_t &renderLight ) {
 
 	WriteBool( renderLight.noFogBoundary ); // #3664
 	WriteInt( renderLight.areaLock );
+
+	WriteFloat( renderLight.volumetricDust );
+	WriteInt( renderLight.volumetricNoshadows );
 }
 
 void idSaveGame::WriteRefSound( const refSound_t &refSound ) {
@@ -974,6 +977,7 @@ void idRestoreGame::ReadRenderLight( renderLight_t &renderLight ) {
 	ReadVec3( renderLight.origin );
 
 	ReadInt( renderLight.suppressLightInViewID );
+	ReadInt( renderLight.suppressInSubview );
 	ReadInt( renderLight.allowLightInViewID );
 	ReadBool( renderLight.noShadows );
 	ReadBool( renderLight.noSpecular );
@@ -983,7 +987,6 @@ void idRestoreGame::ReadRenderLight( renderLight_t &renderLight ) {
 
 	ReadVec3( renderLight.lightRadius );
 	ReadVec3( renderLight.lightCenter );
-	ReadFloat( renderLight.radius );
 
 	ReadVec3( renderLight.target );
 	ReadVec3( renderLight.right );
@@ -1007,7 +1010,10 @@ void idRestoreGame::ReadRenderLight( renderLight_t &renderLight ) {
 	renderLight.referenceSound = gameSoundWorld->EmitterForIndex( index );
 
 	ReadBool( renderLight.noFogBoundary ); // #3664
-	ReadInt( (int&)renderLight.areaLock );;
+	ReadInt( (int&)renderLight.areaLock );
+
+	ReadFloat( renderLight.volumetricDust );
+	ReadInt( renderLight.volumetricNoshadows );
 }
 
 void idRestoreGame::ReadRefSound( refSound_t &refSound ) {

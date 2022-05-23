@@ -65,7 +65,6 @@ extern idCVar		com_showSoundDecoders;
 extern idCVar		com_makingBuild;
 extern idCVar		com_updateLoadSize;
 extern idCVar		com_timescale;
-// extern idCVar       com_maxFPS;
 //extern idCVar		com_videoRam;
 
 extern int			time_gameFrame;			// game logic time
@@ -75,9 +74,9 @@ extern int			time_frontendLast;		// renderer frontend time
 extern int			time_backend;			// renderer backend time
 extern int			time_backendLast;		// renderer backend time
 
-extern int			com_frameTime;			// time for the current frame in milliseconds
-extern int			com_frameMsec;
-extern std::atomic<int>	com_ticNumber;			// 60 hz tics, incremented by async function
+extern int			com_frameTime;			// time moment of the current frame in milliseconds
+extern int			com_frameDelta;			// time elapsed since previous frame in milliseconds
+extern std::atomic<int>	com_ticNumber;		// 60 hz tics, incremented by async function
 extern int			com_editors;			// current active editor(s)
 extern bool			com_editorActive;		// true if an editor has focus
 
@@ -91,20 +90,20 @@ extern bool			com_outputMsg;
 struct MemInfo_t {
 	idStr			filebase;
 
-	int				total;
-	int				assetTotals;
+	int64			total;
+	int64			assetTotals;
 
 	// memory manager totals
-	int				memoryManagerTotal;
+	int64			memoryManagerTotal;
 
 	// subsystem totals
-	int				gameSubsystemTotal;
-	int				renderSubsystemTotal;
+	int64			gameSubsystemTotal;
+	int64			renderSubsystemTotal;
 
 	// asset totals
-	int				imageAssetsTotal;
-	int				modelAssetsTotal;
-	int				soundAssetsTotal;
+	int64			imageAssetsTotal;
+	int64			modelAssetsTotal;
+	int64			soundAssetsTotal;
 };
 
 // grayman #3763 - loading bar progress at key points,

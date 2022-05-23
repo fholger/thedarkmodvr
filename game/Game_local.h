@@ -45,12 +45,6 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 	#define ASYNC_WRITE_PVS 0
 #endif
 
-#ifdef ID_USE_TYPEINFO
-// This is real evil but allows the code to inspect arbitrary class variables.
-#define private		public
-#define protected	public
-#endif
-
 class idLight;			// J.C.Denton: Required for the declaration of FindMainAmbientLight
 
 class idRenderWorld;
@@ -121,8 +115,7 @@ void gameError( const char *fmt, ... );
 #include "ModelGenerator.h"
 #include "LightController.h"
 #include "ModMenu.h"
-
-#include <random> // for mersenne twister
+#include "LodComponent.h"
 
 #ifdef __linux__
 #include "../renderer/RenderWorld.h"
@@ -421,6 +414,8 @@ struct SuspiciousEvent
 };
 
 #include "SearchManager.h" // grayman #3857 - must follow the definition of "EventType"
+#include "Entity.h"
+#include "EntityList.h"
 
 class idDeclEntityDef;
 
@@ -431,19 +426,18 @@ public:
 	idDict					userInfo;	// client specific settings
 	usercmd_t				usercmds;	// client input commands
 	idDict					persistentPlayerInfo;
-	idEntity *				entities[MAX_GENTITIES];// index to entities
-	int						spawnIds[MAX_GENTITIES];// for use in idEntityPtr
+	idList<idEntity *>		entities;	// index to entities
+	idList<int>				spawnIds;	// for use in idEntityPtr
 
 	int						firstFreeIndex;			// first free index in the entities array
 	int						num_entities;			// current number <= MAX_GENTITIES
 	idHashIndex				entityHash;				// hash table to quickly find entities by name
 	idWorldspawn *			world;					// world entity
 	idLinkList<idEntity>	spawnedEntities;		// all spawned entities
-	idLinkList<idEntity>	activeEntities;			// all thinking entities (idEntity::thinkFlags != 0)
+	idEntityList<idEntity>	activeEntities;			// all thinking entities (idEntity::thinkFlags != 0)
 	idLinkList<idAI>		spawnedAI;				// greebo: all spawned AI
+	LodSystem				lodSystem;				// container for all entities with LOD
 	int						numEntitiesToDeactivate;// number of entities that became inactive in current frame
-	bool					sortPushers;			// true if active lists needs to be reordered to place pushers at the front
-	bool					sortTeamMasters;		// true if active lists needs to be reordered to place physics team masters before their slaves
 	idDict					persistentLevelInfo;	// contains args that are kept around between levels
 
 	// The inventory class which keeps items safe between maps
@@ -485,7 +479,6 @@ public:
 	float					globalShaderParms[ MAX_GLOBAL_SHADER_PARMS ];	
 
 	idRandom				random;					// random number generator used throughout the game
-    std::mt19937            randomMt;               // alternative random number generator (state is not persistent between map loads)
 
 	idProgram				program;				// currently loaded script and data space
 	idThread *				frameCommandThread;
@@ -716,6 +709,7 @@ public:
 	virtual escReply_t		HandleESC( idUserInterface **gui );
 	virtual const char *	HandleGuiCommands( const char *menuCommand );
 	virtual void			HandleMainMenuCommands( const char *menuCommand, idUserInterface *gui );
+
 	/**
 	* Adjusts the size of GUI variables to support stretching/scaling of the GUI.
     */
@@ -824,7 +818,7 @@ public:
 	void					RadiusPushClipModel( const idVec3 &origin, const float push, const idClipModel *clipModel );
 
 	void					ProjectDecal( const idVec3 &origin, const idVec3 &dir, float depth, bool parallel, float size, const char *material,
-										  float angle = 0, idEntity* target = NULL, bool save = false, int starttime = -1 ); // target, save, startime added #3817 -- SteveL
+										  float angle = 0, idEntity* target = NULL, bool save = false, int starttime = -1, bool allowRandomAngle = true ); // target, save, startime added #3817 -- SteveL
 	void					BloodSplat( const idVec3 &origin, const idVec3 &dir, float size, const char *material );
 
 	void					CallFrameCommand( idEntity *ent, const function_t *frameCommand );
@@ -1008,10 +1002,6 @@ private:
 
 	//int						clientPVS[ENTITY_PVS_SIZE];
 
-
-	idStaticList<spawnSpot_t, MAX_GENTITIES> spawnSpots;
-	idStaticList<idEntity *, MAX_GENTITIES> initialSpots;
-	int						currentInitialSpot;
 
 	idDict					newInfo;
 

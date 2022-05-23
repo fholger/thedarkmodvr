@@ -80,7 +80,7 @@ idSoundShader::SetDefaultText
 bool idSoundShader::SetDefaultText( void ) {
 	idStr wavname = GetName();
 
-	if (wavname.CmpPrefix("__testvideo")) {
+	if (wavname.IcmpPrefix("__testvideo") == 0) {
 		//stgatilov #4847: this case is only used for testVideo command
 		//see R_TestVideo_f in RenderSystem_init.cpp
 		char generated[2048];
@@ -153,8 +153,10 @@ idSoundShader::ParseShader
 ===============
 */
 bool idSoundShader::ParseShader( idLexer &src ) {
-	int			i;
-	idToken		token;
+	//stgatilov: if soundCache is not created yet, then shader will be loaded without sound samples
+	//and since sound shader is a decl and decls are cached, they will never be loaded in there future either
+	//this will results in missing sounds later, when soundCache is finally available
+	assert( soundSystemLocal.soundCache || soundSystemLocal.s_noSound.GetBool() );
 
 	parms.minDistance = 1;
 	parms.maxDistance = 10;
@@ -166,7 +168,7 @@ bool idSoundShader::ParseShader( idLexer &src ) {
 	speakerMask = 0;
 	altSound = NULL;
 
-	for( i = 0; i < SOUND_MAX_LIST_WAVS; i++ ) {
+	for( int i = 0; i < SOUND_MAX_LIST_WAVS; i++ ) {
 		leadins[i] = NULL;
 		entries[i] = NULL;
 	}
@@ -178,6 +180,7 @@ bool idSoundShader::ParseShader( idLexer &src ) {
 		maxSamples = SOUND_MAX_LIST_WAVS;
 	}
 
+	idToken token;
 	while ( 1 ) {
 		if ( !src.ExpectAnyToken( &token ) ) {
 			return false;
@@ -230,7 +233,7 @@ bool idSoundShader::ParseShader( idLexer &src ) {
 		}
 		// volume
 		else if ( !token.Icmp( "volume" ) ) {
-			parms.volume = src.ParseFloat();
+			parms.volume = idMath::Fmin(1.5f, src.ParseFloat());
 		}
 		// leadinVolume is used to allow light breaking leadin sounds to be much louder than the broken loop
 		else if ( !token.Icmp( "leadinVolume" ) ) {
@@ -355,7 +358,8 @@ bool idSoundShader::ParseShader( idLexer &src ) {
 			}
 			token.BackSlashesToSlashes();
 			if ( soundSystemLocal.soundCache ) {
-				entries[ numEntries ] = soundSystemLocal.soundCache->FindSound( token.c_str(), onDemand );
+				idStr soundName = "fromVideo " + token;
+				entries[ numEntries ] = soundSystemLocal.soundCache->FindSound( soundName.c_str(), onDemand );
 				numEntries++;
 			}
 		} else if ( token.Find( ".wav", false ) != -1 || token.Find( ".ogg", false ) != -1 ) {

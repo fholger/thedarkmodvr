@@ -192,12 +192,13 @@ bool GameplayControlPlan::GetUsercmd(float nowTime, usercmd_t &cmd) {
 }
 
 int GameplayControlPlan::GetTimeNow() const {
+	static uint64_t astroTimeStart = Sys_GetTimeMicroseconds();
 	if (timeMode == tmAstronomical)
-		return Sys_GetTimeMicroseconds() / 1000;
+		return (Sys_GetTimeMicroseconds() - astroTimeStart) / 1000;
 	if (timeMode == tmGamePhysics)
 		return gameLocal.time;
 	assert(0);
-	return -1e+10f;
+	return -1000000000;
 }
 
 
@@ -518,8 +519,6 @@ void Automation::ParseQuery(ParseIn &parseIn) {
 				guiActiveName = "mainmenu";
 			else if (guiActive == session->GetGui(idSession::gtLoading))
 				guiActiveName = "loading";
-			else if (guiActive == session->GetGui(idSession::gtRestart))
-				guiActiveName = "restart";
 			else
 				guiActiveName = "?unknown?";
 		}

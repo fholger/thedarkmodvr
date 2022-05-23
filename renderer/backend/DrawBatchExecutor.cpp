@@ -42,7 +42,7 @@ namespace {
 
 }
 
-idCVarBool r_useMultiDrawIndirect("r_useMultiDrawIndirect", "1", CVAR_RENDERER|CVAR_BOOL, "Batch draw calls in multidraw commands if available");
+idCVarBool r_useMultiDrawIndirect("r_useMultiDrawIndirect", "0", CVAR_RENDERER|CVAR_BOOL, "Batch draw calls in multidraw commands if available");
 
 void DrawBatchExecutor::Init() {
 	GLint uboAlignment;
@@ -202,8 +202,13 @@ void DrawBatchExecutor::ExecuteBatch( int numDrawSurfs, int numInstances, GLuint
 		}
 	}
 
-	vertexCache.VertexPosition( attribBind == ATTRIB_REGULAR ? drawSurfs[0]->ambientCache : drawSurfs[0]->shadowCache, attribBind );
-	vertexCache.IndexPosition( drawSurfs[0]->indexCache );
+	const vertCacheHandle_t &vertexHandle = attribBind == ATTRIB_REGULAR ? drawSurfs[0]->ambientCache : drawSurfs[0]->shadowCache;
+	const vertCacheHandle_t &indexHandle = drawSurfs[0]->indexCache;
+	if ( !vertexHandle.IsValid() || !indexHandle.IsValid() )
+		return;		// stgatilov: happens briefly during cache resize
+	vertexCache.VertexPosition( vertexHandle, attribBind );
+	vertexCache.IndexPosition( indexHandle );
+
 	if ( ShouldUseMultiDraw() ) {
 		BatchMultiDraw( numDrawSurfs, numInstances, baseVertexFn );
 	} else {

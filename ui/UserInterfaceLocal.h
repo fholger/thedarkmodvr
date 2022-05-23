@@ -24,7 +24,7 @@ public:
 	virtual const char *		Name() const;
 	virtual const char *		Comment() const;
 	virtual bool				IsInteractive() const;
-	virtual bool				InitFromFile( const char *qpath, bool rebuild = true, bool cache = true );
+	virtual bool				InitFromFile( const char *qpath, bool rebuild = true ) override;
 	virtual const char *		HandleEvent( const sysEvent_t *event, int time, bool *updateVisuals );
 	virtual void				HandleNamedEvent( const char* namedEvent );
 	virtual void				Redraw( int time );
@@ -58,6 +58,7 @@ public:
 	virtual float				CursorY() { return cursorY; }
 	virtual const char*			RunGuiScript(const char *windowName, int scriptNum);
 	virtual bool				ResetWindowTime(const char *windowName, int startTime = 0);
+	virtual void				UpdateSubtitles();
 
 	size_t						Size();
 
@@ -86,6 +87,7 @@ private:
 	bool						interactive;
 	bool						uniqued;
 
+	idDict						presetDefines;
 	idDict						defines;
 	idDict						state;
 	idWindow *					desktop;
@@ -103,6 +105,11 @@ private:
 	int							time;
 
 	int							refs;
+
+	//stgatilov #2454: We can show several active subtitles simultaneously.
+	// Each of them gets into one of few "slots".
+	// Here we store information about slots between updates.
+	idList<SubtitleMatch>		subtitleSlots;
 };
 
 class idUserInterfaceManagerLocal : public idUserInterfaceManager {
@@ -121,7 +128,7 @@ public:
 	virtual bool				CheckGui( const char *qpath ) const;
 	virtual idUserInterface *	Alloc( void ) const;
 	virtual void				DeAlloc( idUserInterface *gui );
-	virtual idUserInterface *	FindGui( const char *qpath, bool autoLoad = false, bool needInteractive = false, bool forceUnique = false );
+	virtual idUserInterface *	FindGui( const char *qpath, bool autoLoad = false, bool needInteractive = false, bool forceUnique = false, idDict presetDefines = {} ) override;
 	virtual idUserInterface *	FindDemoGui( const char *qpath );
 	virtual	idListGUI *			AllocListGUI( void ) const;
 	virtual void				FreeListGUI( idListGUI *listgui );

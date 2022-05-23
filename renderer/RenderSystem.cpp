@@ -26,6 +26,7 @@ idRenderSystemLocal	tr;
 idRenderSystem	*renderSystem = &tr;
 
 idCVarBool r_tonemap( "r_tonemap", "1", CVAR_RENDERER | CVAR_ARCHIVE, "Use the tonemap correction (gamma, brightness, etc)" );
+idCVar r_smallCharSpacing( "r_smallCharSpacing", "1", CVAR_RENDERER | CVAR_ARCHIVE, "Console text symbol spacing", 0.5, 1 );
 
 /*
 =====================
@@ -420,7 +421,7 @@ void idRenderSystemLocal::DrawSmallChar( int x, int y, int ch, const idMaterial 
 		float screenAspect = (float)glConfig.vidWidth / glConfig.vidHeight;
 		float virtualAspect = (float)SCREEN_WIDTH / SCREEN_HEIGHT;
 		float charAspect = fontAspect / screenAspect * virtualAspect;
-		float charWidth = charAspect * SMALLCHAR_HEIGHT, charHeight = SMALLCHAR_HEIGHT;
+		float charHeight = SMALLCHAR_HEIGHT * r_smallCharSpacing.GetFloat(), charWidth = charAspect * charHeight;
 		if ( charWidth > SMALLCHAR_WIDTH ) {
 			charWidth = SMALLCHAR_WIDTH;
 			charHeight = charWidth / charAspect;
@@ -563,8 +564,14 @@ void idRenderSystemLocal::BeginFrame( int windowWidth, int windowHeight ) {
 		windowWidth = tiledViewport[0];
 		windowHeight = tiledViewport[1];
 	}
+#if 0
+	// it's either glConfig.vidWidth/height already or is explicitly different
+	// some newer FBO code expects it to always be window size
+	// if for some reason this is enabled back, at least check that envshot works
+	// leaving this code here disabled to serve as WARNING
 	glConfig.vidWidth = windowWidth;
 	glConfig.vidHeight = windowHeight;
+#endif
 
 	renderCrops[0].x = 0;
 	renderCrops[0].y = 0;
@@ -864,7 +871,7 @@ void idRenderSystemLocal::CaptureRenderToImage( idImage &image ) {
 		session->writeDemo->WriteHashString( image.imgName );
 
 		if ( r_showDemo.GetBool() )
-		{ common->Printf( "write DC_CAPTURE_RENDER: %s\n", image.imgName ); }
+		{ common->Printf( "write DC_CAPTURE_RENDER: %s\n", image.imgName.c_str() ); }
 	}
 
 	renderCrop_t &rc = renderCrops[currentRenderCrop];

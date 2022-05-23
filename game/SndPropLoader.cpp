@@ -327,7 +327,7 @@ bool CsndPropLoader::MapEntBounds( idBounds &bounds, idMapEntity *mapEnt )
 	int				numFaces, numPrim;
 	idVec3			norm, *addpoints, debugCenter;
 	idMat3			rotation;
-	float			dist, angle;
+	float			dist;
 	const char      *modelName;
 	cmHandle_t		cmHandle; // collision model handle for getting bounds
 
@@ -342,7 +342,7 @@ bool CsndPropLoader::MapEntBounds( idBounds &bounds, idMapEntity *mapEnt )
 		// TRUE, this would force the door model to have a .cm file, otherwise
 		// LoadModel would return 0 in this case. (precache = true, no .cm file)
 		cmHandle = collisionModelManager->LoadModel( modelName, false );
-		if ( cmHandle == 0)
+		if ( cmHandle < 0 )
 		{
 			DM_LOG(LC_SOUND, LT_WARNING)LOGSTRING("Failed to load collision model for entity %s with model %s.  Entity will be ignored.\r", args.GetString("name"), modelName);
 			returnval = false;
@@ -351,20 +351,8 @@ bool CsndPropLoader::MapEntBounds( idBounds &bounds, idMapEntity *mapEnt )
 
 		collisionModelManager->GetModelBounds( cmHandle, bounds );
 		DM_LOG(LC_SOUND, LT_DEBUG)LOGSTRING("Found bounds with volume %f for entity %s with model %s.\r", bounds.GetVolume(), args.GetString("name"), modelName);
-		// Rotation copied from Entity::ParseSpawnArgsToRenderEntity()
-		// get the rotation matrix in either full form, or single angle form
-		if ( !args.GetMatrix( "rotation", "1 0 0 0 1 0 0 0 1", rotation ) ) 
-			{
-				angle = args.GetFloat( "angle" );
-				if ( angle != 0.0f ) 
-				{
-					rotation = idAngles( 0.0f, angle, 0.0f ).ToMat3();
-				}
-				else 
-				{
-						rotation.Identity();
-				}
-			}
+		gameEdit->ParseSpawnArgsToAxis( &args, rotation );
+
 		bounds.RotateSelf(rotation);
 		// Translate and rotate the bounds to be in sync with the model
 		bounds.TranslateSelf(origin);

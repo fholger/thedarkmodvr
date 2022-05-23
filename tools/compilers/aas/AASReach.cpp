@@ -871,6 +871,7 @@ bool idAASReach::Build( const idMapFile *mapFile, idAASFileLocal *file ) {
 	this->file = file;
 	numReachabilities = 0;
 
+	TRACE_CPU_SCOPE("BuildReachability")
 	common->Printf( "[Reachability]\n" );
 
 	// delete all existing reachabilities
@@ -936,7 +937,8 @@ bool idAASReach::Build( const idMapFile *mapFile, idAASFileLocal *file ) {
 
 		percent = 100 * i / file->areas.Num();
 		if ( percent > lastPercent ) {
-			common->Printf( "\r%6d%%", percent );
+			//stgatilov: not useful, but takes time
+			//common->Printf( "\r%6d%%", percent );
 			lastPercent = percent;
 		}
 	}

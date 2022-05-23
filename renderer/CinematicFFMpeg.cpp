@@ -76,9 +76,6 @@ static void LogPostMessage(const char *message) {
 }
 
 void idCinematicFFMpeg::InitCinematic( void ) {
-	// Make sure all codecs are registered
-	ExtLibs::av_register_all();
-
 	InvClockTicksPerSecond = 1.0 / idLib::sys->ClockTicksPerSecond();
 	//Note: we cannot init logfile, because we cannot read cvars yet (see constructor)
 }
@@ -258,7 +255,7 @@ bool idCinematicFFMpeg::_OpenDecoder() {
 	//accelerate ExtLibs::avformat_find_stream_info by setting tighter limits
 	ExtLibs::av_dict_set_int(&options, "probesize", 1<<20, 0);
 	ExtLibs::av_dict_set_int(&options, "analyzeduration", int(1.0 * AV_TIME_BASE), 0);		//ROQ is bound by this one
-	bool ok = ExtLibs::avformat_open_input(&_formatContext, _path.c_str(), NULL, &options) >= 0;
+	bool ok = ExtLibs::avformat_open_input(&_formatContext, NULL, NULL, &options) >= 0;
 	ExtLibs::av_dict_free(&options);
 	if (!ok) {
 		common->Warning("Could not open %s\n", _path.c_str());
@@ -274,27 +271,24 @@ bool idCinematicFFMpeg::_OpenDecoder() {
 	TIMER_END_LOG(findStream, "Found stream info");
 
 	// Find the most suitable video stream and open decoder for it
-	_videoStreamIndex = OpenBestStreamOfType(AVMEDIA_TYPE_VIDEO);
+	_videoStreamIndex = OpenBestStreamOfType(AVMEDIA_TYPE_VIDEO, _videoDecoderContext);
 	if (_videoStreamIndex < 0) {
 		common->Warning("Could not find video stream in %s\n", _path.c_str());
 		return false;
 	}
 	AVStream* videoStream = _formatContext->streams[_videoStreamIndex];
-	_videoDecoderContext = videoStream->codec;
-	AVRational videoTBase = ExtLibs::av_codec_get_pkt_timebase(_videoDecoderContext);
+	AVRational videoTBase = _videoDecoderContext->pkt_timebase;
 	LogPrintf("Video stream timebase: %d/%d = %0.6lf", videoTBase.num, videoTBase.den, ExtLibs::av_q2d(videoTBase));
 
 
 	if (_withAudio) {
 		// Find the most suitable audio stream and open decoder for it
-		_audioStreamIndex = OpenBestStreamOfType(AVMEDIA_TYPE_AUDIO);
+		_audioStreamIndex = OpenBestStreamOfType(AVMEDIA_TYPE_AUDIO, _audioDecoderContext);
 		if (_audioStreamIndex < 0) {
 			common->Warning("Could not find audio stream in %s\n", _path.c_str());
 			return false;
 		}
-		AVStream* audioStream = _formatContext->streams[_audioStreamIndex];
-		_audioDecoderContext = audioStream->codec;
-		AVRational audioTBase = ExtLibs::av_codec_get_pkt_timebase(_audioDecoderContext);
+		AVRational audioTBase = _audioDecoderContext->pkt_timebase;
 		LogPrintf("Audio stream timebase: %d/%d = %0.6lf", audioTBase.num, audioTBase.den, ExtLibs::av_q2d(audioTBase));
 	}
 
@@ -384,12 +378,10 @@ void idCinematicFFMpeg::CloseDecoder() {
 	_swResampleContext = NULL;
 
 	if (_videoDecoderContext)
-		ExtLibs::avcodec_close(_videoDecoderContext);
-	_videoDecoderContext = NULL;
+		avcodec_free_context(&_videoDecoderContext);
 
 	if (_audioDecoderContext)
-		ExtLibs::avcodec_close(_audioDecoderContext);
-	_audioDecoderContext = NULL;
+		avcodec_free_context(&_audioDecoderContext);
 
 	if (_formatContext)
 		ExtLibs::avformat_close_input(&_formatContext);
@@ -406,7 +398,10 @@ void idCinematicFFMpeg::CloseDecoder() {
 	TIMER_END_LOG(closeAll, "Freed all FFmpeg resources");
 }
 
-int idCinematicFFMpeg::OpenBestStreamOfType(AVMediaType type) {
+int idCinematicFFMpeg::OpenBestStreamOfType(AVMediaType type, AVCodecContext* &context) {
+	if (context)
+		avcodec_free_context(&context);
+
 	TIMER_START(findBestStream);
 	int streamIndex = ExtLibs::av_find_best_stream(_formatContext, type, -1, -1, NULL, 0);
 	if (streamIndex < 0) {
@@ -416,7 +411,7 @@ int idCinematicFFMpeg::OpenBestStreamOfType(AVMediaType type) {
 	TIMER_END_LOG(findBestStream, "Found best stream");
 	AVStream* st = _formatContext->streams[streamIndex];
 
-	AVCodecID codecId = st->codec->codec_id;
+	AVCodecID codecId = st->codecpar->codec_id;
 	LogPrintf("Stream %d is encoded with codec %d: %s", streamIndex, codecId, ExtLibs::avcodec_get_name(codecId));
 	// find decoder for the stream
 	TIMER_START(findDecoder);
@@ -427,16 +422,21 @@ int idCinematicFFMpeg::OpenBestStreamOfType(AVMediaType type) {
 	}
 	TIMER_END_LOG(findDecoder, "Found decoder");
 
+	TIMER_START(openCodec);
+	context = avcodec_alloc_context3(dec);
+	avcodec_parameters_to_context(context, st->codecpar);
+	context->pkt_timebase = st->time_base;
+
 	//note: "0" means "auto" (usually equal to number of CPU cores)
 	//this overrides the default value "1"
-	st->codec->thread_count = 0;
+	context->thread_count = 0;
 	//note: this is the default value
 	//frame-threading is preferred, slice-threading is used only if codec does not support frame-threading
-	//st->codec->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+	//context->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
 
-	TIMER_START(openCodec);
 	AVDictionary *opts = NULL;
-	if (ExtLibs::avcodec_open2(st->codec, dec, &opts) < 0) {
+	if (ExtLibs::avcodec_open2(context, dec, &opts) < 0) {
+		avcodec_free_context(&context);
 		common->Warning("Failed to open %s:%s codec\n", ExtLibs::av_get_media_type_string(type), ExtLibs::avcodec_get_name(codecId));
 		return -1;
 	}
@@ -450,38 +450,38 @@ int idCinematicFFMpeg::OpenBestStreamOfType(AVMediaType type) {
 bool idCinematicFFMpeg::FetchPacket() {
 	while (true) {
 		TIMER_START(readPacket);
-		AVPacket newPacket;
-		ExtLibs::av_init_packet(&newPacket);
-		int ret = ExtLibs::av_read_frame(_formatContext, &newPacket);
+		AVPacket *newPacket = av_packet_alloc();
+		int ret = ExtLibs::av_read_frame(_formatContext, newPacket);
 		if (ret < 0) {
-			ExtLibs::av_packet_unref(&newPacket);
+			ExtLibs::av_packet_free(&newPacket);
 			return false;
 		}
 		TIMER_END_LOG(readPacket, "Read packet");
 
-		int stream = newPacket.stream_index;
+		int stream = newPacket->stream_index;
 		AVStream* st = _formatContext->streams[stream];
-		AVMediaType type = ExtLibs::avcodec_get_type(st->codec->codec_id);
+		AVMediaType type = ExtLibs::avcodec_get_type(st->codecpar->codec_id);
 		LogPrintf("Packet: stream = %d (%s)  size = %d  DTS = %lld  PTS = %lld  dur = %d",
-			newPacket.stream_index, ExtLibs::av_get_media_type_string(type), newPacket.size,
-			newPacket.dts, newPacket.pts, newPacket.duration
+			newPacket->stream_index, ExtLibs::av_get_media_type_string(type), newPacket->size,
+			newPacket->dts, newPacket->pts, newPacket->duration
 		);
 
 		if (stream != _videoStreamIndex && stream != _audioStreamIndex) {
-			ExtLibs::av_packet_unref(&newPacket);
+			ExtLibs::av_packet_free(&newPacket);
 			continue;
 		}
 
 		PacketQueue &queue = (stream == _videoStreamIndex ? _videoPackets : _audioPackets);
-		AVPacketList *packetNode = new AVPacketList();
-		ExtLibs::av_packet_move_ref(&packetNode->pkt, &newPacket);
+		PacketNode *packetNode = new PacketNode();
+		packetNode->_packet = newPacket;
+		packetNode->_next = nullptr;
 		queue.Add(packetNode);
 
 		return ret >= 0;
 	}
 }
 
-AVPacketList *idCinematicFFMpeg::GetPacket(PacketQueue &queue) {
+idCinematicFFMpeg::PacketNode *idCinematicFFMpeg::GetPacket(PacketQueue &queue) {
 	while (!queue.Peek()) {
 		bool ok = FetchPacket();
 		if (!ok)
@@ -489,21 +489,21 @@ AVPacketList *idCinematicFFMpeg::GetPacket(PacketQueue &queue) {
 	}
 	assert(queue.Peek());
 
-	AVPacketList *packetNode = queue.Get();
+	PacketNode *packetNode = queue.Get();
 	return packetNode;
 }
 
 bool idCinematicFFMpeg::DropPacket(PacketQueue &queue) {
-	if (AVPacketList *packetNode = queue.Get()) {
+	if (PacketNode *packetNode = queue.Get()) {
 		FreePacket(packetNode);
 		return true;
 	}
 	return false;
 }
 
-void idCinematicFFMpeg::FreePacket(AVPacketList *packetNode) {
+void idCinematicFFMpeg::FreePacket(PacketNode *packetNode) {
 	if (!packetNode) return;
-	ExtLibs::av_packet_unref(&packetNode->pkt);
+	ExtLibs::av_packet_free(&packetNode->_packet);
 	delete packetNode;
 }
 
@@ -514,9 +514,9 @@ bool idCinematicFFMpeg::FetchPacket_Locking() {
 	return res;
 }
 
-AVPacketList *idCinematicFFMpeg::GetPacket_Locking(PacketQueue &queue) {
+idCinematicFFMpeg::PacketNode *idCinematicFFMpeg::GetPacket_Locking(PacketQueue &queue) {
 	Sys_EnterCriticalSection(CRITICAL_SECTION_PACKETS);
-	AVPacketList *res = GetPacket(queue);
+	PacketNode *res = GetPacket(queue);
 	Sys_LeaveCriticalSection(CRITICAL_SECTION_PACKETS);
 	return res;
 }
@@ -530,18 +530,12 @@ bool idCinematicFFMpeg::FetchFrames(AVMediaType type, double discardTime) {
 	int framesDecoded = 0;
 	do {
 		PacketQueue &queue = (type == AVMEDIA_TYPE_VIDEO ? _videoPackets : _audioPackets);
-		AVPacketList *packetNode = GetPacket_Locking(queue);
+		PacketNode *packetNode = GetPacket_Locking(queue);
 		if (!packetNode)
 			break;	//end of stream
-		AVPacket &packet = packetNode->pkt;
+		const AVPacket &packet = *packetNode->_packet;
 
-		byte *oldData = packet.data;
-		int oldSize = packet.size;
 		framesDecoded += DecodePacket(type, packet, discardTime);
-		//note: DecodePacket changes data & size of packet
-		//we need to restore them to properly destroy packet
-		packet.data = oldData;
-		packet.size = oldSize;
 
 		FreePacket(packetNode);
 	} while (framesDecoded == 0);
@@ -557,38 +551,50 @@ bool idCinematicFFMpeg::FetchFrames(AVMediaType type, double discardTime) {
 	return (framesDecoded > 0);
 }
 
-int idCinematicFFMpeg::DecodePacket(AVMediaType type, AVPacket &packet, double discardTime) {
+int idCinematicFFMpeg::DecodePacket(AVMediaType type, const AVPacket &packet, double discardTime) {
+	AVCodecContext *context;
+	AVFrame *frame;
+	if (type == AVMEDIA_TYPE_VIDEO) {
+		context = _videoDecoderContext;
+		frame = _tempVideoFrame;
+	}
+	else {		//AVMEDIA_TYPE_AUDIO
+		context = _audioDecoderContext;
+		frame = _tempAudioFrame;
+	}
+
+	TIMER_START(pktsend);
+	int sendRet = avcodec_send_packet(context, &packet);
+	if (sendRet == AVERROR_EOF)
+		return 0;	//flushing already flushed decoder
+	if (sendRet < 0) {
+		common->Warning("Error sending %s packet to decoder (%d)\n", ExtLibs::av_get_media_type_string(type), sendRet);
+		return 0;
+	}
+	TIMER_END_LOG(pktsend, "Packet sent");
+
 	int framesDecoded = 0;
-
-	do {
-		TIMER_START(decode);
-		int gotFrame = 0;
-		int readBytes;
-		if (type == AVMEDIA_TYPE_VIDEO)
-			readBytes = ExtLibs::avcodec_decode_video2(_videoDecoderContext, _tempVideoFrame, &gotFrame, &packet);
-		else		//AVMEDIA_TYPE_AUDIO
-			readBytes = ExtLibs::avcodec_decode_audio4(_audioDecoderContext, _tempAudioFrame, &gotFrame, &packet);
-		if (readBytes < 0) {
-			common->Warning("Error decoding %s frame (%d)\n", ExtLibs::av_get_media_type_string(type), readBytes);
-			return false;
-		}
-		TIMER_END_LOG(decode, "Packet decoded");
-
-		if (gotFrame) {
-			framesDecoded++;
-			ProcessDecodedFrame(type, type == AVMEDIA_TYPE_VIDEO ? _tempVideoFrame : _tempAudioFrame, discardTime);
+	while (1) {
+		TIMER_START(recvframe);
+		int recvRet = avcodec_receive_frame(context, frame);
+		if (recvRet == AVERROR(EAGAIN) || recvRet == AVERROR_EOF)
+			break;	//no more frames in this packet / in decoder on flush
+		if (recvRet < 0) {
+			common->Warning("Error receiving %s frame from decoder (%d)\n", ExtLibs::av_get_media_type_string(type), recvRet);
+			break;
 		}
 
-		packet.data += readBytes;
-		packet.size -= readBytes;
-	} while (packet.size > 0);
+		framesDecoded++;
+		ProcessDecodedFrame(type, frame, discardTime);
+		TIMER_END_LOG(recvframe, "Frame received");
+	}
 
 	return framesDecoded;
 }
 
 void idCinematicFFMpeg::ProcessDecodedFrame(AVMediaType type, AVFrame *decodedFrame, double discardTime) {
 	//determine good timestamp using FFmpeg magic
-	int64_t pts = ExtLibs::av_frame_get_best_effort_timestamp(decodedFrame);
+	int64_t pts = decodedFrame->best_effort_timestamp;
 	int streamIdx = (type == AVMEDIA_TYPE_VIDEO ? _videoStreamIndex : _audioStreamIndex);
 	double timebase = ExtLibs::av_q2d(_formatContext->streams[streamIdx]->time_base);
 	double duration = decodedFrame->pkt_duration * timebase;
@@ -869,6 +875,10 @@ bool idCinematicFFMpeg::InitFromFile(const char *qpath, bool looping, bool withA
 	return res;
 }
 
+const char *idCinematicFFMpeg::GetFilePath() const {
+	return _path.c_str();
+}
+
 int idCinematicFFMpeg::AnimationLength() {
 	return int(_duration * 1000.0);
 }
@@ -946,15 +956,21 @@ bool idCinematicFFMpeg::IncrementLap(double videoTime) {
 	return ok;
 }
 
-bool idCinematicFFMpeg::SoundForTimeInterval(int sampleOffset, int *sampleSize, int frequency, float *output) {
-	CALL_START("SoundForTimeInterval(%d + %d)", sampleOffset, *sampleSize);
+int idCinematicFFMpeg::GetRealSoundOffset(int sampleOffset44k) const {
+	int soundTimeOffset44k = 0;
+	if (_soundTimeOffset < DBL_MAX)
+		soundTimeOffset44k = int(FREQ44K * _soundTimeOffset);
+	return sampleOffset44k + soundTimeOffset44k;
+}
+
+bool idCinematicFFMpeg::SoundForTimeInterval(int sampleOffset44k, int *sampleSize, float *output) {
+	CALL_START("SoundForTimeInterval(%d + %d)", sampleOffset44k, *sampleSize);
 	if (!_withAudio)
 		return false;
 	if (!IsDecoderOpened_Locking())
 		return false;
-	assert(frequency == FREQ44K);
 	int count = *sampleSize;
-	double soundTime = sampleOffset / double(FREQ44K);
+	double soundTime = sampleOffset44k / double(FREQ44K);
 
 	/*for (int i = 0; i < count; i++)
 		output[i] = 32767.0f * (float) sin( double(sampleOffset + i) / FREQ44K * M_PI * 2 * 440.0 );*/

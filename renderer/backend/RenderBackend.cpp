@@ -66,6 +66,7 @@ void RenderBackend::Init() {
 		qglBindBuffer( GL_PIXEL_PACK_BUFFER, lightgemPbos[i] );
 		qglBufferData( GL_PIXEL_PACK_BUFFER, DARKMOD_LG_RENDER_WIDTH * DARKMOD_LG_RENDER_WIDTH * 3, nullptr, GL_STREAM_READ );
 	}
+	qglBindBuffer( GL_PIXEL_PACK_BUFFER, 0 ); // reset to default to allow sysmem ReadPixels if LG disabled
 
 	vrBackend->Init();
 }
@@ -137,7 +138,10 @@ void RenderBackend::DrawView( const viewDef_t *viewDef ) {
 	int RB_STD_DrawShaderPasses( drawSurf_t **drawSurfs, int numDrawSurfs );
 	processed = RB_STD_DrawShaderPasses( drawSurfs, numDrawSurfs );
 
-	if ( r_frobOutline.GetBool() || r_newFrob.GetInteger() == 1 ) {
+	if (
+		(r_frobOutline.GetInteger() > 0 || r_newFrob.GetInteger() == 1) && 
+		!viewDef->IsLightGem()
+	) {
 		frobOutlineStage.DrawFrobOutline( drawSurfs, numDrawSurfs );
 	}
 
@@ -242,12 +246,14 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 		qglStencilFunc( GL_ALWAYS, 128, 255 );
 	}
 
-	stencilShadowStage.DrawStencilShadows( vLight, vLight->globalShadows );
+	if ( vLight->globalShadows ) {
+		stencilShadowStage.DrawStencilShadows( vLight, vLight->globalShadows );
 	backEnd.currentScissor = vLight->scissorRect;
 	FB_ApplyScissor();
 
-	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
-		frameBuffers->ResolveShadowStencilAA();
+		if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
+			frameBuffers->ResolveShadowStencilAA();
+		}
 	}
 
 	if ( useShadowFbo ) {
@@ -259,13 +265,14 @@ void RenderBackend::DrawInteractionsWithStencilShadows( const viewDef_t *viewDef
 		frameBuffers->EnterShadowStencil();
 	}
 
-	stencilShadowStage.DrawStencilShadows( vLight, vLight->localShadows );
+	if ( vLight->localShadows ) {
+		stencilShadowStage.DrawStencilShadows( vLight, vLight->localShadows );
 	backEnd.currentScissor = vLight->scissorRect;
 	FB_ApplyScissor();
-	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
-		frameBuffers->ResolveShadowStencilAA();
+		if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
+			frameBuffers->ResolveShadowStencilAA();
+		}
 	}
-
 
 	if ( useShadowFbo ) {
 		frameBuffers->LeaveShadowStencil();

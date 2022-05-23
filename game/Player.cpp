@@ -282,6 +282,8 @@ const idEventDef EV_Player_SetLightgemModifier("setLightgemModifier", EventArgs(
 
 const idEventDef EV_ReadLightgemModifierFromWorldspawn("readLightgemModifierFromWorldspawn", EventArgs(), EV_RETURNS_VOID, "");
 
+const idEventDef EV_Player_GetCalibratedLightgemValue( "getCalibratedLightgemValue", EventArgs(), 'f', "Returns the calibrated light gem value.");
+
 // greebo: Changes the projectile entityDef name of the given weapon (e.g. "broadhead").
 const idEventDef EV_ChangeWeaponProjectile("changeWeaponProjectile", EventArgs('s', "weaponName", "", 's', "projectileDefName", ""), EV_RETURNS_VOID, 
 		"Changes the projectile entityDef name of the given weapon (e.g. \"broadhead\")\n" \
@@ -424,8 +426,9 @@ CLASS_DECLARATION( idActor, idPlayer )
 	EVENT( EV_Player_GiveHealthPool,		idPlayer::Event_GiveHealthPool )
 	EVENT( EV_Player_WasDamaged,			idPlayer::Event_WasDamaged )
 
-	EVENT( EV_Player_SetLightgemModifier,	idPlayer::Event_SetLightgemModifier )
-	EVENT( EV_ReadLightgemModifierFromWorldspawn, idPlayer::Event_ReadLightgemModifierFromWorldspawn )
+	EVENT( EV_Player_SetLightgemModifier,			idPlayer::Event_SetLightgemModifier )
+	EVENT( EV_ReadLightgemModifierFromWorldspawn,	idPlayer::Event_ReadLightgemModifierFromWorldspawn )
+	EVENT( EV_Player_GetCalibratedLightgemValue,	idPlayer::Event_GetCalibratedLightgemValue )
 
 	EVENT( EV_Player_StartZoom,				idPlayer::Event_StartZoom )
 	EVENT( EV_Player_EndZoom,				idPlayer::Event_EndZoom )
@@ -705,6 +708,7 @@ idPlayer::idPlayer() :
 	m_InventoryOverlay		= -1;
 	objectivesOverlay		= -1;
 	inventoryGridOverlay	= -1;
+	subtitlesOverlay		= -1;
 	m_WeaponCursor			= CInventoryCursorPtr();
 	m_MapCursorIdx			= -1;
 	m_LastItemNameBeforeClear = TDM_DUMMY_ITEM;
@@ -1456,6 +1460,39 @@ bool idPlayer::WaitUntilReady()
 	m_WaitUntilReadyGuiTime += USERCMD_MSEC;
 	
 	return ready;
+}
+
+void idPlayer::UpdateSubtitlesGUI()
+{
+	bool wantActive = cv_tdm_subtitles.GetInteger() != SUBL_IGNORE;
+	bool haveActive = (subtitlesOverlay != -1);
+
+	// Check if we need create/delete GUI
+	if (wantActive != haveActive) {
+		if (wantActive) {
+			subtitlesOverlay = CreateOverlay(cv_tdm_subtitles_gui_file.GetString(), LAYER_SUBTITLES);
+			assert(subtitlesOverlay != -1);
+		}
+		else {
+			DestroyOverlay(subtitlesOverlay);
+			subtitlesOverlay = -1;
+		}
+	}
+
+	if (subtitlesOverlay == -1)
+		return;
+
+	idUserInterface *subtitlesGUI = GetOverlay(subtitlesOverlay);
+	if (subtitlesGUI == nullptr) {
+		// Happens if overlay creation failed (e.g. missing gui file)
+		gameLocal.Warning("Failed setting up subtitles GUI: %s", cv_tdm_subtitles_gui_file.GetString());
+		DestroyOverlay(subtitlesOverlay);
+		subtitlesOverlay = -1;
+		cv_tdm_subtitles.SetInteger(SUBL_IGNORE);
+		return;
+	}
+
+	subtitlesGUI->UpdateSubtitles();
 }
 
 void idPlayer::CreateObjectivesGUI()
@@ -2282,6 +2319,7 @@ void idPlayer::Save( idSaveGame *savefile ) const {
 
 	savefile->WriteInt(objectivesOverlay);
 	savefile->WriteInt(inventoryGridOverlay);
+	savefile->WriteInt(subtitlesOverlay);
 
 	savefile->WriteBool(m_WeaponCursor != NULL);
 	if (m_WeaponCursor != NULL) {
@@ -2623,6 +2661,7 @@ void idPlayer::Restore( idRestoreGame *savefile ) {
 
 	savefile->ReadInt(objectivesOverlay);
 	savefile->ReadInt(inventoryGridOverlay);
+	savefile->ReadInt(subtitlesOverlay);
 
 	bool hasWeaponCursor;
 	savefile->ReadBool(hasWeaponCursor);
@@ -3371,7 +3410,7 @@ void idPlayer::UpdateConditions( void )
 	else {
 		int creepLimit = cv_pm_creepmod.GetFloat() * 127;
 		AI_CREEP = (usercmd.buttons & BUTTON_CREEP) ||
-			(idMath::Abs(usercmd.forwardmove) <= creepLimit && idMath::Abs(usercmd.rightmove <= creepLimit));
+			(idMath::Abs(usercmd.forwardmove) <= creepLimit && idMath::Abs(usercmd.rightmove) <= creepLimit);
 	}
 }
 
@@ -7527,6 +7566,9 @@ void idPlayer::Think( void )
 
 	// determine if portal sky is in pvs
 	gameLocal.portalSkyActive = gameLocal.pvs.CheckAreasForPortalSky( gameLocal.GetPlayerPVS(), GetEyePosition() ); // SteveL #3819. Pass eye pos instead of origin
+
+	// stgatilov #2454
+	UpdateSubtitlesGUI();
 }
 
 /*
@@ -8799,6 +8841,16 @@ void idPlayer::Event_SetViewAngles( const idVec3* angles ) {
 }
 
 /*
+================
+idPlayer::Event_GetCalibratedLightgemValue
+================
+*/
+void idPlayer::Event_GetCalibratedLightgemValue( void ) {
+	float clampVal = GetCalibratedLightgemValue();
+	idThread::ReturnFloat(clampVal);
+}
+
+/*
 ==================
 idPlayer::Event_StopFxFov
 ==================
@@ -9690,6 +9742,40 @@ float idPlayer::CalculateWeakLightgem()
 	return (float) fLightgemVal;
 }
 
+/*
+================
+idPlayer::GetCalibratedLightgemValue
+================
+*/
+float idPlayer::GetCalibratedLightgemValue() {
+	idPlayer* player = gameLocal.GetLocalPlayer();
+	if (player == NULL)
+	{
+		return(0.0f);
+	}
+
+	float lgem = static_cast<float>(m_LightgemValue);
+
+	float term0 = -0.03f; // grayman #3063 - Wiki (http://wiki.thedarkmod.com/index.php?title=Visual_scan) says -0.03f, and angua says this is what it's supposed to be
+//	float term0 = -0.003f;
+	float term1 = 0.03f * lgem;
+	float term2 = 0.001f * idMath::Pow16(lgem, 2);
+	float term3 = 0.00013f * idMath::Pow16(lgem, 3);
+	float term4 = -0.000011f * idMath::Pow16(lgem, 4);
+	float term5 = 0.0000001892f * idMath::Pow16(lgem, 5);
+
+	float clampVal = term0 + term1 + term2 + term3 + term4 + term5;
+
+	/* grayman #3492 - allow values > 1
+	if (clampVal > 1)
+	{
+		clampVal = 1;
+	}
+	*/
+
+	return(clampVal);
+}
+
 int idPlayer::AddLight(idLight *light)
 {
 	if (light != NULL)
@@ -10200,7 +10286,7 @@ bool idPlayer::DropToHands( idEntity *ent, CInventoryItemPtr item )
 				}
 
 				// Tels: #2826: re-enable LOD again, in case the entity was in the inventory (like a shoulderable body)
-				ent->EnableLOD(true);
+				LodComponent::EnableLOD(ent, true);
 
 				return true;
 			}

@@ -17,6 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #define __WIN_LOCAL_H__
 
 #include <windows.h>
+#include <thread>
 
 
 #define	MAX_OSPATH		256
@@ -51,7 +52,7 @@ LONG WINAPI MainWndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 void Conbuf_AppendText( const char *msg );
 
-typedef struct {
+typedef struct Win32Vars_s {
 	HWND			hWnd;
 	HINSTANCE		hInstance;
 
@@ -85,7 +86,6 @@ typedef struct {
 	unsigned short	oldHardwareGamma[3][256];
 	// desktop gamma is saved here for restoration at exit
 
-	static idCVar	sys_arch;
 	static idCVar	in_mouse;
 	static idCVar	win_xpos;			// archived X coordinate of window position
 	static idCVar	win_ypos;			// archived Y coordinate of window position
@@ -95,6 +95,7 @@ typedef struct {
 	static idCVar	win_viewlog;
 	static idCVar	win_timerUpdate;
 	static idCVarBool win_topmost;
+	const std::thread::id MAIN_THREAD_ID = std::this_thread::get_id();
 
 	CRITICAL_SECTION criticalSections[MAX_CRITICAL_SECTIONS];
 	HANDLE			events[MAX_TRIGGER_EVENTS];

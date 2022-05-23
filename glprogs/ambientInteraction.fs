@@ -14,6 +14,8 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 ******************************************************************************/
 #version 140
 
+#pragma tdm_include "tdm_lightproject.glsl"
+
 in vec3 var_Position;
 in vec2 var_TexDiffuse;        
 in vec2 var_TexSpecular;
@@ -43,6 +45,7 @@ uniform float u_gamma, u_minLevel;
 uniform mat4 u_modelMatrix;
 uniform float u_RGTC;
 uniform vec4 u_rimColor;   
+uniform vec4 u_lightTextureMatrix[2];
 
 uniform sampler2D u_ssaoTexture;
 uniform int u_ssaoEnabled;
@@ -59,7 +62,7 @@ void main() {
 	vec4 bumpTexel = texture ( u_normalTexture, var_TexNormal.st ) * 2. - 1.;
 	vec3 localNormal = u_RGTC == 1. 
 		? vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0)))
-		: normalize( bumpTexel.wyz ); 
+		: normalize( bumpTexel.xyz ); 
 	vec3 N = var_TangentBinormalNormalMatrix * localNormal;
 	//stgatilov: without normalization |N| > 1 is possible, which leads to |spec| > 1,
 	//which causes white sparklies when antialiasing is enabled (http://forums.thedarkmod.com/topic/19134-aliasing-artefact-white-pixels-near-edges/)
@@ -76,9 +79,8 @@ void main() {
 		float a = .25 - tl.x*tl.x - tl.y*tl.y - tl.z*tl.z;
 		light = vec4(vec3(a*2), 1); // FIXME pass r_lightScale as uniform
 	} else {
-		vec3 lightProjection = textureProj( u_lightProjectionTexture, var_TexLight.xyw ).rgb; 
-		vec3 lightFalloff = texture( u_lightFalloffTexture, vec2( var_TexLight.z, 0.5 ) ).rgb;
-		light = vec4(lightProjection * lightFalloff, 1);
+		light.rgb = projFalloffOfNormalLight(u_lightProjectionTexture, u_lightFalloffTexture, u_lightTextureMatrix, var_TexLight);
+		light.a = 1;
 	} 
 
 	if (u_cubic == 1.0) {

@@ -140,11 +140,6 @@ void idGameEdit::ParseSpawnArgsToRenderLight( const idDict *args, renderLight_t 
 		}
 	}
 
-	bool sizeFound = args->GetFloat( "emitter_size", "-1", renderLight->radius );
-	//stgatilov: computing emitter size from light radius in all cases is a dangerous default, we should not impose it on players!
-	/*if ( !sizeFound )
-		renderLight->radius = 1e-2 * idMath::Fmin( renderLight->lightRadius[0], renderLight->lightRadius[1], renderLight->lightRadius[2] );*/
-
 	// get the rotation matrix in either full form, or single angle form
 	idAngles angles;
 	idMat3 mat;
@@ -197,11 +192,27 @@ void idGameEdit::ParseSpawnArgsToRenderLight( const idDict *args, renderLight_t 
 	if ( !args->GetBool( "ai_see", "1") ) // SteveL #4128
 	{
 		renderLight->suppressLightInViewID = VID_LIGHTGEM;
-	}
+	} 
+	renderLight->suppressInSubview = args->GetInt( "suppressInSubview" );
 
 	const char* areaLock;
 	if (args->GetString("areaLock", "", &areaLock))
 		renderLight->areaLock = (renderEntity_s::areaLock_t) (areaLockOptions.FindIndex(areaLock) + 1);
+
+	renderLight->volumetricDust = 0.0f;
+	renderLight->volumetricNoshadows = renderLight->noShadows;
+	if ( args->GetBool( "volumetric_light" ) ) {
+		if ( renderLight->shader && renderLight->shader->IsFogLight() ) {
+			common->Warning(
+				"Volumetric fog lights should NOT be used!\n"
+				"This feature is not finished yet and is subject to change.\n"
+				"See more details in #5889."
+			);
+		}
+		args->GetFloat( "volumetric_dust", "0.002", renderLight->volumetricDust );
+		if ( args->FindKey( "volumetric_noshadows" ) )
+			renderLight->volumetricNoshadows = args->GetInt( "volumetric_noshadows", "$%" );
+	}
 }
 
 /*
@@ -774,6 +785,17 @@ void idLight::GetRadius( idVec3 &out ) const {
     out.z = renderLight.lightRadius[2];
 }
 
+void idLight::Hide( void ) {
+	idEntity::Hide();
+	Off();
+}
+
+void idLight::Show( void ) {
+	idEntity::Show();
+	On();
+}
+
+
 /*
 ================
 idLight::On
@@ -1247,8 +1269,7 @@ void idLight::Think( void ) {
 		}
 	}
 	
-	RunPhysics();
-	Present();
+	idEntity::Think();
 }
 
 /*
@@ -1975,7 +1996,7 @@ void idLight::AddSwitch(idEntity* newSwitch)
 {
 	idEntityPtr<idEntity> switchPtr;
 	switchPtr = newSwitch;
-	switchList.Append(switchPtr);
+	switchList.AddUnique(switchPtr);
 }
 
 // grayman #2603 - If there are switches, return the closest one to the calling user

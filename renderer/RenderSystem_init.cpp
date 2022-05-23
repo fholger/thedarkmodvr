@@ -63,14 +63,21 @@ idCVar r_softShadowsRadius( "r_softShadowsRadius", "1.0", CVAR_RENDERER | CVAR_F
 //  http://forums.thedarkmod.com/topic/19139-nonsmooth-graphics-due-to-bumpmapping/
 idCVar r_useBumpmapLightTogglingFix(
 	"r_useBumpmapLightTogglingFix", "1", CVAR_RENDERER | CVAR_BOOL,
-	"Reduce light toggling due to difference between bumpmapped normal and interpolated normal in \"enhanced\" interaction.\n"
+	"Reduce light toggling due to difference between bumpmapped normal and interpolated normal. "
+	"Only single-sided surfaces are affected. "
 );
 
 idCVar r_useStateCaching( "r_useStateCaching", "1", CVAR_RENDERER | CVAR_BOOL, "avoid redundant state changes in GL_*() calls" );
 
 idCVar r_znear( "r_znear", "3", CVAR_RENDERER | CVAR_FLOAT, "near Z clip plane distance", 0.001f, 200.0f );
 
-idCVar r_ignoreGLErrors( "r_ignoreGLErrors", "1", CVAR_RENDERER | CVAR_BOOL, "ignore GL errors" );
+idCVar r_ignoreGLErrors( "r_ignoreGLErrors", 
+#ifdef _DEBUG 
+	"0" 
+#else 
+	"1"
+#endif
+	, CVAR_RENDERER | CVAR_BOOL, "ignore GL errors" );
 idCVar r_finish( "r_finish", "0", CVAR_RENDERER | CVAR_BOOL, "force a call to glFinish() every frame" );
 idCVarInt r_swapInterval( "r_swapInterval", "0", CVAR_RENDERER | CVAR_ROM, "changes wglSwapIntarval" );
 
@@ -81,11 +88,11 @@ idCVar r_jitter( "r_jitter", "0", CVAR_RENDERER | CVAR_BOOL, "randomly subpixel 
 
 idCVar r_skipSuppress( "r_skipSuppress", "0", CVAR_RENDERER | CVAR_BOOL, "ignore the per-view suppressions" );
 idCVar r_skipPostProcess( "r_skipPostProcess", "0", CVAR_RENDERER | CVAR_BOOL, "skip all post-process renderings" );
-idCVar r_skipInteractions( "r_skipInteractions", "0", CVAR_RENDERER | CVAR_BOOL, "skip all light/surface interaction drawing" );
+idCVar r_skipInteractions( "r_skipInteractions", "0", CVAR_RENDERER | CVAR_INTEGER, "skip all light/surface interaction drawing" );
 idCVar r_skipDynamicTextures( "r_skipDynamicTextures", "0", CVAR_RENDERER | CVAR_BOOL, "don't dynamically create textures" );
 idCVar r_skipCopyTexture( "r_skipCopyTexture", "0", CVAR_RENDERER | CVAR_BOOL, "do all rendering, but don't actually copyTexSubImage2D" );
 idCVar r_skipBackEnd( "r_skipBackEnd", "0", CVAR_RENDERER | CVAR_BOOL, "don't draw anything" );
-idCVar r_skipRender( "r_skipRender", "0", CVAR_RENDERER | CVAR_BOOL, "skip 3D rendering, but pass 2D" );
+idCVar r_skipRender( "r_skipRender", "0", CVAR_RENDERER | CVAR_INTEGER, "skip 3D rendering, but pass 2D" );
 idCVar r_skipRenderContext( "r_skipRenderContext", "0", CVAR_RENDERER | CVAR_BOOL, "NULL the rendering context during backend 3D rendering" );
 idCVar r_skipTranslucent( "r_skipTranslucent", "0", CVAR_RENDERER | CVAR_BOOL, "skip the translucent interaction rendering" );
 idCVar r_skipAmbient( "r_skipAmbient", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = bypasses all non-interaction drawing, 2 = skips ambient light interactions, 3 = both" );
@@ -96,12 +103,12 @@ idCVar r_skipDeforms( "r_skipDeforms", "0", CVAR_RENDERER | CVAR_BOOL, "leave al
 idCVar r_skipFrontEnd( "r_skipFrontEnd", "0", CVAR_RENDERER | CVAR_BOOL, "bypasses all front end work, but 2D gui rendering still draws" );
 idCVar r_skipUpdates( "r_skipUpdates", "0", CVAR_RENDERER | CVAR_BOOL, "1 = don't accept any entity or light updates, making everything static" );
 idCVar r_skipOverlays( "r_skipOverlays", "0", CVAR_RENDERER | CVAR_BOOL, "skip overlay surfaces" );
-idCVar r_skipSpecular( "r_skipSpecular", "0", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "use black for specular1" );
-idCVar r_skipBump( "r_skipBump", "0", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "uses a flat surface instead of the bump map" );
+idCVar r_skipSpecular( "r_skipSpecular", "0", CVAR_RENDERER | CVAR_BOOL, "use black for specular1" );
+idCVar r_skipBump( "r_skipBump", "0", CVAR_RENDERER | CVAR_BOOL, "uses a flat surface instead of the bump map" );
 idCVar r_skipDiffuse( "r_skipDiffuse", "0", CVAR_RENDERER | CVAR_BOOL, "use black for diffuse" );
 idCVar r_skipROQ( "r_skipROQ", "0", CVAR_RENDERER | CVAR_BOOL, "skip ROQ decoding" );
-idCVar r_skipDepthCapture( "r_skipDepthCapture", "0", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "skip depth capture" ); // #3877 #4418
-idCVar r_useSoftParticles( "r_useSoftParticles", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "soften particle transitions when player walks through them or they cross solid geometry" ); // #3878 #4418
+idCVar r_skipDepthCapture( "r_skipDepthCapture", "0", CVAR_RENDERER | CVAR_BOOL, "skip depth capture" ); // #3877 #4418
+idCVar r_useSoftParticles( "r_useSoftParticles", "1", CVAR_RENDERER | CVAR_BOOL, "soften particle transitions when player walks through them or they cross solid geometry" ); // #3878 #4418
 
 idCVar r_ignore( "r_ignore", "0", CVAR_RENDERER, "used for random debugging without defining new vars" );
 idCVar r_ignore2( "r_ignore2", "0", CVAR_RENDERER, "used for random debugging without defining new vars" );
@@ -171,7 +178,7 @@ idCVar r_showIntensity( "r_showIntensity", "0", CVAR_RENDERER | CVAR_BOOL, "draw
 idCVar r_showImages( "r_showImages", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = show all images instead of rendering, 2 = show in proportional size", 0, 2, idCmdSystem::ArgCompletion_Integer<0, 2> );
 idCVar com_smp( "com_smp", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "run game modeling and renderer frontend in second thread, parallel to renderer backend" );
 idCVar r_showSmp( "r_showSmp", "0", CVAR_RENDERER | CVAR_BOOL, "show which end (front or back) is blocking" );
-idCVarInt r_showLights( "r_showLights", "0", CVAR_RENDERER, "1 = just print volumes numbers, highlighting ones covering the view, 2 = also draw planes of each volume, 3 = also draw edges of each volume"/*, 0, 3, idCmdSystem::ArgCompletion_Integer<0, 3> */);
+idCVarInt r_showLights( "r_showLights", "0", CVAR_RENDERER, "bitmask: 1 = print volumes numbers, highlighting ones covering the view, 2 = draw planes of each volume, 4 = draw edges of each volume, 8 = draw edges of BFG frustum" );
 idCVar r_showShadows( "r_showShadows", "0", CVAR_RENDERER | CVAR_INTEGER, "1 = visualize the stencil shadow volumes, 2 = draw filled in, 3 = lines with depth test", -1, 3, idCmdSystem::ArgCompletion_Integer < -1, 3 > );
 idCVar r_showShadowCount( "r_showShadowCount", "0", CVAR_RENDERER | CVAR_INTEGER, "colors screen based on shadow volume depth complexity, >= 2 = print overdraw count based on stencil index values, 3 = only show turboshadows, 4 = only show static shadows", 0, 4, idCmdSystem::ArgCompletion_Integer<0, 4> );
 idCVar r_showLightScissors( "r_showLightScissors", "0", CVAR_RENDERER | CVAR_INTEGER, "show light scissor rectangles" );
@@ -231,7 +238,7 @@ idCVar r_glCoreProfile( "r_glCoreProfile", "2", CVAR_RENDERER | CVAR_ARCHIVE,
 	"  2: forward-compatible core profile\n"
 	"Note: restarting TDM is required after change!"
 );
-idCVar r_newFrob( "r_newFrob", "1", CVAR_RENDERER | CVAR_ARCHIVE,
+idCVar r_newFrob( "r_newFrob", "0", CVAR_RENDERER | CVAR_ARCHIVE,
 	"Controls how objects are frob-highlighted:\n"
 	"  0 = use material stages by parm11\n"
 	"  1 = use the frob shader\n"
@@ -241,7 +248,11 @@ idCVar r_newFrob( "r_newFrob", "1", CVAR_RENDERER | CVAR_ARCHIVE,
 
 // FBO
 idCVar r_showFBO( "r_showFBO", "0", CVAR_RENDERER | CVAR_INTEGER, "0-5 individual fbo attachments" );
-idCVar r_fboColorBits( "r_fboColorBits", "64", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "32, 64" );
+idCVar r_fboColorBits(
+	"r_fboColorBits", "64", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE,
+	"Total number of color bits in every pixel of rendered image.\n"
+	"Must be one of: 16, 32, 64"
+);
 idCVarBool r_fboSRGB( "r_fboSRGB", "0", CVAR_RENDERER | CVAR_ARCHIVE, "Use framebuffer-level gamma correction" );
 idCVar r_fboDepthBits( "r_fboDepthBits", "24", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "16, 24, 32" );
 idCVarInt r_shadowMapSize( "r_shadowMapSize", "1024", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "Shadow map texture resolution" );
@@ -333,12 +344,16 @@ void R_InitOpenGL( void ) {
 
 		if ( i == 1 ) {
 			common->FatalError( "Unable to initialize OpenGL" );
+		} else {
+			common->Printf( "Retrying OpenGL initialization in safe mode\n" );
 		}
 
 		// if we failed, set everything back to "safe mode" and try again
-		r_fullscreen.SetInteger( 1 );
+		r_fullscreen.SetInteger( 0 );
 		r_displayRefresh.SetInteger( 0 );
 		r_multiSamples.SetInteger( 0 );
+		r_customWidth.SetInteger( 800 );
+		r_customHeight.SetInteger( 600 );
 	}
 
 	glConfig.windowWidth = glConfig.vidWidth;
@@ -640,7 +655,7 @@ void R_TestVideo_f( const idCmdArgs &args ) {
 		//stgatilov #4847: check that audio stream is peekable
 		float buff[4096] = { 0 };
 		int cnt = 1024;
-		bool ok = tr.testVideo->SoundForTimeInterval( 0, &cnt, 44100, buff );
+		bool ok = tr.testVideo->SoundForTimeInterval( 0, &cnt, buff );
 		if ( !ok ) {
 			common->Warning( "Failed to get first few sound samples from video file" );
 			return TestVideoClean();
@@ -1529,6 +1544,24 @@ void R_PurgeImages_f( const idCmdArgs& args ) {
 	globalImages->PurgeAllImages();
 }
 
+void R_TuneDown_f( const idCmdArgs& args ) {
+	bool undo = false;
+	for ( int i = 1; i < args.Argc(); i++ ) {
+		if ( idStr::Icmp( args.Argv( i ), "undo" ) == 0 ) {
+			undo = true;
+			continue;
+		}
+	}
+	r_skipInteractions.SetInteger( undo ? 0 : 2 );
+	r_skipPostProcess.SetInteger( !undo );
+	r_shadows.SetInteger( undo );
+	r_tonemap.SetInteger( undo );
+	r_skipSubviews.SetInteger( !undo );
+	r_skipParticles.SetInteger( !undo );
+	r_ambientMinLevel.SetFloat( undo ? 0 : 0.5 );
+	common->Printf( "%s shadows and most lights, subviews, particles, postprocessing\n", undo ? "Enabled" : "Disabled" );
+}
+
 /*
 =================
 R_VidRestart_f
@@ -1735,6 +1768,7 @@ void R_InitCommands( void ) {
 	cmdSystem->AddCommand( "reloadSurface", R_ReloadSurface_f, CMD_FL_RENDERER, "reloads the decl and images for selected surface" );
 	cmdSystem->AddCommand( "overrideSurfaceMaterial", R_OverrideSurfaceMaterial_f, CMD_FL_RENDERER, "changes the material of the surface currently under cursor", idCmdSystem::ArgCompletion_Decl<DECL_MATERIAL> );
 	cmdSystem->AddCommand( "purgeImages", R_PurgeImages_f, CMD_FL_RENDERER, "deletes all currently loaded images" );
+	cmdSystem->AddCommand( "tuneDown", R_TuneDown_f, CMD_FL_RENDERER, "removes all beauty" );
 }
 
 /*
@@ -1895,6 +1929,7 @@ idRenderSystemLocal::EndLevelLoad
 void idRenderSystemLocal::EndLevelLoad( void ) {
 	renderModelManager->EndLevelLoad();
 	globalImages->EndLevelLoad();
+	programManager->ReloadAllPrograms();
 	if ( r_forceLoadImages.GetBool() ) {
 		RB_ShowImages();
 	}

@@ -111,11 +111,6 @@ CBinaryFrobMover::~CBinaryFrobMover()
 	delete m_Lock;
 }
 
-void CBinaryFrobMover::SetClosedBox(idBox box) // grayman #2345
-{
-	m_closedBox = box;
-}
-
 idBox CBinaryFrobMover::GetClosedBox() // grayman #2345
 {
 	return m_closedBox;
@@ -278,6 +273,74 @@ void CBinaryFrobMover::Spawn()
 	PostEventMS( &EV_PostSpawn, 16 );
 }
 
+void CBinaryFrobMover::ComputeAdditionalMembers()
+{
+	// angua: calculate the positions of the vertex  with the largest 
+	// distance to the origin when the door is closed or open
+	idClipModel *clipModel = GetPhysics()->GetClipModel();
+	if (clipModel == NULL)
+	{
+		gameLocal.Error("Binary Frob Mover %s has no clip model", name.c_str());
+	}
+	idBox closedBox(clipModel->GetBounds(), m_ClosedOrigin, m_ClosedAngles.ToMat3());
+	idVec3 closedBoxVerts[8];
+	closedBox.GetVerts(closedBoxVerts);
+	m_closedBox = closedBox; // grayman #720 - save for AI obstacle detection
+
+	float maxDistSquare = 0;
+	for (int i = 0; i < 8; i++)
+	{
+		float distSquare = (closedBoxVerts[i] - m_ClosedOrigin).LengthSqr();
+		if (distSquare > maxDistSquare)
+		{
+			m_ClosedPos = closedBoxVerts[i] - m_ClosedOrigin;
+			maxDistSquare = distSquare;
+		}
+	}
+	//gameRenderWorld->DebugArrow(colorGreen, GetPhysics()->GetOrigin() + m_ClosedPos, GetPhysics()->GetOrigin() + m_ClosedPos + idVec3(0, 0, 30), 2, 200000);
+
+	idBox openBox(clipModel->GetBounds(), m_OpenOrigin, m_OpenAngles.ToMat3());
+	idVec3 openBoxVerts[8];
+	openBox.GetVerts(openBoxVerts);
+
+	maxDistSquare = 0;
+	for (int i = 0; i < 8; i++)
+	{
+		float distSquare = (openBoxVerts[i] - m_OpenOrigin).LengthSqr();
+		if (distSquare > maxDistSquare)
+		{
+			m_OpenPos = openBoxVerts[i] - m_OpenOrigin;
+			maxDistSquare = distSquare;
+		}
+	}
+	// gameRenderWorld->DebugArrow(colorRed, GetPhysics()->GetOrigin() + m_OpenPos, GetPhysics()->GetOrigin() + m_OpenPos + idVec3(0, 0, 30), 2, 200000);
+
+	idRotation rot = m_Rotate.ToRotation();
+	idVec3 rotationAxis = rot.GetVec();
+	idVec3 normal = rotationAxis.Cross(m_ClosedPos);
+
+	// grayman #3643 - normal should represent the door face, not a line
+	// from the origin to the door closed position. Deal with normals that
+	// are slightly off. Don't touch normals that have components that are
+	// less than a multiple of 10 of each other. Ignore the z component.
+	// This correction is important for thick doors that use controllers,
+	// otherwise the door math thinks the controllers are both on the same
+	// side of the door.
+
+	if ( (normal.y != 0 ) && (abs(normal.x / normal.y) > 10.0f))
+	{
+		normal.y = 0;
+	}
+	else if ( (normal.x != 0) && (abs(normal.y / normal.x) > 10.0f))
+	{
+		normal.x = 0;
+	}
+
+	m_OpenDir = (m_OpenPos * normal) * normal;
+	m_OpenDir.Normalize();
+	// gameRenderWorld->DebugArrow(colorBlue, GetPhysics()->GetOrigin(), GetPhysics()->GetOrigin() + 20 * m_OpenDir, 2, 200000);
+}
+
 void CBinaryFrobMover::PostSpawn()
 {
 	// m_Translation is the vector between start position and end position
@@ -291,7 +354,8 @@ void CBinaryFrobMover::PostSpawn()
 
 	m_ClosedAngles = physicsObj.GetLocalAngles();
 	m_ClosedAngles.Normalize180();
-	m_OpenAngles = (m_ClosedAngles + m_Rotate).Normalize180();
+	m_OpenAngles = m_ClosedAngles + m_Rotate;
+	m_OpenAngles.Normalize180();
 
 	if (m_ClosedOrigin.Compare(m_OpenOrigin) && m_ClosedAngles.Compare(m_OpenAngles))
 	{
@@ -391,70 +455,7 @@ void CBinaryFrobMover::PostSpawn()
 		}
 	}
 
-	// angua: calculate the positions of the vertex  with the largest 
-	// distance to the origin when the door is closed or open
-	idClipModel *clipModel = GetPhysics()->GetClipModel();
-	if (clipModel == NULL)
-	{
-		gameLocal.Error("Binary Frob Mover %s has no clip model", name.c_str());
-	}
-	idBox closedBox(clipModel->GetBounds(), m_ClosedOrigin, m_ClosedAngles.ToMat3());
-	idVec3 closedBoxVerts[8];
-	closedBox.GetVerts(closedBoxVerts);
-	m_closedBox = closedBox; // grayman #720 - save for AI obstacle detection
-
-	float maxDistSquare = 0;
-	for (int i = 0; i < 8; i++)
-	{
-		float distSquare = (closedBoxVerts[i] - m_ClosedOrigin).LengthSqr();
-		if (distSquare > maxDistSquare)
-		{
-			m_ClosedPos = closedBoxVerts[i] - m_ClosedOrigin;
-			maxDistSquare = distSquare;
-		}
-	}
-	//gameRenderWorld->DebugArrow(colorGreen, GetPhysics()->GetOrigin() + m_ClosedPos, GetPhysics()->GetOrigin() + m_ClosedPos + idVec3(0, 0, 30), 2, 200000);
-
-	idBox openBox(clipModel->GetBounds(), m_OpenOrigin, m_OpenAngles.ToMat3());
-	idVec3 openBoxVerts[8];
-	openBox.GetVerts(openBoxVerts);
-
-	maxDistSquare = 0;
-	for (int i = 0; i < 8; i++)
-	{
-		float distSquare = (openBoxVerts[i] - m_OpenOrigin).LengthSqr();
-		if (distSquare > maxDistSquare)
-		{
-			m_OpenPos = openBoxVerts[i] - m_OpenOrigin;
-			maxDistSquare = distSquare;
-		}
-	}
-	// gameRenderWorld->DebugArrow(colorRed, GetPhysics()->GetOrigin() + m_OpenPos, GetPhysics()->GetOrigin() + m_OpenPos + idVec3(0, 0, 30), 2, 200000);
-
-	idRotation rot = m_Rotate.ToRotation();
-	idVec3 rotationAxis = rot.GetVec();
-	idVec3 normal = rotationAxis.Cross(m_ClosedPos);
-
-	// grayman #3643 - normal should represent the door face, not a line
-	// from the origin to the door closed position. Deal with normals that
-	// are slightly off. Don't touch normals that have components that are
-	// less than a multiple of 10 of each other. Ignore the z component.
-	// This correction is important for thick doors that use controllers,
-	// otherwise the door math thinks the controllers are both on the same
-	// side of the door.
-
-	if ( (normal.y != 0 ) && (abs(normal.x / normal.y) > 10.0f))
-	{
-		normal.y = 0;
-	}
-	else if ( (normal.x != 0) && (abs(normal.y / normal.x) > 10.0f))
-	{
-		normal.x = 0;
-	}
-
-	m_OpenDir = (m_OpenPos * normal) * normal;
-	m_OpenDir.Normalize();
-	// gameRenderWorld->DebugArrow(colorBlue, GetPhysics()->GetOrigin(), GetPhysics()->GetOrigin() + 20 * m_OpenDir, 2, 200000);
+	ComputeAdditionalMembers();
 
 	if (m_Open) 
 	{
@@ -1560,17 +1561,26 @@ float CBinaryFrobMover::GetFractionalPosition()
 	return returnval;
 }
 
-void CBinaryFrobMover::SetFractionalPosition(float fraction)
+void CBinaryFrobMover::SetFractionalPosition(float fraction, bool immediately)
 {
+	idVec3 targetOrigin = m_ClosedOrigin + (m_OpenOrigin - m_ClosedOrigin) * fraction;
 	idAngles targetAngles = m_ClosedAngles + (m_OpenAngles - m_ClosedAngles) * fraction;
 	idAngles angleDelta = (targetAngles - physicsObj.GetLocalAngles()).Normalize180();
 
-	if (!angleDelta.Compare(ang_zero, 0.01f))
-	{
-		Event_RotateOnce(angleDelta);
+	if (immediately) {
+		//stgatilov #5683: immediate move for hot-reload purposes
+		physicsObj.SetLocalOrigin(targetOrigin);
+		physicsObj.SetLocalAngles(targetAngles);
 	}
+	else
+	{
+		if (!angleDelta.Compare(ang_zero, 0.01f))
+		{
+			Event_RotateOnce(angleDelta);
+		}
 
-	MoveToLocalPos(m_ClosedOrigin + (m_OpenOrigin - m_ClosedOrigin)*fraction);
+		MoveToLocalPos(targetOrigin);
+	}
 
 	UpdateVisuals();
 }
@@ -1640,7 +1650,7 @@ void CBinaryFrobMover::FrobHeld(bool frobMaster, bool isFrobPeerAction, int hold
 
 	float desiredPos = GetFractionalPosition() + sign * cv_tdm_door_control_sensitivity.GetFloat() * dy;
 	desiredPos = idMath::ClampFloat( 0.0f, 1.0f, desiredPos );
-	SetFractionalPosition( desiredPos );
+	SetFractionalPosition( desiredPos, false );
 }
 
 void CBinaryFrobMover::FrobReleased(bool frobMaster, bool isFrobPeerAction, int holdTime)
@@ -1836,5 +1846,32 @@ void CBinaryFrobMover::Event_GetFractionalPosition(void)
 	idThread::ReturnFloat(GetFractionalPosition());
 }
 
+void CBinaryFrobMover::SetMapOriginAxis(const idVec3 *newOrigin, const idMat3 *newAxis) {
+	idVec3 oldOrigin = dest_position;
+	idAngles oldAngles = dest_angles;
+	//see also CBinaryFrobMover::PostSpawn and idMover::Spawn
 
+	//save fraction/ratio of "openness"
+	float frac = GetFractionalPosition();
 
+	if (newOrigin) {
+		dest_position = *newOrigin;
+		m_ClosedOrigin = *newOrigin;
+		m_OpenOrigin = m_ClosedOrigin + m_Translation;
+	}
+
+	if (newAxis) {
+		idAngles newAngles = newAxis->ToAngles();
+		dest_angles = newAngles;
+		m_ClosedAngles = newAngles;
+		m_ClosedAngles.Normalize180();
+		m_OpenAngles = m_ClosedAngles + m_Rotate;
+		m_OpenAngles.Normalize180();
+	}
+
+	//recompute m_ClosedPos, m_OpenPos, etc.
+	ComputeAdditionalMembers();
+
+	//restore fraction of "openness"
+	SetFractionalPosition(frac, true);
+}

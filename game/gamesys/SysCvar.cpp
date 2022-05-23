@@ -177,14 +177,14 @@ idCVar cv_savegame_compress(		"tdm_savegame_compress", "1",   CVAR_BOOL|CVAR_ARC
 * Dark Mod player movement
 * Use multipliers instead of setting a speed for each
 **/
-idCVar cv_pm_runmod(				"pm_runmod",			"2.12",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "The multiplier used to obtain run speed from pm_walkspeed." );
-idCVar cv_pm_run_backmod(			"pm_run_backmod",		"0.7",			CVAR_GAME | CVAR_FLOAT				,	"The multiplier applied to existing run speed when the player is running backwards." );
-idCVar cv_pm_creepmod(				"pm_creepmod",			"0.44",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "The multiplier used to obtain creep speed from pm_walkspeed." );
-idCVar cv_pm_running_creepmod(		"pm_running_creepmod",	"0.22",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "The multiplier used to obtain creep speed from pm_walkspeed but when Always Run is enabled, allowing players to go from full run to creep.");
-idCVar cv_pm_crouchmod(				"pm_crouchmod",			"0.54",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "The multiplier used to obtain crouch speed from walk speed." );
-idCVar cv_pm_max_swimspeed_mod(		"pm_max_swimspeed_mod",	"1.4",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Maximum speed of the player when moving in >= waist deep water, relative to player walkspeed." );
-idCVar cv_pm_swimspeed_variation(	"pm_swimspeed_variation","0.0",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "The swimspeed periodically decreases and increases by this amount.", 0.0f, 1.0f);
-idCVar cv_pm_swimspeed_frequency(	"pm_swimspeed_frequency","0.8",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "The swimspeed periodically decreases and increases by this frequency.", 0.0f, 10.0f);
+idCVar cv_pm_runmod(				"pm_runmod",			"2.12",			CVAR_GAME | CVAR_FLOAT				, "The multiplier used to obtain run speed from pm_walkspeed." );
+idCVar cv_pm_run_backmod(			"pm_run_backmod",		"0.7",			CVAR_GAME | CVAR_FLOAT				, "The multiplier applied to existing run speed when the player is running backwards." );
+idCVar cv_pm_creepmod(				"pm_creepmod",			"0.44",			CVAR_GAME | CVAR_FLOAT				, "The multiplier used to obtain creep speed from pm_walkspeed." );
+idCVar cv_pm_running_creepmod(		"pm_running_creepmod",	"0.22",			CVAR_GAME | CVAR_FLOAT				, "The multiplier used to obtain creep speed from pm_walkspeed but when Always Run is enabled, allowing players to go from full run to creep.");
+idCVar cv_pm_crouchmod(				"pm_crouchmod",			"0.54",			CVAR_GAME | CVAR_FLOAT				, "The multiplier used to obtain crouch speed from walk speed." );
+idCVar cv_pm_max_swimspeed_mod(		"pm_max_swimspeed_mod",	"1.4",			CVAR_GAME | CVAR_FLOAT				, "Maximum speed of the player when moving in >= waist deep water, relative to player walkspeed." );
+idCVar cv_pm_swimspeed_variation(	"pm_swimspeed_variation","0.0",			CVAR_GAME | CVAR_FLOAT				, "The swimspeed periodically decreases and increases by this amount.", 0.0f, 1.0f);
+idCVar cv_pm_swimspeed_frequency(	"pm_swimspeed_frequency","0.8",			CVAR_GAME | CVAR_FLOAT				, "The swimspeed periodically decreases and increases by this frequency.", 0.0f, 10.0f);
 idCVar cv_pm_pushmod(				"pm_pushmod",			"0.15",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Alters the impulse applied when the player runs into an object. Fractional modifier that multiplies the default D3 impulse. ONLY APPLIES TO OBJECTS BEING KICKED. Default is 0.15" );
 idCVar cv_pm_push_maximpulse(		"pm_push_maximpulse",	"300",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "This is the maximum impulse that is allowed to be propagated by the player to moveables just by kicking them. Only applies for 'lightweight' moveables below playermass*pm_push_heavy_threshold. Default is 300 units*kg per second." );
 idCVar cv_pm_push_start_delay(		"pm_push_start_delay",	"1000",			CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Defines the delay in msecs before heavy things get pushed by the player. Default is 1000 msecs." );
@@ -308,12 +308,12 @@ idCVar cv_drag_encumber_max(			"tdm_drag_encumber_max", "0.4", CVAR_GAME | CVAR_
 idCVar cv_drag_stuck_dist(				"tdm_drag_stuck_dist", "38.0", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Distance from the grab point at which object is determined to be 'stuck' and possibly auto-dropped." );
 idCVar cv_drag_force_max(				"tdm_drag_force_max", "100000", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Maximum force the player can apply to a dragged object [kg * doom units / second^2]." );
 idCVar cv_drag_new(						"tdm_drag_new", "1", CVAR_GAME | CVAR_BOOL | CVAR_ARCHIVE, "If set to 1, then the new grabber code is used (starting from TDM 2.10).");
+idCVar cv_drag_AF_free(					"tdm_drag_af_free", "0", CVAR_GAME | CVAR_ARCHIVE | CVAR_BOOL, "This is a cheat that allows lifting all AI bodies completely off the ground when dragging them.  Useful for mappers who want to set up ragdolls ingame." );
 //stgatilov #5599: cvars in this section only affect the old grabber:
 idCVar cv_drag_limit_force(				"tdm_drag1_limit_force", "1", CVAR_GAME | CVAR_ARCHIVE | CVAR_BOOL, "Cheat: Set to 0 to disable finite acceleration while grabbing objects." );
 idCVar cv_drag_damping(					"tdm_drag1_damping", "0.0", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Damping applied to objects being grabbed by the player" );
 idCVar cv_drag_damping_AF(				"tdm_drag1_damping_af", "0.4", CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT, "Damping applied to ragdolls being grabbed by the player" );
 idCVar cv_drag_AF_ground_timer(			"tdm_drag1_af_ground_timer", "800", CVAR_GAME | CVAR_ARCHIVE | CVAR_INTEGER, "Time in milliseconds that it takes to ramp up to full vertical velocity after a ground-restricted body has come back to ground contact." );
-idCVar cv_drag_AF_free(					"tdm_drag1_af_free", "0", CVAR_GAME | CVAR_ARCHIVE | CVAR_BOOL, "This is a cheat that allows lifting all AI bodies completely off the ground when dragging them.  Useful for mappers who want to set up ragdolls ingame." );
 idCVar cv_drag_debug(					"tdm_drag1_debug", "0", CVAR_GAME | CVAR_BOOL, "Shows debug arrows for desired velocity and contact plane normals when moving objects with the grabber." );
 //stgatilov #5599: cvars in this section only affect the new grabber:
 idCVar cv_drag_targetpos_averaging_time(
@@ -337,15 +337,32 @@ idCVar cv_drag_rigid_distance_halfing_time(
 );
 idCVar cv_drag_rigid_acceleration_radius(
 	"tdm_drag2_rigid_acceleration_radius", "1.0", CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE,
-	"When distance from dragged rigid object to target is smaller than R, the dragging is significantly accelerated. "
+	"When distance from dragged rigid object to target is smaller than R, then dragging is significantly accelerated. "
 	"Set to 0 to disable acceleration completely. ",
 	0.0f, 100.0f
 );
+idCVar cv_drag_rigid_angle_halfing_time(
+	"tdm_drag2_rigid_angle_halfing_time", "0.02", CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE,
+	"It normally takes T seconds for dragged rigid object to reduce its rotation angle to target in 2.71 times. ",
+	0.01f, 10.0f
+);
+idCVar cv_drag_rigid_acceleration_angle(
+	"tdm_drag2_rigid_acceleration_angle", "0.03", CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE,
+	"When angle between current orientation of rigid object to target is smaller than A, then rotation is significantly accelerated. "
+	"Set to 0 to disable acceleration completely. ",
+	0.0f, 100.0f
+);
+
 idCVar cv_drag_af_weight_ratio(
 	"tdm_drag2_af_weight_ratio", "0.8", CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE,
 	"Force applied when dragging articulated figure is K * total weight of AF. "
 	"Note that value 1.0 or greater will allow holding bodies completely in-air, "
 	"while value lower than 0.5 will not allow to drag body due to friction. ",
+	0.0f, 10.0f
+);
+idCVar cv_drag_af_weight_ratio_canlift(
+	"tdm_drag2_af_weight_ratio_canlift", "5.0", CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE,
+	"Same as tdm_drag2_af_weight_ratio, but for AFs that player can lift (e.g. rats)",
 	0.0f, 10.0f
 );
 idCVar cv_drag_af_reduceforce_radius(
@@ -354,6 +371,13 @@ idCVar cv_drag_af_reduceforce_radius(
 	"It helps to avoid oscillatory movements when you e.g. pull ragdoll's arm. ",
 	0.0f, 100.0f
 );
+idCVar cv_drag_af_inair_friction(
+	"tdm_drag2_af_inair_friction", "0.5", CVAR_GAME | CVAR_FLOAT | CVAR_ARCHIVE,
+	"When dragged articulated figure is in air, override its friction coefficient with this value. "
+	"Without it, dragged object will oscillate as the player walks around. ",
+	0.0f, 1.0f
+);
+
 
 idCVar cv_melee_debug(					"tdm_melee_debug", "0", CVAR_GAME | CVAR_BOOL, "Enable to show debug melee combat graphics." );
 idCVar cv_melee_state_debug(			"tdm_melee_debug_state", "0", CVAR_GAME | CVAR_BOOL, "Enable to display debug text representing AI melee status." );
@@ -413,8 +437,9 @@ idCVar cv_tdm_inv_gui_file(	"tdm_inv_hud_file", "guis/tdm_inv.gui",	CVAR_GAME, "
 idCVar cv_tdm_inv_loot_item_def("tdm_inv_loot_item_def", "atdm:inv_loot_info_item", CVAR_GAME, "The name of the entityDef that defines the player's inventory loot item.");
 
 idCVar cv_tdm_obj_gui_file(	"tdm_obj_hud_file", "guis/tdm_objectives.gui",	CVAR_GAME, "The name of the gui file that defines the in-game objectives.");
-idCVar cv_tdm_waituntilready_gui_file(	"tdm_waituntilready_gui_file", "guis/tdm_waituntilready.gui",	CVAR_GAME, "The name of the gui file that is displayed after loading a map and before starting the gameplay action.");
-idCVar cv_tdm_invgrid_gui_file(  "tdm_invgrid_hud_file", "guis/tdm_invgrid_parchment.gui",  CVAR_GAME | CVAR_ARCHIVE, "The name of the gui file that defines the in-game inventory grid.");
+idCVar cv_tdm_waituntilready_gui_file( "tdm_waituntilready_gui_file", "guis/tdm_waituntilready.gui",	CVAR_GAME, "The name of the gui file that is displayed after loading a map and before starting the gameplay action.");
+idCVar cv_tdm_invgrid_gui_file( "tdm_invgrid_hud_file", "guis/tdm_invgrid_parchment.gui",  CVAR_GAME | CVAR_ARCHIVE, "The name of the gui file that defines the in-game inventory grid.");
+idCVar cv_tdm_subtitles_gui_file( "tdm_subtitles_gui_file", "guis/tdm_subtitles.gui",  CVAR_GAME, "The name of the gui file for in-game subtitles overlay");
 
 idCVar cv_tdm_hud_opacity(	"tdm_hud_opacity", "0.7",	CVAR_GAME | CVAR_ARCHIVE | CVAR_FLOAT,	"The opacity of the HUD GUIs. [0..1]", 0, 1 );
 idCVar cv_tdm_hud_hide_lightgem(	"tdm_hud_hide_lightgem", "0",	CVAR_GAME | CVAR_ARCHIVE | CVAR_BOOL,	"If set to 1, the lightgem will be hidden." );
@@ -424,6 +449,15 @@ idCVar cv_tdm_inv_use_on_frob("tdm_inv_use_on_frob", "1",	CVAR_GAME | CVAR_ARCHI
 idCVar cv_tdm_door_control("tdm_door_control", "0",			CVAR_GAME | CVAR_ARCHIVE | CVAR_BOOL, "Acivates experimental door control.  When active, hold down frob and move mouse to fine-control a door.");
 idCVar cv_tdm_door_control_sensitivity( "tdm_door_control_sensitivity", "0.01", CVAR_GAME | CVAR_FLOAT, "Sets fine door control mouse sensitivity." );
 idCVar cv_tdm_inv_use_visual_feedback("tdm_inv_use_visual_feedback", "1",	CVAR_GAME | CVAR_ARCHIVE | CVAR_BOOL, "When set to '1' the HUD is giving visual feedback when the currently selected item is used on the highlighted one.");
+idCVar cv_tdm_subtitles(
+	"tdm_subtitles", "1",  CVAR_GAME | CVAR_ARCHIVE | CVAR_INTEGER,
+	"Which subtitles to display?\n"
+	"  0 --- hide all\n"
+	"  1 --- show only story-relevant\n"
+	"  2 --- show all speech\n"
+	"  3 --- show everything",
+	0, 3
+);
 
 //Obsttorte: cvars to allow altering the gui size
 
@@ -825,8 +859,6 @@ idCVar net_serverDownload(			"net_serverDownload",		"0",			CVAR_GAME | CVAR_INTE
 idCVar net_serverDlBaseURL(			"net_serverDlBaseURL",		"",				CVAR_GAME | CVAR_ARCHIVE, "base URL for the download redirection" );
 
 idCVar net_serverDlTable(			"net_serverDlTable",		"",				CVAR_GAME | CVAR_ARCHIVE, "pak names for which download is provided, seperated by ;" );
-
-idCVar g_entityBindNew(				"g_entityBindNew",			"1",			CVAR_GAME, "If set to 1, then new code for entity binding is used (#5409)");
 
 //----------------------------------
 

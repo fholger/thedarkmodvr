@@ -897,7 +897,7 @@ TEST_CASE("Downloader") {
         }
     }
 
-    {   //test Downloader::setMultipartBlocked
+    {   //test Downloader::SetMultipartBlocked
         HttpServer server;
         server.SetDropMultipart(true);
         server.SetRootDir(GetTempDir().string());
@@ -909,7 +909,7 @@ TEST_CASE("Downloader") {
             down.EnqueueDownload(DownloadSource(server.GetRootUrl() + "subdir/squares.txt", 30000, 30200), CreateDownloadCallback(data2));
             down.EnqueueDownload(DownloadSource(server.GetRootUrl() + "subdir/squares.txt", 20000, 20500), CreateDownloadCallback(data3));
             down.EnqueueDownload(DownloadSource(server.GetRootUrl() + "subdir/squares.txt", 10100, 10345), CreateDownloadCallback(data4));
-            down.setMultipartBlocked(nomultipart);
+            down.SetMultipartBlocked(nomultipart);
             if (nomultipart) {
                 down.DownloadAll();
                 CHECK(data1 == DataSquaresTxt.substr(10000, 100));
@@ -922,8 +922,68 @@ TEST_CASE("Downloader") {
             }
         }
     }
+}
 
+//this bug was noticed after adding subtasks in Downloader
+//i.e. when I made it possible to split single download into smaller chunks
+TEST_CASE("DownloaderSubtasks") {
+    char pattern[256];
+    for (int i = 0; i < 256; i++)
+        pattern[i] = i;
+    static const int FILESIZE = 100<<20;
+    {
+        stdext::create_directories(GetTempDir());
+        StdioFileHolder identity((GetTempDir() / "subtasks.bin").string().c_str(), "wb");
+        for (int i = 0; i < FILESIZE; i += 256)
+            fwrite(pattern, 256, 1, identity);
+    }
 
+    auto CreateDownloadCallback = [](std::string &buffer) -> DownloadFinishedCallback {
+        return [&buffer](const void *ptr, uint32_t bytes) -> void {
+            buffer.assign((char*)ptr, (char*)ptr + bytes);
+        };
+    };
+
+    HttpServer server;
+    server.SetRootDir(GetTempDir().string());
+    server.Start();
+
+    std::vector<std::string> data;
+    data.reserve(1<<20);
+    std::mt19937 rnd;
+
+    for (int downloadSize = 10<<10; downloadSize <= 20<<20; ) {
+        data.clear();
+        Downloader down;
+        for (int pos = 0; pos < FILESIZE; ) {
+            int size = downloadSize;
+            if (rnd() & 1)
+                size += rnd() % (downloadSize * 2);
+            else
+                size -= rnd() % (2 * downloadSize / 3);
+            size = std::min(size, FILESIZE - pos);
+            data.push_back("");
+            down.EnqueueDownload(DownloadSource(server.GetRootUrl() + "subtasks.bin", pos, pos + size), CreateDownloadCallback(data.back()));
+            pos += size;
+        }
+        down.DownloadAll();
+        std::string all;
+        for (int i = 0; i < data.size(); i++)
+            all += data[i];
+        for (int i = 0; i < FILESIZE; i += 256)
+            if (memcmp(pattern, all.data() + i, 256) != 0)
+                CHECK(false);
+
+        if (downloadSize < 5<<20)
+            downloadSize *= 2;
+        else {
+            //the most important thing is to test ~10MB size
+            //since that is the chunk size in the main speed profile of Downloader
+            downloadSize += downloadSize / 3;
+        }
+    }
+    //don't like 100MB files lying around...
+    RemoveFile((GetTempDir() / "subtasks.bin").string());
 }
 
 TEST_CASE("DownloaderTimeout"
@@ -978,20 +1038,20 @@ TEST_CASE("DownloaderTimeout"
         }
         if (mode == 2) {
             //pause for 20 seconds every 200 KB
-            //download will only proceed with the last profile (having timeout = 60 seconds)
+            //download will proceed with the third profile (having timeout = 30 seconds)
             server.SetPauseModel(HttpServer::PauseModel{200<<10, 20});
         }
         if (mode == 3) {
-            //pause for 100 seconds every 10 KB
+            //pause for 100 seconds every 1 KB
             //download should be stopped, no profile supports it
-            server.SetPauseModel(HttpServer::PauseModel{10<<10, 100});
+            server.SetPauseModel(HttpServer::PauseModel{1<<10, 100});
         }
 
         server.Start();
 
         { //retry due to hanging connection
             Downloader down;
-            static const int CHUNK_SIZE = 8024;
+            static const int CHUNK_SIZE = 100<<10;
             std::vector<std::string> resId, resSq;
             resId.reserve(100000);
             resSq.reserve(100000);

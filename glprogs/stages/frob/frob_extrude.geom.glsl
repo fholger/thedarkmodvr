@@ -18,7 +18,12 @@ layout (triangles) in;
 layout (triangle_strip, max_vertices = 18) out;
 
 out float var_Intensity;
-uniform float u_extrusion;
+uniform vec2 u_extrusion;
+uniform int u_hard;
+
+uniform sampler2D u_diffuse;
+uniform float u_alphaTest;
+in vec2 var_TexCoord[];
 
 vec2 xyPos(int i) {
     return gl_in[i].gl_Position.xy / gl_in[i].gl_Position.w;
@@ -42,14 +47,26 @@ void emitEdge(int i, int j, int k) {
     vec2 nab = vec2(-ab.y, ab.x);
     vec2 bout = normalize(ab + cb);
     vec2 aout = -normalize(ab + ac);
+
+    float strength = 1.0;
+    if (u_alphaTest >= 0) {
+        //if middle of edge fails alpha test
+        //then don't render its outline
+        vec4 tex = texture(u_diffuse, mix(var_TexCoord[i], var_TexCoord[j], 0.4137));
+        if (tex.a <= u_alphaTest)
+            strength = 0.0;
+    }
+    float outer = 0.0;
+    if (u_hard != 0)
+        outer = strength;
     
-    float ext = u_extrusion * 0.001;
-    emit(i, a + ext*aout, 0);
-    emit(i, a + ext*nab, 0);
-    emit(i, a, 1);
-    emit(j, b + ext*nab, 0);
-    emit(j, b, 1);
-    emit(j, b + ext*bout, 0);
+    vec2 ext = u_extrusion;
+    emit(i, a + ext*aout, outer);
+    emit(i, a + ext*nab, outer);
+    emit(i, a, strength);
+    emit(j, b + ext*nab, outer);
+    emit(j, b, strength);
+    emit(j, b + ext*bout, outer);
     EndPrimitive();
 }
 

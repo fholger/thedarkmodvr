@@ -178,6 +178,24 @@
     <DisplayString IncludeView="simple">rModel {name.data,na}</DisplayString>
     <DisplayString>rModel {name.data,na} {bounds}</DisplayString>
   </Type>
+  <Type Name="idImage">
+    <DisplayString IncludeView="simple">image {imgName.data,na}</DisplayString>
+    <DisplayString>image {imgName.data,na} gl:{texnum} {uploadWidth}x{uploadHeight} {depth} {type} {filter}</DisplayString>
+  </Type>
+  <Type Name="idMaterial">
+    <DisplayString>{*base}</DisplayString>
+    <Expand>
+      <ExpandedItem>this,!</ExpandedItem>
+      <Synthetic Name="[stages]">
+        <Expand>
+          <ArrayItems>
+            <Size>numStages</Size>
+            <ValuePointer>stages</ValuePointer>
+          </ArrayItems>
+        </Expand>
+      </Synthetic>
+    </Expand>
+  </Type>
 
   <!-- this is a bit hacky, but allows to inspect game entity of a render entity
        without having to enumerate all fields of idRenderEntityLocal -->
@@ -450,7 +468,26 @@
     </Expand>
   </Type>
 
-  <Type Name="idWindow">
+  <Type Name="idClipModel">
+    <DisplayString>cm {entity,na}</DisplayString>
+  </Type>
+  
+  <Type Name="idBoxOctree">
+    <DisplayString>octree #nodes={nodes.num} #chunks={allocator.active}</DisplayString>
+  </Type>
+  <Type Name="idBoxOctree::OctreeNode">
+    <DisplayString Condition="!links">node{firstSonIdx &lt; 0 ? 0 : 8} D{depth} sm{numSmall} empty</DisplayString>
+    <DisplayString Condition="links &amp;&amp; !links-&gt;next">node{firstSonIdx &lt; 0 ? 0 : 8} D{depth} sm{numSmall} chunk{links->num}</DisplayString>
+    <DisplayString Condition="links &amp;&amp; links-&gt;next">node{firstSonIdx &lt; 0 ? 0 : 8} D{depth} sm{numSmall} chunk{links->num} chunk{links->next->num}...</DisplayString>
+  </Type>
+  <Type Name="idBoxOctree::Link">
+    <DisplayString>link to {*(idClipModel*)object}</DisplayString>
+    <Expand>
+      <ExpandedItem>*(idClipModel*)object</ExpandedItem>
+    </Expand>
+  </Type>
+
+    <Type Name="idWindow">
     <DisplayString>guiwin: {name}</DisplayString>
   </Type>
   <Type Name="idGuiScript">

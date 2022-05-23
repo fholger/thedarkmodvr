@@ -221,6 +221,8 @@ idCollisionModelManagerLocal::WriteCollisionModelsToFile
 ================
 */
 void idCollisionModelManagerLocal::WriteCollisionModelsToFile( const char *filename, int firstModel, int lastModel, unsigned int mapFileCRC ) {
+	TRACE_CPU_SCOPE_FORMAT( "WriteCollisionFile", "filename %s\nmodels [%d .. %d)", filename, firstModel, lastModel );
+
 	int i;
 	idFile *fp;
 	idStr name;
@@ -472,16 +474,17 @@ bool idCollisionModelManagerLocal::ParseCollisionModel( idLexer *src ) {
 	cm_model_t *model;
 	idToken token;
 
-	if ( numModels >= MAX_SUBMODELS ) {
-		common->Error( "LoadModel: no free slots" );
+	// read name
+	src->ExpectTokenType( TT_STRING, 0, &token );
+	// create model
+	model = AllocModel();
+	model->name = token;
+	cmHandle_t hdl = AddModel( model );
+	if ( hdl == -1 ) {
 		return false;
 	}
-	model = AllocModel();
-	models[numModels ] = model;
-	numModels++;
+
 	// parse the file
-	src->ExpectTokenType( TT_STRING, 0, &token );
-	model->name = token;
 	src->ExpectTokenString( "{" );
 	while ( !src->CheckTokenString( "}" ) ) {
 

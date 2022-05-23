@@ -106,6 +106,7 @@ public:
         }
 
         SetUpdateType(seed % 2 ? UpdateType::SameCompressed : UpdateType::SameContents);
+        SetRemote(_remoteEnabled);
 
         _initialTargetState = GenTargetState(50, 10);
         _initialInplaceState = GenMutatedState(_initialTargetState);
@@ -131,6 +132,16 @@ public:
             for (int j = 0; j <= i; j++)
                 if (CheckForCaseAliasing(*states[i], *states[j]))
                     return false;   //cannot ensure proper testing in case of any case collision 
+
+        for (const auto &pdir : _initialTargetState) {
+            const InZipState &zst = pdir.second;
+            std::set<std::string> fileset;
+            for (const auto &kv : zst) {
+                const std::string &name = kv.first;
+                if (!fileset.insert(name).second)
+                    return false;   //same file paths inside target zip not allowed
+            }
+        }
 
         _numCasesValidated++;
         return true;

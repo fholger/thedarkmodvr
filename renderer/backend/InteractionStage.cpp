@@ -32,6 +32,7 @@ struct InteractionStage::ShaderParams {
 	idVec4 diffuseMatrix[2];
 	idVec4 specularMatrix[2];
 	idMat4 lightProjectionFalloff;
+	idVec4 lightTextureMatrix[2];
 	idVec4 colorModulate;
 	idVec4 colorAdd;
 	idVec4 lightOrigin;
@@ -40,6 +41,9 @@ struct InteractionStage::ShaderParams {
 	idVec4 specularColor;
 	idVec4 hasTextureDNS;
 	idVec4 ambientRimColor;
+	int useBumpmapLightTogglingFix;
+	float RGTC;
+	idVec2 padding_2;
 	// bindless texture handles, if supported
 	uint64_t normalTexture;
 	uint64_t padding;
@@ -62,7 +66,6 @@ namespace {
 		DEFINE_UNIFORM( vec3, globalLightOrigin )
 
 		DEFINE_UNIFORM( int, advanced )
-		DEFINE_UNIFORM( int, useBumpmapLightTogglingFix )
 		DEFINE_UNIFORM( int, cubic )
 		DEFINE_UNIFORM( float, gamma )
 		DEFINE_UNIFORM( float, minLevel )
@@ -99,7 +102,7 @@ void InteractionStage::LoadInteractionShader( GLSLProgram *shader, const idStr &
 	if (bindless) {
 		defines.Set( "BINDLESS_TEXTURES", "1" );
 	}
-	shader->InitFromFiles( "stages/interaction/" + baseName + ".vs.glsl", "stages/interaction/" + baseName + ".fs.glsl", defines );
+	shader->LoadFromFiles( "stages/interaction/" + baseName + ".vs.glsl", "stages/interaction/" + baseName + ".fs.glsl", defines );
 	InteractionUniforms *uniforms = shader->GetUniformGroup<InteractionUniforms>();
 	uniforms->lightProjectionCubemap.Set( TU_LIGHT_PROJECT_CUBE );
 	uniforms->lightProjectionTexture.Set( TU_LIGHT_PROJECT );
@@ -155,12 +158,6 @@ void InteractionStage::Shutdown() {
 
 void InteractionStage::DrawInteractions( viewLight_t *vLight, const drawSurf_t *interactionSurfs ) {
 	if ( !interactionSurfs ) {
-		return;
-	}
-	if ( vLight->lightShader->IsAmbientLight() ) {
-		if ( r_skipAmbient.GetInteger() & 2 )
-			return;
-	} else if ( r_skipInteractions.GetBool() ) {
 		return;
 	}
 
@@ -272,7 +269,8 @@ void InteractionStage::BindShadowTexture() {
 
 		GL_SelectTexture( TU_SHADOW_STENCIL );
 		globalImages->shadowDepthFbo->Bind();
-		qglTexParameteri( GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX );
+		if (globalImages->shadowDepthFbo->texnum != idImage::TEXTURE_NOT_LOADED)
+			qglTexParameteri( GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX );
 	}
 }
 
@@ -292,7 +290,6 @@ void InteractionStage::ChooseInteractionProgram( viewLight_t *vLight, bool trans
 	uniforms->advanced.Set( r_interactionProgram.GetInteger() );
 	uniforms->gamma.Set( backEnd.viewDef->IsLightGem() ? 1 : r_ambientGamma.GetFloat() );
 	uniforms->minLevel.Set( r_ambientMinLevel.GetFloat() );
-	uniforms->useBumpmapLightTogglingFix.Set( r_useBumpmapLightTogglingFix.GetBool() );
 	uniforms->ssaoEnabled.Set( ambientOcclusion->ShouldEnableForCurrentView() ? 1 : 0 );
 
 	bool doShadows = !vLight->noShadows && vLight->lightShader->LightCastsShadows(); 
@@ -363,12 +360,14 @@ void InteractionStage::ProcessSingleSurface( viewLight_t *vLight, const shaderSt
 
 	memcpy( inter.lightProjection, lightProject, sizeof( inter.lightProjection ) );
 
-	// now multiply the texgen by the light texture matrix
-	if ( lightStage->texture.hasMatrix ) {
-		RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
-		void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textureMatrix );
-		RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), backEnd.lightTextureMatrix );
-	}
+	float lightTexMatrix[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+	if ( lightStage->texture.hasMatrix )
+		RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, lightTexMatrix );
+	// stgatilov: we no longer merge two transforms together, since we need light-volume coords in fragment shader
+	//RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), lightTexMatrix );
+	inter.lightTextureMatrix[0].Set( lightTexMatrix[0], lightTexMatrix[4], 0, lightTexMatrix[12] );
+	inter.lightTextureMatrix[1].Set( lightTexMatrix[1], lightTexMatrix[5], 0, lightTexMatrix[13] );
+
 	inter.bumpImage = NULL;
 	inter.specularImage = NULL;
 	inter.diffuseImage = NULL;
@@ -491,6 +490,7 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 	params.specularMatrix[0] = din->specularMatrix[0];
 	params.specularMatrix[1] = din->specularMatrix[1];
 	memcpy( params.lightProjectionFalloff.ToFloatPtr(), din->lightProjection, sizeof(idMat4) );
+	memcpy( params.lightTextureMatrix->ToFloatPtr(), din->lightTextureMatrix, sizeof(idVec4) * 2 );
 	switch ( din->vertexColor ) {
 	case SVC_IGNORE:
 		params.colorModulate = idVec4(0, 0, 0, 0);
@@ -515,6 +515,8 @@ void InteractionStage::PrepareDrawCommand( drawInteraction_t *din ) {
 		params.hasTextureDNS = idVec4(1, 1, 1, 0);
 	}
 	params.ambientRimColor = din->ambientRimColor;
+	params.useBumpmapLightTogglingFix = r_useBumpmapLightTogglingFix.GetBool() && !din->surf->material->ShouldCreateBackSides();
+	params.RGTC = din->bumpImage->internalFormat == GL_COMPRESSED_RG_RGTC2;
 
 	if (renderBackend->ShouldUseBindlessTextures()) {
 		din->bumpImage->MakeResident();

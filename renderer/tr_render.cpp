@@ -41,10 +41,6 @@ This should never happen if the vertex cache is operating properly.
 =================
 */
 void RB_DrawElementsImmediate( const srfTriangles_t *tri ) {
-	/*backEnd.pc.c_drawElements++;
-	backEnd.pc.c_drawIndexes += tri->numIndexes;
-	backEnd.pc.c_drawVertexes += tri->numVerts;*/
-
 	if ( tri->ambientSurface ) {
 		if ( tri->indexes == tri->ambientSurface->indexes ) {
 			backEnd.pc.c_drawRefIndexes += tri->numIndexes;
@@ -54,18 +50,39 @@ void RB_DrawElementsImmediate( const srfTriangles_t *tri ) {
 		}
 	}
 
-	/*qglBegin( GL_TRIANGLES );
-
-	for ( int i = 0 ; i < tri->numIndexes ; i++ ) {
-		qglTexCoord2fv( tri->verts[ tri->indexes[i] ].st.ToFloatPtr() );
-		qglVertex3fv( tri->verts[ tri->indexes[i] ].xyz.ToFloatPtr() );
+	if (r_glCoreProfile.GetInteger() > 0) {
+#ifdef _DEBUG
+		common->Warning("Drawing without index buffer not supported in Core profile!");
+#endif
+		return;
 	}
-	qglEnd();*/
 	vertexCache.UnbindIndex();
 	static vertCacheHandle_t nil;
 	vertexCache.VertexPosition( nil );
 	auto ac = tri->verts;
 	qglDrawElements( GL_TRIANGLES, tri->numIndexes, GL_INDEX_TYPE, tri->indexes );
+}
+
+ID_INLINE void RB_PerfCounters( const drawSurf_t* surf, int instances = 1, bool shadows = false ) {
+	if ( r_showPrimitives.GetBool() && backEnd.viewDef->viewEntitys ) {
+		if ( shadows ) {
+			if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
+				backEnd.pc.c_shadowElements++;
+				backEnd.pc.c_shadowIndexes += surf->numIndexes;
+				backEnd.pc.c_shadowVertexes += surf->frontendGeo->numVerts;
+			}
+		} else {
+			backEnd.pc.c_drawElements++;
+			backEnd.pc.c_drawIndexes += surf->numIndexes * instances;
+			if ( surf->frontendGeo )
+				backEnd.pc.c_drawVertexes += surf->frontendGeo->numVerts;
+		}
+	}
+	if ( r_showEntityDraws && surf->space )
+		if ( r_showEntityDraws & 4 ) {
+			( (viewEntity_t*) surf->space )->drawCalls += surf->frontendGeo->numIndexes / 3;
+		} else
+			( (viewEntity_t*) surf->space )->drawCalls++;
 }
 
 /*
@@ -74,18 +91,7 @@ RB_DrawElementsWithCounters
 ================
 */
 void RB_DrawElementsWithCounters( const drawSurf_t *surf ) {
-	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
-		backEnd.pc.c_drawElements++;
-		backEnd.pc.c_drawIndexes += surf->numIndexes;
-		if ( surf->frontendGeo )
-			backEnd.pc.c_drawVertexes += surf->frontendGeo->numVerts;
-	}
-	if ( r_showEntityDraws && surf->space )
-		if ( r_showEntityDraws > 2 ) {
-			((viewEntity_t*)surf->space)->drawCalls += surf->frontendGeo->numIndexes / 3;
-		} else
-			((viewEntity_t *)surf->space)->drawCalls++;
-
+	RB_PerfCounters( surf );
 	void* indexPtr;
 	if ( surf->indexCache.IsValid() ) {
 		indexPtr = vertexCache.IndexPosition( surf->indexCache );
@@ -93,6 +99,14 @@ void RB_DrawElementsWithCounters( const drawSurf_t *surf ) {
 			backEnd.pc.c_vboIndexes += surf->numIndexes;
 		}
 	} else {
+		//note: this happens briefly when index cache is being resized
+		if (r_glCoreProfile.GetInteger() > 0) {
+#ifdef _DEBUG
+			common->Warning("Drawing without index buffer not supported in Core profile!");
+#endif
+			return;
+		}
+		//TODO: remove this code?
 		vertexCache.UnbindIndex();
 		if ( !surf->frontendGeo ) return;
 		indexPtr = surf->frontendGeo->indexes; // FIXME
@@ -105,18 +119,6 @@ void RB_DrawElementsWithCounters( const drawSurf_t *surf ) {
 }
 
 void RB_DrawTriangles( const srfTriangles_t &tri) {
-/*	if ( tri.indexCache.IsValid() ) {
-		qglDrawElements( GL_TRIANGLES,
-			tri.numIndexes,
-			GL_INDEX_TYPE,
-			vertexCache.IndexPosition( tri.indexCache ) );
-		if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
-			backEnd.pc.c_vboIndexes += tri.numIndexes;
-		}
-	} else {
-		vertexCache.UnbindIndex();
-		qglDrawElements( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, tri.indexes ); 
-	}*/
 	void* indexPtr;
 	if ( tri.indexCache.IsValid() ) {
 		indexPtr = vertexCache.IndexPosition( tri.indexCache );
@@ -124,14 +126,21 @@ void RB_DrawTriangles( const srfTriangles_t &tri) {
 			backEnd.pc.c_vboIndexes += tri.numIndexes;
 		}
 	} else {
+		if (r_glCoreProfile.GetInteger() > 0) {
+#ifdef _DEBUG
+			common->Warning("Drawing without index buffer not supported in Core profile!");
+#endif
+			return;
+		}
+		//TODO: remove this code?
 		vertexCache.UnbindIndex();
 		indexPtr = tri.indexes;
 	}
 	int basePointer = vertexCache.GetBaseVertex();
 	if ( basePointer < 0 )
-		qglDrawElements( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, tri.indexes );
+		qglDrawElements( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, indexPtr );
 	else
-		qglDrawElementsBaseVertex( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, tri.indexes, basePointer );
+		qglDrawElementsBaseVertex( GL_TRIANGLES, tri.numIndexes, GL_INDEX_TYPE, indexPtr, basePointer );
 }
 
 /*
@@ -140,15 +149,7 @@ RB_DrawElementsInstanced
 ================
 */
 void RB_DrawElementsInstanced( const drawSurf_t *surf, int instances ) {
-	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
-		backEnd.pc.c_drawElements++;
-		backEnd.pc.c_drawIndexes += surf->numIndexes * instances;
-		backEnd.pc.c_drawVertexes += surf->frontendGeo->numVerts;
-	}
-	if ( r_showEntityDraws > 2 ) {
-		((viewEntity_t*)surf->space)->drawCalls += surf->frontendGeo->numIndexes / 3;
-	} else
-		((viewEntity_t*)surf->space)->drawCalls++;
+	RB_PerfCounters( surf, instances );
 
 	void* indexPtr;
 	if ( surf->indexCache.IsValid() ) {
@@ -157,6 +158,13 @@ void RB_DrawElementsInstanced( const drawSurf_t *surf, int instances ) {
 			backEnd.pc.c_vboIndexes += surf->numIndexes;
 		}
 	} else {
+		if (r_glCoreProfile.GetInteger() > 0) {
+#ifdef _DEBUG
+			common->Warning("Drawing without index buffer not supported in Core profile!");
+#endif
+			return;
+		}
+		//TODO: remove this code?
 		indexPtr = surf->frontendGeo->indexes; // FIXME?
 		vertexCache.UnbindIndex();
 	}
@@ -223,10 +231,7 @@ void RB_Multi_DrawElements( int instances ) {
 			if ( baseVertex < 0 )
 				common->Error( "Invalid base vertex in RB_Multi_AddSurf" );
 			multiDrawBaseVertices.Append( baseVertex );
-			if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() && backEnd.viewDef->viewEntitys ) {
-				backEnd.pc.c_drawIndexes += surf->numIndexes * instances;
-				backEnd.pc.c_drawVertexes += surf->frontendGeo->numVerts;
-			}
+			RB_PerfCounters( surf );
 		}
 		vertCacheHandle_t hBufferStart{ 1,0,0 };
 		vertexCache.IndexPosition( hBufferStart );
@@ -266,16 +271,19 @@ May not use all the indexes in the surface if caps are skipped
 ================
 */
 void RB_DrawShadowElementsWithCounters( const drawSurf_t *surf ) {
-	if ( r_showPrimitives.GetBool() && !backEnd.viewDef->IsLightGem() ) {
-		backEnd.pc.c_shadowElements++;
-		backEnd.pc.c_shadowIndexes += surf->numIndexes;
-		backEnd.pc.c_shadowVertexes += surf->frontendGeo->numVerts;
-	}
+	RB_PerfCounters( surf, 1, true );
 
 	void* indexPtr;
 	if ( surf->indexCache.IsValid() ) {
 		indexPtr = vertexCache.IndexPosition( surf->indexCache );
 	} else {
+		if (r_glCoreProfile.GetInteger() > 0) {
+#ifdef _DEBUG
+			common->Warning("Drawing without index buffer not supported in Core profile!");
+#endif
+			return;
+		}
+		//TODO: remove this code?
 		vertexCache.UnbindIndex();
 		indexPtr = surf->frontendGeo->indexes; // FIXME
 	}
@@ -595,6 +603,7 @@ to actually render the visible surfaces for this view
 =================
 */
 void RB_BeginDrawingView( void ) {
+	auto& viewDef = backEnd.viewDef;
 	// set the modelview matrix for the viewer
 	GL_SetProjection( (float *)backEnd.viewDef->projectionMatrix );
 
@@ -629,10 +638,10 @@ void RB_BeginDrawingView( void ) {
 		qglDisable( GL_DEPTH_TEST );
 		qglDisable( GL_STENCIL_TEST );
 	}
-	if ( backEnd.viewDef && backEnd.viewDef->xrayEntityMask ) {	// allow alpha blending with background
+	if ( viewDef && ( viewDef->xrayEntityMask || viewDef->superView && viewDef->superView->hasXraySubview ) ) {
 		qglClearColor( 0, 0, 0, 0 );
 		qglClear( GL_COLOR_BUFFER_BIT );
-	}
+	} // else allow alpha blending with background
 	backEnd.glState.faceCulling = -1;		// force face culling to set next time
 
 	GL_Cull( CT_FRONT_SIDED );
@@ -743,7 +752,7 @@ void RB_BakeTextureMatrixIntoTexgen( idPlane lightProject[3], const float *textu
 	genMatrix[11] = lightProject[2][2];
 	genMatrix[15] = lightProject[2][3];
 
-	myGlMultMatrix( genMatrix, backEnd.lightTextureMatrix, final );
+	myGlMultMatrix( genMatrix, textureMatrix, final );
 
 	lightProject[0][0] = final[0];
 	lightProject[0][1] = final[4];
@@ -787,8 +796,10 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf ) {
 			inter.ambientRimColor[3] = 1;
 		} else
 			inter.ambientRimColor.Zero();
-	} else if ( r_skipInteractions.GetBool() ) 
-		return;
+	} else if ( r_skipInteractions.GetBool() ) {
+		if( r_skipInteractions.GetInteger() == 1 || !backEnd.vLight->lightDef->parms.noShadows )
+			return;
+	}
 
 	if ( tr.logFile ) {
 		RB_LogComment( "---------- RB_CreateSingleDrawInteractions %s on %s ----------\n", lightShader->GetName(), material->GetName() );
@@ -877,11 +888,14 @@ void RB_CreateSingleDrawInteractions( const drawSurf_t *surf ) {
 
 		memcpy( inter.lightProjection, lightProject, sizeof( inter.lightProjection ) );
 
-		// now multiply the texgen by the light texture matrix
-		if ( lightStage->texture.hasMatrix ) {
-			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, backEnd.lightTextureMatrix );
-			RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), backEnd.lightTextureMatrix );
-		}
+		float lightTexMatrix[16] = { 1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1 };
+		if ( lightStage->texture.hasMatrix )
+			RB_GetShaderTextureMatrix( lightRegs, &lightStage->texture, lightTexMatrix );
+		// stgatilov: we no longer merge two transforms together, since we need light-volume coords in fragment shader
+		//RB_BakeTextureMatrixIntoTexgen( reinterpret_cast<class idPlane *>(inter.lightProjection), lightTexMatrix );
+		inter.lightTextureMatrix[0].Set( lightTexMatrix[0], lightTexMatrix[4], 0, lightTexMatrix[12] );
+		inter.lightTextureMatrix[1].Set( lightTexMatrix[1], lightTexMatrix[5], 0, lightTexMatrix[13] );
+
 		inter.bumpImage = NULL;
 		inter.specularImage = NULL;
 		inter.diffuseImage = NULL;

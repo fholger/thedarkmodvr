@@ -73,6 +73,8 @@ public:
 	idBounds &		IntersectSelf( const idBounds &a );				// intersect this bounds with the given bounds
 	idBounds		Expand( const float d ) const;					// return bounds expanded in all directions with the given value
 	idBounds &		ExpandSelf( const float d );					// expand bounds in all directions with the given value
+	idBounds		Expand( const idVec3 &d ) const;				// return bounds expanded by given value in each direction
+	idBounds &		ExpandSelf( const idVec3 &d );					// expand bounds by given value in each direction
 	idBounds		Translate( const idVec3 &translation ) const;	// return translated bounds
 	idBounds &		TranslateSelf( const idVec3 &translation );		// translate this bounds
 	idBounds		Rotate( const idMat3 &rotation ) const;			// return rotated bounds
@@ -101,9 +103,7 @@ public:
 
 	void			ToPoints( idVec3 points[8] ) const;
 	idSphere		ToSphere( void ) const;
-
-	// duzenko: don't delete, used for random debugging by grayman
-	const char *	ToString( const int precision = 2 ) const; // grayman - used to be const char *, can't now make it idStr
+	idStr			ToString( const int precision = 2 ) const;
 
 	void			AxisProjection( const idVec3 &dir, float &min, float &max ) const;
 	void			AxisProjection( const idVec3 &origin, const idMat3 &axis, const idVec3 &dir, float &min, float &max ) const;
@@ -319,8 +319,10 @@ ID_INLINE idBounds &idBounds::IntersectSelf( const idBounds &a ) {
 }
 
 ID_INLINE idBounds idBounds::Expand( const float d ) const {
-	return idBounds( idVec3( b[0][0] - d, b[0][1] - d, b[0][2] - d ),
-						idVec3( b[1][0] + d, b[1][1] + d, b[1][2] + d ) );
+	return idBounds(
+		idVec3( b[0][0] - d, b[0][1] - d, b[0][2] - d ),
+		idVec3( b[1][0] + d, b[1][1] + d, b[1][2] + d )
+	);
 }
 
 ID_INLINE idBounds &idBounds::ExpandSelf( const float d ) {
@@ -333,6 +335,22 @@ ID_INLINE idBounds &idBounds::ExpandSelf( const float d ) {
 	return *this;
 }
 
+ID_INLINE idBounds idBounds::Expand( const idVec3 &d ) const {
+	return idBounds(
+		idVec3( b[0][0] - d[0], b[0][1] - d[1], b[0][2] - d[2] ),
+		idVec3( b[1][0] + d[0], b[1][1] + d[1], b[1][2] + d[2] )
+	);
+}
+
+ID_INLINE idBounds &idBounds::ExpandSelf( const idVec3 &d ) {
+	b[0][0] -= d[0];
+	b[0][1] -= d[1];
+	b[0][2] -= d[2];
+	b[1][0] += d[0];
+	b[1][1] += d[1];
+	b[1][2] += d[2];
+	return *this;
+}
 ID_INLINE idBounds idBounds::Translate( const idVec3 &translation ) const {
 	return idBounds( b[0] + translation, b[1] + translation );
 }

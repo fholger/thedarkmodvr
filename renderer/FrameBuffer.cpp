@@ -257,7 +257,6 @@ void FB_DebugShowContents() {
 	GL_SetProjection( mat4_identity.ToFloatPtr() );
 
 	GL_State( GLS_DEFAULT );
-	qglDisable( GL_DEPTH_TEST );
 
 	programManager->oldStageShader->Activate();
 	Uniforms::Global* transformUniforms = programManager->oldStageShader->GetUniformGroup<Uniforms::Global>();
@@ -289,8 +288,6 @@ void FB_DebugShowContents() {
 	RB_DrawFullScreenQuad();
 	transformUniforms->modelViewMatrix.Set( mat4_identity );
 	GLSLProgram::Deactivate();
-
-	qglEnable( GL_DEPTH_TEST );
 }
 
 /*

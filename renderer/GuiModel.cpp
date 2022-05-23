@@ -27,7 +27,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 idGuiModel::idGuiModel
 ================
 */
-idGuiModel::idGuiModel() {
+idGuiModel::idGuiModel() : hasXrayStage( NULL) {
 	indexes.SetGranularity( 1000 );
 	verts.SetGranularity( 1000 );
 }
@@ -171,9 +171,10 @@ void idGuiModel::EmitSurface( guiModelSurface_t *surf, float modelMatrix[16], fl
 
 	// move the verts to the vertex cache
 	tri->ambientCache = vertexCache.AllocVertex( tri->verts, ALIGN( tri->numVerts * sizeof( tri->verts[0] ), VERTEX_CACHE_ALIGN ) );
+	tri->indexCache = vertexCache.AllocIndex( tri->indexes, ALIGN( tri->numIndexes * sizeof( tri->indexes[0] ), INDEX_CACHE_ALIGN ) );
 
 	// if we are out of vertex cache, don't create the surface
-	if ( !tri->ambientCache.IsValid() ) {
+	if ( !tri->ambientCache.IsValid() || !tri->indexCache.IsValid() ) {
 		return;
 	}
 
@@ -275,19 +276,19 @@ void idGuiModel::EmitFullScreen( void ) {
 	viewDef_t	*oldViewDef = tr.viewDef;
 	tr.viewDef = viewDef;
 
+	hasXrayStage = NULL;
 	// add the surfaces to this view
 	for ( int i = 0 ; i < surfaces.Num() ; i++ ) {
-		EmitSurface( &surfaces[i], viewDef->worldSpace.modelMatrix, viewDef->worldSpace.modelViewMatrix, false );
+		auto surface = &surfaces[i];
+		EmitSurface( surface, viewDef->worldSpace.modelMatrix, viewDef->worldSpace.modelViewMatrix, false );
+		for ( int j = 0; j < surface->material->GetNumStages(); j++ ) {
+			auto stage = surface->material->GetStage( j );
+			if ( stage->texture.dynamic == DI_XRAY_RENDER ) {
+				hasXrayStage = &stage->texture;
+			}
+		}
 	}
 	tr.viewDef = oldViewDef;
-
-	// copy drawsurf geo state for backend use
-	/*for ( int i = 0; i < viewDef->numDrawSurfs; ++i ) {
-		drawSurf_t* surf = viewDef->drawSurfs[i];
-		srfTriangles_t* copiedGeo = (srfTriangles_t*)R_FrameAlloc( sizeof( srfTriangles_t ) );
-		memcpy( copiedGeo, surf->frontendGeo, sizeof( srfTriangles_t ) );
-		surf->backendGeo = copiedGeo;
-	}*/
 
 	// add the command to draw this view
 	R_AddDrawViewCmd( *viewDef );

@@ -18,10 +18,10 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 
 
-#include "unzip.h"
+#include <minizip/unzip.h>
 #include "minizip/minizip_extra.h"	//unzReOpen
 //stgatilov: for pk4 repacking
-#include "zip.h"
+#include <minizip/zip.h>
 
 #ifdef WIN32
 	#include <io.h>	// for _read
@@ -1151,9 +1151,12 @@ That's why if we detect that such a file is compressed in pk4, we recompress the
 */
 #include "CompressionParameters.h"
 bool DoNotCompressFile(const char *filename) {
-	for (int i = 0; i < PK4_UNCOMPRESSED_EXTENSIONS_COUNT; i++)
-		if (idStr::CheckExtension(filename, PK4_UNCOMPRESSED_EXTENSIONS[i]))
+	char ext[16] = ".";
+	for (int i = 0; i < PK4_UNCOMPRESSED_EXTENSIONS_COUNT; i++) {
+		strcpy(ext + 1, PK4_UNCOMPRESSED_EXTENSIONS[i]);
+		if (idStr::CheckExtension(filename, ext))
 			return true;
+	}
 	return false;
 }
 
@@ -2976,11 +2979,14 @@ idFile * idFileSystemLocal::OpenFileReadPrefetch( const char *relativePath, cons
 	if ( f == nullptr ) {
 		return f;
 	}
+	ID_TIME_T timestamp = f->Timestamp();
 	int len = f->Length();
 	void *buffer = Mem_Alloc( len );
 	f->Read( buffer, len );
 	CloseFile( f );
-	return new idFile_Memory( relativePath, (const char *)buffer, len, true );
+	idFile_Memory *res = new idFile_Memory( relativePath, (const char *)buffer, len, true );
+	res->SetTimestamp(timestamp);
+	return res;
 }
 
 /*

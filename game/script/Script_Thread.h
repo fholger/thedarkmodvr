@@ -29,11 +29,14 @@ private:
 	idThread					*waitingForThread;
 	int							waitingFor;
 	int							waitingUntil;
+	idList<idThread*>			threadsWaitingForThis;		//stgatilov: reverse to waitingForThread, empty in most cases
+
 	idInterpreter				interpreter;
 
 	idDict						spawnArgs;
 								
-	int 						threadNum;
+	int 						threadNum;		//stgatilov: assigned sequentally (similar to idEntity::spawnIdx)
+	int							threadPos;		//stgatilov: index in threadList (similar to idEntity::entityNum)
 	idStr 						threadName;
 
 	int							lastExecuteTime;
@@ -43,6 +46,8 @@ private:
 
 	static int					threadIndex;
 	static idList<idThread *>	threadList;
+	static idList<int>			posFreeList;	//stgatilov: indices of NULLs in threadList
+	static idHashIndex			threadNumsHash;
 
 	static trace_t				trace;
 
@@ -107,6 +112,7 @@ private:
 	void						Event_VecDotProduct( idVec3 &vec1, idVec3 &vec2 );
 	void						Event_VecCrossProduct( idVec3 &vec1, idVec3 &vec2 );
 	void						Event_VecToAngles( idVec3 &vec );
+	void						Event_VecRotate( idVec3 &vector, idAngles &angles );
 	void						Event_OnSignal( int signal, idEntity *ent, const char *func );
 	void						Event_ClearSignalThread( int signal, idEntity *ent );
 	void						Event_SetCamera( idEntity *ent );
@@ -119,6 +125,7 @@ private:
 	void						Event_GetTraceEntity( void );
 	void						Event_GetTraceJoint( void );
 	void						Event_GetTraceBody( void );
+	void						Event_GetTraceSurfType( void );
 	void						Event_FadeIn( idVec3 &color, float time );
 	void						Event_FadeOut( idVec3 &color, float time );
 	void						Event_FadeTo( idVec3 &color, float alpha, float time );
@@ -145,6 +152,8 @@ private:
 	void 						Event_GetFrameTime( void );
 	void 						Event_GetTicsPerSecond( void );
 	void						Event_CacheSoundShader( const char *soundName );
+	void						Event_PointIsInBounds( const idVec3 &point, const idVec3 &mins, const idVec3 &maxs );
+	void						Event_GetLocationPoint( const idVec3 &point );	// get location of a point rather than an entity
 	void						Event_DebugLine( const idVec3 &color, const idVec3 &start, const idVec3 &end, const float lifetime );
 	void						Event_DebugArrow( const idVec3 &color, const idVec3 &start, const idVec3 &end, const int size, const float lifetime );
 	void						Event_DebugCircle( const idVec3 &color, const idVec3 &origin, const idVec3 &dir, const float radius, const int numSteps, const float lifetime );
@@ -210,6 +219,7 @@ private:
 
 	void						Event_GetNextEntity( const char* key, const char* value, const idEntity* lastMatch );	// SteveL #3802
 	void						Event_EmitParticle( const char* particle, float startTime, float diversity, const idVec3& origin, const idVec3& angle ); // SteveL #3962
+	void						Event_ProjectDecal( const idVec3& traceOrigin, const idVec3& traceEnd, idEntity* passEntity, const char* decal, float decalSize, float angle );
 
 	void						Event_SetSecretsFound( float secrets);
 	void						Event_SetSecretsTotal( float secrets);

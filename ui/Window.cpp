@@ -1366,13 +1366,23 @@ void idWindow::CalcClientRect(float xofs, float yofs) {
 		drawRect.y = rect.y() - rect.h();
 	}
 	
-	if (flags & (WIN_HCENTER | WIN_VCENTER) && parent) {
+	if (flags & WIN_SCREENASPECT) {
+		float renderAspectRatio = float(renderSystem->GetScreenWidth()) / renderSystem->GetScreenHeight();
+		float widthMultiplier = renderAspectRatio / (640.0f / 480.0f);
+		drawRect.w /= widthMultiplier;
+	}
+	if (flags & (WIN_HCENTER | WIN_VCENTER)) {
 		// in this case treat xofs and yofs as absolute top left coords
 		// and ignore the original positioning
+		idVec2 parentSize(640.0f, 480.0f);
+		if (parent) {
+			parentSize = idVec2(parent->rect.w(), parent->rect.h());
+		}
 		if (flags & WIN_HCENTER) {
-			drawRect.x = (parent->rect.w() - rect.w()) / 2;
-		} else {
-			drawRect.y = (parent->rect.h() - rect.h()) / 2;
+			drawRect.x = (parentSize.x - drawRect.w) / 2;
+		}
+		if (flags & WIN_VCENTER) {
+			drawRect.y = (parentSize.y - drawRect.h) / 2;
 		}
 	}
 
@@ -1961,6 +1971,14 @@ bool idWindow::ParseInternalVar(const char *_name, idParser *src) {
 		forceAspectHeight = src->ParseFloat();
 		return true;
 	}
+	if ( idStr::Icmp( _name, "forcescreenaspect" ) == 0 ) {
+		flags |= WIN_SCREENASPECT;
+		return true;
+	}
+	if ( idStr::Icmp( _name, "hcenter" ) == 0 ) {
+		flags |= WIN_HCENTER;
+		return true;
+	}
 	if (idStr::Icmp(_name, "matscalex") == 0) {
 		matScalex = src->ParseFloat();
 		return true;
@@ -2081,7 +2099,7 @@ bool idWindow::ParseRegEntry(const char *name, idParser *src) {
 	work = name;
 	work.ToLower();
 
-	idWinVar *var = GetWinVarByName(work, NULL);
+	idWinVar *var = GetWinVarByName(work, false);
 	if ( var ) {
 		for (int i = 0; i < NumRegisterVars; i++) {
 			if (idStr::Icmp(work, RegisterVars[i].name) == 0) {

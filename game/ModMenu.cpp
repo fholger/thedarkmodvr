@@ -67,6 +67,8 @@ void CModMenu::HandleCommands(const idStr& cmd, idUserInterface* gui)
 	else if (cmd == "mainMenuStartup")
 	{
 		gui->SetStateBool("curModIsCampaign", gameLocal.m_MissionManager->CurrentModIsCampaign());
+		//stgatilov: we need to set cvar early, otherwise state switching code will "play nosound"
+		gui->SetStateBool("menu_bg_music", cv_tdm_menu_music.GetBool());
 	}
 	else if (cmd == "loadModNotes")
 	{
@@ -82,9 +84,9 @@ void CModMenu::HandleCommands(const idStr& cmd, idUserInterface* gui)
 	{
 		UpdateSelectedMod(gui);
 	}
-	else if (cmd == "eraseSelectedModFromDisk")
+	/*else if (cmd == "eraseSelectedModFromDisk")
 	{
-    int modIndex = gui->GetStateInt("missionList_sel_0", "-1");
+		int modIndex = gui->GetStateInt("missionList_sel_0", "-1");
 
 		CModInfoPtr info = gameLocal.m_MissionManager->GetModInfo(modIndex);
 
@@ -97,7 +99,7 @@ void CModMenu::HandleCommands(const idStr& cmd, idUserInterface* gui)
 
 		// Update the selected mission
 		UpdateSelectedMod(gui);
-	}
+	}*/
 	else if (cmd == "update")
 	{
 		gameLocal.Error("Deprecated update method called by main menu.");

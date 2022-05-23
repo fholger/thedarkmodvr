@@ -48,6 +48,10 @@ static DIOBJECTDATAFORMAT rgodf[] = {
 
 //==========================================================================
 
+//warning C4838: conversion from 'char' to 'const unsigned char' requires a narrowing conversion
+//stgatilov: happens for extended-ASCII chars in the tables (they are signed char-s implicitly converted to unsigned char)
+#pragma warning(disable: 4838)
+
 static const unsigned char s_scantokey[256] = { 
 //  0            1       2          3          4       5            6         7
 //  8            9       A          B          C       D            E         F
@@ -789,13 +793,11 @@ void IN_Frame( void ) {
 
 
 void	Sys_GrabMouseCursor( bool grabIt ) {
-#ifndef	ID_DEDICATED
 	win32.mouseReleased = !grabIt;
 	if ( !grabIt ) {
 		// release it right now
 		IN_Frame();
 	}
-#endif
 }
 
 void Sys_AdjustMouseMovement(float &dx, float &dy) {

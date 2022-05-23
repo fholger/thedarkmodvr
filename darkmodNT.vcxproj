@@ -52,49 +52,49 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -228,6 +228,11 @@
       <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions />
     </Link>
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">
     <Link>
@@ -243,6 +248,11 @@
       <PreprocessorDefinitions>NO_MFC;ID_REDIRECT_NEWDELETE;ID_DEBUG_MEMORY;ID_DEBUG_UNINITIALIZED_MEMORY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent />
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">
     <Link />
@@ -258,6 +268,11 @@
       <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions />
     </Link>
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">
     <Link>
@@ -273,6 +288,11 @@
       <PreprocessorDefinitions>NO_MFC;_INLINEDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent />
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
@@ -289,6 +309,11 @@
       <PreprocessorDefinitions>NO_MFC;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <PostBuildEvent />
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
@@ -305,6 +330,11 @@
     </ClCompile>
     <PostBuildEvent />
     <PostBuildEvent />
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
@@ -325,6 +355,11 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
     </ClCompile>
     <PostBuildEvent />
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link />
@@ -342,6 +377,11 @@
       <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions />
     </Link>
+    <PostBuildEvent />
+    <PostBuildEvent>
+      <Command>robocopy "$(OutDir)glprogs" "$(SolutionDir)glprogs" * /s /nfl /ndl /njh /njs /xo
+if %errorlevel% leq 3 exit 0</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h" />
@@ -359,6 +399,7 @@
     <ClInclude Include="framework\DeclManager.h" />
     <ClInclude Include="framework\DeclParticle.h" />
     <ClInclude Include="framework\DeclSkin.h" />
+    <ClInclude Include="framework\DeclSubtitles.h" />
     <ClInclude Include="framework\DeclTable.h" />
     <ClInclude Include="framework\DemoFile.h" />
     <ClInclude Include="framework\EditField.h" />
@@ -493,6 +534,7 @@
     <ClInclude Include="game\DownloadMenu.h" />
     <ClInclude Include="game\Emitter.h" />
     <ClInclude Include="game\Entity.h" />
+    <ClInclude Include="game\EntityList.h" />
     <ClInclude Include="game\EscapePointEvaluator.h" />
     <ClInclude Include="game\EscapePointManager.h" />
     <ClInclude Include="game\Force_Grab.h" />
@@ -540,6 +582,7 @@
     <ClInclude Include="game\LightController.h" />
     <ClInclude Include="game\LightGem.h" />
     <ClInclude Include="game\Liquid.h" />
+    <ClInclude Include="game\LodComponent.h" />
     <ClInclude Include="game\MatrixSq.h" />
     <ClInclude Include="game\MeleeWeapon.h" />
     <ClInclude Include="game\Misc.h" />
@@ -629,6 +672,7 @@
     <ClInclude Include="idlib\BitMsg.h" />
     <ClInclude Include="idlib\bv\Bounds.h" />
     <ClInclude Include="idlib\bv\Box.h" />
+    <ClInclude Include="idlib\bv\BoxOctree.h" />
     <ClInclude Include="idlib\bv\Frustum.h" />
     <ClInclude Include="idlib\bv\Sphere.h" />
     <ClInclude Include="idlib\CmdArgs.h" />
@@ -691,7 +735,7 @@
     <ClInclude Include="idlib\math\Simd_Generic.h" />
     <ClInclude Include="idlib\math\Simd_SSE.h" />
     <ClInclude Include="idlib\math\Simd_SSE2.h" />
-    <ClInclude Include="idlib\math\Simd_SSE3.h" />
+    <ClInclude Include="idlib\math\Simd_SSSE3.h" />
     <ClInclude Include="idlib\math\Vector.h" />
     <ClInclude Include="idlib\ParallelJobList.h" />
     <ClInclude Include="idlib\ParallelJobList_JobHeaders.h" />
@@ -761,12 +805,6 @@
     <ClInclude Include="sound\snd_efxpresets.h" />
     <ClInclude Include="sound\snd_local.h" />
     <ClInclude Include="sound\sound.h" />
-    <ClInclude Include="sound\SubtitleParser\subparser.h" />
-    <ClInclude Include="sound\SubtitleParser\SubRipParser.h" />
-    <ClInclude Include="sound\SubtitleParser\SubtitleItem.h" />
-    <ClInclude Include="sound\SubtitleParser\SubtitleParser.h" />
-    <ClInclude Include="sound\SubtitleParser\SubtitleParserFactory.h" />
-    <ClInclude Include="sound\SubtitleParser\SubtitleWord.h" />
     <ClInclude Include="sys\sys_local.h" />
     <ClInclude Include="sys\sys_padinput.h" />
     <ClInclude Include="sys\sys_public.h" />
@@ -833,6 +871,7 @@
     <ClCompile Include="framework\DeclManager.cpp" />
     <ClCompile Include="framework\DeclParticle.cpp" />
     <ClCompile Include="framework\DeclSkin.cpp" />
+    <ClCompile Include="framework\DeclSubtitles.cpp" />
     <ClCompile Include="framework\DeclTable.cpp" />
     <ClCompile Include="framework\DemoFile.cpp" />
     <ClCompile Include="framework\EditField.cpp" />
@@ -976,6 +1015,7 @@
     <ClCompile Include="game\DownloadMenu.cpp" />
     <ClCompile Include="game\Emitter.cpp" />
     <ClCompile Include="game\Entity.cpp" />
+    <ClCompile Include="game\EntityList.cpp" />
     <ClCompile Include="game\EscapePointEvaluator.cpp" />
     <ClCompile Include="game\EscapePointManager.cpp" />
     <ClCompile Include="game\Force_Grab.cpp" />
@@ -1026,6 +1066,7 @@
     <ClCompile Include="game\LightController.cpp" />
     <ClCompile Include="game\LightGem.cpp" />
     <ClCompile Include="game\Liquid.cpp" />
+    <ClCompile Include="game\LodComponent.cpp" />
     <ClCompile Include="game\MeleeWeapon.cpp" />
     <ClCompile Include="game\Misc.cpp" />
     <ClCompile Include="game\Missions\Download.cpp" />
@@ -1111,6 +1152,7 @@
     <ClCompile Include="idlib\BitMsg.cpp" />
     <ClCompile Include="idlib\bv\Bounds.cpp" />
     <ClCompile Include="idlib\bv\Box.cpp" />
+    <ClCompile Include="idlib\bv\BoxOctree.cpp" />
     <ClCompile Include="idlib\bv\Frustum.cpp" />
     <ClCompile Include="idlib\bv\Sphere.cpp" />
     <ClCompile Include="idlib\CmdArgs.cpp" />
@@ -1168,7 +1210,7 @@
     <ClCompile Include="idlib\math\Simd_IdAsm.cpp" />
     <ClCompile Include="idlib\math\Simd_SSE.cpp" />
     <ClCompile Include="idlib\math\Simd_SSE2.cpp" />
-    <ClCompile Include="idlib\math\Simd_SSE3.cpp" />
+    <ClCompile Include="idlib\math\Simd_SSSE3.cpp" />
     <ClCompile Include="idlib\math\Vector.cpp" />
     <ClCompile Include="idlib\ParallelJobList.cpp" />
     <ClCompile Include="idlib\Parser.cpp" />
@@ -1292,66 +1334,6 @@
     <ClCompile Include="sound\snd_system.cpp" />
     <ClCompile Include="sound\snd_wavefile.cpp" />
     <ClCompile Include="sound\snd_world.cpp" />
-    <ClCompile Include="sound\SubtitleParser\subparser.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubRipParser.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleItem.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleParser.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleParserFactory.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleWord.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug with inlines and memory log|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="sys\sys_cpu.cpp" />
     <ClCompile Include="sys\sys_local.cpp" />
     <ClCompile Include="sys\sys_padinput.cpp" />
@@ -1428,6 +1410,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="game\game.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="sys\msvc\natvis\game.natvis" />
+    <Natvis Include="sys\msvc\natvis\idlib.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

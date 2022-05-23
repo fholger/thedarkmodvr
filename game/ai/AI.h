@@ -380,7 +380,7 @@ public:
 	* @returns: a float between [0...1].It is fairly high at 
 	* values above 20, fairly low below 6 and increases linearly in between.
 	**/
-	float GetCalibratedLightgemValue() const;
+	float GetVisFraction() const;
 
 	/**
 	* Checks enemies in the AI's FOV and calls Alert( "vis", amount )
@@ -974,6 +974,12 @@ public: // greebo: Made these public for now, I didn't want to write an accessor
 	* If true, the AI ignores alerts during all actions
 	**/
 	bool					m_bIgnoreAlerts;
+
+	/**
+	* Is AI drunk?
+	* Same as spawnargs.GetBool("drunk"), but a bit faster.
+	**/
+	bool					m_drunk;
 
 	/**
 	* Array containing the various AI acuities (visual, aural, tactile, etc)

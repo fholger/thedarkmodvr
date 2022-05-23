@@ -5100,7 +5100,7 @@ void idPhysics_Player::PerformMantle()
 			// Start with mantle phase dependent on position relative
 			// to the mantle end point
 			const float mantleEndHeight = -(mantleEndPoint * gravityNormal);			
-			float floorHeight = std::numeric_limits<float>::lowest();
+			float floorHeight = -FLT_MAX;
 			{
 				idVec3 floorPos;
 				if (self->GetFloorPos(pm_normalviewheight.GetFloat(), floorPos))
@@ -6155,9 +6155,7 @@ void idPhysics_Player::ShoulderingMove()
 			{
 				int iLength_ms = 0;
 				pPlayer->StartSound("snd_shouldering_rustle", SND_CHANNEL_ANY, SSF_GLOBAL, 0, &iLength_ms);
-				static idRandom randGen;
-				m_fShouldering_TimeToNextSound = 
-					static_cast<float>(iLength_ms) * 0.5 * (1 + randGen.RandomFloat());
+				m_fShouldering_TimeToNextSound = static_cast<float>(iLength_ms) * 0.5 * (1 + gameLocal.random.RandomFloat());
 			}
 			else
 				m_fShouldering_TimeToNextSound = FLT_MAX;

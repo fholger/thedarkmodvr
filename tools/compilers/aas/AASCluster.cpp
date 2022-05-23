@@ -454,6 +454,7 @@ idAASCluster::Build
 */
 bool idAASCluster::Build( idAASFileLocal *file ) {
 
+	TRACE_CPU_SCOPE("Clustering")
 	common->Printf( "[Clustering]\n" );
 
 	this->file = file;
@@ -469,7 +470,8 @@ bool idAASCluster::Build( idAASFileLocal *file ) {
 		// create the portals from the portal areas
 		CreatePortals();
 
-		common->Printf( "\r%6d", file->portals.Num() );
+		//stgatilov: not useful, but takes time
+		//common->Printf( "\r%6d", file->portals.Num() );
 
 		// find the clusters
 		if ( !FindClusters() ) {

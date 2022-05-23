@@ -17,6 +17,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 // Excludes: shadows
 
 #pragma tdm_define "BINDLESS_TEXTURES"
+#pragma tdm_include "tdm_lightproject.glsl"
 
 #ifdef BINDLESS_TEXTURES
 #extension GL_ARB_bindless_texture : require
@@ -71,7 +72,6 @@ uniform samplerCube	u_lightProjectionCubemap;
 
 uniform int	    u_advanced;
 uniform int 	u_cubic;
-uniform int		u_useBumpmapLightTogglingFix;  //stgatilov #4825
 
 uniform bool	u_shadows;
 uniform int		u_softShadowsQuality;
@@ -93,7 +93,9 @@ void calcNormals() {
 	// compute normal from normal map, move from [0, 1] to [-1, 1] range, normalize 
 	if (params[var_DrawId].hasTextureDNS[1] != 0) {
 		vec4 bumpTexel = textureNormal( var_TexNormal.st ) * 2. - 1.;
-		RawN = vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0))); 
+		RawN = params[var_DrawId].RGTC == 1. 
+			? vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1.-bumpTexel.x*bumpTexel.x-bumpTexel.y*bumpTexel.y, 0)))
+			: normalize( bumpTexel.xyz ); 
 		N = var_TangentBitangentNormalMatrix * RawN; 
 	}
 	else {
@@ -115,22 +117,12 @@ void fetchDNS() {
 	NdotV = clamp(dot(N, V), 0.0, 1.0);
 }
 
-//fetch color of the light source
+//fetch color of the light source (light projection and falloff)
 vec3 lightColor() {
-	// compute light projection and falloff 
-	vec3 lightColor;
-	if (u_cubic == 1.0) {
-		vec3 cubeTC = var_TexLight.xyz * 2.0 - 1.0;
-		lightColor = texture(u_lightProjectionCubemap, cubeTC).rgb;
-		float att = clamp(1.0 - length(cubeTC), 0.0, 1.0);
-		lightColor *= att * att;
-	}
-	else {
-		vec3 lightProjection = textureProj(u_lightProjectionTexture, var_TexLight.xyw).rgb;
-		vec3 lightFalloff = texture(u_lightFalloffTexture, vec2(var_TexLight.z, 0.5)).rgb;
-		lightColor = lightProjection * lightFalloff;
-	}
-	return lightColor;
+	if (u_cubic == 1.0)
+		return projFalloffOfCubicLight(u_lightProjectionCubemap, var_TexLight);
+	else
+		return projFalloffOfNormalLight(u_lightProjectionTexture, u_lightFalloffTexture, params[var_DrawId].lightTextureMatrix, var_TexLight);
 }
 
 //illumination model with "simple interaction" setting
@@ -179,7 +171,7 @@ vec3 advancedInteraction() {
 	float R2f = clamp(localL.z * 4.0, 0.0, 1.0);
 
 	float NdotL_adjusted = NdotL;
-	if (u_useBumpmapLightTogglingFix != 0) {
+	if (params[var_DrawId].useBumpmapLightTogglingFix != 0) {
 		//stgatilov: hacky coefficient to make lighting smooth when L is almost in surface tangent plane
 		vec3 meshNormal = normalize(var_TangentBitangentNormalMatrix[2]);
 		float MNdotL = max(dot(meshNormal, L), 0);

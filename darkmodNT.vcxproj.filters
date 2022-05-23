@@ -130,9 +130,6 @@
     <Filter Include="Game\Network">
       <UniqueIdentifier>{ab1f887d-fe95-4de4-9fa9-94e250aa3e51}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Sound\SubtitleParser">
-      <UniqueIdentifier>{607c0db2-8484-4cdc-a101-4559b010ef46}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cm\CollisionModel.h">
@@ -1257,9 +1254,6 @@
     <ClInclude Include="idlib\math\Simd_SSE2.h">
       <Filter>idLib\Math</Filter>
     </ClInclude>
-    <ClInclude Include="idlib\math\Simd_SSE3.h">
-      <Filter>idLib\Math</Filter>
-    </ClInclude>
     <ClInclude Include="idlib\math\Vector.h">
       <Filter>idLib\Math</Filter>
     </ClInclude>
@@ -1519,23 +1513,20 @@
     <ClInclude Include="framework\Tracing.h">
       <Filter>Framework</Filter>
     </ClInclude>
-    <ClInclude Include="sound\SubtitleParser\SubtitleWord.h">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClInclude Include="idlib\math\Simd_SSSE3.h">
+      <Filter>idLib\Math</Filter>
     </ClInclude>
-    <ClInclude Include="sound\SubtitleParser\subparser.h">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClInclude Include="framework\DeclSubtitles.h">
+      <Filter>Framework</Filter>
     </ClInclude>
-    <ClInclude Include="sound\SubtitleParser\SubRipParser.h">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClInclude Include="game\EntityList.h">
+      <Filter>Game</Filter>
     </ClInclude>
-    <ClInclude Include="sound\SubtitleParser\SubtitleItem.h">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClInclude Include="idlib\bv\BoxOctree.h">
+      <Filter>idLib\BV</Filter>
     </ClInclude>
-    <ClInclude Include="sound\SubtitleParser\SubtitleParser.h">
-      <Filter>Sound\SubtitleParser</Filter>
-    </ClInclude>
-    <ClInclude Include="sound\SubtitleParser\SubtitleParserFactory.h">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClInclude Include="game\LodComponent.h">
+      <Filter>Game</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -2691,9 +2682,6 @@
     <ClCompile Include="idlib\math\Simd_SSE2.cpp">
       <Filter>idLib\Math</Filter>
     </ClCompile>
-    <ClCompile Include="idlib\math\Simd_SSE3.cpp">
-      <Filter>idLib\Math</Filter>
-    </ClCompile>
     <ClCompile Include="idlib\math\Vector.cpp">
       <Filter>idLib\Math</Filter>
     </ClCompile>
@@ -3001,28 +2989,29 @@
     <ClCompile Include="ThirdParty\artefacts\tracy\src\TracyClient.cpp">
       <Filter>idLib</Filter>
     </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\subparser.cpp">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClCompile Include="idlib\math\Simd_SSSE3.cpp">
+      <Filter>idLib\Math</Filter>
     </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubRipParser.cpp">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClCompile Include="framework\DeclSubtitles.cpp">
+      <Filter>Framework</Filter>
     </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleItem.cpp">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClCompile Include="game\EntityList.cpp">
+      <Filter>Game</Filter>
     </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleParser.cpp">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClCompile Include="idlib\bv\BoxOctree.cpp">
+      <Filter>idLib\BV</Filter>
     </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleParserFactory.cpp">
-      <Filter>Sound\SubtitleParser</Filter>
-    </ClCompile>
-    <ClCompile Include="sound\SubtitleParser\SubtitleWord.cpp">
-      <Filter>Sound\SubtitleParser</Filter>
+    <ClCompile Include="game\LodComponent.cpp">
+      <Filter>Game</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="game\game.def">
       <Filter>Game</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="sys\msvc\natvis\game.natvis" />
+    <Natvis Include="sys\msvc\natvis\idlib.natvis" />
   </ItemGroup>
 </Project>

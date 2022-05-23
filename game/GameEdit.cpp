@@ -808,7 +808,11 @@ idGameEdit::EntitySetOrigin
 */
 void idGameEdit::EntitySetOrigin( idEntity *ent, const idVec3 &org ) {
 	if ( ent ) {
-		ent->SetOrigin( org );
+		if ( ent->IsType(CBinaryFrobMover::Type) ) {
+			((CBinaryFrobMover*)ent)->SetMapOriginAxis( &org, NULL );
+		} else {
+			ent->SetOrigin( org );
+		}
 	}
 }
 
@@ -819,7 +823,11 @@ idGameEdit::EntitySetAxis
 */
 void idGameEdit::EntitySetAxis( idEntity *ent, const idMat3 &axis ) {
 	if ( ent ) {
-		ent->SetAxis( axis );
+		if ( ent->IsType(CBinaryFrobMover::Type) ) {
+			((CBinaryFrobMover*)ent)->SetMapOriginAxis( NULL, &axis );
+		} else {
+			ent->SetAxis( axis );
+		}
 	}
 }
 
@@ -934,8 +942,61 @@ void idGameEdit::EntityDelete( idEntity *ent, bool safe ) {
 
 	if (safe)
 		ent->PostEventMS(&EV_Remove, 0);
-	else
+	else {
+		//force-remove bound entities right NOW
+		//otherwise, their removal will be scheduled for next frame...
+		//if this is called in case of respawning, we want to have bound stuff killed before we recreate it
+		ent->RemoveBinds(true);
+
 		ent->Event_Remove();
+	}
+}
+
+/*
+================
+idGameEdit::EntityUpdateLOD
+================
+*/
+void idGameEdit::EntityUpdateLOD( idEntity *ent ) {
+	//unregister this entity from LOD system
+	LodComponent::StopLOD( ent, false );
+
+	//reparse LOD spawnargs again, getting new handle
+	//note: new handle can be zero if user has removed LOD!
+	LodComponent lodComp;
+	auto res = lodComp.ParseLODSpawnargs( ent, &ent->spawnArgs, gameLocal.random.RandomFloat() );
+
+	//recompute LOD level and reset all settings accordingly
+	//note: we cannot rely on this method being called from idEntity::Think
+	//because user could have disabled/removed LOD (e.g. m_LODHandle = 0)
+	lodComp.SwitchLOD();
+
+	if ( res )
+		gameLocal.lodSystem.AddToEnd( lodComp );
+}
+
+/*
+================
+idGameEdit::EntityUpdateShaderParms
+================
+*/
+void idGameEdit::EntityUpdateShaderParms( idEntity *ent ) {
+	//copy/pasted from idGameEdit::ParseSpawnArgsToRenderEntity
+	renderEntity_t *renderEntity = ent->GetRenderEntity();
+	const idDict *args = &ent->spawnArgs;
+	idVec3 color = args->GetVector( "_color", "1 1 1" );
+	renderEntity->shaderParms[ SHADERPARM_RED ]		= color[0];
+	renderEntity->shaderParms[ SHADERPARM_GREEN ]	= color[1];
+	renderEntity->shaderParms[ SHADERPARM_BLUE ]	= color[2];
+	renderEntity->shaderParms[ 3 ]					= args->GetFloat( "shaderParm3", "1" );
+	renderEntity->shaderParms[ 4 ]					= args->GetFloat( "shaderParm4", "0" );
+	renderEntity->shaderParms[ 5 ]					= args->GetFloat( "shaderParm5", "0" );
+	renderEntity->shaderParms[ 6 ]					= args->GetFloat( "shaderParm6", "0" );
+	renderEntity->shaderParms[ 7 ]					= args->GetFloat( "shaderParm7", "0" );
+	renderEntity->shaderParms[ 8 ]					= args->GetFloat( "shaderParm8", "0" );
+	renderEntity->shaderParms[ 9 ]					= args->GetFloat( "shaderParm9", "0" );
+	renderEntity->shaderParms[ 10 ]					= args->GetFloat( "shaderParm10", "0" );
+	renderEntity->shaderParms[ 11 ]					= args->GetFloat( "shaderParm11", "0" );
 }
 
 /*

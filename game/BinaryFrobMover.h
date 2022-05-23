@@ -125,7 +125,6 @@ public:
 		return m_LastBlockingEnt.GetEntity();
 	}
 
-	void SetClosedBox(idBox box);	// grayman #2345
 	idBox GetClosedBox();			// grayman #2345
 
 	/**
@@ -207,7 +206,7 @@ public:
 	 * @fraction: [0..1] where 0 refers to the original position and 
 	 *            a value of 1 refers to the fully rotated handle.
 	 */
-	void SetFractionalPosition(float fraction);
+	void SetFractionalPosition(float fraction, bool immediately);
 
 	float GetFractionalPosition();
 
@@ -223,7 +222,8 @@ public:
 	*/
 	void GetRemainingMovement(idVec3& out_deltaPosition, idAngles& out_deltaAngles);
 
-	// angua: returns the AAS area the center of the door is located in (or -1 if AAS is invalid)
+	// angua: returns the AAS area the center of the door is located in
+	// stgatilov: or -1 if AAS is invalid, or 0 if it does not belong to AAS
 	int GetAASArea(idAAS* aas);
 
 	/**
@@ -287,6 +287,9 @@ public:
 	{
 		return m_Lock;
 	};
+
+	//stgatilov #5683: update members after moving this via hot-reload
+	void SetMapOriginAxis(const idVec3 *newOrigin, const idMat3 *newAxis);
 
 protected:
 
@@ -385,6 +388,11 @@ protected:
 	// An event for convenience. Gets called right after spawn time at time 0.
 	// Override this event to do your stuff in the subclass, but be sure to call the baseclass
 	virtual void PostSpawn();
+
+	/**
+	 * stgatilov #5683: Recompute m_ClosedBox, m_ClosedPos, m_OpenPos, m_OpenDir from basic members.
+	 */
+	void ComputeAdditionalMembers();
 
 	/** 
 	 * greebo: Tells the frobmover to start moving. The boolean specifies whether

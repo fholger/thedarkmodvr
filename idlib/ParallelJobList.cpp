@@ -113,7 +113,7 @@ idParallelJobList_Threads
 ================================================================================================
 */
 
-static idCVar jobs_longJobMicroSec( "jobs_longJobMicroSec", "10000", CVAR_INTEGER, "print a warning for jobs that take more than this number of microseconds" );
+static idCVar jobs_longJobMicroSec( "jobs_longJobMicroSec", "100000", CVAR_INTEGER, "print a warning for jobs that take more than this number of microseconds" );
 
 
 const static int		MAX_THREADS	= 32;
@@ -446,8 +446,8 @@ void idParallelJobList_Threads::Wait() {
 			waited = true;
 		}
 
-		jobList.SetNum( 0 );
-		signalJobCount.SetNum( 0 );
+		jobList.Clear();
+		signalJobCount.Clear();
 		numSyncs = 0;
 		lastSignalJob = 0;
 

@@ -1241,11 +1241,6 @@ void idAnimated::Think( void )
 {
 	// SteveL #3770: Allow idAnimateds to use LOD and support switching between a non-animated model and an animated one.
 	idAFEntity_Gibbable::Think();
-
-	if ( m_LODHandle && m_DistCheckTimeStamp > NOLOD )
-	{
-		SwitchLOD();
-	}
 }
 
 /*
@@ -1638,8 +1633,6 @@ idStaticEntity::idStaticEntity( void ) {
 	fadeStart = 0;
 	fadeEnd	= 0;
 	runGui = false;
-
-	m_LODHandle = 0;
 }
 
 /*
@@ -1724,12 +1717,6 @@ void idStaticEntity::Spawn( void ) {
 	if ( runGui ) {
 		BecomeActive( TH_THINK );
 	}
-
-	if (ParseLODSpawnargs( &spawnArgs, gameLocal.random.RandomFloat() ) )
-	{
-		// Have to start thinking if we're distance dependent
-		BecomeActive( TH_THINK );
-	}
 }
 
 /*
@@ -1775,10 +1762,7 @@ void idStaticEntity::Think( void )
 			} else {
 				color = fadeTo;
 				fadeEnd = 0;
-				
-				// TDM: Don't deactivate if we have to keep doing distance checks
-				if (m_DistCheckTimeStamp == 0)
-					BecomeInactive( TH_THINK );
+				BecomeInactive( TH_THINK );
 			}
 			SetColor( color );
 		}
@@ -1906,7 +1890,6 @@ idFuncSmoke::idFuncSmoke() {
 	smokeTime = 0;
 	smoke = NULL;
 	restart = false;
-	m_LODHandle = 0;
 }
 
 /*
@@ -1992,11 +1975,6 @@ void idFuncSmoke::Think( void ) {
 				BecomeInactive( TH_UPDATEPARTICLES );
 			}
 		}
-	}
-
-	if ( m_LODHandle && m_DistCheckTimeStamp > NOLOD ) // SteveL #3770. use the new method of calling SwitchLOD 
-	{												   
-		SwitchLOD();
 	}
 }
 
@@ -3692,7 +3670,9 @@ void idPhantomObjects::Think( void ) {
 			}
 		} else {
 			// this is not the right way to set the angular velocity, but the effect is nice, so I'm keeping it. :)
-			ang.Set( gameLocal.random.CRandomFloat() * shake_ang.x, gameLocal.random.CRandomFloat() * shake_ang.y, gameLocal.random.CRandomFloat() * shake_ang.z );
+			ang.x = gameLocal.random.CRandomFloat() * shake_ang.x;
+			ang.y = gameLocal.random.CRandomFloat() * shake_ang.y;
+			ang.z = gameLocal.random.CRandomFloat() * shake_ang.z;
 			ang *= ( 1.0f - time / shake_time );
 			entPhys->SetAngularVelocity( ang );
 		}

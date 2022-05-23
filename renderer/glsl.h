@@ -19,7 +19,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "tr_local.h"
 
 extern idCVar r_newFrob;
-extern idCVarBool r_frobOutline;
+extern idCVar r_frobOutline;
 extern idCVarBool r_shadowMapCullFront;
 
 void AddPoissonDiskSamples( idList<idVec2> &pts, float dist );
@@ -104,6 +104,7 @@ namespace Uniforms {
 		DEFINE_UNIFORM( vec4, colorAdd )
 
 		DEFINE_UNIFORM( mat4, lightProjectionFalloff )
+		DEFINE_UNIFORM( vec4, lightTextureMatrix )
 		DEFINE_UNIFORM( vec4, diffuseColor )
 		DEFINE_UNIFORM( vec4, specularColor )
 		DEFINE_UNIFORM( float, cubic )
@@ -137,6 +138,7 @@ namespace Uniforms {
 
 		DEFINE_UNIFORM( float, RGTC )
 		DEFINE_UNIFORM( vec3, hasTextureDNS )
+		DEFINE_UNIFORM( int, useBumpmapLightTogglingFix )
 
 		DEFINE_UNIFORM( int, lightCount )
 		DEFINE_UNIFORM( vec3, lightColor )
@@ -148,7 +150,6 @@ namespace Uniforms {
 		DEFINE_UNIFORM( int, shadowMapHistory )
 		DEFINE_UNIFORM( int, frameCount )
 		DEFINE_UNIFORM( vec3, lightSamples )
-		DEFINE_UNIFORM( int, useBumpmapLightTogglingFix )
 
 
 		bool ambient = false;

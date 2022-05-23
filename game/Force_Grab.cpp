@@ -92,6 +92,9 @@ void CForce_Grab::Save( idSaveGame *savefile ) const
 	savefile->WriteInt(m_dragPositionFrames.Num());
 	for (int i = 0; i < m_dragPositionFrames.Num(); i++)
 		savefile->WriteVec4(m_dragPositionFrames[i]);
+	savefile->WriteInt(m_originalFriction.Num());
+	for (int i = 0; i < m_originalFriction.Num(); i++)
+		savefile->WriteVec3(m_originalFriction[i]);
 }
 
 void CForce_Grab::Restore( idRestoreGame *savefile )
@@ -115,6 +118,54 @@ void CForce_Grab::Restore( idRestoreGame *savefile )
 	m_dragPositionFrames.SetNum(n, false);
 	for (int i = 0; i < m_dragPositionFrames.Num(); i++)
 		savefile->ReadVec4(m_dragPositionFrames[i]);
+	savefile->ReadInt(n);
+	m_originalFriction.SetNum(n, false);
+	for (int i = 0; i < m_originalFriction.Num(); i++)
+		savefile->ReadVec3(m_originalFriction[i]);
+}
+
+/*
+================
+CForce_Grab::SetFrictionOverride
+================
+*/
+void CForce_Grab::SetFrictionOverride(bool enabled, float linear, float angular, float contact) {
+	if (!m_physics)
+		return;
+
+	if (m_physics->IsType(idPhysics_AF::Type)) {
+		idPhysics_AF* phys = (idPhysics_AF*)m_physics;
+		int n = phys->GetNumBodies();
+		if (enabled) {
+			if (m_originalFriction.Num() != n) {
+				m_originalFriction.SetNum(n, false);
+				for (int i = 0; i < n; i++) {
+					idAFBody* body = phys->GetBody(i);
+					idVec3 friction(body->GetLinearFriction(), body->GetAngularFriction(), body->GetContactFriction());
+					m_originalFriction[i] = friction;
+				}
+			}
+			for (int i = 0; i < n; i++) {
+				idAFBody* body = phys->GetBody(i);
+				idVec3 friction = m_originalFriction[i];
+				if (linear >= 0.0)
+					friction.x = linear;
+				if (angular >= 0.0)
+					friction.y = angular;
+				if (contact >= 0.0)
+					friction.z = contact;
+				body->SetFriction(friction.x, friction.y, friction.z);
+			}
+		}
+		else {
+			for (int i = 0; i < n && i < m_originalFriction.Num(); i++) {
+				idAFBody* body = phys->GetBody(i);
+				idVec3 friction = m_originalFriction[i];
+				body->SetFriction(friction.x, friction.y, friction.z);
+			}
+			m_originalFriction.Clear();
+		}
+	}
 }
 
 /*
@@ -126,24 +177,29 @@ void CForce_Grab::SetPhysics( idPhysics *phys, int id, const idVec3 &p ) {
 	float mass, MassOut, density;
 	idClipModel *clipModel;
 
+	// stgatilov #5599: restore normal air friction
+	SetFrictionOverride(false, 0, 0, 0);
+
 	m_physics = phys;
 	m_id = id;
 	m_p = p;
 
-	clipModel = m_physics->GetClipModel( m_id );
-	if ( clipModel != NULL && clipModel->IsTraceModel() ) 
-	{
-		mass = m_physics->GetMass( m_id );
-		// PROBLEM: No way to query physics object for density!
-		// Trick: Use a test density of 1.0 here, then divide the actual mass by output mass to get actual density
-		clipModel->GetMassProperties( 1.0f, MassOut, m_centerOfMass, m_inertiaTensor );
-		density = mass / MassOut;
-		// Now correct the inertia tensor by using actual density
-		clipModel->GetMassProperties( density, mass, m_centerOfMass, m_inertiaTensor );
-	} else 
-	{
-		m_centerOfMass.Zero();
-		m_inertiaTensor = mat3_identity;
+	if (m_physics) {
+		clipModel = m_physics->GetClipModel( m_id );
+		if ( clipModel != NULL && clipModel->IsTraceModel() ) 
+		{
+			mass = m_physics->GetMass( m_id );
+			// PROBLEM: No way to query physics object for density!
+			// Trick: Use a test density of 1.0 here, then divide the actual mass by output mass to get actual density
+			clipModel->GetMassProperties( 1.0f, MassOut, m_centerOfMass, m_inertiaTensor );
+			density = mass / MassOut;
+			// Now correct the inertia tensor by using actual density
+			clipModel->GetMassProperties( density, mass, m_centerOfMass, m_inertiaTensor );
+		} else 
+		{
+			m_centerOfMass.Zero();
+			m_inertiaTensor = mat3_identity;
+		}
 	}
 }
 
@@ -270,23 +326,56 @@ void CForce_Grab::Evaluate( int time )
 
 			// compute total weight
 			float totalMass = 0.0f;
-			for (int i = 0; i < phys->GetNumBodies(); i++)
+			bool inAir = true;
+			for (int i = 0; i < phys->GetNumBodies(); i++) {
 				totalMass += phys->GetMass(i);
-			float totalWeight = gameLocal.GetGravity().Length() * totalMass;
+				if (phys->HasGroundContacts(i))
+					inAir = false;
+			}
+			float gravAccel = gameLocal.GetGravity().Length();
+			float totalWeight = gravAccel * totalMass;
+
+			// check if player can lift the AF or it must be always on ground
+			bool mustGround = false;
+			if (idEntity *entity = m_physics->GetSelf())
+				if (entity->IsType(idAFEntity_Base::Type) && ((idAFEntity_Base*)entity)->m_bGroundWhenDragged)
+					mustGround = true;
+			if (cv_drag_AF_free.GetBool())
+				mustGround = false;
 
 			// compute force / weight factor
-			float maxFactor = cv_drag_af_weight_ratio.GetFloat();
+			float maxFactor = cv_drag_af_weight_ratio_canlift.GetFloat();
+			if (mustGround)
+				maxFactor = cv_drag_af_weight_ratio.GetFloat();
 			maxFactor = idMath::Fmin(maxFactor, grabber->m_MaxForce / totalWeight);
+
 			// compute weakening coefficient if distance to target is small
 			idVec3 dir = dragShift;
 			float len = dir.Normalize();
 			float weakenRadius = cv_drag_af_reduceforce_radius.GetFloat();
 			float weakenCoeff = idMath::Fmin(len / (weakenRadius + 1e-3f), 1.0f);
 
-			// apply force
-			idVec3 force = weakenCoeff * maxFactor * totalWeight * dir;
-			m_physics->AddForce(m_id, COM, force);
+			if (inAir) {
+				// apply force uniformly to all parts
+				// otherwise, small body parts will oscillate wildly
+				for (int i = 0; i < phys->GetNumBodies(); i++) {
+					idVec3 force = weakenCoeff * maxFactor * gravAccel * phys->GetMass(i) * dir;
+					m_physics->AddForce(i, phys->GetOrigin(i), force);
+				}
 
+				// temporarily increase air friction
+				// to avoid whole-body oscillations
+				float friction = cv_drag_af_inair_friction.GetFloat();
+				SetFrictionOverride(true, friction, friction, friction);
+			}
+			else {
+				// apply force to the grabbed part only
+				idVec3 force = weakenCoeff * maxFactor * totalWeight * dir;
+				m_physics->AddForce(m_id, COM, force);
+				// restore normal friction coefficients
+				SetFrictionOverride(false, 0, 0, 0);
+			}
+			
 			// don't do anything else
 			return;
 		}
@@ -488,40 +577,53 @@ void CForce_Grab::Evaluate( int time )
 		return;
 	}
 
-	// Finite angular acceleration:
-	Alph = DeltAngVec * (1.0f - ang_damping) / (dT * dT);
-	AlphMag = Alph.Length();
+	if (cv_drag_new.GetBool()) {
+		float halfingTime = cv_drag_rigid_angle_halfing_time.GetFloat();
+		float accelRadius = cv_drag_rigid_acceleration_angle.GetFloat();
+		float period = halfingTime - idMath::Fmin(accelRadius / (1e-3f + DeltAngVec.Length()), 1.0f) * idMath::Fmax(halfingTime - dT, 0.0f);
+		// if accelRadius == 0, then item should travel to target along straight line,
+		// with distance decreasing as D(t) = exp(t / T), where T = halfingTime
+		idVec3 angVelocity = DeltAngVec / period;
 
-	// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: Desird angular accel this frame is %s\r", Alph.ToString() );
-
-	if( m_bLimitForce )
-	{
-		// Find the scalar moment of inertia about this axis:
-		IAxis = (m_inertiaTensor * RotDir) * RotDir;
-
-		// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: I about axis is %f\r", IAxis );
-
-		// Calculate max alpha about this axis from max torque
-		MaxAlph = max_torque / IAxis;
-		AlphMod = idMath::ClampFloat(0.0f, MaxAlph, AlphMag );
-
-		// Finally, adjust our angular acceleration vector
-		Alph *= (AlphMod/AlphMag);
-		// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: Modified alpha is %s\r", Alph.ToString() );
+		m_physics->SetAngularVelocity( angVelocity, m_id );
 	}
+	else {
 
-	if( grabber->m_bIsColliding )
-		PrevOmega = vec3_zero;
-	else
-		PrevOmega = m_physics->GetAngularVelocity( m_id );
+		// Finite angular acceleration:
+		Alph = DeltAngVec * (1.0f - ang_damping) / (dT * dT);
+		AlphMag = Alph.Length();
 
-	Omega = PrevOmega * ang_damping + Alph * dT;
+		// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: Desird angular accel this frame is %s\r", Alph.ToString() );
 
-	// TODO: Toggle visual debugging with cvar
-	// gameRenderWorld->DebugLine( colorGreen, COM, (COM + 30 * RotDir), 1);
+		if( m_bLimitForce )
+		{
+			// Find the scalar moment of inertia about this axis:
+			IAxis = (m_inertiaTensor * RotDir) * RotDir;
 
-	// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: Setting angular velocity to %s\r", Omega.ToString() );
-	m_physics->SetAngularVelocity( Omega, m_id );
+			// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: I about axis is %f\r", IAxis );
+
+			// Calculate max alpha about this axis from max torque
+			MaxAlph = max_torque / IAxis;
+			AlphMod = idMath::ClampFloat(0.0f, MaxAlph, AlphMag );
+
+			// Finally, adjust our angular acceleration vector
+			Alph *= (AlphMod/AlphMag);
+			// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: Modified alpha is %s\r", Alph.ToString() );
+		}
+
+		if( grabber->m_bIsColliding )
+			PrevOmega = vec3_zero;
+		else
+			PrevOmega = m_physics->GetAngularVelocity( m_id );
+
+		Omega = PrevOmega * ang_damping + Alph * dT;
+
+		// TODO: Toggle visual debugging with cvar
+		// gameRenderWorld->DebugLine( colorGreen, COM, (COM + 30 * RotDir), 1);
+
+		// DM_LOG(LC_AI, LT_DEBUG)LOGSTRING("Force_Grab Eval: Setting angular velocity to %s\r", Omega.ToString() );
+		m_physics->SetAngularVelocity( Omega, m_id );
+	}
 }
 
 /*

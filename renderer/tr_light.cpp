@@ -283,7 +283,6 @@ viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *light ) {
 	vLight = (viewLight_t *)R_ClearedFrameAlloc( sizeof( *vLight ) );
 	vLight->lightDef = light;
 	vLight->pointLight = light->parms.pointLight;
-	vLight->radius = light->parms.radius;
 	vLight->noShadows = light->parms.noShadows;
 	vLight->noSpecular = light->parms.noSpecular;
 
@@ -336,13 +335,33 @@ viewLight_t *R_SetLightDefViewLight( idRenderLightLocal *light ) {
 
 	auto shader = vLight->lightShader;
 	auto tooBigForShadowMaps = ( (light->parms.lightRadius.Length() > r_maxShadowMapLight.GetFloat()) || ( light->parms.parallel ) );
-	if ( !r_shadows.GetInteger() || !shader->LightCastsShadows() )
+	if ( !r_shadows.GetInteger() || vLight->noShadows || !shader->LightCastsShadows() )
 		vLight->shadows = LS_NONE;
-	else
+	else {
 		if ( r_shadows.GetInteger() == 1 || tooBigForShadowMaps || tr.viewDef->IsLightGem() || tr.viewDef->isSubview )
 			vLight->shadows = LS_STENCIL;
 		else
 			vLight->shadows = LS_MAPS;
+	}
+
+	// stgatilov #5816: copy volumetric dust settings, resolve noshadows behavior
+	vLight->volumetricDust = light->parms.volumetricDust;
+	vLight->volumetricNoshadows = false;
+	if ( vLight->lightShader->IsFogLight() ) {
+		// no shadows in fog
+		vLight->volumetricNoshadows = true;
+	}
+	else {
+		if ( light->parms.volumetricNoshadows == 0 && vLight->shadows != LS_MAPS || r_volumetricSamples.GetInteger() <= 0 ) {
+			// volumetric light must never pass through walls, which can only be achieved with shadow map
+			// so we have to disable the volumetric light entirely
+			vLight->volumetricDust = 0.0f;
+		}
+		if ( light->parms.volumetricNoshadows == 1 || vLight->shadows != LS_MAPS ) {
+			// no shadow map available, or mapper said to ignore shadows -> disable shadows in volumetric light
+			vLight->volumetricNoshadows = true;
+		}
+	}
 
 	// multi-light shader stuff
 	if ( shader->LightCastsShadows() && tooBigForShadowMaps ) // use stencil shadows
@@ -394,6 +413,7 @@ Both shadow and light surfaces have been generated.  Either or both surfaces may
 =================
 */
 void idRenderWorldLocal::CreateLightDefInteractions( idRenderLightLocal *ldef ) {
+	TRACE_CPU_SCOPE_TEXT( "CreateLightDefInteractions", GetTraceLabel( ldef->parms ) );
 
 	bool lightCastsShadows = ldef->lightShader->LightCastsShadows();
 
@@ -825,11 +845,10 @@ void R_AddLightSurfaces( void ) {
 
 		// see if we are suppressing the light in this view
 		if ( !r_skipSuppress.GetBool() ) {
-			if ( light->parms.suppressLightInViewID	&& light->parms.suppressLightInViewID == tr.viewDef->renderView.viewID ) {
-				*ptr = vLight->next;
-				light->viewCount = -1;
-				continue;
-			} else if ( light->parms.allowLightInViewID && light->parms.allowLightInViewID != tr.viewDef->renderView.viewID ) {
+			bool suppress = light->parms.suppressLightInViewID && light->parms.suppressLightInViewID == tr.viewDef->renderView.viewID;
+			suppress |= light->parms.allowLightInViewID && light->parms.allowLightInViewID != tr.viewDef->renderView.viewID;
+			suppress |= (bool) ( light->parms.suppressInSubview & ( 1 << ( tr.viewDef->isSubview ? 0 : 1 ) ) );
+			if ( suppress ) {
 				*ptr = vLight->next;
 				light->viewCount = -1;
 				continue;
@@ -911,9 +930,12 @@ void R_AddLightSurfaces( void ) {
 
 		// fog lights will need to draw the light frustum triangles, so make sure they
 		// are in the vertex cache
-		if ( lightShader->IsFogLight() || r_showLights > 1 ) {
+		if ( lightShader->IsFogLight() || light->parms.volumetricDust > 0.0f || r_showLights > 1 ) {
 			if ( !vertexCache.CacheIsCurrent(vLight->frustumTris->ambientCache) ) {
 				R_CreateAmbientCache( vLight->frustumTris, false );
+			}
+			if ( !vertexCache.CacheIsCurrent(vLight->frustumTris->indexCache) ) {
+				vLight->frustumTris->indexCache = vertexCache.AllocIndex( vLight->frustumTris->indexes, vLight->frustumTris->numIndexes * sizeof( glIndex_t ) );
 			}
 		}
 
@@ -1089,10 +1111,7 @@ static void R_FindSurfaceLights( drawSurf_t& drawSurf ) {
 		if ( light->lightShader->IsAmbientLight() ) {
 			if ( r_skipAmbient.GetInteger() & 2 )
 				continue;
-		} /*else { // duzenko used to disable shadows as well but decided to revert for benchmarking
-			if ( r_skipInteractions.GetBool() )
-				continue;
-		}*/ 
+		}
 		idVec3 localLightOrigin;
 		R_GlobalPointToLocal( drawSurf.space->modelMatrix, light->globalLightOrigin, localLightOrigin );
 		if ( R_CullLocalBox( drawSurf.frontendGeo->bounds, drawSurf.space->modelMatrix, 6, light->frustum ) )
@@ -1493,9 +1512,11 @@ bool R_CullXray( idRenderEntityLocal& def ) {
 		return !( entXrayMask & 2 );					// only substitutes show
 	case XR_SUBSTITUTE:
 	{
-		auto viewEnt = tr.viewDef->subviewSurface->space;
-		if ( viewEnt->entityDef->index == def.index )	// this would overlap everything else
-			return true;
+		if ( tr.viewDef->subviewSurface ) {
+			auto viewEnt = tr.viewDef->subviewSurface->space;
+			if ( viewEnt->entityDef->index == def.index )	// this would overlap everything else
+				return true;
+		}
 		return entXrayMask & 4;							// substitutes show instead of their counterparts, everything else as usual
 	}
 	case XR_IGNORE:
@@ -1590,6 +1611,9 @@ void R_AddSingleModel( viewEntity_t *vEntity ) {
 }
 
 void R_AddPreparedSurfaces( viewEntity_t *vEntity ) {
+	idRenderEntityLocal& def = *vEntity->entityDef;
+	if ( R_CullXray( def ) )
+		return;
 	for (preparedSurf_t *it = vEntity->preparedSurfs; it; it = it->next) {
 		R_AddSurfaceToView( it->surf );
 

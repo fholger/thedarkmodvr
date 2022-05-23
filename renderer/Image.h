@@ -144,22 +144,39 @@ typedef enum {
 	IS_LOADED		// data loaded, waiting for GL thread
 } imageLoadState_t;
 
-// stgatilov: represents image data on CPU side
+// stgatilov: represents uncompressed image data on CPU side in RGBA8 format
 typedef struct imageBlock_s {
 	byte *pic[6];
 	int width;
 	int height;
 	int sides;			//six for cubemaps, one for the others
-	int compressedSize;	//if zero, then data is 8-bit RGBA
 
 	byte *GetPic(int side = 0) const { return pic[side]; }
 	bool IsValid() const { return pic[0] != nullptr; }
-	bool IsCompressed() const { return compressedSize != 0; }
 	bool IsCubemap() const { return sides == 6; }
-	int GetSizeInBytes() const { return (compressedSize == 0 ? width * height * 4 : compressedSize); }
+	int GetSizeInBytes() const { return width * height * 4; }
 	int GetTotalSizeInBytes() const { return sides * GetSizeInBytes(); }
 	void Purge();
 } imageBlock_t;
+
+// stgatilov: represents compressed texture as contents of DDS file
+typedef struct imageCompressedData_s {
+	int fileSize;				//size of tail starting from "magic"
+	int _;						//(padding)
+
+	//----- data below is stored in DDS file -----
+	dword magic;				//always must be "DDS "in little-endian
+	ddsFileHeader_t header;		//DDS file header (124 bytes)
+	byte contents[1];			//the rest of file (variable size)
+
+	byte *GetFileData() const { return (byte*)&magic; }
+	static int FileSizeFromContentSize(int contentSize) { return contentSize + 4 + sizeof(ddsFileHeader_t); }
+	static int TotalSizeFromFileSize(int fileSize) { return fileSize + 8; }
+	static int TotalSizeFromContentSize(int contentSize) { return TotalSizeFromFileSize(FileSizeFromContentSize(contentSize)); }
+	int GetTotalSize() const { return TotalSizeFromFileSize(fileSize); }
+	byte *ComputeUncompressedData() const;
+} imageCompressedData_t;
+static_assert(offsetof(imageCompressedData_s, contents) - offsetof(imageCompressedData_s, magic) == 128, "Wrong imageCompressedData_t layout");
 
 class LoadStack;
 
@@ -216,9 +233,9 @@ public:
 	void		SetImageFilterAndRepeat() const;
 	void		WritePrecompressedImage();
 	bool		CheckPrecompressedImage( bool fullLoad );
-	void		UploadPrecompressedImage( byte *data, int len );
+	void		UploadPrecompressedImage( void );
 	void		ActuallyLoadImage( bool allowBackground = false );
-	int			BitsForInternalFormat( int internalFormat ) const;
+	static int			BitsForInternalFormat( int internalFormat );
 	GLenum		SelectInternalFormat( const byte **dataPtrs, int numDataPtrs, int width, int height, textureDepth_t minimumDepth ) const;
 	void		ImageProgramStringToCompressedFileName( const char *imageProg, char *fileName ) const;
 	int			NumLevelsForImageSize( int width, int height ) const;
@@ -261,6 +278,7 @@ public:
 	// stgatilov: storing image data on CPU side
 	imageBlock_t		cpuData;				// CPU-side usable image data (usually absent)
 	imageResidency_t	residency;				// determines whether cpuData and/or texnum should be valid
+	imageCompressedData_t *compressedData;		// CPU-side compressed texture contents (aka DDS file)
 	imageLoadState_t	backgroundLoadState;	// state of background loading (usually disabled)
 
 	//stgatilov: information about why and how this image was loaded (may be missing)
@@ -342,7 +360,6 @@ public:
 	static idCVar		image_filter;				// changes texture filtering on mipmapped images
 	static idCVar		image_anisotropy;			// set the maximum texture anisotropy if available
 	static idCVar		image_lodbias;				// change lod bias on mipmapped images
-	static idCVar		image_useAllFormats;		// allow alpha/intensity/luminance/luminance+alpha
 	static idCVar		image_usePrecompressedTextures;	// use .dds files if present
 	static idCVar		image_writePrecompressedTextures; // write .dds files if necessary
 	static idCVar		image_writeNormalTGA;		// debug tool to write out .tgas of the final normal maps
@@ -375,6 +392,7 @@ public:
 	idImage *			cinematicImage;
 	idImage *			scratchImage;
 	idImage *			scratchImage2;
+	idImage *			xrayImage;
 	idImage *			accumImage;
 	idImage *			currentRenderImage;			// for SS_POST_PROCESS shaders
 	idImage *			guiRenderImage;
@@ -449,10 +467,12 @@ IMAGEFILES
 */
 
 void R_LoadImage( const char *name, byte **pic, int *width, int *height, ID_TIME_T *timestamp );
+void R_LoadCompressedImage( const char *name, imageCompressedData_t **pic, ID_TIME_T *timestamp );
 // pic is in top to bottom raster format
 bool R_LoadCubeImages( const char *cname, cubeFiles_t extensions, byte *pic[6], int *size, ID_TIME_T *timestamp );
 void R_MakeAmbientMap( MakeAmbientMapParam param );
 void R_LoadImageData( idImage &image );
+void R_RGBA8Image( idImage* image );
 
 /*
 ====================================================================

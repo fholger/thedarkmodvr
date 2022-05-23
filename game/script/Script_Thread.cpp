@@ -96,6 +96,7 @@ const idEventDef EV_Thread_VecLength( "vecLength", EventArgs('v', "vec", ""), 'f
 const idEventDef EV_Thread_VecDotProduct( "DotProduct", EventArgs('v', "vec1", "", 'v', "vec2", ""), 'f', "Returns the dot product of the two vectors.");
 const idEventDef EV_Thread_VecCrossProduct( "CrossProduct", EventArgs('v', "vec1", "", 'v', "vec2", ""), 'v', "Returns the cross product of the two vectors.");
 const idEventDef EV_Thread_VecToAngles( "VecToAngles", EventArgs('v', "vec", ""), 'v', "Returns Euler angles for the given direction.");
+const idEventDef EV_Thread_VecRotate( "VecRotate", EventArgs('v', "vector", "", 'v', "angles", ""), 'v', "Rotates a vector by the specified angles.");
 const idEventDef EV_Thread_OnSignal( "onSignal", EventArgs('d', "signalNum", "", 'e', "ent", "", 's', "functionName", ""), EV_RETURNS_VOID, "Sets a script callback function for when the given signal is raised on the given entity.");
 const idEventDef EV_Thread_ClearSignal( "clearSignalThread", EventArgs('d', "signalNum", "", 'e', "ent", ""), EV_RETURNS_VOID, "Clears the script callback function set for when the given signal is raised on the given entity.");
 const idEventDef EV_Thread_SetCamera( "setCamera", EventArgs('e', "cameraEnt", ""), EV_RETURNS_VOID, "Turns over view control to the given camera entity.");
@@ -128,6 +129,7 @@ const idEventDef EV_Thread_GetTraceJoint( "getTraceJoint", EventArgs(), 's',
 	"Returns the number of the skeletal joint closest to the location on the entity which was hit\n" \
 	"during the last call to trace or tracePoint" );
 const idEventDef EV_Thread_GetTraceBody( "getTraceBody", EventArgs(), 's', "Returns the number of the body part of the entity which was hit during the last call to trace or tracePoint" );
+const idEventDef EV_Thread_GetTraceSurfType( "getTraceSurfType", EventArgs(), 's', "Returns the type of the surface (i.e. metal, snow) which was hit during the last call to trace or tracePoint" );
 const idEventDef EV_Thread_FadeIn( "fadeIn", EventArgs('v', "color", "", 'f', "time", "in seconds"), EV_RETURNS_VOID, "Fades towards the given color over the given time in seconds.");
 const idEventDef EV_Thread_FadeOut( "fadeOut", EventArgs('v', "color", "", 'f', "time", "in seconds"), EV_RETURNS_VOID, "Fades from the given color over the given time in seconds.");
 const idEventDef EV_Thread_FadeTo( "fadeTo", EventArgs('v', "color", "", 'f', "alpha", "", 'f', "time", "in seconds"), EV_RETURNS_VOID, "Fades to the given color up to the given alpha over the given time in seconds.");
@@ -276,9 +278,26 @@ const idEventDef EV_EmitParticle( "emitParticle",
 	"sys.getTime() as the start time. Designed to be called once per frame with the same startTime each call to achieve a normal particle "
 	"effect, or on demand with sys.getTime() as the startTime for finer grained control, 1 quad at a time. Returns True (1) if there are "
 	"more particles to be emitted from the stage, False (0) if the stage has released all its quads.");
+const idEventDef EV_ProjectDecal( "projectDecal", EventArgs(
+				'v', "traceOrigin", "Start of the trace.",
+				'v', "traceEnd", "End of the trace.",
+				'e', "passEntity", "This entity will be considered non-solid by the trace.",
+				's', "decal", "Decal to be projected.",
+				'f', "decalSize", "Size of the decal quad.",
+				'f', "angle", "Angle of the decal quad."), 
+	EV_RETURNS_VOID,	
+	"Performs a trace from the specified origin and end positions, then projects a decal in that direction.");
 
 const idEventDef EV_SetSecretsFound("setSecretsFound", EventArgs('f', "secrets", ""), EV_RETURNS_VOID, "Set how many secrets the player has found. Use getMissionStatistic() for getting the current value.");
 const idEventDef EV_SetSecretsTotal("setSecretsTotal", EventArgs('f', "secrets", ""), EV_RETURNS_VOID, "Set how many secrets exist in the map in total. Use getMissionStatistic() for getting the current value.");
+
+const idEventDef EV_PointIsInBounds( "pointIsInBounds", EventArgs(
+														'v', "point", "test whether this point is in the bounds",
+														'v', "mins", "minimal corner of the bounds", 
+														'v', "maxs", "maximal corner of the bounds"),
+	'd', "Returns true if the point is within the bounds specified.");
+const idEventDef EV_GetLocationPoint("getLocationPoint", EventArgs('v', "point", "point whose location to check"), 'e',
+	"Returns the idLocation entity corresponding to the specified point's location.");
 
 CLASS_DECLARATION( idClass, idThread )
 	EVENT( EV_Thread_Execute,				idThread::Event_Execute )
@@ -314,7 +333,7 @@ CLASS_DECLARATION( idClass, idThread )
 	EVENT( EV_Thread_GetPersistantVector,	idThread::Event_GetPersistantVector )
 
 	EVENT( EV_Thread_GetCurrentMissionNum,	idThread::Event_GetCurrentMissionNum )
-	EVENT( EV_Thread_GetTDMVersion,		idThread::Event_GetTDMVersion )
+	EVENT( EV_Thread_GetTDMVersion,			idThread::Event_GetTDMVersion )
 
 	EVENT( EV_Thread_AngToForward,			idThread::Event_AngToForward )
 	EVENT( EV_Thread_AngToRight,			idThread::Event_AngToRight )
@@ -323,16 +342,17 @@ CLASS_DECLARATION( idClass, idThread )
 	EVENT( EV_Thread_ASine,					idThread::Event_GetASine ) // grayman #4882
 	EVENT( EV_Thread_Cosine,				idThread::Event_GetCosine )
 	EVENT( EV_Thread_ACosine,				idThread::Event_GetACosine ) // grayman #4882
-	EVENT( EV_Thread_Log,				idThread::Event_GetLog )
-	EVENT( EV_Thread_Pow,				idThread::Event_GetPow )
-	EVENT( EV_Thread_Floor,				idThread::Event_GetFloor )
-	EVENT( EV_Thread_Ceil,				idThread::Event_GetCeil )
+	EVENT( EV_Thread_Log,					idThread::Event_GetLog )
+	EVENT( EV_Thread_Pow,					idThread::Event_GetPow )
+	EVENT( EV_Thread_Floor,					idThread::Event_GetFloor )
+	EVENT( EV_Thread_Ceil,					idThread::Event_GetCeil )
 	EVENT( EV_Thread_SquareRoot,			idThread::Event_GetSquareRoot )
 	EVENT( EV_Thread_Normalize,				idThread::Event_VecNormalize )
 	EVENT( EV_Thread_VecLength,				idThread::Event_VecLength )
 	EVENT( EV_Thread_VecDotProduct,			idThread::Event_VecDotProduct )
 	EVENT( EV_Thread_VecCrossProduct,		idThread::Event_VecCrossProduct )
 	EVENT( EV_Thread_VecToAngles,			idThread::Event_VecToAngles )
+	EVENT( EV_Thread_VecRotate,				idThread::Event_VecRotate )
 	EVENT( EV_Thread_OnSignal,				idThread::Event_OnSignal )
 	EVENT( EV_Thread_ClearSignal,			idThread::Event_ClearSignalThread )
 	EVENT( EV_Thread_SetCamera,				idThread::Event_SetCamera )
@@ -345,6 +365,7 @@ CLASS_DECLARATION( idClass, idThread )
 	EVENT( EV_Thread_GetTraceEntity,		idThread::Event_GetTraceEntity )
 	EVENT( EV_Thread_GetTraceJoint,			idThread::Event_GetTraceJoint )
 	EVENT( EV_Thread_GetTraceBody,			idThread::Event_GetTraceBody )
+	EVENT( EV_Thread_GetTraceSurfType,		idThread::Event_GetTraceSurfType )
 	EVENT( EV_Thread_FadeIn,				idThread::Event_FadeIn )
 	EVENT( EV_Thread_FadeOut,				idThread::Event_FadeOut )
 	EVENT( EV_Thread_FadeTo,				idThread::Event_FadeTo )
@@ -366,6 +387,8 @@ CLASS_DECLARATION( idClass, idThread )
 	EVENT( EV_Thread_GetFrameTime,			idThread::Event_GetFrameTime )
 	EVENT( EV_Thread_GetTicsPerSecond,		idThread::Event_GetTicsPerSecond )
 	EVENT( EV_CacheSoundShader,				idThread::Event_CacheSoundShader )
+	EVENT( EV_PointIsInBounds,				idThread::Event_PointIsInBounds )
+	EVENT( EV_GetLocationPoint,				idThread::Event_GetLocationPoint )
 	EVENT( EV_Thread_DebugLine,				idThread::Event_DebugLine )
 	EVENT( EV_Thread_DebugArrow,			idThread::Event_DebugArrow )
 	EVENT( EV_Thread_DebugCircle,			idThread::Event_DebugCircle )
@@ -406,6 +429,7 @@ CLASS_DECLARATION( idClass, idThread )
 
 	EVENT( EV_GetNextEntity,				idThread::Event_GetNextEntity )	// SteveL #3802
 	EVENT( EV_EmitParticle,  				idThread::Event_EmitParticle )  // SteveL #3962
+	EVENT( EV_ProjectDecal,  				idThread::Event_ProjectDecal )
 
 	EVENT( EV_SetSecretsFound,				idThread::Event_SetSecretsFound )
 	EVENT( EV_SetSecretsTotal,				idThread::Event_SetSecretsTotal )
@@ -415,6 +439,8 @@ CLASS_DECLARATION( idClass, idThread )
 idThread			*idThread::currentThread = NULL;
 int					idThread::threadIndex = 0;
 idList<idThread *>	idThread::threadList;
+idList<int>			idThread::posFreeList;
+idHashIndex			idThread::threadNumsHash;
 trace_t				idThread::trace;
 
 #define VINE_TRACE_CONTENTS 1281 // grayman #2787 - CONTENTS_CORPSE|CONTENTS_BODY|CONTENTS_SOLID
@@ -545,20 +571,23 @@ idThread::~idThread
 ================
 */
 idThread::~idThread() {
-	idThread	*thread;
-	int			i;
-	int			n;
-
 	if ( g_debugScript.GetBool() ) {
 		gameLocal.Printf( "%d: end thread (%d) '%s'\n", gameLocal.time, threadNum, threadName.c_str() );
 	}
-	threadList.Remove( this );
-	n = threadList.Num();
-	for( i = 0; i < n; i++ ) {
-		thread = threadList[ i ];
-		if ( thread->WaitingOnThread() == this ) {
-			thread->ThreadCallback( this );
-		}
+
+	assert(threadList[threadPos] == this);
+	threadList[threadPos] = NULL;
+	posFreeList.Append(threadPos);
+	assert(threadNumsHash.First(threadNum) >= 0);
+	threadNumsHash.Remove(threadNum, threadPos);
+
+	// note that ThreadCallback usually removes itself from the array
+	// that's why here we copy the list to make iteration over it safe
+	idList<idThread*> waitersCopy = threadsWaitingForThis;
+	for ( int i = 0; i < waitersCopy.Num(); i++ ) {
+		idThread *thread = waitersCopy[i];
+		assert( thread->WaitingOnThread() == this );
+		thread->ThreadCallback( this );
 	}
 
 	if ( currentThread == this ) {
@@ -590,6 +619,10 @@ void idThread::Save( idSaveGame *savefile ) const {
 	savefile->WriteInt( waitingFor );
 	savefile->WriteInt( waitingUntil );
 
+	savefile->WriteInt( threadsWaitingForThis.Num() );
+	for ( int i = 0; i < threadsWaitingForThis.Num(); i++ )
+		savefile->WriteObject( threadsWaitingForThis[i] );
+
 	interpreter.Save( savefile );
 
 	savefile->WriteDict( &spawnArgs );
@@ -607,11 +640,20 @@ idThread::Restore
 ================
 */
 void idThread::Restore( idRestoreGame *savefile ) {
+	// stgatilov: we change threadNum here, so we need to update already filled hash table
+	threadNumsHash.Remove( threadNum, threadPos );
 	savefile->ReadInt( threadNum );
+	threadNumsHash.Add( threadNum, threadPos );
 
 	savefile->ReadObject( reinterpret_cast<idClass *&>( waitingForThread ) );
 	savefile->ReadInt( waitingFor );
 	savefile->ReadInt( waitingUntil );
+
+	int n;
+	savefile->ReadInt( n );
+	threadsWaitingForThis.SetNum( n );
+	for ( int i = 0; i < threadsWaitingForThis.Num(); i++ )
+		savefile->ReadObject( reinterpret_cast<idClass *&>( threadsWaitingForThis[i] ) );
 
 	interpreter.Restore( savefile );
 
@@ -639,12 +681,17 @@ void idThread::Init( void ) {
 	} while( GetThread( threadIndex ) );
 
 	threadNum = threadIndex;
-	threadList.Append( this );
-	
+	if (posFreeList.Num() == 0)
+		posFreeList.Append(threadList.Append(NULL));
+	threadPos = posFreeList.Pop();
+	threadList[threadPos] = this;
+	threadNumsHash.Add(threadNum, threadPos);
+
 	creationTime = gameLocal.time;
 	lastExecuteTime = 0;
 	manualControl = false;
 
+	waitingForThread = NULL;
 	ClearWaitFor();
 
 	interpreter.SetThread( this );
@@ -656,13 +703,9 @@ idThread::GetThread
 ================
 */
 idThread *idThread::GetThread( int num ) {
-	int			i;
-	int			n;
-	idThread	*thread;
-
-	n = threadList.Num();
-	for( i = 0; i < n; i++ ) {
-		thread = threadList[ i ];
+	for ( int i = threadNumsHash.First(num); i != -1; i = threadNumsHash.Next(i) ) {
+		idThread *thread = threadList[i];
+		assert( thread );
 		if ( thread->GetThreadNum() == num ) {
 			return thread;
 		}
@@ -721,6 +764,8 @@ void idThread::ListThreads_f( const idCmdArgs &args ) {
 
 	n = threadList.Num();
 	for( i = 0; i < n; i++ ) {
+		if ( !threadList[i] )
+			continue;
 		//threadList[ i ]->DisplayInfo();
 		gameLocal.Printf( "%3i: %-20s : %s(%d)\n", threadList[ i ]->threadNum, threadList[ i ]->threadName.c_str(), threadList[ i ]->interpreter.CurrentFile(), threadList[ i ]->interpreter.CurrentLine() );
 	}
@@ -745,6 +790,8 @@ void idThread::Restart( void ) {
 		delete threadList[ i ];
 	}
 	threadList.Clear();
+	posFreeList.Clear();
+	threadNumsHash.Clear();
 
 	memset( &trace, 0, sizeof( trace ) );
 	trace.c.entityNum = ENTITYNUM_NONE;
@@ -839,6 +886,8 @@ void idThread::KillThread( const char *name ) {
 	num = threadList.Num();
 	for( i = 0; i < num; i++ ) {
 		thread = threadList[ i ];
+		if ( !thread )
+			continue;
 		if ( !idStr::Cmpn( thread->GetThreadName(), name, len ) ) {
 			thread->End();
 		}
@@ -947,6 +996,10 @@ idThread::ClearWaitFor
 ================
 */
 void idThread::ClearWaitFor( void ) {
+	if ( waitingForThread ) {
+		bool had = waitingForThread->threadsWaitingForThis.Remove( this );
+		assert( had );
+	}
 	waitingFor			= ENTITYNUM_NONE;
 	waitingForThread	= NULL;
 	waitingUntil		= 0;
@@ -1207,6 +1260,7 @@ void idThread::Event_WaitForThread( int num ) {
 	} else {
 		Pause();
 		waitingForThread = thread;
+		thread->threadsWaitingForThis.Append( this );
 	}
 }
 
@@ -1659,6 +1713,19 @@ void idThread::Event_VecToAngles( idVec3 &vec ) {
 
 /*
 ================
+idThread::Event_VecRotate
+================
+*/
+void idThread::Event_VecRotate( idVec3 &vector, idAngles &angles ) {
+
+	idMat3 axis		= angles.ToMat3();
+	idVec3 new_vec	= vector * axis;
+
+	ReturnVector( new_vec );
+}
+
+/*
+================
 idThread::Event_OnSignal
 ================
 */
@@ -1828,6 +1895,20 @@ void idThread::Event_GetTraceBody( void ) {
 				return;
 			}
 		}
+	}
+	ReturnString( "" );
+}
+
+/*
+================
+idThread::Event_GetTraceSurfType
+================
+*/
+void idThread::Event_GetTraceSurfType( void ) {
+	if ( trace.fraction < 1.0f ) {
+		idStr typeName = g_Global.GetSurfName( trace.c.material );
+		ReturnString( typeName );
+		return;
 	}
 	ReturnString( "" );
 }
@@ -2149,6 +2230,51 @@ idThread::Event_CacheSoundShader
 */
 void idThread::Event_CacheSoundShader( const char *soundName ) {
 	declManager->FindSound( soundName );
+}
+
+/*
+================
+idThread::Event_PointIsInBounds
+================
+*/
+void idThread::Event_PointIsInBounds(const idVec3 &point, const idVec3 &mins, const idVec3 &maxs) {
+
+	idVec3 corner1 = mins;
+	idVec3 corner2 = maxs;
+
+	//make sure corner1 is the minimum and corner2 is the maximum
+	if (corner1[0] > corner2[0])
+	{
+		corner1[0] = maxs[0];
+		corner2[0] = mins[0];
+	}
+
+	if (corner1[1] > corner2[1])
+	{
+		corner1[1] = maxs[1];
+		corner2[1] = mins[1];
+	}
+
+	if (corner1[2] > corner2[2])
+	{
+		corner1[2] = maxs[2];
+		corner2[2] = mins[2];
+	}
+
+	idBounds bounds( corner1, corner2 );
+	bool retInt = bounds.ContainsPoint( point );
+
+	idThread::ReturnInt( retInt );
+}
+
+/*
+================
+idThread::Event_GetLocationPoint
+================
+*/
+void idThread::Event_GetLocationPoint( const idVec3 &point )
+{
+	idThread::ReturnEntity( gameLocal.LocationForPoint( point ) );
 }
 
 /*
@@ -2655,6 +2781,20 @@ void idThread::Event_EmitParticle( const char* particle, float startTime, float 
 	const idDeclParticle* ptcl = static_cast<const idDeclParticle *>( declManager->FindType( DECL_PARTICLE, particle ) );
 	const bool emitted = gameLocal.smokeParticles->EmitSmoke( ptcl, startTime*1000, diversity, origin, axis );
 	idThread::ReturnFloat( emitted? 1.0f : 0.0f );
+}
+
+void idThread::Event_ProjectDecal( const idVec3& traceOrigin, const idVec3& traceEnd, idEntity* passEntity, const char* decal, float decalSize, float angle )
+{
+	trace_t tr;
+
+	gameLocal.clip.TracePoint( tr, traceOrigin, traceEnd, MASK_OPAQUE, passEntity );
+
+	// if trace made contact with a surface...
+	if ( trace.fraction < 1.0f )
+	{
+		gameLocal.ProjectDecal( tr.c.point, -tr.c.normal, 8.0f, true, decalSize, decal,
+								DEG2RAD(angle), gameLocal.entities[tr.c.entityNum], true, -1, false );
+	}
 }
 
 //Script events for the secrets system

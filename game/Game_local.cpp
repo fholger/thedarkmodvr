@@ -228,8 +228,11 @@ idGameLocal::idGameLocal() :
 	curBriefingVideoPart(-1),
 	m_MissionResult(MISSION_NOTEVENSTARTED),
 	m_HighestSRId(0),
-	m_searchManager(NULL) // grayman #3857
+	m_searchManager(NULL), // grayman #3857
+	activeEntities(&idEntity::activeIdx)
 {
+	entities.SetNum( MAX_GENTITIES );
+	spawnIds.SetNum( MAX_GENTITIES );
 	Clear();
 }
 
@@ -320,23 +323,20 @@ void idGameLocal::Clear( void )
 		userInfo.Clear();
 		persistentPlayerInfo.Clear();
 	memset( &usercmds, 0, sizeof( usercmds ) );
-	memset( entities, 0, sizeof( entities ) );
-	memset( spawnIds, -1, sizeof( spawnIds ) );
+	memset( entities.Ptr(), 0, entities.MemoryUsed() );
+	memset( spawnIds.Ptr(), -1, spawnIds.MemoryUsed() );
 	firstFreeIndex = 0;
 	num_entities = 0;
 	spawnedEntities.Clear();
 	activeEntities.Clear();
 	spawnedAI.Clear();
 	numEntitiesToDeactivate = 0;
-	sortPushers = false;
-	sortTeamMasters = false;
 	persistentLevelInfo.Clear();
 	persistentPlayerInventory.reset();
 	campaignInfoEntities.Clear();
 
 	memset( globalShaderParms, 0, sizeof( globalShaderParms ) );
 	random.SetSeed( 0 );
-	randomMt.seed(static_cast<unsigned long>(std::chrono::system_clock::now().time_since_epoch().count()));
 	world = NULL;
 	frameCommandThread = NULL;
 	testmodel = NULL;
@@ -884,10 +884,9 @@ void idGameLocal::SaveGame( idFile *f ) {
 		savegame.WriteObject( ent );
 	}
 
-	savegame.WriteInt( activeEntities.Num() );
-	for (idEntity* ent = activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
-		savegame.WriteObject( ent );
-	}
+	activeEntities.Save( savegame );
+
+	lodSystem.Save( savegame );
 
 	// tels: save the list of music speakers
 	savegame.WriteInt( musicSpeakers.Num() );
@@ -921,8 +920,6 @@ void idGameLocal::SaveGame( idFile *f ) {
 	}
 
 	savegame.WriteInt( numEntitiesToDeactivate );
-	savegame.WriteBool( sortPushers );
-	savegame.WriteBool( sortTeamMasters );
 	savegame.WriteDict( &persistentLevelInfo );
 
 	persistentPlayerInventory->Save(&savegame);
@@ -1403,13 +1400,17 @@ void idGameLocal::LoadMap( const char *mapName, int randseed ) {
 	if (loadingGUI != NULL )
 	{
 		// Use our own randomizer, the gameLocal.random one is not yet initialised
-		loadingGUI->SetStateFloat("random_value", static_cast<float>(randomMt()) / randomMt.max());
+		idRandom simpleRnd(randseed);
+		float random_value = simpleRnd.RandomFloat();
+		loadingGUI->SetStateFloat("random_value", random_value);
 		// #2807: Allow GUI scripts to distinguish between a quickload and a full load, so 
 		// they can choose to show only short messages. 
 		loadingGUI->SetStateBool("quickloading", sameAsPrevMap);
 		// Activate any GUI code that depends on this random value (which includes random text)
 		loadingGUI->HandleNamedEvent("OnRandomValueInitialised");
 	}
+
+	session->ResetMainMenu();
 
 	common->PacifierUpdate(LOAD_KEY_START,0); // grayman #3763
 
@@ -1442,17 +1443,16 @@ void idGameLocal::LoadMap( const char *mapName, int randseed ) {
 	numClients = 0;
 
 	// initialize all entities for this game
-	memset( entities, 0, sizeof( entities ) );
+	memset( entities.Ptr(), 0, entities.MemoryUsed() );
 	memset( &usercmds, 0, sizeof( usercmds ) );
-	memset( spawnIds, -1, sizeof( spawnIds ) );
+	memset( spawnIds.Ptr(), -1, spawnIds.MemoryUsed() );
 	spawnCount = INITIAL_SPAWN_COUNT;
 	
 	spawnedEntities.Clear();
 	activeEntities.Clear();
 	spawnedAI.Clear();
+	lodSystem.Clear();
 	numEntitiesToDeactivate = 0;
-	sortTeamMasters = false;
-	sortPushers = false;
 	lastGUIEnt = NULL;
 	lastGUI = 0;
 
@@ -1651,6 +1651,7 @@ void idGameLocal::HotReloadMap(const char *mapDiff, bool skipTimestampCheck) {
 			continue;
 		}
 
+		bool lodChanged = false;
 		for (int i = 0; i < diffArgs.GetNumKeyVals(); i++) {
 			const idKeyValue *kv = diffArgs.GetKeyVal(i);
 			if (
@@ -1665,32 +1666,99 @@ void idGameLocal::HotReloadMap(const char *mapDiff, bool skipTimestampCheck) {
 			0) {
 				respawn = true;
 			}
+			if (idStr::FindText(kv->GetKey(), "lod_") >= 0 ||
+				idStr::FindText(kv->GetKey(), "_lod") >= 0 ||
+				kv->GetKey().IcmpPrefix("dist_check") == 0 ||
+				kv->GetKey().Icmp("hide_distance") == 0 ||
+			0) {
+				lodChanged = true;
+			}
 		}
 		if (respawn) {
 			gameEdit->SpawnEntityDef(newArgs, &ent, idGameEdit::sedRespectInhibit | idGameEdit::sedRespawn);
 			continue;
 		}
 
+		//update spawnargs dict in entity
 		gameEdit->EntityChangeSpawnArgs( ent, &diffArgs );
-		//this method has broken conventions about what spawnargs should be passed
-		//the only correct way is to pass NULL, meaning that all existing spawnargs were modified
-		//all the other approaches break something, e.g. inherited spawnargs
-		gameEdit->EntityUpdateChangeableSpawnArgs( ent, NULL );
+
+		//compute new spawnargs with inherited props
+		const char *newClassname = newArgs.GetString("classname");
+		const idDeclEntityDef *newEntityDef = gameLocal.FindEntityDef(newClassname, false);
+		idDict newArgsInherited = newArgs;
+		newArgsInherited.SetDefaults(&newEntityDef->dict, idStr("editor_"));
+
+		bool originChanged = diffArgs.FindKey("origin") != NULL;
+		bool axisChanged = diffArgs.FindKey("rotation") || diffArgs.FindKey("angle");
+
+		//check if entity is moved while bound to master
+		idVec3 masterOrigin;	masterOrigin.Zero();
+		idMat3 masterAxis;		masterAxis.Identity();
+		if (originChanged || axisChanged) {
+			//find coordinate system of the bind master according to new spawnargs
+			//if position of bound entity is changed, then we will adjust it relative to that
+			if (idEntity *gameMasterEnt = ent->GetBindMaster()) {
+				const char *gameMasterName = gameMasterEnt->name.c_str();
+				const char *newMasterName = newArgsInherited.GetString("bind");
+				idMapEntity *newMasterMapEnt = mapFile->FindEntity(newMasterName);
+
+				//note: we only support simple binds here, no "bindToJoint" or "bindToBody"
+				bool complexBind = (gameMasterEnt->GetBindBody() >= 0 || gameMasterEnt->GetBindJoint());
+
+				if (idStr::Cmp(gameMasterName, newMasterName) == 0 && newMasterMapEnt && !complexBind) {
+					//still has same bind master as in .map file
+					masterOrigin = newMasterMapEnt->epairs.GetVector("origin");
+					gameEdit->ParseSpawnArgsToAxis(&newMasterMapEnt->epairs, masterAxis);
+				}
+				else {
+					//different master / master missing in .map / unsupported bind type
+					//unbind entity and move in absolute coords
+					ent->Unbind();
+				}
+			}
+		}
+
+		if (diffArgs.FindKey("rotate") || diffArgs.FindKey("translate"))
+			if (ent->IsType(CBinaryFrobMover::Type)) {
+				((CBinaryFrobMover*)ent)->SetFractionalPosition(0.0, true);
+				((CBinaryFrobMover*)ent)->Event_PostSpawn();
+			}
 		if (diffArgs.FindKey("model")) {
-			idStr newModel = newArgs.GetString("model");
+			idStr newModel = newArgsInherited.GetString("model");
 			gameEdit->EntitySetModel(ent, newModel);
 		}
 		if (diffArgs.FindKey("skin")) {
-			idStr newSkin = diffArgs.GetString("skin");
-			ent->PostEventMS(&EV_SetSkin, 0, newSkin);
+			idStr newSkin = newArgsInherited.GetString("skin");
+			ent->Event_SetSkin(newSkin);
 		}
-		if (diffArgs.FindKey("origin")) {
-			idVec3 newOrigin = newArgs.GetVector("origin");
+		if (diffArgs.FindKey("noshadows")) {
+			bool newNoShadows = newArgsInherited.GetBool("noshadows");
+			ent->Event_noShadows(newNoShadows);
+		}
+		if (lodChanged) {
+			gameEdit->EntityUpdateLOD(ent);
+		}
+		if (originChanged) {
+			idVec3 newOrigin = newArgsInherited.GetVector("origin");
+			newOrigin = (newOrigin - masterOrigin) * masterAxis.Inverse();
 			gameEdit->EntitySetOrigin(ent, newOrigin);
 		}
-		if (diffArgs.FindKey("rotation")) {
-			idMat3 newAxis = newArgs.GetMatrix("rotation");
+		if (axisChanged) {
+			idMat3 newAxis;
+			gameEdit->ParseSpawnArgsToAxis(&newArgsInherited, newAxis);
+			newAxis = newAxis * masterAxis.Inverse();
 			gameEdit->EntitySetAxis(ent, newAxis);
+		}
+		if (diffArgs.FindKey("_color") || diffArgs.MatchPrefix("shaderParm")) {
+			gameEdit->EntityUpdateShaderParms(ent);
+		}
+		if (ent->IsType(idLight::Type)) {
+			gameEdit->ParseSpawnArgsToRenderLight(&newArgsInherited, ((idLight*)ent)->GetRenderLight());
+		}
+		if (diffArgs.MatchPrefix("target")) {
+			//note: rebuild list of targets on NEXT frame
+			//in case we will spawn some targeted entity in this diff bundle
+			ent->PostEventMS(&EV_FindTargets, 0);
 		}
 
 		gameEdit->EntityUpdateVisuals( ent );
@@ -1909,6 +1977,11 @@ void idGameLocal::InitFromNewMap( const char *mapName, idRenderWorld *renderWorl
 	// We need an objectives update now that we've loaded the map
 	m_MissionData->ClearGUIState();
 
+	// stgatilov: for some reason, many clipmodels are not in their proper place yet
+	// so this optimization is incomplete...
+	// hopefully, player will save/load game, which would trigger full reconstruction of clip octree
+	clip.Optimize();
+
 	Printf( "--------------------------------------\n" );
 }
 
@@ -1963,7 +2036,7 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 	}
 
 	// load the map needed for this savegame
-	LoadMap( mapName, 0 );
+	LoadMap( mapName, Sys_Milliseconds() );
 
 	// Restore the global hiding spot search collection
 	CHidingSpotSearchCollection::Instance().Restore(&savegame);
@@ -2057,14 +2130,9 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 		}
 	}
 
-	savegame.ReadInt( num );
-	for( i = 0; i < num; i++ ) {
-		savegame.ReadObject( reinterpret_cast<idClass *&>( ent ) );
-		assert( ent );
-		if ( ent ) {
-			ent->activeNode.AddToEnd( activeEntities );
-		}
-	}
+	activeEntities.Restore( savegame );
+
+	lodSystem.Restore( savegame );
 
 	// tels: restore the list of music speakers
 	savegame.ReadInt( num );
@@ -2112,8 +2180,6 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 	}
 
 	savegame.ReadInt( numEntitiesToDeactivate );
-	savegame.ReadBool( sortPushers );
-	savegame.ReadBool( sortTeamMasters );
 	savegame.ReadDict( &persistentLevelInfo );
 
 	persistentPlayerInventory->Restore(&savegame);
@@ -2320,6 +2386,8 @@ bool idGameLocal::InitFromSaveGame( const char *mapName, idRenderWorld *renderWo
 	// Let the mission database know that we start playing
 	m_MissionManager->OnMissionStart();
 
+	clip.Optimize();
+
 	Printf( "--------------------------------------\n" );
 
 	// Restart the timer
@@ -2401,6 +2469,8 @@ void idGameLocal::MapShutdown( void ) {
 	}
 	
 	MapClear( true );
+
+	session->ResetMainMenu();
 
 	// reset the script to the state it was before the map was started
 	program.Restart();
@@ -3067,62 +3137,55 @@ idGameLocal::SortActiveEntityList
 ================
 */
 void idGameLocal::SortActiveEntityList( void ) {
-	idEntity *ent, *next_ent, *master, *part;
+	TRACE_CPU_SCOPE( "SortActive" )
+	idEntity *ent, *master, *part;
 
-	// if the active entity list needs to be reordered to place physics team masters at the front
-	if ( sortTeamMasters ) {
-		for ( ent = activeEntities.Next(); ent != NULL; ent = next_ent ) {
-			next_ent = ent->activeNode.Next();
-			master = ent->GetTeamMaster();
-			if ( master && master == ent ) {
-				ent->activeNode.Remove();
-				ent->activeNode.AddToFront( activeEntities );
+	static idList<idEntity*> buckets[6];
+
+	for ( auto iter = activeEntities.Begin(); iter; activeEntities.Next(iter) ) {
+		ent = iter.entity;
+		master = ent->GetTeamMaster();
+
+		bool isTeamMaster = ( master && master == ent );
+		bool hasActor = false;
+		bool hasParametric = false;
+
+		if ( !master || master == ent ) {
+			// check if there is an actor on the team,
+			// or an entity with parametric physics (?pusher?)
+			for ( part = ent; part != NULL; part = part->GetNextTeamEntity() ) {
+				if ( part->GetPhysics()->IsType( idPhysics_Actor::Type ) )
+					hasActor = true;
+				if ( part->GetPhysics()->IsType( idPhysics_Parametric::Type ) )
+					hasParametric = true;
 			}
 		}
+
+		int group = (
+			hasParametric ? 0 :		// pushers first
+			hasActor ? 1 :			// actors next
+			2						// finally, all the rest 
+		);
+		// without eah group, put team masters first
+		group = 2 * group + !isTeamMaster;
+
+		buckets[group].AddGrow( ent );
 	}
 
-	// if the active entity list needs to be reordered to place pushers at the front
-	if ( sortPushers ) {
-
-		for ( ent = activeEntities.Next(); ent != NULL; ent = next_ent ) {
-			next_ent = ent->activeNode.Next();
-			master = ent->GetTeamMaster();
-			if ( !master || master == ent ) {
-				// check if there is an actor on the team
-				for ( part = ent; part != NULL; part = part->GetNextTeamEntity() ) {
-					if ( part->GetPhysics()->IsType( idPhysics_Actor::Type ) ) {
-						break;
-					}
-				}
-				// if there is an actor on the team
-				if ( part ) {
-					ent->activeNode.Remove();
-					ent->activeNode.AddToFront( activeEntities );
-				}
-			}
-		}
-
-		for ( ent = activeEntities.Next(); ent != NULL; ent = next_ent ) {
-			next_ent = ent->activeNode.Next();
-			master = ent->GetTeamMaster();
-			if ( !master || master == ent ) {
-				// check if there is an entity on the team using parametric physics
-				for ( part = ent; part != NULL; part = part->GetNextTeamEntity() ) {
-					if ( part->GetPhysics()->IsType( idPhysics_Parametric::Type ) ) {
-						break;
-					}
-				}
-				// if there is an entity on the team using parametric physics
-				if ( part ) {
-					ent->activeNode.Remove();
-					ent->activeNode.AddToFront( activeEntities );
-				}
-			}
-		}
+	// concatenate buckets
+	int num = 0;
+	for ( int b = 0; b < 6; b++ )
+		num += buckets[b].Num();
+	idList<idEntity*> newOrder;
+	newOrder.SetNum(num);
+	num = 0;
+	for ( int b = 0; b < 6; b++ ) {
+		memcpy( newOrder.Ptr() + num, buckets[b].Ptr(), buckets[b].MemoryUsed() );
+		num += buckets[b].Num();
+		buckets[b].Clear();
 	}
 
-	sortTeamMasters = false;
-	sortPushers = false;
+	activeEntities.FromList( newOrder );
 }
 
 /*
@@ -3254,6 +3317,9 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds, int timestepMs 
 			// sort the active entity list
 			SortActiveEntityList();
 
+			// check and possibly switch LOD levels 
+			lodSystem.ThinkAllLod();
+
 			timer_think.Clear();
 			timer_think.Start();
 
@@ -3261,7 +3327,8 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds, int timestepMs 
 				TRACE_CPU_SCOPE( "ThinkAllEntities" )
 				num = 0;
 				bool timeentities = (g_timeentities.GetFloat() > 0.0);
-				for( ent = activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
+				for ( auto iter = activeEntities.Begin(); iter; activeEntities.Next(iter) ) {
+					ent = iter.entity;
 					if ( inCinematic && g_cinematic.GetBool() && !ent->cinematic ) {
 						ent->GetPhysics()->UpdateTime( time );
 						// grayman #2654 - update m_lastThinkTime to keep non-cinematic AI from dying at CrashLand()
@@ -3296,12 +3363,11 @@ gameReturn_t idGameLocal::RunFrame( const usercmd_t *clientCmds, int timestepMs 
 			// remove any entities that have stopped thinking
 			if ( numEntitiesToDeactivate ) {
 				TRACE_CPU_SCOPE( "DeactivateEntities" )
-				idEntity *next_ent;
 				int c = 0;
-				for( ent = activeEntities.Next(); ent != NULL; ent = next_ent ) {
-					next_ent = ent->activeNode.Next();
+				for ( auto iter = activeEntities.Begin(); iter; activeEntities.Next(iter) ) {
+					ent = iter.entity;
 					if ( !ent->thinkFlags ) {
-						ent->activeNode.Remove();
+						activeEntities.Remove( ent );
 						c++;
 					}
 				}
@@ -3607,7 +3673,7 @@ VideoMode VideoModes[] = {
 	{0,  800,	600  },	//23
 	{0,  1024,	768  },	//24
 	{0,  1152,	864  },	//25
-	{0,  1280,	1024 },	//26
+	{0,  1280,	960  },	//26
 	{0,  1600,	1200 },	//27
 	{5,  2560,	1080 },	//28
 	{5,  3440,	1440 },	//29
@@ -3917,6 +3983,7 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 
 		if (GetMissionResult() == MISSION_COMPLETE)
 		{
+			/*
 			// Check if we should show the success screen (also check the member variable
 			// to catch cases where the player reloaded the map via the console)
 			if (!gui->GetStateBool("PostMissionScreenActive") || !postMissionScreenActive)
@@ -3943,7 +4010,7 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 				// Avoid duplicate triggering
 				gui->SetStateBool("PostMissionScreenActive", true);
 				postMissionScreenActive = true;
-			}
+			}*/
 			
 			// tels: We handled this command, so clear the command stack
 			m_GUICommandStack.Clear();
@@ -3996,6 +4063,223 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 			gui->HandleNamedEvent("OnMenuMusicSettingChanged");
 
 			cv_tdm_menu_music.ClearModified();
+		}
+	}
+	else if (cmd == "mainmenumodeselect")
+	{
+		struct MainMenuStateInfo {
+			idStr name;				//e.g. BRIEFING   (MM_STATE_ is prepended)
+			idStr stateToggle;		//e.g. BriefingState -> BriefingStateInit + BriefingStateEnd
+			idStr backgrounds;		//e.g. MAINMENI_NOTINGAME -> MM_BACKGROUNDS_MAINMENU_NOTINGAME
+			idStr music;			//e.g. MusicIngame   (MainMenu is prepended)
+		};
+		struct MainMenuTransition {
+			idStr from;				//e.g. BRIEFING
+			idStr action;			//e.g. FORWARD
+			idStr to;				//e.g. DIFF_SELECT
+		};
+		static const MainMenuStateInfo STATES[] = {
+			{"NONE", NULL, NULL, NULL},
+			{"MAINMENU", NULL, NULL, NULL},
+			{"START_GAME", NULL, NULL, NULL},
+			{"END_GAME", NULL, NULL, NULL},
+			{"FINISHED", NULL, NULL, NULL},
+			{"FORWARD", NULL, NULL, NULL},
+			{"BACKWARD", NULL, NULL, NULL},
+			{"MAINMENU_INGAME", "MainMenuInGameState", "MAINMENU_INGAME", "MusicIngame"},
+			{"MAINMENU_NOTINGAME", "MainMenuState", "MAINMENU_NOTINGAME", "Music"},
+			{"QUITGAME", "QuitGameState", "MAINMENU_%INGAME%", "Music%INGAME%"},
+			{"CREDITS", "CreditsMenuState", "CREDITS", "MusicCredits"},
+			{"LOAD_SAVE_GAME", "LoadSaveGameMenuState", "MAINMENU_%INGAME%", "Music%INGAME%"},
+			{"FAILURE", "FailureMenuState", "FAILURE", "MusicMissionFailure"},
+			{"SUCCESS", "SuccessScreenState", "SUCCESS", "MusicMissionSuccess"},
+			{"BRIEFING", "BriefingState", "BRIEFING", "MusicBriefing"},
+			{"BRIEFING_VIDEO", "BriefingVidState", "", "MusicBriefingVideo"},
+			{"OBJECTIVES", "ObjectivesState", "EXTRAMENU_INGAME", "Music%INGAME%"},
+			{"SHOP", "ShopMenuState", "SHOP", "MusicBriefing"},
+			{"SETTINGS", "SettingsMenuState", "MAINMENU_%INGAME%", "Music%INGAME%"},
+			{"SELECT_LANGUAGE", "SelectLanguageState", "MAINMENU_%INGAME%", "Music%INGAME%"},
+			{"DOWNLOAD", "DownloadMissionsMenuState", "EXTRAMENU_NOTINGAME", "Music%INGAME%"},
+			{"DEBRIEFING_VIDEO", "DebriefingVidState", "", "MusicDebriefingVideo"},
+			{"GUISIZE", "SettingsGuiSizeState", "", "Music%INGAME%"},
+			{"MOD_SELECT", "NewGameMenuState", "EXTRAMENU_NOTINGAME", "Music%INGAME%"},
+			{"DIFF_SELECT", "ObjectivesState", "DIFFSELECT", "MusicBriefing"},
+		};
+		static const MainMenuTransition TRANSITIONS[] = {
+			//standard FM-customized sequence: starting new game
+			{"MAINMENU_NOTINGAME", "FORWARD", "BRIEFING_VIDEO"},	{"BRIEFING_VIDEO", "BACKWARD", "MAINMENU"},
+			{"BRIEFING_VIDEO", "FORWARD", "BRIEFING"},				{"BRIEFING", "BACKWARD", "MAINMENU"},
+			{"BRIEFING", "FORWARD", "DIFF_SELECT"},					{"DIFF_SELECT", "BACKWARD", "BRIEFING"},
+			{"DIFF_SELECT", "FORWARD", "SHOP"},						{"SHOP", "BACKWARD", "DIFF_SELECT"},
+			{"SHOP", "FORWARD", "START_GAME"},
+			//standard FM-customized sequence: game finished successfully
+			{"FINISHED", "FORWARD", "DEBRIEFING_VIDEO"},
+			{"DEBRIEFING_VIDEO", "FORWARD", "SUCCESS"},		{"SUCCESS", "BACKWARD", "DEBRIEFING_VIDEO"},
+			{"SUCCESS", "FORWARD", "MAINMENU"},
+		};
+
+		static const int STATENUM = sizeof(STATES) / sizeof(STATES[0]);
+		static const int TRANSITIONNUM = sizeof(TRANSITIONS) / sizeof(TRANSITIONS[0]);
+		auto FindStateByValue = [gui](int value) -> const MainMenuStateInfo* {
+			for (int i = 0; i < STATENUM; i++) {
+				idStr name = "#MM_STATE_" + STATES[i].name;
+				if (value == gui->GetStateInt(name))
+					return &STATES[i];
+			}
+			return nullptr;
+		};
+		auto FindStateByName = [gui](const char *name) -> const MainMenuStateInfo* {
+			for (int i = 0; i < STATENUM; i++) {
+				if (STATES[i].name == name)
+					return &STATES[i];
+			}
+			return nullptr;
+		};
+		auto ShouldSkipState = [gui](const char *name) -> bool {
+			idStr defName = idStr("#ENABLE_MAINMENU_") + name;
+			int value = gui->GetStateInt(defName, "-1");
+			if (value == 0)
+				return true;		//#define ENABLE_MAINMENU_SHOP 0  (set by mapper)
+			if (idStr::Icmp(name, "SHOP") == 0 && gui->GetStateInt("SkipShop") != 0)
+				return true;		//gui::SkipShop = 1    (set by C++ code)
+			return false;
+		};
+		auto FindTransition = [&](const char *from, const char *action) -> const char* {
+			for (int i = 0; i < TRANSITIONNUM; i++) {
+				if (TRANSITIONS[i].from == from && TRANSITIONS[i].action == action)
+					return TRANSITIONS[i].to.c_str();
+			}
+			return nullptr;
+		};
+
+		int modeValue = gui->GetStateInt("mode");
+		int targetValue = gui->GetStateInt("targetmode");
+		auto modeState = FindStateByValue(modeValue);
+		auto targetState = FindStateByValue(targetValue);
+		if (!modeState) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Unknown current state %d, setting NONE", modeValue);
+			modeState = &STATES[0];
+		}
+		if (!targetState) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Unknown target state %d, setting NONE", modeValue);
+			targetState = &STATES[0];
+		}
+
+		if (const char *dest = FindTransition(modeState->name, targetState->name)) {
+			//this is "action" of transition, i.e. not a "target" state, but more like a "direction" of movement
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Detected transition %s from %s", targetState->name.c_str(), modeState->name.c_str());
+			while (dest && ShouldSkipState(dest)) {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Skipped disabled state %s", dest);
+				dest = FindTransition(dest, targetState->name);
+			}
+			if (dest) {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Transition ends at %s", dest);
+			} else {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("All states in transition chain are disabled, redirect to MAINMENU");
+				dest = "MAINMENU";
+			}
+			targetState = FindStateByName(dest);
+		}
+
+		auto Redirect = [&](const char *newTargetState) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Target state %s, redirecting to %s", targetState->name.c_str(), newTargetState);
+			targetState = FindStateByName(newTargetState);
+			assert(targetState);
+		};
+
+		if (ShouldSkipState(targetState->name)) {
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Target state %s is disabled, redirecting to MAINMENU", targetState->name.c_str());
+			targetState = FindStateByName("MAINMENU");
+		}
+		if (targetState->name == "NONE")
+			Redirect("MAINMENU");
+		if (targetState->name == "MAINMENU") {
+			if (gui->GetStateInt("inGame"))
+				Redirect("MAINMENU_INGAME");
+			else
+				Redirect("MAINMENU_NOTINGAME");
+		}
+
+		if (targetState != modeState) {
+			if (targetState->name == "START_GAME") {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Starting game");
+				idStr mapname = m_MissionManager->GetCurrentStartingMap();
+				cmdSystem->BufferCommandText( CMD_EXEC_APPEND, va("map %s\n", mapname.c_str()) );
+				//note: it seems that target state does not matter
+				//map start resets "mode" to NONE anyway (see ClearMainMenuMode)
+			}
+			if (targetState->name == "END_GAME") {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Ending game");
+				cmdSystem->BufferCommandText( CMD_EXEC_APPEND, va("disconnect\n") );
+				Redirect("MAINMENU_NOTINGAME");
+			}
+
+			idStr modeMusicState = gui->GetStateString("MusicLastState");
+			idStr targetMusicState = targetState->music;
+			if (targetMusicState == "Music%INGAME%") {
+				//special syntax to enable MENU/MENU_INGAME
+				if (gui->GetStateInt("inGame"))
+					targetMusicState = FindStateByName("MAINMENU_INGAME")->music;
+				else
+					targetMusicState = FindStateByName("MAINMENU_NOTINGAME")->music;
+			}
+			if (gui->GetStateInt("menu_bg_music") == 0 && (targetMusicState == FindStateByName("MAINMENU_NOTINGAME")->music || targetMusicState == FindStateByName("MAINMENU_INGAME")->music))
+				targetMusicState = "";				//disable music
+			if (targetMusicState == "")
+				targetMusicState = "MusicNone";		//no music requested
+			if (modeMusicState != targetMusicState) {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Starting music state %s", targetMusicState.c_str() );
+				gui->ResetWindowTime("MainMenu" + targetMusicState);
+				gui->SetStateString("MusicLastState", targetMusicState);
+			}
+			else {
+				DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("No music change: state %s", targetMusicState.c_str() );
+			}
+
+			idStr targetBackgroundsMacro = targetState->backgrounds;
+			if (targetBackgroundsMacro == "MAINMENU_%INGAME%") {
+				//special syntax to enable MENU/MENU_INGAME
+				if (gui->GetStateInt("inGame"))
+					targetBackgroundsMacro = FindStateByName("MAINMENU_INGAME")->backgrounds;
+				else
+					targetBackgroundsMacro = FindStateByName("MAINMENU_NOTINGAME")->backgrounds;
+			}
+			idStr targetBackgroundsLayersStr = gui->GetStateString("#MM_BACKGROUNDS_" + targetBackgroundsMacro, "");
+			while (targetBackgroundsLayersStr.CmpPrefix("MM_BACKGROUNDS_") == 0) {
+				//usually we only read plain values of macros, but this limitation is a problem for backgrounds meta states
+				//so we allow setting name of another backgrounds macro as value
+				targetBackgroundsLayersStr = gui->GetStateString("#" + targetBackgroundsLayersStr, "");
+			}
+			idStr backgroundsLayersStr = gui->GetStateString("backgrounds");
+			if (backgroundsLayersStr != targetBackgroundsLayersStr) {
+				idStrList backgroundsLayers = backgroundsLayersStr.Split(",", true);
+				idStrList targetBackgroundsLayers = targetBackgroundsLayersStr.Split(",", true);
+				for (int i = 0; i < backgroundsLayers.Num(); i++) {
+					if (!targetBackgroundsLayers.Find(backgroundsLayers[i])) {
+						DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Ending background layer %s", backgroundsLayers[i].c_str() );
+						gui->ResetWindowTime(backgroundsLayers[i] + "End", 0);
+					}
+					else
+						DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("No change: background layer %s", backgroundsLayers[i].c_str() );
+				}
+				for (int i = 0; i < targetBackgroundsLayers.Num(); i++) {
+					if (!backgroundsLayers.Find(targetBackgroundsLayers[i])) {
+						DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Starting background layer %s", targetBackgroundsLayers[i].c_str() );
+						gui->ResetWindowTime(targetBackgroundsLayers[i] + "Init", 0);
+					}
+				}
+				gui->SetStateString("backgrounds", targetBackgroundsLayersStr);
+			}
+
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Ending state %s", modeState->name.c_str() );
+			if (modeState->stateToggle)
+				gui->ResetWindowTime(modeState->stateToggle + "End", 0);
+			DM_LOG(LC_MAINMENU, LT_INFO)LOGSTRING("Starting state %s", targetState->name.c_str() );
+			if (targetState->stateToggle)
+				gui->ResetWindowTime(targetState->stateToggle + "Init", 0);
+
+			targetValue = gui->GetStateInt("#MM_STATE_" + targetState->name);
+			gui->SetStateInt("mode", targetValue);
 		}
 	}
 	else if (cmd == "setvideoreswidescreen")
@@ -4195,16 +4479,10 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 		{
 			m_MissionManager->ProceedToNextMission();
 
-			// Store the new mission number into the GUI state
-			int missionNum = m_MissionManager->GetCurrentMissionIndex() + 1;
-			gui->SetStateInt("CurrentMission", missionNum);
-
-			// Let the GUI know which map to load (it has changed)
-			idStr mapToStart = m_MissionManager->GetCurrentStartingMap();
-			gui->SetStateString("mapStartCmd", va("exec 'map %s'", mapToStart.c_str()));
-
-			// Go to the next briefing / video
-			gui->HandleNamedEvent("SuccessProceedToNextMission");
+			// Recreate main menu GUI
+			session->ResetMainMenu();
+			session->SetMainMenuStartAtBriefing();
+			session->StartMenu();
 		}
 		else
 		{
@@ -4744,7 +5022,8 @@ void idGameLocal::RunDebugInfo( void ) {
 
 	// debug tool to draw bounding boxes around active entities
 	if ( g_showActiveEntities.GetBool() ) {
-		for( ent = activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
+		for ( auto iter = activeEntities.Begin(); iter; activeEntities.Next(iter) ) {
+			ent = iter.entity;
 			idBounds	b = ent->GetPhysics()->GetBounds();
 			if ( b.GetVolume() <= 0 ) {
 				b[0][0] = b[0][1] = b[0][2] = -8;
@@ -6152,7 +6431,7 @@ idGameLocal::ProjectDecal
 ===============
 */
 void idGameLocal::ProjectDecal( const idVec3 &origin, const idVec3 &dir, float depth, bool parallel, float size, 
-								const char *material, float angle, idEntity* target, bool save, int starttime ) 
+								const char *material, float angle, idEntity* target, bool save, int starttime, bool allowRandomAngle )
 {
 	float s, c;
 	idMat3 axis, axistemp;
@@ -6180,8 +6459,13 @@ void idGameLocal::ProjectDecal( const idVec3 &origin, const idVec3 &dir, float d
 		return;
 	}
 
-	// randomly rotate the decal winding
-	idMath::SinCos16( ( angle ) ? angle : random.RandomFloat() * idMath::TWO_PI, s, c );
+	// randomly rotate the decal winding if angle = 0 and random angles are allowed
+	if( angle == 0 && allowRandomAngle )
+	{
+		angle = random.RandomFloat() * idMath::TWO_PI;
+	}
+
+	idMath::SinCos16( angle, s, c );
 
 	// winding orientation
 	axis[2] = dir;
@@ -6477,68 +6761,33 @@ int idGameLocal::sortSpawnPoints( const void *ptr1, const void *ptr2 ) {
 /*
 ===========
 idGameLocal::SelectInitialSpawnPoint
-spectators are spawned randomly anywhere
-in-game clients are spawned based on distance to active players (randomized on the first half)
-upon map restart, initial spawns are used (randomized ordered list of spawns flagged "initial")
-  if there are more players than initial spots, overflow to regular spawning
 ============
 */
 idEntity *idGameLocal::SelectInitialSpawnPoint( idPlayer *player ) {
-	int				i, which;
 	spawnSpot_t		spot;
 	idVec3			pos;
-	bool			alone;
 
+	// grayman #2933 - Did the player specify
+	// a starting point in the briefing?
+
+	bool foundSpot = false;
+	spot.ent = NULL;
+	if ( m_StartPosition != NULL && m_StartPosition[0] != '\0' )
 	{
-		// grayman #2933 - Did the player specify
-		// a starting point in the briefing?
-
-		bool foundSpot = false;
-		spot.ent = NULL;
-		if ( m_StartPosition != NULL && m_StartPosition[0] != '\0' )
+		spot.ent = FindEntity( m_StartPosition );
+		if ( spot.ent != NULL )
 		{
-			spot.ent = FindEntity( m_StartPosition );
-			if ( spot.ent != NULL )
-			{
-				foundSpot = true;
-			}
+			foundSpot = true;
 		}
-		
-		if ( !foundSpot )
-		{
-			spot.ent = FindEntityUsingDef( NULL, "info_player_start" );
-			if ( !spot.ent )
-			{
-				Error( "No info_player_start on map.\n" );
-			}
-		}
-		return spot.ent;
 	}
-	if ( player->spectating ) {
-		// plain random spot, don't bother
-		return spawnSpots[ random.RandomInt( spawnSpots.Num() ) ].ent;
-	} else if ( player->useInitialSpawns && currentInitialSpot < initialSpots.Num() ) {
-		return initialSpots[ currentInitialSpot++ ];
-	} else {
-		// check if we are alone in map
-		alone = true;
-		if ( alone ) {
-			// don't do distance-based
-			return spawnSpots[ random.RandomInt( spawnSpots.Num() ) ].ent;
+	
+	if ( !foundSpot )
+	{
+		spot.ent = FindEntityUsingDef( NULL, "info_player_start" );
+		if ( !spot.ent )
+		{
+			Error( "No info_player_start on map.\n" );
 		}
-
-		// find the distance to the closest active player for each spawn spot
-		for( i = 0; i < spawnSpots.Num(); i++ ) {
-			pos = spawnSpots[ i ].ent->GetPhysics()->GetOrigin();
-			spawnSpots[ i ].dist = 0x7fffffff;
-		}
-
-		// sort the list
-		qsort( ( void * )spawnSpots.Ptr(), spawnSpots.Num(), sizeof( spawnSpot_t ), ( int (*)(const void *, const void *) )sortSpawnPoints );
-
-		// choose a random one in the top half
-		which = random.RandomInt( spawnSpots.Num() / 2 );
-		spot = spawnSpots[ which ];
 	}
 	return spot.ent;
 }
@@ -7302,7 +7551,7 @@ void idGameLocal::ProcessStimResponse(unsigned int ticks)
 			}
 
 			// Check the interleaving timer and don't eval stim if it's not up yet
-			if ( ( gameLocal.time - stim->m_TimeInterleaveStamp ) < stim->m_TimeInterleave)
+			if ( gameLocal.time - stim->m_TimeInterleaveStamp < stim->m_TimeInterleave )
 			{
 				continue;
 			}
@@ -7327,8 +7576,15 @@ void idGameLocal::ProcessStimResponse(unsigned int ticks)
 				origin += stim->m_Velocity * (gameLocal.time - stim->m_EnabledTimeStamp)/1000;
 			}
 
-			// Save the current timestamp into the stim, so that we know when it was last fired
-			stim->m_TimeInterleaveStamp = gameLocal.time;
+			if (stim->m_TimeInterleave > 0) {
+				// Save the current timestamp into the stim, so that we know when it was last fired
+				// stgatilov: save exact offset modulo m_TimeInterleave to save even distribution
+				while ( gameLocal.time - stim->m_TimeInterleaveStamp >= stim->m_TimeInterleave)
+					stim->m_TimeInterleaveStamp += stim->m_TimeInterleave;
+			}
+			else {
+				stim->m_TimeInterleaveStamp = gameLocal.time;
+			}
 
 			// greebo: Check if the stim passes the "chance" test
 			// Do this AFTER the m_TimeInterleaveStamp has been set to avoid the stim

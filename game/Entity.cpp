@@ -32,6 +32,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "AbsenceMarker.h"
 #include "Objectives/MissionData.h"
 #include <algorithm>
+#include "LodComponent.h"
 
 /*
 ===============================================================================
@@ -139,6 +140,7 @@ const idEventDef EV_SetContents( "setContents", EventArgs('f', "contents", ""), 
 const idEventDef EV_GetContents( "getContents", EventArgs(), 'f', "Returns the contents of the physics object." );
 const idEventDef EV_SetClipMask( "setClipMask", EventArgs('d', "clipMask", ""), EV_RETURNS_VOID, "Sets the clipmask of the physics object.");
 const idEventDef EV_GetClipMask( "getClipMask", EventArgs(), 'd', "Returns the clipmask of the physics object." );
+const idEventDef EV_SetSolid( "setSolid", EventArgs('d', "solidity", ""), EV_RETURNS_VOID, "Set the solidity of the entity. If the entity has never been solid before it will be assigned solid and opaque contents/clip masks." );
 
 const idEventDef EV_GetSize( "getSize", EventArgs(), 'v', "Gets the size of this entity's bounding box." );
 const idEventDef EV_SetSize( "setSize", EventArgs('v', "min", "minimum corner coordinates", 'v', "max", "maximum corner coordinates"), EV_RETURNS_VOID, "Sets the size of this entity's bounding box.");
@@ -156,6 +158,9 @@ const idEventDef EV_SetShaderParms( "setShaderParms", EventArgs('f', "parm0", "r
 const idEventDef EV_SetColor( "setColor", EventArgs('f', "parm0", "red", 'f', "parm1", "green", 'f', "parm2", "blue"), EV_RETURNS_VOID, 
 	"Sets the RGB color of this entity (shader parms Parm0, Parm1, Parm2)." );
 const idEventDef EV_GetColor( "getColor", EventArgs(), 'v', "Gets the color of this entity (shader parms Parm0, Parm1, Parm2)." );
+const idEventDef EV_SetHealth( "setHealth", EventArgs( 'f', "newHealth", "" ), EV_RETURNS_VOID, 
+	"Sets the health of this entity to the new value. Setting health to 0 or lower via this method will result in the entity switching to its broken state." );
+const idEventDef EV_GetHealth( "getHealth", EventArgs(), 'f', "Gets the health of this entity." );
 
 const idEventDef EV_CacheSoundShader( "cacheSoundShader", EventArgs('s', "shaderName", "the sound shader to cache"), EV_RETURNS_VOID, 
 	"Ensure the specified sound shader is loaded by the system.\nPrevents cache misses when playing sound shaders.");
@@ -293,6 +298,22 @@ const idEventDef EV_ActivateContacts("activateContacts", EventArgs(), EV_RETURNS
 const idEventDef EV_GetLocation("getLocation", EventArgs(), 'e', 
 	"Returns the idLocation entity corresponding to the entity's current location.\n" \
 	"This was player-specific before, but is now available to all entities."); // grayman #3013
+const idEventDef EV_GetEntityFlag("getEntityFlag", EventArgs('s', "flagName",
+	"Can be one of (case insensitive):\n"
+	"\tnotarget: if true never attack or target this entity\n"
+	"\tnoknockback: if true no knockback from hits\n"
+	"\ttakedamage: if true this entity can be damaged\n"
+	"\thidden: if true this entity is not visible\n"
+	"\tbindOrientated: if true both the master orientation is used for binding\n"
+	"\tsolidForTeam: if true this entity is considered solid when a physics team mate pushes entities\n"
+	"\tforcePhysicsUpdate: if true always update from the physics whether the object moved or not\n"
+	"\tselected: if true the entity is selected for editing\n"
+	"\tneverDormant: if true the entity never goes dormant\n"
+	"\tisDormant: if true the entity is dormant\n"
+	"\thasAwakened: before a monster has been awakened the first time, use full PVS for dormant instead of area-connected\n"
+	"\tinvisible: if true this entity cannot be seen\n"
+	"\tinaudible: if true this entity cannot be heard\n"
+), 'd', "Returns the value of the specified entity flag.");
 
 //===============================================================
 //                   TDM GUI interface
@@ -443,9 +464,6 @@ const idEventDef EV_TDM_PropSound( "propSound", EventArgs('s', "name", ""), EV_R
 const idEventDef EV_TDM_RangedThreatTo( "rangedThreatTo", EventArgs('e', "target", ""), 'f', 
 	"Could this entity threaten the given (target) entity from a distance?" );
 
-// Tels: #3113 after spawning all entities, decide if they need to be hidden
-const idEventDef EV_HideByLODBias( "hideByLODBias", EventArgs(), EV_RETURNS_VOID, "internal" );
-
 #ifdef MOD_WATERPHYSICS
 
 const idEventDef EV_GetMass( "getMass", EventArgs('d', "body", "") , 'f', "Gets mass of a body for an entity" );
@@ -528,6 +546,8 @@ ABSTRACT_DECLARATION( idClass, idEntity )
 	EVENT( EV_SetShaderParms,		idEntity::Event_SetShaderParms )
 	EVENT( EV_SetColor,				idEntity::Event_SetColor )
 	EVENT( EV_GetColor,				idEntity::Event_GetColor )
+	EVENT( EV_SetHealth,			idEntity::Event_SetHealth )
+	EVENT( EV_GetHealth,			idEntity::Event_GetHealth )
 	EVENT( EV_IsHidden,				idEntity::Event_IsHidden )
 	EVENT( EV_Hide,					idEntity::Event_Hide )
 	EVENT( EV_Show,					idEntity::Event_Show )
@@ -554,6 +574,7 @@ ABSTRACT_DECLARATION( idClass, idEntity )
 	EVENT( EV_GetContents,			idEntity::Event_GetContents )
 	EVENT( EV_SetClipMask,			idEntity::Event_SetClipMask )
 	EVENT( EV_GetClipMask,			idEntity::Event_GetClipMask )
+	EVENT( EV_SetSolid,				idEntity::Event_SetSolid )
 
 	EVENT( EV_GetSize,				idEntity::Event_GetSize )
 	EVENT( EV_SetSize,				idEntity::Event_SetSize )
@@ -688,7 +709,7 @@ ABSTRACT_DECLARATION( idClass, idEntity )
 	EVENT( EV_IsLight,				idEntity::Event_IsLight )			// grayman #2905
 	EVENT( EV_ActivateContacts,		idEntity::Event_ActivateContacts )	// grayman #3011
 	EVENT( EV_GetLocation,			idEntity::Event_GetLocation )		// grayman #3013
-	EVENT( EV_HideByLODBias,		idEntity::Event_HideByLODBias )		// tels #3113
+	EVENT( EV_GetEntityFlag,		idEntity::Event_GetEntityFlag)		// dragofer
 	EVENT( EV_PropagateSound,		idEntity::Event_PropSoundDirect )	// grayman #3355
 	
 END_CLASS
@@ -725,6 +746,25 @@ void AddRenderGui( const char *name, idUserInterface **gui, const idDict *args )
 
 /*
 ================
+idGameEdit::ParseSpawnArgsToAxis
+
+stgatilov: common code to extract initial orientation from either "rotation" or "angle".
+================
+*/
+void idGameEdit::ParseSpawnArgsToAxis( const idDict *args, idMat3 &axis ) {
+	// get the rotation matrix in either full form, or single angle form
+	if ( !args->GetMatrix( "rotation", "1 0 0 0 1 0 0 0 1", axis ) ) {
+		float angle = args->GetFloat( "angle" );
+		if ( angle != 0.0f ) {
+			axis = idAngles( 0.0f, angle, 0.0f ).ToMat3();
+		} else {
+			axis.Identity();
+		}
+	}
+}
+
+/*
+================
 idGameEdit::ParseSpawnArgsToRenderEntity
 
 parse the static model parameters
@@ -736,7 +776,6 @@ void idGameEdit::ParseSpawnArgsToRenderEntity( const idDict *args, renderEntity_
 	int			i;
 	const char	*temp;
 	idVec3		color;
-	float		angle;
 	const idDeclModelDef *modelDef;
 
 	memset( renderEntity, 0, sizeof( *renderEntity ) );
@@ -790,16 +829,7 @@ void idGameEdit::ParseSpawnArgsToRenderEntity( const idDict *args, renderEntity_
 	}
 
 	args->GetVector( "origin", "0 0 0", renderEntity->origin );
-
-	// get the rotation matrix in either full form, or single angle form
-	if ( !args->GetMatrix( "rotation", "1 0 0 0 1 0 0 0 1", renderEntity->axis ) ) {
-		angle = args->GetFloat( "angle" );
-		if ( angle != 0.0f ) {
-			renderEntity->axis = idAngles( 0.0f, angle, 0.0f ).ToMat3();
-		} else {
-			renderEntity->axis.Identity();
-		}
-	}
+	ParseSpawnArgsToAxis( args, renderEntity->axis );
 
 	renderEntity->referenceSound = NULL;
 
@@ -958,7 +988,8 @@ idEntity::idEntity()
 	entityDefNumber = -1;
 
 	spawnNode.SetOwner( this );
-	activeNode.SetOwner( this );
+	activeIdx = -1;
+	lodIdx = -1;
 
 	snapshotNode.SetOwner( this );
 	snapshotSequence = -1;
@@ -1046,25 +1077,15 @@ idEntity::idEntity()
 	previousVoiceShader = nullptr;
 	previousBodyShader = nullptr;
 
-	// by default no LOD to save memory and time
-	m_LODHandle = 0;
-	m_DistCheckTimeStamp = 0;
-
-	// by default active
-	m_MinLODBias = 0.0f;
-	m_MaxLODBias = 10.0f;
-
-	m_LODLevel = m_ModelLODCur = m_SkinLODCur = 0xDEAFBEEF;	//to be set
-
 	// grayman #597 - for hiding arrows when nocked to the bow
 	m_HideUntilTime = 0;
 
 	// SteveL #3817. Make decals and overlays persistant.
 	needsDecalRestore = false;
 
-	memset( &xrayEntity, 0, sizeof( xrayEntity ) );
+	memset( &xrayRenderEnt, 0, sizeof( xrayRenderEnt ) );
 
-	xrayEntityHandle = -1;
+	xrayDefHandle = -1;
 	xraySkin = NULL;
 	xrayModelHandle = nullptr;
 }
@@ -1097,362 +1118,6 @@ void idEntity::FixupLocalizedStrings()
 			}
 		}
 	}
-}
-
-/*
-================
-idEntity::Event_HideByLODBias
-
-Tels: The menu setting "Object Detail" changed, so we need to check
-	  if this entity is now hidden or visible.
-*/
-void idEntity::Event_HideByLODBias( void )
-{
-	float lodbias = cv_lod_bias.GetFloat();
-
-	// ignore worldspawn
-	if (IsType( idWorldspawn::Type ))
-	{
-		return;
-	}
-
-	if (lodbias < m_MinLODBias || lodbias > m_MaxLODBias)
-	{
-		// FuncPortals are closed instead of hidden
-		if ( IsType( idFuncPortal::Type ) )
-		{
-			//gameLocal.Printf ("%s: Closing portal due to lodbias %0.2f not being between %0.2f and %0.2f.\n",
-			//		GetName(), cv_lod_bias.GetFloat(), m_MinLODBias, m_MaxLODBias);
-			static_cast<idFuncPortal *>( this )->ClosePortal();
-		}
-		else
-		{
-			// if a lod_hidden_skin is set, just set the new skin instead of hiding the entity
-			if (!m_HiddenSkin.IsEmpty())
-			{
-//				gameLocal.Printf ("%s: Setting hidden skin %s.\n", GetName(), m_HiddenSkin.c_str() );
-				Event_SetSkin( m_HiddenSkin.c_str() );
-			}
-			else
-			{
-				if (!fl.hidden)
-				{
-//					gameLocal.Printf ("%s: Hiding due to lodbias %0.2f not being between %0.2f and %0.2f.\n",
-//							GetName(), cv_lod_bias.GetFloat(), m_MinLODBias, m_MaxLODBias);
-					// #4116: Post a Hide() event instead of hiding immediately as this routine is called during spawning
-					PostEventMS( &EV_Hide, 0 );
-					// and make inactive
-					BecomeInactive(TH_PHYSICS|TH_THINK);
-				}
-			}
-			// mark this entity as "hidden" for later show
-			m_LODLevel = -1;
-		}
-		return;
-	}	
-
-	if ( IsType( idFuncPortal::Type ) )
-	{
-		//gameLocal.Printf ("%s: Opening portal because lodbias %0.2f is between %0.2f and %0.2f.\n",
-		//		GetName(), cv_lod_bias.GetFloat(), m_MinLODBias, m_MaxLODBias);
-		static_cast<idFuncPortal *>( this )->OpenPortal();
-	}
-	else
-	{
-		// do not "restore" the original skin during entity spawn
-		if (!m_HiddenSkin.IsEmpty())
-		{
-			// just restore the orginal skin
-//			gameLocal.Printf ("%s: Restoring skin %s.\n", GetName(), m_VisibleSkin.c_str() );
-			Event_SetSkin( m_VisibleSkin.c_str() );
-		}
-		// avoid showing entities that where not hidden by LODBias
-		else
-		{
-			if (fl.hidden && m_LODLevel == -1 && m_DistCheckTimeStamp == NOLOD)
-			{
-				m_LODLevel = 0;
-				//gameLocal.Printf ("%s: Showing due to lodbias %0.2f being between %0.2f and %0.2f.\n",
-				//			GetName(), cv_lod_bias.GetFloat(), m_MinLODBias, m_MaxLODBias);
-				Show();
-			}
-		}
-	}
-	return;
-}
-
-/*
-================
-idEntity::ParseLODSpawnargs
-
-Tels: Look at dist_think_interval, lod_1_distance etc. and fill the m_LOD
-	  data. The passed in dict is usually just this->spawnArgs, but can also
-	  be from a completely different entity def so we can parse the spawnargs
-	  without having to actually have the entity spawned. The fRandom
-	  value is used to selectively hide some entities when hide_probability
-	  is set, and should be between 0 and 1.0.
-================
-*/
-lod_handle idEntity::ParseLODSpawnargs( const idDict* dict, const float fRandom)
-{
-	lod_data_t *m_LOD = NULL;
-
-	m_DistCheckTimeStamp = 0;
-
-	// by default these are always used
-	m_MinLODBias = dict->GetFloat( "min_lod_bias", "0" );
-	m_MaxLODBias = dict->GetFloat( "max_lod_bias", "10" );
-
-	m_HiddenSkin = dict->GetString( "lod_hidden_skin", "");
-	m_VisibleSkin = "";
-
-	if (m_MinLODBias > m_MaxLODBias)
-	{
-		m_MinLODBias = m_MaxLODBias - 0.1f;
-	}
-
-	if (m_MinLODBias > 0 || m_MaxLODBias < 10)
-	{
-		// if this returns true, the entity is hidden
-		Event_HideByLODBias();
-		m_DistCheckTimeStamp = NOLOD;
-		return 0;
-	}
-
-	int d = int(1000.0f * dict->GetFloat( "dist_check_period", "0" ));
-
-	float fHideDistance = dict->GetFloat( "hide_distance", "0.0" );
-
-	bool lod_disabled = dict->GetBool( "no_lod" ); // SteveL #3796: allow mappers to disable LOD explicitly on an entity
-
-	// a quick check for LOD, to avoid looking at all lod_x_distance spawnargs:
-	if ( lod_disabled || ( d == 0 && fHideDistance < 0.1f ) )
-	{
-		// no LOD wanted
-		m_DistCheckTimeStamp = NOLOD;
-		return 0;
-	}
-
-	// Disable LOD if the LOD settings came with the entity def but the mapper has overridden the model 
-	// without updating any LOD models #3912
-	{
-		const idDict* entDef = gameLocal.FindEntityDefDict( dict->GetString("classname"), false );
-		const bool inherited_model = *entDef->GetString("model") != '\0';
-		const bool inherited_lod = entDef->GetFloat("dist_check_period") != 0.0f || entDef->GetFloat("hide_distance") >= 0.1f;
-		const bool model_overriden = idStr::Icmp( dict->GetString("model"), entDef->GetString("model") ) != 0;
-		bool lod_model_overridden = false;
-		const idKeyValue* kv = NULL;
-		while ( ( kv = dict->MatchPrefix( "model_lod_", kv ) ) != NULL )
-		{
-			if ( idStr::Icmp( kv->GetValue(), entDef->GetString( kv->GetKey() ) ) )
-			{
-				lod_model_overridden = true;
-			}
-		}
-		if ( inherited_model && inherited_lod && model_overriden && !lod_model_overridden )
-		{
-			// Suppress LOD
-			m_DistCheckTimeStamp = NOLOD;
-			return 0;
-		}
-	}
-
-	// distance dependent LOD from this point on:
-	// allocate new memory
-	m_LOD = new lod_data_t;
-
-	// if interval not set, use twice per second
-	m_LOD->DistCheckInterval = ((d == 0) ? 500 : d);
-
-	// SteveL #3744
-	// If there are no LOD skin spawnargs set at all, then prevent LOD changing skins with a special
-	// m_SkinLODCur value of -1
-	if (dict->MatchPrefix("skin_lod_") == NULL)
-	{
-		m_SkinLODCur = -1;
-	} else {
-		m_SkinLODCur = 0;
-	}
-
-	m_ModelLODCur = 0;
-	m_LODLevel = 0;
-
-	// SteveL #4170: As with skins, disable LOD shadowcasting changes unless the mapper has set a noshadows_lod spawnarg
-	if (dict->MatchPrefix("noshadows_lod_") == NULL)
-	{
-		m_LOD->noshadowsLOD = -1;
-	} else {
-		m_LOD->noshadowsLOD = dict->GetBool( "noshadows", "0" ) ? 1 : 0;	// the default value for level 0
-	}
-
-	// if > 0, if the entity is closer than this, lod_bias will be at minimum 1.0
-	m_LOD->fLODNormalDistance = dict->GetFloat( "lod_normal_distance", "500" );
-	if (m_LOD->fLODNormalDistance < 0.0f)
-	{
-		m_LOD->fLODNormalDistance = 0.0f;
-	}
-
-	idStr temp;
-	m_LOD->OffsetLOD[0] = idVec3(0,0,0);			// assume there is no custom per-LOD model offset
-	m_LOD->DistLODSq[0] = 0;
-
-	// setup level 0 (aka "The one and only original")
-	m_LOD->ModelLOD[0] = dict->GetString( "model", "" );
-
-	// For func_statics where name == model, use "" so they can share the same LOD data
-	// even tho they all have different "models". (Their model spawnarg is never used.)
-	if ( IsType( idStaticEntity::Type ) && m_LOD->ModelLOD[0] == GetName())
-	{
-		m_LOD->ModelLOD[0] = "";
-	}
-
-	// use whatever was set as skin, that can differ from spawnArgs.GetString("skin") due to random_skin:
-	if ( renderEntity.customSkin )
-	{
-		m_LOD->SkinLOD[0] = renderEntity.customSkin->GetName(); 
-	}
-	else
-	{
-		m_LOD->SkinLOD[0] = "";
-	}
-
-	// start at 1, since 0 is "the original level" setup already above
-	for (int i = 1; i < LOD_LEVELS; i++)
-	{
-		// set to 0,0,0 as default in case someone tries to use it
-		m_LOD->OffsetLOD[i] = idVec3(0,0,0);
-		
-		if (i < LOD_LEVELS - 1)
-		{
-			// for i == LOD_LEVELS - 1, we use "hide_distance"
-			sprintf(temp, "lod_%i_distance", i);
-			m_LOD->DistLODSq[i] = dict->GetFloat( temp, "0.0" );
-		}
-
-		// Tels: Fix #2635: if the LOD distance here is < fHideDistance, use hide distance-1 so the
-	   	// entity gets really hidden.
-		if (fHideDistance > 1.0f && m_LOD->DistLODSq[i] > fHideDistance)
-		{
-			m_LOD->DistLODSq[i] = fHideDistance - 1.0f;
-		}
-
-		if (i == LOD_LEVELS - 1)
-		{
-			// last distance is named differently so you don't need to know how many levels the code supports:
-			m_LOD->DistLODSq[i] = fHideDistance;
-
-			// compute a random number and check it against the hide probability spawnarg
-			// do this only once at setup time, so the setting is stable during runtime
-			float fHideProbability = dict->GetFloat( "lod_hide_probability", "1.0" );
-			if (fRandom > fHideProbability)
-			{
-				// disable hiding
-				m_LOD->DistLODSq[i] = -1.0f;		// disable
-				continue;
-			}
-
-			// do we have a lod_fadeout_range?
-			m_LOD->fLODFadeOutRange = dict->GetFloat( "lod_fadeout_range", "0.0" );
-
-			if (m_LOD->fLODFadeOutRange < 0)
-			{
-				gameLocal.Warning (" %s: lod_fadeout_range must be >= 0 but is %f. Ignoring it.", GetName(), m_LOD->fLODFadeOutRange);
-				m_LOD->fLODFadeOutRange = 0.0f;
-			}
-			else
-			{
-				// square for easier comparisation with deltaSq
-				m_LOD->fLODFadeOutRange *= m_LOD->fLODFadeOutRange;
-			}
-
-			// do we have a lod_fadein_range?
-			m_LOD->fLODFadeInRange = dict->GetFloat( "lod_fadein_range", "0.0" );
-
-			if (m_LOD->fLODFadeInRange < 0)
-			{
-				gameLocal.Warning (" %s: lod_fadein_range must be >= 0 but is %f. Ignoring it.", GetName(), m_LOD->fLODFadeInRange);
-				m_LOD->fLODFadeInRange = 0.0f;
-			}
-			else if (m_LOD->fLODFadeInRange > 0 && m_LOD->fLODFadeInRange > m_LOD->DistLODSq[1])
-			{
-				gameLocal.Warning (" %s: lod_fadein_range must be <= lod_1_distance (%f) 0 but is %f. Ignoring it.", GetName(), m_LOD->DistLODSq[1], m_LOD->fLODFadeInRange);
-				m_LOD->fLODFadeOutRange = 0.0f;
-			}
-			else
-			{
-				// square for easier comparisation with deltaSq
-				m_LOD->fLODFadeInRange *= m_LOD->fLODFadeInRange;
-			}
-
-			//gameLocal.Printf (" %s: lod_fadeout_range %0.2f lod_fadein_range %0.2f.\n", GetName(), m_LOD->fLODFadeOutRange, m_LOD->fLODFadeInRange);
-		}
-
-//		gameLocal.Printf (" %s: init LOD %i m_LOD->DistLODSq=%f\n", GetName(), i, m_LOD->DistLODSq[i]); 
-
-		if (i > 0 && m_LOD->DistLODSq[i] > 0 && (m_LOD->DistLODSq[i] * m_LOD->DistLODSq[i]) < m_LOD->DistLODSq[i-1])
-		{
-			gameLocal.Warning (" %s: LOD %i m_DistLODSq %f < LOD %i m_DistLODSq=%f (this will not work!)\n",
-				GetName(), i, m_LOD->DistLODSq[i] * m_LOD->DistLODSq[i], i-1, m_LOD->DistLODSq[i-1]); 
-		}
-		// -1 should stay -1 to signal "don't use this level"
-		if (m_LOD->DistLODSq[i] > 0)
-		{
-			m_LOD->DistLODSq[i] *= m_LOD->DistLODSq[i];
-
-			// the last level is "hide", so we don't need a model, skin, offset or noshadows there
-			if (i < LOD_LEVELS - 1)
-			{
-				// not the last level
-				sprintf(temp, "model_lod_%i", i);
-				m_LOD->ModelLOD[i] = dict->GetString( temp );
-				if (m_LOD->ModelLOD[i].Length() == 0) { m_LOD->ModelLOD[i] = m_LOD->ModelLOD[0]; }
-
-				sprintf(temp, "skin_lod_%i", i);
-				m_LOD->SkinLOD[i] = dict->GetString( temp );
-				if (m_LOD->SkinLOD[i].Length() == 0) { m_LOD->SkinLOD[i] = m_LOD->SkinLOD[0]; }
-
-				// set the right bit for noshadows
-				sprintf(temp, "noshadows_lod_%i", i );  // 1, 2, 4, 8, 16 etc
-				m_LOD->noshadowsLOD |= (dict->GetBool( temp, "0" ) ? 1 : 0) << i;
-
-//				// set the right bit for "standin". "standins" are models that always rotate in
-//				// XY to face the player, but unlike particles, don't tilt with the view
-//				sprintf(temp, "standin_lod_%i", i );
-//									  // 1, 2, 4, 8, 16 etc
-//				m_LOD->standinLOD |= (dict->GetBool( temp, "0" ) ? 1 : 0) << i;
-
-				// setup the manual offset for this LOD stage (needed to align some models)
-				sprintf(temp, "offset_lod_%i", i);
-				m_LOD->OffsetLOD[i] = dict->GetVector( temp, "0,0,0" );
-			}
-		// else hiding needs no offset
-
-		//gameLocal.Printf (" noshadowsLOD 0x%08x model %s skin %s\n", m_noshadowsLOD, m_ModelLOD[i].c_str(), m_SkinLOD[i].c_str() );
-		}
-		else
-		{
-			// initialize to empty in case someone tries to access them
-			m_LOD->SkinLOD[i] = "";
-			m_LOD->ModelLOD[i] = "";
-			m_LOD->OffsetLOD[i] = idVec3(0,0,0);
-		}
-	}
-
-	m_LOD->bDistCheckXYOnly = dict->GetBool( "dist_check_xy", "0" );
-
-	// add some phase diversity to the checks so that they don't all run in one frame
-	// make sure they all run on the first frame though, by initializing m_TimeStamp to
-	// be at least one interval early.
-	// old code, only using half the interval:
-	m_DistCheckTimeStamp = gameLocal.time - (int) (m_LOD->DistCheckInterval * (1.0f + gameLocal.random.RandomFloat()) );
-
-	// register the data with the ModelGenerator and return the handle
-	lod_handle h = gameLocal.m_ModelGenerator->RegisterLODData( m_LOD );
-
-	// free memory
-	delete m_LOD;
-
-	return h;
 }
 
 static void ResolveRotationHack(idDict &spawnArgs) {
@@ -1547,8 +1212,16 @@ void idEntity::Spawn( void )
 	idStr str;
 	if ( spawnArgs.GetString( "skin_xray", "", str ) )
 		xraySkin = declManager->FindSkin( str.c_str() );
-	if ( spawnArgs.GetString( "model_xray", "", str ) )
-		xrayModelHandle = renderModelManager->FindModel( str );
+	if ( spawnArgs.GetString( "model_xray", "", str ) ) {
+		if ( str.Find(".") < 0 ) {
+			auto modelDef = static_cast<const idDeclModelDef*>( declManager->FindType( DECL_MODELDEF, str.c_str(), false ) );
+			if ( modelDef ) {
+				xrayModelHandle = modelDef->ModelHandle();
+			}
+		}
+		if ( !xrayModelHandle )
+			xrayModelHandle = renderModelManager->FindModel( str );
+	}
 	if ( spawnArgs.GetString( "xray", "", str ) )
 		renderEntity.xrayIndex = 3;
 
@@ -1714,19 +1387,11 @@ void idEntity::Spawn( void )
 	m_StartBounds = GetPhysics()->GetAbsBounds();
 	m_AbsenceStatus = false;
 
-	if (renderEntity.customSkin && !idStr(spawnArgs.GetString("lod_hidden_skin")).IsEmpty())
-	{
-		m_VisibleSkin = renderEntity.customSkin->GetName();
-//		gameLocal.Printf ("%s: Storing current skin %s.\n", GetName(), m_VisibleSkin.c_str() );
-	}
-
 	// parse LOD spawnargs
-	m_LODHandle = ParseLODSpawnargs( &spawnArgs, gameLocal.random.RandomFloat() );
-   
-	if (m_LODHandle)
-	{
+	LodComponent lodComp;
+	if ( lodComp.ParseLODSpawnargs( this, &spawnArgs, gameLocal.random.RandomFloat() ) ) {
 		// Have to start thinking if we're distance dependent
-		BecomeActive( TH_THINK );
+		gameLocal.lodSystem.AddToEnd( lodComp );
 	}
 
 	// init most recent voice and body sound data for AI - grayman #2341
@@ -1740,117 +1405,6 @@ void idEntity::Spawn( void )
 	m_pushedBy = NULL;		// grayman #4603
 	m_splashtime = 0;		// grayman #4600
 	m_listening = false;	// grayman #4620
-}
-
-/*
-================
-idEntity::DisableLOD
-
-Tels: temp. disable LOD checks by setting the next check timestamp to negative.
-================
-*/
-void idEntity::DisableLOD( const bool doTeam )
-{
-	// negate check interval
-	if (m_LODHandle && m_DistCheckTimeStamp > NOLOD)
-	{
-//		gameLocal.Printf( "%s: Temporarily disabling LOD.\n", GetName() );
-		m_DistCheckTimeStamp = NOLOD;
-	}
-
-	if (!doTeam) { return; }
-
-	/* also all the bound entities in our team */
-	idEntity* NextEnt = this;
-	idEntity* bindM = GetBindMaster();
-	if ( bindM ) { NextEnt = bindM; }
-
-	while ( NextEnt != NULL )
-	{
-		//gameLocal.Printf(" Looking at entity %s\n", NextEnt->name.c_str());
-		idEntity *ent = static_cast<idEntity*>( NextEnt );
-		if (ent)
-		{
-			ent->DisableLOD( false );
-		}
-		/* get next Team member */
-		NextEnt = NextEnt->GetNextTeamEntity();
-	}
-}
-
-/*
-================
-idEntity::EnableLOD
-
-Tels: Enable LOD checks again (after DisableLOD) by setting the check interval to positive.
-================
-*/
-void idEntity::EnableLOD( const bool doTeam )
-{
-	// negate check interval
-	if (m_LODHandle && m_DistCheckTimeStamp <= NOLOD)
-	{
-//		gameLocal.Printf( "%s: Enabling LOD again.\n", GetName() );
-		m_DistCheckTimeStamp = gameLocal.time;
-	}
-
-	if (!doTeam) { return; }
-
-	/* also all the bound entities in our team */
-	idEntity* NextEnt = this;
-	idEntity* bindM = GetBindMaster();
-	if ( bindM ) { NextEnt = bindM; }
-
-	while ( NextEnt != NULL )
-	{
-		//gameLocal.Printf(" Looking at entity %s\n", NextEnt->name.c_str());
-		idEntity *ent = static_cast<idEntity*>( NextEnt );
-		if (ent)
-		{
-			ent->EnableLOD( false );
-		}
-		/* get next Team member */
-		NextEnt = NextEnt->GetNextTeamEntity();
-	}
-}
-
-/*
-================
-idEntity::StopLOD
-
-Tels: Permanently disable LOD checks, if doTeam is true, including on all of our attachements
-================
-*/
-void idEntity::StopLOD( const bool doTeam )
-{
-	//BecomeInactive( TH_THINK );
-	// deregister our LOD struct
-	if (m_LODHandle)
-	{
-		// gameLocal.Printf( "%s: Stopping LOD.\n", GetName() );
-		gameLocal.m_ModelGenerator->UnregisterLODData( m_LODHandle );
-		m_LODHandle = 0;
-	}
-
-	if (!doTeam) { return; }
-
-	/* also all the bound entities in our team */
-	idEntity* NextEnt = this;
-
-	idEntity* bindM = GetBindMaster();
-	if ( bindM ) { NextEnt = bindM;	}
-
-	while ( NextEnt != NULL )
-	{
-		//gameLocal.Printf(" Looking at entity %s\n", NextEnt->name.c_str());
-		idEntity *ent = static_cast<idEntity*>( NextEnt );
-		if (ent)
-		{
-			ent->StopLOD( false );
-		}
-		/* get next Team member */
-		NextEnt = NextEnt->GetNextTeamEntity();
-	}
 }
 
 /*
@@ -2017,7 +1571,7 @@ idEntity::~idEntity( void )
 	if ( thinkFlags ) {
 		BecomeInactive( thinkFlags );
 	}
-	activeNode.Remove();
+	gameLocal.activeEntities.Remove( this );
 
 	Signal( SIG_REMOVED );
 
@@ -2026,12 +1580,14 @@ idEntity::~idEntity( void )
 	SetPhysics( NULL );
 
 	// remove any entities that are bound to me
-	RemoveBinds();
+	RemoveBinds( false );
 
 	// unbind from master
 	Unbind();
-	if (!g_entityBindNew.GetBool())
-		QuitTeam();
+
+	// sometimes RemoveBinds add this entity back to active list
+	// so try to remove it again to avoid dangling pointer
+	gameLocal.activeEntities.Remove( this );
 
 	gameLocal.RemoveEntityFromHash( name.c_str(), this );
 
@@ -2042,18 +1598,14 @@ idEntity::~idEntity( void )
 	signals = NULL;
 
 	// free optional LOD data
-	if (m_LODHandle)
-	{
-		StopLOD( false );
-	}
+	LodComponent::StopLOD( this, false );
 
 	FreeModelDef();
 	FreeSoundEmitter( false );
 
-	if ( xrayEntityHandle != -1 )
-	{
-		gameRenderWorld->FreeEntityDef( xrayEntityHandle );
-		xrayEntityHandle = -1;
+	if ( xrayDefHandle != -1 ) {
+		gameRenderWorld->FreeEntityDef( xrayDefHandle );
+		xrayDefHandle = -1;
 	}
 
 	if ( m_renderTriggerHandle != -1 ) {
@@ -2208,8 +1760,8 @@ void idEntity::Save( idSaveGame *savefile ) const
 
 	m_StimResponseColl->Save(savefile);
 
-	savefile->WriteRenderEntity( xrayEntity );
-	savefile->WriteInt( xrayEntityHandle );
+	savefile->WriteRenderEntity( xrayRenderEnt );
+	savefile->WriteInt( xrayDefHandle );
 	savefile->WriteSkin( xraySkin );
 
 	savefile->WriteRenderEntity( renderEntity );
@@ -2287,18 +1839,6 @@ void idEntity::Save( idSaveGame *savefile ) const
 	savefile->WriteBool(m_droppedByAI);		// grayman #1330
 
 	savefile->WriteBool(m_isFlinder);		// grayman #4230
-
-	savefile->WriteInt(m_LODHandle);
-	savefile->WriteInt(m_DistCheckTimeStamp);
-	savefile->WriteInt(m_LODLevel);
-	savefile->WriteInt(m_ModelLODCur);
-	savefile->WriteInt(m_SkinLODCur);
-
-	// #3113
-	savefile->WriteFloat(m_MinLODBias);
-	savefile->WriteFloat(m_MaxLODBias);
-	savefile->WriteString(m_HiddenSkin);
-	savefile->WriteString(m_VisibleSkin);
 
 	// grayman #2341 - don't save previous voice and body shaders and indices,
 	// since they're irrelevant across saved games
@@ -2496,13 +2036,13 @@ void idEntity::Restore( idRestoreGame *savefile )
 
 	m_StimResponseColl->Restore(savefile);
 
-	savefile->ReadRenderEntity( xrayEntity );
-	savefile->ReadInt( xrayEntityHandle );
-	if ( xrayEntityHandle != -1 )
-	{
-		xrayEntityHandle = gameRenderWorld->AddEntityDef( &xrayEntity );
-	}
+	savefile->ReadRenderEntity( xrayRenderEnt );
+	xrayModelHandle = xrayRenderEnt.hModel;
+	savefile->ReadInt( xrayDefHandle );
+	if ( xrayDefHandle != -1 )
+		xrayDefHandle = gameRenderWorld->AddEntityDef( &xrayRenderEnt );
 	savefile->ReadSkin( xraySkin );
+
 	savefile->ReadRenderEntity( renderEntity );
 	savefile->ReadInt( modelDefHandle );
 	savefile->ReadRefSound( refSound );
@@ -2616,18 +2156,6 @@ void idEntity::Restore( idRestoreGame *savefile )
 	savefile->ReadBool(m_droppedByAI);	// grayman #1330
 
 	savefile->ReadBool(m_isFlinder);	// grayman #4230
-
-	savefile->ReadUnsignedInt(m_LODHandle);
-	savefile->ReadInt(m_DistCheckTimeStamp);
-	savefile->ReadInt(m_LODLevel);
-	savefile->ReadInt(m_ModelLODCur);
-	savefile->ReadInt(m_SkinLODCur);
-
-	// #3113
-	savefile->ReadFloat(m_MinLODBias);
-	savefile->ReadFloat(m_MaxLODBias);
-	savefile->ReadString(m_HiddenSkin);
-	savefile->ReadString(m_VisibleSkin);
 
 	// grayman #2341 - restore previous voice and body shaders and indices
 
@@ -2744,336 +2272,6 @@ const char * idEntity::GetName( void ) const {
 	return name.c_str();
 }
 
-
-/***********************************************************************
-
- Thinking about LOD
-	
- We pass a ptr to the current data, so that the SEED can let the spawned
- entities think while still keeping their LOD data only once per class.
-
- This routine will only modify:
-  * m_LODLevel
-  * m_DistCheckTimeStamp = gameLocal.time - m_LOD->DistCheckInterval - 0.1;
-
- It will also return the new alpha value for this entity, where 0.0f means
- hidden and alpha > 0 means visible.
-
- The caller is responsible for calling SetAlpha() and Hide/Show on the
- proper entity (e.g. the entity thet the m_LOD is for) as well as
- switching the model and skin.
-
-***********************************************************************/
-float idEntity::ThinkAboutLOD( const lod_data_t *m_LOD, const float deltaSq ) 
-{
-	// have no LOD
-	if (NULL == m_LOD)
-	{
-		// fully visible
-		return 1.0f;
-	}
-
-	bool bWithinDist = false;
-
-	// by default fully visible
-	float fAlpha = 1.0f;
-
-//	gameLocal.Warning("%s: ThinkAboutLOD called with m_LOD %p deltaSq %0.2f", GetName(), m_LOD, deltaSq);
-
-	// Tels: check in which LOD level we are 
-	for (int i = 0; i < LOD_LEVELS; i++)
-	{
-//		gameLocal.Printf ("%s considering LOD %i (distance %f)\n", GetName(), i, m_LOD->DistLODSq[i] );
-
-		// skip this level (but not the first)
-		if (m_LOD->DistLODSq[i] <= 0 && i > 0)
-		{
-//			gameLocal.Printf ("%s skipping LOD %i (distance %f)\n", GetName(), i, m_LOD->DistLODSq[i] );
-			continue;
-		}
-
-		// find the next usable level
-		int nextLevel = i + 1;
-		while (nextLevel < LOD_LEVELS && m_LOD->DistLODSq[nextLevel] <= 0 )
-		{
-			nextLevel++;
-		}
-
-//		gameLocal.Printf ("%s ThinkAboutLOD deltaSq = %0.2f (this=%0.2f, nextLevel=%i, next=%0.2f, i=%i)\n", GetName(), deltaSq, m_LOD->DistLODSq[i],
-//					nextLevel, nextLevel < LOD_LEVELS ? m_LOD->DistLODSq[nextLevel] : -1, i );
-
-		// found a usable next level, or the last level is -1 (means no hide)
-		if (nextLevel < LOD_LEVELS)
-		{
-			bWithinDist = ((deltaSq > m_LOD->DistLODSq[i]) && (deltaSq <= m_LOD->DistLODSq[nextLevel]));
-		}
-		else
-		{
-		   	if (m_LOD->DistLODSq[ LOD_LEVELS - 1] < 0)
-			{
-//				gameLocal.Printf ("%s no next level (last level is -1)\n", GetName() );
-				bWithinDist = (deltaSq > m_LOD->DistLODSq[ i ]);
-			}
-			else
-			{
-				if (i < LOD_LEVELS - 1)
-				{
-					bWithinDist = (deltaSq < m_LOD->DistLODSq[ LOD_LEVELS - 1]);
-				}
-				else
-				{
-					// only hide if hiding isn't disabled
-					// last usable level goes to infinity
-					bWithinDist = m_LOD->DistLODSq[i] > 0 && (deltaSq > m_LOD->DistLODSq[i]);
-				}
-
-				// compute the alpha value of still inside the fade range
-				if (bWithinDist)
-				{
-					if (m_LOD->fLODFadeOutRange > 0)
-					{
-//						gameLocal.Printf ("%s outside hide_distance %0.2f (%0.2f) with fade %0.2f\n", GetName(), m_LOD->DistLODSq[i], deltaSq, m_LOD->fLODFadeOutRange);
-						if (deltaSq > (m_LOD->DistLODSq[i] + m_LOD->fLODFadeOutRange))
-						{
-							fAlpha = 0.0f;
-						}
-						else
-						{
-							fAlpha = 1.0f - ( (deltaSq - m_LOD->DistLODSq[i]) / m_LOD->fLODFadeOutRange );
-						}
-						// set the timestamp so we think the next frame again to get a smooth blend:
-						m_DistCheckTimeStamp = gameLocal.time - m_LOD->DistCheckInterval - 0.1;
-					}
-					else
-					{
-						// just hide if outside
-						fAlpha = 0.0f;
-					}
-					m_LODLevel = i;
-	
-//					gameLocal.Printf (" %s returning LOD level %i, fAlpha = %0.2f", GetName(), i, fAlpha);
-
-					// early out, we found the right level and switched
-					return fAlpha;
-				}
-			}
-		}
-
-//		gameLocal.Printf (" %s passed LOD %i distance check %f (%f), inside?: %i (old level %i, prel. alpha %0.2f)\n",
-//				GetName(), i, m_LOD->DistLODSq[i], deltaSq, bWithinDist, m_LODLevel, fAlpha);
-
-		// do this even if we are already in the same level 
-		// && m_LODLevel != i)
-		if ( bWithinDist )
-		{
-			m_LODLevel = i;
-
-			// LOD level number i
-			// TODO: Hiding a LOD entity temp. completely would fail,
-			//		 as the LOD levels < LAST_LOD_LEVEL would show it again.
-
-			if (i == 0 && m_LOD->fLODFadeInRange > 0)
-			{
-				// do we need to hide the entity, or fade it?
-				if (deltaSq < (m_LOD->DistLODSq[0] - m_LOD->fLODFadeInRange))
-				{
-					fAlpha = 0.0f;	// hide
-				}
-				else
-				{
-					fAlpha = (deltaSq - (m_LOD->DistLODSq[0] - m_LOD->fLODFadeInRange)) / m_LOD->fLODFadeOutRange;
-	//				gameLocal.Printf ("%s fading in to %0.2f\n", GetName(), fAlpha);
-				}
-				// set the timestamp so we think the next frame again to get a smooth blend:
-				m_DistCheckTimeStamp = gameLocal.time - m_LOD->DistCheckInterval - 0.1;
-			}
-			else
-			{
-				// visible in all other levels
-				fAlpha = 1.0f;	// show
-			}
-
-//			gameLocal.Printf (" %s returning LOD level %i, fAlpha = %0.2f (step 2)", GetName(), i, fAlpha);
-
-			// We found the right level and will switch to it
-			return fAlpha;
-		}
-
-	// end for all LOD levels
-	}
-
-//	gameLocal.Warning("%s: ThinkAboutLOD fall out of lod levels, using fAlpha = 1.0f", GetName() );
-
-	return fAlpha;
-}
-
-/* Tels:
-   
-   Call ThinkAboutLOD, then do the nec. things like calling Hide()/Show(), SetAlpha() etc.
-*/
-bool idEntity::SwitchLOD()
-{
-	// SteveL #3770: Moved the following if block and the derivation of deltaSq from idEntity::Think as it would 
-	// have had to be repeated in many places. Left behind only a check that LOD is enabled before calling SwitchLOD
-	const lod_data_t *m_LOD = gameLocal.m_ModelGenerator->GetLODDataPtr( m_LODHandle );
-	float deltaSq = -1;
-	if ( m_LOD )
-	{
-		// If this entity has LOD, let it think about it:
-		// Distance dependence checks
-		if ( (m_LOD->DistCheckInterval > 0)
-			&& ((gameLocal.time - m_DistCheckTimeStamp) > m_LOD->DistCheckInterval) )
-		{
-			m_DistCheckTimeStamp = gameLocal.time;
-			deltaSq = GetLODDistance( m_LOD, gameLocal.GetLocalPlayer()->GetPhysics()->GetOrigin(), GetPhysics()->GetOrigin(), renderEntity.bounds.GetSize(), cv_lod_bias.GetFloat() );
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-	if (!m_LOD)
-	{
-		gameLocal.Error("SwitchLOD() with NULL called.\n");
-	}
-	// remember the current level
-	int oldLODLevel = m_LODLevel;
-	float fAlpha = ThinkAboutLOD( m_LOD, deltaSq );
-
-//		 gameLocal.Printf("%s: Got fAlpha %0.2f\n", GetName(), fAlpha);
-
-	if (fAlpha < 0.0001f)
-	{
-	   	if (!fl.hidden)
-		{
-//					gameLocal.Printf( "%s Hiding\n", GetName() );
-			Hide();
-		}
-	}
-	else
-	{
-		if (fl.hidden)
-		{
-//			 gameLocal.Printf("Showing %s again (%0.2f)\n", GetName(), fAlpha);
-			Show();
-			SetAlpha( fAlpha, true );
-		}
-		// Only set the alpha if we are actually fading, but skip if it is 1.0f
-		else if (renderEntity.shaderParms[ SHADERPARM_ALPHA ] != fAlpha)
-		{
-//			gameLocal.Printf("%s: Setting alpha %0.2f\n", GetName(), fAlpha);
-			SetAlpha( fAlpha, true );
-		}
-	}
-
-	if (m_LODLevel != oldLODLevel)
-	{
-		if (m_ModelLODCur != m_LODLevel)
-		{
-			// func_statics that have map geometry do not have a model, and their LOD data gets ""
-			// as model name so they can all share the same data. However, we must not use "" when
-			// setting a new model:
-			if (!m_LOD->ModelLOD[m_LODLevel].IsEmpty())
-			{
-				SwapLODModel( m_LOD->ModelLOD[m_LODLevel] );
-			}
-			m_ModelLODCur = m_LODLevel;
-			// Fix 1.04 blinking bug:
-			// if the old LOD level had an offset, we need to revert this.
-			// and if the new one has an offset, we need to add it:
-			idVec3 originShift = m_LOD->OffsetLOD[oldLODLevel] + m_LOD->OffsetLOD[m_LODLevel];
-			// avoid SetOrigin() if there is no change (it causes a lot of behind-the-scenes calls)
-			if (originShift.x != 0.0f || originShift.y != 0.0f || originShift.z != 0.0f)
-			{
-				SetOrigin( renderEntity.origin - m_LOD->OffsetLOD[oldLODLevel] + m_LOD->OffsetLOD[m_LODLevel] );
-			}
-		}
-
-		
-		if (m_SkinLODCur != -1 && m_SkinLODCur != m_LODLevel) // SteveL #3744
-		{
-			const idDeclSkin *skinD = declManager->FindSkin(m_LOD->SkinLOD[m_LODLevel]);
-			if (skinD)
-			{
-				SetSkin(skinD);
-			}
-			m_SkinLODCur = m_LODLevel;
-		}
-
-		if (m_LOD->noshadowsLOD != -1) // SteveL #3744 && #4170
-		{
-			renderEntity.noShadow = (m_LOD->noshadowsLOD & (1 << m_LODLevel)) > 0 ? 1 : 0;
-		}
-		
-
-		// switched LOD
-		return true;
-	}
-
-	// no switch done
-	return false;
-}
-
-/*
-================
-idEntity::GetLODDistance
-
-Returns the distance that should be considered for LOD and hiding, depending on:
-
-* the distance of the entity origin to the given player origin
-  (TODO: this should be actualy the distance to the closest point of the entity,
-  to aovid that very long entities get hidden when you are far from their origin,
-  but close to their corner)
-* the lod-bias set in the menu
-* some minimum and maximum distances based on entity size/importance
-
-The returned value is the (virtual) distance squared, and rounded down to an integer.
-================
-*/
-float idEntity::GetLODDistance( const lod_data_t *m_LOD, const idVec3 &playerOrigin, const idVec3 &entOrigin, const idVec3 &entSize, const float lod_bias ) const
-{
-	idVec3 delta = playerOrigin - entOrigin;
-	// enforce an absolute minimum of 500 units for entities w/o LOD
-	float minDist = 0.0f;
-
-	if( m_LOD && m_LOD->bDistCheckXYOnly)
-	{
-		// todo: allow passing in a different gravityNormal
-		idVec3 vGravNorm = GetPhysics()->GetGravityNormal();
-		delta -= (vGravNorm * delta) * vGravNorm;
-	}
-
-	// let the mapper override it
-	if ( m_LOD && m_LOD->fLODNormalDistance > 0)
-	{
-	//		gameLocal.Printf ("%s: Using %0.2f lod_normal_distance, delta %0.2f.\n", GetName(), m_LOD->fLODNormalDistance, deltaSq);
-			minDist = m_LOD->fLODNormalDistance;
-	}
-
-	// multiply with the user LOD bias setting, and return the result:
-	// floor the value to avoid inaccurancies leading to toggling when the player stands still:
-	assert(lod_bias > 0.01f);
-	float deltaSq = delta.LengthSqr();
-
-	// if the entity is inside the "lod_normal_distance", simply ignore any LOD_BIAS < 1.0f
-	// Tels: For v1.05 use at least 1.0f for lod_bias, so that any distance the mapper sets
-	//       acts as the absolute minimum distance. Needs fixing later.
-	//if (minDist > 0 && lod_bias < 1.0f && deltaSq < (minDist * minDist))
-	if (lod_bias <= 1.0f)
-	{
-		deltaSq = idMath::Floor( deltaSq );
-	}
-	else
-	{
-		deltaSq = idMath::Floor( deltaSq / (lod_bias * lod_bias) );
-	}
-
-	// TODO: enforce minimum/maximum distances based on entity size/importance
-	return deltaSq;
-}
-
-
 /*
 ================
 idEntity::SwapLODModel
@@ -3086,7 +2284,6 @@ void idEntity::SwapLODModel( const char *modelname )
 	SetModel( modelname );
 	RestoreDecals();	// #3817
 }
-
 
 /*
 ================
@@ -3101,11 +2298,6 @@ void idEntity::Think( void )
 		// update trigger position
 		// TODO: Tels: What about hidden entities, these would use (0,0,0) as origin here?
 		m_FrobBox->Link( gameLocal.clip, this, 0, GetPhysics()->GetOrigin(), GetPhysics()->GetAxis() );
-	}
-
-	if ( m_LODHandle && m_DistCheckTimeStamp > NOLOD ) // SteveL #3770. Moved much of the logic to SwitchLOD as 
-	{												   // the invocation will need to be repeated in many places
-		SwitchLOD();
 	}
 
 	Present();
@@ -3385,15 +2577,6 @@ void idEntity::BecomeBroken( idEntity *activator )
 
 /*
 ================
-idEntity::IsActive
-================
-*/
-bool idEntity::IsActive( void ) const {
-	return activeNode.InList();
-}
-
-/*
-================
 idEntity::BecomeActive
 ================
 */
@@ -3403,11 +2586,6 @@ void idEntity::BecomeActive( int flags )
 		// enable the team master if this entity is part of a physics team
 		if ( teamMaster && teamMaster != this ) {
 			teamMaster->BecomeActive( TH_PHYSICS );
-		} else if ( !( thinkFlags & TH_PHYSICS ) ) {
-			// if this is a pusher
-			if ( physics->IsType( idPhysics_Parametric::Type ) || physics->IsType( idPhysics_Actor::Type ) ) {
-				gameLocal.sortPushers = true;
-			}
 		}
 	}
 
@@ -3416,7 +2594,8 @@ void idEntity::BecomeActive( int flags )
 
 	if ( thinkFlags ) {
 		if ( !IsActive() ) {
-			activeNode.AddToEnd( gameLocal.activeEntities );
+			assert(activeIdx >= -1);
+			gameLocal.activeEntities.AddToEnd( this );
 		} else if ( !oldFlags ) {
 			// we became inactive this frame, so we have to decrease the count of entities to deactivate
 			gameLocal.numEntitiesToDeactivate--;
@@ -3782,11 +2961,6 @@ void idEntity::Hide( void )
 			if (ent->GetBindMaster() == this) 
 			{
 				ent->Hide();
-
-				if (ent->IsType(idLight::Type))
-				{
-					static_cast<idLight*>(ent)->Off();
-				}
 			}
 		}
 	}
@@ -3833,10 +3007,6 @@ void idEntity::Show( void )
 				if ( gameLocal.time >= ent->GetHideUntilTime() ) // grayman #597 - one second needs to pass before showing
 				{
 					ent->Show();
-					if ( ent->IsType( idLight::Type ) )
-					{
-						static_cast<idLight *>(ent)->On();
-					}
 				}
 			}
 		}
@@ -3846,6 +3016,53 @@ void idEntity::Show( void )
 	{
 		PostEventMS( &EV_Hide, 0 ); // queue a hide for later
 	}
+}
+
+/*
+================
+idEntity::SetSolid
+================
+*/
+void idEntity::SetSolid( bool solidity ) {
+
+	idPhysics* p = GetPhysics();
+
+	// If the contents and clipmask are still uninitialised, the entity has not been hidden
+	// or had its solidity altered by this function before.
+	// Set this to something valid: the current clipmask and contents
+	if ( m_preHideContents == -1 ) {
+		m_preHideContents = p->GetContents();
+	}
+	if ( m_preHideClipMask == -1 ) {
+		m_preHideClipMask = p->GetClipMask();
+	}
+
+	if( solidity == false )
+	{
+		p->SetContents( 0 );
+		p->SetClipMask( 0 );
+	
+		// SR CONTENTS_RESPONSE FIX:
+		if( m_StimResponseColl->HasResponse() )
+			p->SetContents( CONTENTS_RESPONSE );
+
+		// preserve opacity towards AIs
+		if( m_preHideContents & CONTENTS_OPAQUE )
+		{
+			p->SetContents( p->GetContents() | CONTENTS_OPAQUE);
+		}
+	}
+
+	else if( solidity == true )
+	{
+		// Set contents. If contents are empty (entity started nonsolid), set some default values.
+		p->SetContents( (m_preHideContents) ? m_preHideContents : CONTENTS_SOLID | CONTENTS_OPAQUE );
+		p->SetClipMask( (m_preHideClipMask) ? m_preHideClipMask : MASK_SOLID | CONTENTS_OPAQUE );
+
+		if ( m_FrobBox && m_bFrobable )
+			m_FrobBox->SetContents( p->GetContents() | CONTENTS_FROBABLE );
+	}
+
 }
 
 float idEntity::GetLightQuotient()
@@ -4045,31 +3262,30 @@ void idEntity::UpdateModel( void ) {
 	BecomeActive( TH_UPDATEVISUALS );
 
 	// If the entity has an xray skin, go ahead and add it
-	if ( xraySkin != NULL )
-	{
+	if ( xraySkin != NULL ) {
 		renderEntity.xrayIndex = 4;
-		xrayEntity = renderEntity;
-		xrayEntity.xrayIndex = 2;
-		xrayEntity.customSkin = xraySkin;
-
-		if ( xrayEntityHandle == -1 )
-		{
-			xrayEntityHandle = gameRenderWorld->AddEntityDef( &xrayEntity );
-		} else
-		{
-			gameRenderWorld->UpdateEntityDef( xrayEntityHandle, &xrayEntity );
-		}
+		xrayRenderEnt = renderEntity;
+		xrayRenderEnt.xrayIndex = 2;
+		xrayRenderEnt.customSkin = xraySkin;
+		if ( xrayDefHandle == -1 )
+			xrayDefHandle = gameRenderWorld->AddEntityDef( &xrayRenderEnt );
+		else
+			gameRenderWorld->UpdateEntityDef( xrayDefHandle, &xrayRenderEnt );
 	} 
 	if ( xrayModelHandle ) {
 		renderEntity.xrayIndex = 4;
-		xrayEntity = renderEntity;
-		xrayEntity.xrayIndex = 2;
-		xrayEntity.hModel = xrayModelHandle;
+		xrayRenderEnt = renderEntity;
+		xrayRenderEnt.xrayIndex = 2;
+		xrayRenderEnt.hModel = xrayModelHandle;
+		xrayRenderEnt.customSkin = xraySkin;
 
-		if ( xrayEntityHandle == -1 ) {
-			xrayEntityHandle = gameRenderWorld->AddEntityDef( &xrayEntity );
+		if ( IsHidden() ) {
+			gameRenderWorld->FreeEntityDef( xrayDefHandle );
+			xrayDefHandle = -1;
+		} else if ( xrayDefHandle == -1 ) {
+			xrayDefHandle = gameRenderWorld->AddEntityDef( &xrayRenderEnt );
 		} else {
-			gameRenderWorld->UpdateEntityDef( xrayEntityHandle, &xrayEntity );
+			gameRenderWorld->UpdateEntityDef( xrayDefHandle, &xrayRenderEnt );
 		}
 	}
 }
@@ -5175,30 +4391,15 @@ idEntity::FinishBind
 */
 void idEntity::FinishBind( idEntity *newMaster, const char *jointName ) // grayman #3074
 {
-	if (g_entityBindNew.GetBool()) {
-		// unbind from the previous master (without any pre/post/notify stuff)
-		if (bindMaster)
-			BreakBindToMaster();
+	// unbind from the previous master (without any pre/post/notify stuff)
+	if (bindMaster)
+		BreakBindToMaster();
 
-		// bind to the new master (pre/post/notify stuff already done outside)
-		EstablishBindToMaster(newMaster);
-		// reorder the active entity list 
-		gameLocal.sortTeamMasters = true;
-	}
-	else
-		bindMaster = newMaster;
+	// bind to the new master (pre/post/notify stuff already done outside)
+	EstablishBindToMaster(newMaster);
 
 	// set the master on the physics object
 	physics->SetMaster( bindMaster, fl.bindOrientated );
-
-	if (!g_entityBindNew.GetBool()) {
-		// We are now separated from our previous team and are either
-		// an individual, or have a team of our own.  Now we can join
-		// the new bindMaster's team.  Bindmaster must be set before
-		// joining the team, or we will be placed in the wrong position
-		// on the team.
-		JoinTeam( bindMaster );
-	}
 
 	// if our bindMaster is enabled during a cinematic, we must be, too
 	cinematic = bindMaster->cinematic;
@@ -5562,8 +4763,7 @@ void idEntity::Unbind( void ) {
 	bindMaster->UnbindNotify( this );
 
 	if ( !teamMaster ) {
-		if (g_entityBindNew.GetBool())
-			assert(false);	// must never happen!
+		assert(false);	// must never happen!
 		// Teammaster already has been freed
 		bindMaster = NULL;
 		return;
@@ -5575,72 +4775,9 @@ void idEntity::Unbind( void ) {
 		physics->SetMaster( NULL, fl.bindOrientated );
 	}
 
-	if (g_entityBindNew.GetBool()) {
-		bindJoint = INVALID_JOINT;
-		bindBody = -1;
-		BreakBindToMaster();
-	}
-	else {
-		idEntity *	prev;
-		idEntity *	next;
-		idEntity *	last;
-		idEntity *	ent;
-
-		// We're still part of a team, so that means I have to extricate myself
-		// and any entities that are bound to me from the old team.
-		// Find the node previous to me in the team
-		prev = teamMaster;
-		for( ent = teamMaster->teamChain; ent && ( ent != this ); ent = ent->teamChain ) {
-			prev = ent;
-		}
-
-		assert( ent == this ); // If ent is not pointing to this, then something is very wrong.
-
-		// Find the last node in my team that is bound to me.
-		// Also find the first node not bound to me, if one exists.
-		last = this;
-		for( next = teamChain; next != NULL; next = next->teamChain ) {
-			if ( !next->IsBoundTo( this ) ) {
-				break;
-			}
-
-			// Tell them I'm now the teamMaster
-			next->teamMaster = this;
-			last = next;
-		}
-
-		// disconnect the last member of our team from the old team
-		last->teamChain = NULL;
-
-		// connect up the previous member of the old team to the node that
-		// follow the last node bound to me (if one exists).
-		if ( teamMaster != this ) {
-			prev->teamChain = next;
-			if ( !next && ( teamMaster == prev ) ) {
-				prev->teamMaster = NULL;
-			}
-		} else if ( next ) {
-			// If we were the teamMaster, then the nodes that were not bound to me are now
-			// a disconnected chain.  Make them into their own team.
-			for( ent = next; ent->teamChain != NULL; ent = ent->teamChain ) {
-				ent->teamMaster = next;
-			}
-			next->teamMaster = next;
-		}
-
-		// If we don't have anyone on our team, then clear the team variables.
-		if ( teamChain ) {
-			// make myself my own team
-			teamMaster = this;
-		} else {
-			// no longer a team
-			teamMaster = NULL;
-		}
-
-		bindJoint = INVALID_JOINT;
-		bindBody = -1;
-		bindMaster = NULL;
-	}
+	bindJoint = INVALID_JOINT;
+	bindBody = -1;
+	BreakBindToMaster();
 
 	PostUnbind();
 }
@@ -5650,48 +4787,36 @@ void idEntity::Unbind( void ) {
 idEntity::RemoveBinds
 ================
 */
-void idEntity::RemoveBinds( void ) {
-	if (g_entityBindNew.GetBool()) {
-		//count all entities bound to us
-		int k = 0;
-		for( idEntity *ent = teamChain; ent != NULL; ent = ent->teamChain )
-			if ( ent->bindMaster == this )
-				k++;
-		if (k == 0)
-			return;
+void idEntity::RemoveBinds( bool immediately ) {
+	//count all entities bound to us
+	int k = 0;
+	for( idEntity *ent = teamChain; ent != NULL; ent = ent->teamChain )
+		if ( ent->bindMaster == this )
+			k++;
+	if (k == 0)
+		return;
 
-		//save all entities bounds to us
-		idEntity* *arr = (idEntity**)alloca(k * sizeof(idEntity*));
-		k = 0;
-		for( idEntity *ent = teamChain; ent != NULL; ent = ent->teamChain )
-			if ( ent->bindMaster == this )
-				arr[k++] = ent;
+	//save all entities bounds to us
+	idEntity* *arr = (idEntity**)alloca(k * sizeof(idEntity*));
+	k = 0;
+	for( idEntity *ent = teamChain; ent != NULL; ent = ent->teamChain )
+		if ( ent->bindMaster == this )
+			arr[k++] = ent;
 
-		//unbind all saved entities from us
-		for (int i = 0; i < k; i++) {
-			idEntity *ent = arr[i];
-			ent->Unbind();
+	//unbind all saved entities from us
+	for (int i = 0; i < k; i++) {
+		idEntity *ent = arr[i];
+		ent->Unbind();
 
-			if( ent->spawnArgs.GetBool( "removeWithMaster", "1" ) ) {
-				//also remove the unbound entity on next frame
-				ent->PostEventMS( &EV_Remove, 0 );
+		if( ent->spawnArgs.GetBool( "removeWithMaster", "1" ) ) {
+			//also remove the unbound entity
+			if (immediately) {
+				//immediately!
+				ent->Event_Remove();
 			}
-		}
-	}
-	else {
-		idEntity *ent;
-		idEntity *next;
-
-		for( ent = teamChain; ent != NULL; ent = next ) {
-			next = ent->teamChain;
-			// bound to us?
-			if ( ent->bindMaster == this ) {
-				ent->Unbind();
-
-				if( ent->spawnArgs.GetBool( "removeWithMaster", "1" ) ) {
-					ent->PostEventMS( &EV_Remove, 0 );
-				}
-				next = teamChain;
+			else {
+				//on next frame
+				ent->PostEventMS( &EV_Remove, 0 );
 			}
 		}
 	}
@@ -5800,24 +4925,6 @@ idEntity::GetBindBody
 */
 int idEntity::GetBindBody( void ) const {
 	return bindBody;
-}
-
-/*
-================
-idEntity::GetTeamMaster
-================
-*/
-idEntity *idEntity::GetTeamMaster( void ) const {
-	return teamMaster;
-}
-
-/*
-================
-idEntity::GetNextTeamEntity
-================
-*/
-idEntity *idEntity::GetNextTeamEntity( void ) const {
-	return teamChain;
 }
 
 /*
@@ -6012,77 +5119,6 @@ void idEntity::GetWorldVelocities( idVec3 &linearVelocity, idVec3 &angularVeloci
 	}
 }
 
-/*
-================
-idEntity::JoinTeam
-================
-*/
-void idEntity::JoinTeam( idEntity *teammember ) {
-	assert(!g_entityBindNew.GetBool());
-	idEntity *ent;
-	idEntity *master;
-	idEntity *prev;
-	idEntity *next;
-
-	// if we're already on a team, quit it so we can join this one
-	if ( teamMaster && ( teamMaster != this ) ) {
-		QuitTeam();
-	}
-
-	assert( teammember );
-
-	if ( teammember == this ) {
-		teamMaster = this;
-		return;
-	}
-
-	// check if our new team mate is already on a team
-	master = teammember->teamMaster;
-	if ( !master ) {
-		// he's not on a team, so he's the new teamMaster
-		master = teammember;
-		teammember->teamMaster = teammember;
-		teammember->teamChain = this;
-
-		// make anyone who's bound to me part of the new team
-		for( ent = teamChain; ent != NULL; ent = ent->teamChain ) {
-			ent->teamMaster = master;
-		}
-	} else {
-		// skip past the chain members bound to the entity we're teaming up with
-		prev = teammember;
-		next = teammember->teamChain;
-		if ( bindMaster ) {
-			// if we have a bindMaster, join after any entities bound to the entity
-			// we're joining
-			while( next && next->IsBoundTo( teammember ) ) {
-				prev = next;
-				next = next->teamChain;
-			}
-		} else {
-			// if we're not bound to someone, then put us at the end of the team
-			while( next ) {
-				prev = next;
-				next = next->teamChain;
-			}
-		}
-
-		// make anyone who's bound to me part of the new team and
-		// also find the last member of my team
-		for( ent = this; ent->teamChain != NULL; ent = ent->teamChain ) {
-			ent->teamChain->teamMaster = master;
-		}
-
-    	prev->teamChain = this;
-		ent->teamChain = next;
-	}
-
-	teamMaster = master;
-
-	// reorder the active entity list 
-	gameLocal.sortTeamMasters = true;
-}
-
 idEntity* idEntity::FindMatchingTeamEntity(const idTypeInfo& type, idEntity* lastMatch)
 {
 	idEntity* part;
@@ -6117,54 +5153,6 @@ idEntity* idEntity::FindMatchingTeamEntity(const idTypeInfo& type, idEntity* las
 	return NULL;
 }
 
-/*
-================
-idEntity::QuitTeam
-================
-*/
-void idEntity::QuitTeam( void ) {
-	idEntity *ent;
-
-	if ( !teamMaster ) {
-		return;
-	}
-
-	// check if I'm the teamMaster
-	if ( teamMaster == this ) {
-		// do we have more than one teammate?
-		if ( !teamChain->teamChain ) {
-			// no, break up the team
-			teamChain->teamMaster = NULL;
-		} else {
-			// yes, so make the first teammate the teamMaster
-			for( ent = teamChain; ent; ent = ent->teamChain ) {
-				ent->teamMaster = teamChain;
-			}
-		}
-	} else {
-		assert( teamMaster );
-		assert( teamMaster->teamChain );
-
-		// find the previous member of the teamChain
-		ent = teamMaster;
-		while( ent->teamChain != this ) {
-			assert( ent->teamChain ); // this should never happen
-			ent = ent->teamChain;
-		}
-
-		// remove this from the teamChain
-		ent->teamChain = teamChain;
-
-		// if no one is left on the team, break it up
-		if ( !teamMaster->teamChain ) {
-			teamMaster->teamMaster = NULL;
-		}
-	}
-
-	teamMaster = NULL;
-	teamChain = NULL;
-}
-
 /***********************************************************************
 
   Physics.
@@ -6185,7 +5173,7 @@ void idEntity::InitDefaultPhysics( const idVec3 &origin, const idMat3 &axis )
 
 	// check if a clipmodel key/value pair is set
 	if ( spawnArgs.GetString( "clipmodel", "", &temp ) ) {
-		if ( idClipModel::CheckModel( temp ) ) {
+		if ( idClipModel::CheckModel( temp ) >= 0 ) {
 			clipModel = new idClipModel( temp );
 		}
 	}
@@ -6240,7 +5228,7 @@ void idEntity::InitDefaultPhysics( const idVec3 &origin, const idMat3 &axis )
 		if ( !clipModel ) {
 			temp = spawnArgs.GetString( "model" );
 			if ( ( temp != NULL ) && ( *temp != 0 ) ) {
-				if ( idClipModel::CheckModel( temp, renderEntity.customSkin ) ) {
+				if ( idClipModel::CheckModel( temp, renderEntity.customSkin ) >= 0 ) {
 					clipModel = new idClipModel( temp, renderEntity.customSkin );
 				}
 			}
@@ -7893,7 +6881,7 @@ idEntity::Event_RemoveBinds
 ================
 */
 void idEntity::Event_RemoveBinds( void ) {
-	RemoveBinds();
+	RemoveBinds( false );
 }
 
 /*
@@ -8095,6 +7083,29 @@ void idEntity::Event_GetColor( void ) {
 
 	GetColor( out );
 	idThread::ReturnVector( out );
+}
+
+/*
+================
+idEntity::Event_SetHealth
+================
+*/
+void idEntity::Event_SetHealth( float newHealth ) {
+	health = static_cast<int>(newHealth);
+
+	if( health <= 0 && !m_bIsBroken )
+	{
+		BecomeBroken( NULL );
+	}
+}
+
+/*
+================
+idEntity::Event_GetHealth
+================
+*/
+void idEntity::Event_GetHealth( void ) {
+	idThread::ReturnInt( health );
 }
 
 /*
@@ -8506,22 +7517,16 @@ idEntity::Event_RestorePosition
 */
 void idEntity::Event_RestorePosition( void ) {
 	idVec3		org;
-	idAngles	angles;
 	idMat3		axis;
 	idEntity *	part;
 
 	spawnArgs.GetVector( "origin", "0 0 0", org );
+	gameEdit->ParseSpawnArgsToAxis( &spawnArgs, axis );
 
-	// get the rotation matrix in either full form, or single angle form
-	if ( spawnArgs.GetMatrix( "rotation", "1 0 0 0 1 0 0 0 1", axis ) ) {
-		angles = axis.ToAngles();
-	} else {
-   		angles[ 0 ] = 0;
-   		angles[ 1 ] = spawnArgs.GetFloat( "angle" );
-   		angles[ 2 ] = 0;
-	}
+	GetPhysics()->SetOrigin( org );
+	GetPhysics()->SetAxis( axis );
 
-	Teleport( org, angles, NULL );
+	UpdateVisuals();
 
 	for ( part = teamChain; part != NULL; part = part->teamChain ) {
 		if ( part->bindMaster != this ) {
@@ -9175,11 +8180,6 @@ idAnimatedEntity::Think
 void idAnimatedEntity::Think( void ) {
 	RunPhysics();
 	
-	if ( m_LODHandle && m_DistCheckTimeStamp > NOLOD ) // SteveL #3770. idAnimatedEntities use LOD
-	{												   
-		SwitchLOD();
-	}
-
 	UpdateAnimation();
 
 	Present();
@@ -10123,6 +9123,9 @@ void idEntity::Flinderize( idEntity *activator )
 			spawnArgs.GetInt   ("flinder_count"       + index,   "1", fs.m_Count);
 			spawnArgs.GetFloat ("flinder_probability" + index, "1.0", fs.m_Probability);
 
+			// Dragofer: consider orientation of the flinderizing entity in the flinder offset
+			fs.m_Offset *= GetPhysics()->GetAxis();
+
 			//DM_LOG(LC_ENTITY, LT_INFO)LOGSTRING("  Offset is %f,%f,%f:\r", fs.m_Offset.x, fs.m_Offset.y, fs.m_Offset.z );
 			//DM_LOG(LC_ENTITY, LT_INFO)LOGSTRING("  Count is %i:\r", fs.m_Count );
 			//DM_LOG(LC_ENTITY, LT_INFO)LOGSTRING("  Probability is %f:\r", fs.m_Probability );
@@ -11009,6 +10012,8 @@ void idEntity::Event_SetGui( int handle, const char *guiFile )
 			m_overlays.setGui( handle, renderEntity.gui[ handle - 1 ] );
 			assert( renderEntity.gui[ handle-1 ] );
 		}
+		//stgatilov: make sure renderEntity.gui gets into renderer
+		BecomeActive(TH_UPDATEVISUALS);
 	}
 	else if ( !m_overlays.isExternal( handle ) )
 	{
@@ -13540,6 +12545,11 @@ void idEntity::Event_GetClipMask()
 	idThread::ReturnInt(GetPhysics()->GetClipMask());
 }
 
+void idEntity::Event_SetSolid( bool solidity )
+{
+	SetSolid( solidity );
+}
+
 void idEntity::Event_ExtinguishLights()
 {
 	// grayman #2624 - if this entity is currently being held by the
@@ -13761,6 +12771,92 @@ idLocationEntity *idEntity::GetLocation( void ) const
 	return gameLocal.LocationForPoint( GetPhysics()->GetOrigin() );
 }
 
+// Dragofer
+
+void idEntity::Event_GetEntityFlag( const char* flagName )
+{
+	if ( idStr::Icmp("notarget", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.notarget);
+		return;
+	}
+
+	if ( idStr::Icmp("noknockback", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.noknockback);
+		return;
+	}
+
+	if ( idStr::Icmp("takedamage", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.takedamage);
+		return;
+	}
+
+	if ( idStr::Icmp("hidden", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.hidden);
+		return;
+	}
+
+	if ( idStr::Icmp("bindOrientated", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.bindOrientated);
+		return;
+	}
+
+	if ( idStr::Icmp("solidForTeam", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.solidForTeam);
+		return;
+	}
+
+	if ( idStr::Icmp("forcePhysicsUpdate", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.forcePhysicsUpdate);
+		return;
+	}
+
+	if ( idStr::Icmp("selected", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.selected);
+		return;
+	}
+
+	if ( idStr::Icmp("neverDormant", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.neverDormant);
+		return;
+	}
+
+	if ( idStr::Icmp("isDormant", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.isDormant);
+		return;
+	}
+
+	if ( idStr::Icmp("hasAwakened", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.hasAwakened);
+		return;
+	}
+
+	if ( idStr::Icmp("invisible", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.invisible);
+		return;
+	}
+
+	if ( idStr::Icmp("inaudible", flagName) == 0 )
+	{
+		idThread::ReturnInt(fl.inaudible);
+		return;
+	}
+
+	gameLocal.Warning("Invalid flag name passed to getEntityFlag(): %s", flagName);
+	idThread::ReturnFloat(0.0f);
+}
+
 // grayman #3047
 
 bool idEntity::CastsShadows() const
@@ -13802,19 +12898,24 @@ void idEntity::CheckCollision(idEntity* collidedWith)
 	{
 		// We're interested in the parent of whatever team collidedWith is a part of, if any.
 
-		idEntity *collidedWithParent = collidedWith;
-		idEntity *bindMaster = collidedWithParent->GetBindMaster();
+		idEntity *bindMaster = collidedWith->GetBindMaster();
 		while ( bindMaster != NULL )
 		{
-			collidedWithParent = bindMaster;
-			bindMaster = collidedWithParent->GetBindMaster();
+			collidedWith = bindMaster;
+			bindMaster = collidedWith->GetBindMaster();
 		}
-		hitAI = collidedWithParent->IsType(idAI::Type);
+		hitAI = collidedWith->IsType(idAI::Type);
 	}
 
 	if (!hitAI)
 	{
 		return; // only interested if we hit an AI
+	}
+
+	idAI *collidedAI = (idAI*)collidedWith;
+	if ( collidedAI->AI_DEAD || collidedAI->AI_KNOCKEDOUT )
+	{
+		return;	// stgatilov: allow to move grabbed object over dead bodies
 	}
 
 	// Are we, or someone on our team, being held by the grabber?
@@ -13852,5 +12953,3 @@ void idEntity::CheckCollision(idEntity* collidedWith)
 		}
 	}
 }
-
-

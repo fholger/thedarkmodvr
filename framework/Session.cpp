@@ -24,7 +24,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "../game/Missions/MissionManager.h"
 
 idCVar	idSessionLocal::com_showAngles( "com_showAngles", "0", CVAR_SYSTEM | CVAR_BOOL, "" );
-idCVar	idSessionLocal::com_minTics( "com_minTics", "1", CVAR_SYSTEM, "" );
+idCVar	idSessionLocal::com_minTics( "com_minTics", "0", CVAR_SYSTEM, "" );
 idCVar	idSessionLocal::com_showTics( "com_showTics", "0", CVAR_SYSTEM | CVAR_BOOL, "" );
 idCVar	idSessionLocal::com_fixedTic("com_fixedTic", "1", CVAR_SYSTEM | CVAR_ROM | CVAR_INTEGER,
 	" 0 -- game tics have fixed duration of 16 ms (stable physics but 60 FPS limit)\n"
@@ -39,13 +39,14 @@ idCVar	idSessionLocal::com_maxTicsPerFrame("com_maxTicsPerFrame", "10", CVAR_SYS
 	"Never do more than this number of game tics per one frame. "
 	"When frames take too much time, allow game time to run slower than astronomical time.",
 1, 1000);
+idCVar	idSessionLocal::com_maxFPS( "com_maxFPS", "166", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_INTEGER, "define the maximum FPS cap", 2, 1000 );
 idCVar	idSessionLocal::com_showDemo("com_showDemo", "0", CVAR_SYSTEM | CVAR_BOOL, "");
 idCVar	idSessionLocal::com_skipGameDraw( "com_skipGameDraw", "0", CVAR_SYSTEM | CVAR_BOOL, "" );
 idCVar	idSessionLocal::com_aviDemoSamples( "com_aviDemoSamples", "16", CVAR_SYSTEM, "" );
 idCVar	idSessionLocal::com_aviDemoWidth( "com_aviDemoWidth", "256", CVAR_SYSTEM, "" );
 idCVar	idSessionLocal::com_aviDemoHeight( "com_aviDemoHeight", "256", CVAR_SYSTEM, "" );
 idCVar	idSessionLocal::com_aviDemoTics( "com_aviDemoTics", "2", CVAR_SYSTEM | CVAR_INTEGER, "", 1, 60 );
-idCVar	idSessionLocal::com_wipeSeconds( "com_wipeSeconds", "1", CVAR_SYSTEM, "" );
+idCVar	idSessionLocal::com_wipeSeconds( "com_wipeSeconds", "0.1", CVAR_SYSTEM, "" );
 idCVar	idSessionLocal::com_guid( "com_guid", "", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_ROM, "" );
 
 //Obsttorte
@@ -57,7 +58,6 @@ idCVar	idSessionLocal::com_numQuickSaves( "com_numQuickSaves", "2", CVAR_GAME | 
 
 // stgatilov: allow choosing format for savegame previews
 idCVar	com_savegame_preview_format( "com_savegame_preview_format", "jpg", CVAR_GAME | CVAR_ARCHIVE, "Image format used to store previews for game saves: tga/jpg." );
-idCVar	com_maxFPS( "com_maxFPS", "200", CVAR_SYSTEM | CVAR_ARCHIVE | CVAR_INTEGER, "define the maximum FPS cap (uncapped FPS only)", 2, 1000 );
 
 idSessionLocal		sessLocal;
 idSession			*session = &sessLocal;
@@ -263,12 +263,12 @@ void idSessionLocal::Clear() {
 
 	syncNextGameFrame = false;
 	mapSpawned = false;
+	mainMenuStartState = MMSS_MAINMENU;
 	guiActive = NULL;
 	aviCaptureMode = false;
 	timeDemo = TD_NO;
 	waitingOnBind = false;
 	lastPacifierTime = 0;
-	lastFrameTimestamp = Sys_GetTimeMicroseconds() / 1000;
 	
 	msgRunning = false;
 	guiMsgRestore = NULL;
@@ -294,7 +294,7 @@ idSessionLocal::idSessionLocal
 ===============
 */
 idSessionLocal::idSessionLocal() {
-	guiInGame = guiMainMenu = guiRestartMenu = guiLoading = guiActive = guiTest = guiMsg = guiMsgRestore = NULL;	
+	guiInGame = guiMainMenu = guiLoading = guiActive = guiTest = guiMsg = guiMsgRestore = NULL;	
 
 	menuSoundWorld = NULL;
 	
@@ -401,6 +401,9 @@ void idSessionLocal::Shutdown() {
 		uiManager->FreeListGUI( guiMainMenu_MapList );
 		guiMainMenu_MapList = NULL;
 	}
+
+	//stgatilov: shut down main menu
+	ResetMainMenu();
 
 	Clear();
 }
@@ -1079,10 +1082,6 @@ idSessionLocal::StartNewGame
 ===============
 */
 void idSessionLocal::StartNewGame( const char *mapName, bool devmap ) {
-#ifdef	ID_DEDICATED
-	common->Printf( "Dedicated servers cannot start singleplayer games.\n" );
-	return;
-#else
 	// clear the userInfo so the player starts out with the defaults
 	mapSpawnData.userInfo[0].Clear();
 	mapSpawnData.persistentPlayerInfo[0].Clear();
@@ -1102,7 +1101,6 @@ void idSessionLocal::StartNewGame( const char *mapName, bool devmap ) {
 	mapSpawnData.syncedCVars = *cvarSystem->MoveCVarsToDict( CVAR_NETWORKSYNC );
 
 	MoveToNewMap( mapName );
-#endif
 }
 
 /*
@@ -1843,10 +1841,6 @@ idSessionLocal::SaveGame
 ===============
 */
 bool idSessionLocal::SaveGame( const char *saveName, bool autosave, bool skipCheck ) {
-#ifdef	ID_DEDICATED
-	common->Printf( "Dedicated servers cannot save games.\n" );
-	return false;
-#else
 	int i;
 	idStr gameFile, previewFile, descriptionFile, mapName;
 
@@ -2041,7 +2035,6 @@ bool idSessionLocal::SaveGame( const char *saveName, bool autosave, bool skipChe
 
 
 	return true;
-#endif
 }
 
 
@@ -2151,10 +2144,6 @@ idSessionLocal::DoLoadGame
 ===============
 */
 bool idSessionLocal::DoLoadGame( const char *saveName, const bool initializedLoad) {
-#ifdef	ID_DEDICATED
-	common->Printf( "Dedicated servers cannot load games.\n" );
-	return false;
-#else
 	//Hide the dialog box if it is up.
 	StopBox();
 
@@ -2204,7 +2193,6 @@ bool idSessionLocal::DoLoadGame( const char *saveName, const bool initializedLoa
 	}
 
 	return success;
-#endif
 }
 
 // STiFU #4531: TDM savegame version check
@@ -2643,7 +2631,8 @@ void idSessionLocal::Draw() {
 		if ( guiActive == guiMsg && guiMsgRestore ) {
 			guiMsgRestore->Redraw( com_frameTime );
 		}
-		
+
+		guiActive->UpdateSubtitles();	//stgatilov #2454
 		guiActive->Redraw( com_frameTime );
 	} else if ( readDemo ) {
 		rw->RenderScene( currentDemoRenderView );
@@ -2777,16 +2766,17 @@ void idSessionLocal::Frame() {
 	}
 	
 	//nbohr1more: disable SMP for debug render tools
-	if (r_showSurfaceInfo.GetBool() ||
+	if (
+		r_showSurfaceInfo.GetBool() ||
 		r_showDepth.GetBool() ||
 		r_showViewEntitys.GetBool() || // frontend may invalidate viewEntity pointers, e.g. when LOD model changes
-        r_materialOverride.GetString()[0] != '\0'
+		r_materialOverride.GetString()[0] != '\0'
 	) {
 		no_smp = true;
 	} else {
 		no_smp = false;
 	}
-   
+
 	// save the screenshot and audio from the last draw if needed
 	if ( aviCaptureMode ) {
 		idStr	name;
@@ -2812,66 +2802,50 @@ void idSessionLocal::Frame() {
 		renderSystem->TakeScreenshot( com_aviDemoWidth.GetInteger(), com_aviDemoHeight.GetInteger(), name, com_aviDemoSamples.GetInteger(), NULL );
 	}
 
-	/*if ( com_smp.GetBool() && com_fixedTic.GetInteger() > 0 ) {
+	// at startup, we may be backwards
+	if (latchedTicNumber > com_ticNumber) {
 		latchedTicNumber = com_ticNumber;
-	} else */{ 
-		// at startup, we may be backwards
-		if (latchedTicNumber > com_ticNumber) {
-			latchedTicNumber = com_ticNumber;
-		}
+	}
 
-		// see how many tics we should have before continuing
-		int	minTic = latchedTicNumber + 1;
-		if (com_minTics.GetInteger() > 1) {
-			minTic = lastGameTic + com_minTics.GetInteger();
-		}
+	// see which async tic should happen before continuing
+	int	minTic;
+	if ( com_fixedTic.GetInteger() ) {
+		// stgatilov: don't wait for async tics, just model & render as fast as we can
+		minTic = latchedTicNumber;
+	}
+	else {
+		// stgatilov: don't do anything until at least one async tic has passed
+		// that's because we tie game ticks to async tics
+		minTic = latchedTicNumber + 1;
+	}
 
-		if (readDemo) {
-			if (!timeDemo && numDemoFrames != 1) {
-				minTic = lastDemoTic + USERCMD_PER_DEMO_FRAME;
-			} else {
-				// timedemos and demoshots will run as fast as they can, other demos
-				// will not run more than 30 hz
-				minTic = latchedTicNumber;
-			}
-		} else if (writeDemo) {
-			minTic = lastGameTic + USERCMD_PER_DEMO_FRAME;		// demos are recorded at 30 hz
-		}
+	if (com_minTics.GetInteger() > 1) {
+		// stgatilov: looks like some rarely used debug setting
+		minTic = lastGameTic + com_minTics.GetInteger();
+	}
 
-		// fixedTic lets us run a forced number of usercmd each frame without timing
-		if ( com_fixedTic.GetInteger() ) {
+	if (readDemo) {
+		if (!timeDemo && numDemoFrames != 1) {
+			minTic = lastDemoTic + USERCMD_PER_DEMO_FRAME;
+		} else {
+			// timedemos and demoshots will run as fast as they can, other demos
+			// will not run more than 30 hz
 			minTic = latchedTicNumber;
-
-			//stgatilov #4865: impose artificial FPS limit
-			static uint64_t prevUsec = 0;
-			uint64_t neededDelta = 1000000 / com_maxFPS.GetInteger();
-			while (Sys_GetTimeMicroseconds() < prevUsec + neededDelta) {
-				//note: this is busy-wait loop
-				#ifdef __SSE2__
-				_mm_pause();
-				#else
-				prevUsec = prevUsec;	//NOP
-				#endif
-			}
-			prevUsec = Sys_GetTimeMicroseconds();
-
-			//stgatilov #4924: compute game timestep from astronomic time passed since last frame
-			int64_t nowTimestampMs = prevUsec / 1000;
-			currentTimestep = nowTimestampMs - lastFrameTimestamp;
-			lastFrameTimestamp = nowTimestampMs;
 		}
+	} else if (writeDemo) {
+		minTic = lastGameTic + USERCMD_PER_DEMO_FRAME;		// demos are recorded at 30 hz
+	}
 
-		// Spin in place if needed when frame cap is active. 
-		// The game should yield the cpu if it is running over 60 hz, 
-		// because there is fundamentally nothing useful for it to do.
-		while (true) {
-			latchedTicNumber = com_ticNumber;
-			if (latchedTicNumber >= minTic) {
-				break;
-			}
-			Sys_WaitForEvent( TRIGGER_EVENT_ONE );
+	// Spin in place if needed when frame cap is active. 
+	// The game should yield the cpu if it is running over 60 hz, 
+	// because there is fundamentally nothing useful for it to do.
+	while (true) {
+		latchedTicNumber = com_ticNumber;
+		if (latchedTicNumber >= minTic) {
+			break;
 		}
-	 }
+		Sys_WaitForEvent( TRIGGER_EVENT_ONE );	//wait for event from async thread
+	}
 
 	// send frame and mouse events to active guis
 	GuiFrameEvents();
@@ -2952,19 +2926,21 @@ void idSessionLocal::Frame() {
 	}
 
 	if (com_fixedTic.GetInteger() > 0) {
+		gameTimestepTotal = com_frameDelta;
 		//stgatilov #4924: if too much time passed since last frame,
 		//then split this game tic into many short tics
 		//long tics easily make physics unstable, so game tic duration should be under control
-		gameTicsToRun = (currentTimestep - 1) / com_maxTicTimestep.GetInteger() + 1;	//divide by 17 ms, rounding up
+		gameTicsToRun = (gameTimestepTotal - 1) / com_maxTicTimestep.GetInteger() + 1;	//divide by 17 ms, rounding up
 		if (gameTicsToRun > com_maxTicsPerFrame.GetInteger()) {
-			//if everything is too bad, slow game down instead of modelling insane amount of ticks per frame
+			//if everything is too bad, slow game down instead of modeling insane number of ticks per frame
 			gameTicsToRun = com_maxTicsPerFrame.GetInteger();
-			currentTimestep = USERCMD_MSEC * gameTicsToRun;
+			gameTimestepTotal = USERCMD_MSEC * gameTicsToRun;
 		}
+		lastGameTic = latchedTicNumber - gameTicsToRun;
 	}
 	else {
 		gameTicsToRun = latchedTicNumber - lastGameTic;
-		currentTimestep = USERCMD_MSEC * gameTicsToRun;
+		gameTimestepTotal = USERCMD_MSEC * gameTicsToRun;
 	}
 
 	// create client commands, which will be sent directly
@@ -3013,8 +2989,8 @@ void idSessionLocal::RunGameTic(int timestepMs) {
 		} else {
 			cmd = usercmdGen->GetDirectUsercmd();
 		}
-		lastGameTic++;
 	}
+	lastGameTic++;
 
 	// stgatilov: allow automation to intercept gameplay controls
 	if (com_automation.GetBool()) {
@@ -3079,7 +3055,7 @@ void idSessionLocal::RunGameTic(int timestepMs) {
 void idSessionLocal::RunGameTics() {
 	// run game tics
 	for (int i = 0; i < gameTicsToRun; ++i) {
-		int deltaMs = currentTimestep * (i+1) / gameTicsToRun - currentTimestep * i / gameTicsToRun;
+		int deltaMs = gameTimestepTotal * (i+1) / gameTicsToRun - gameTimestepTotal * i / gameTicsToRun;
 		if (com_fixedTic.GetInteger() == 0) 
 			assert(deltaMs == USERCMD_MSEC);
 
@@ -3248,12 +3224,14 @@ void idSessionLocal::ExecuteFrameCommand(const char *command, bool delayed) {
 		syncNextGameFrame = true;
 	} else if ( !idStr::Icmp( args.Argv(0), "died" ) ) {
 		// restart on the same map
+		mainMenuStartState = MMSS_FAILURE;
 		UnloadMap();
-		SetGUI(guiRestartMenu, NULL);
+		StartMenu();
 
 		// do not process any additional game tics this frame
 		syncNextGameFrame = true;
 	} else if ( !idStr::Icmp( args.Argv(0), "disconnect" ) ) {
+		mainMenuStartState = MMSS_SUCCESS;
 		cmdSystem->BufferCommandText( CMD_EXEC_INSERT, "stoprecording ; disconnect" );
 		// Check for final save trigger - the player PVS is freed at this point, so we can go ahead and save the game
 		if( gameLocal.m_TriggerFinalSave ) {
@@ -3287,7 +3265,6 @@ void idSessionLocal::Init() {
 
 	cmdSystem->AddCommand( "writePrecache", Sess_WritePrecache_f, CMD_FL_SYSTEM|CMD_FL_CHEAT, "writes precache commands" );
 
-#ifndef	ID_DEDICATED
 	cmdSystem->AddCommand( "map", Session_Map_f, CMD_FL_SYSTEM, "loads a map", idCmdSystem::ArgCompletion_MapName );
 	cmdSystem->AddCommand( "devmap", Session_DevMap_f, CMD_FL_SYSTEM, "loads a map in developer mode", idCmdSystem::ArgCompletion_MapName );
 	cmdSystem->AddCommand( "testmap", Session_TestMap_f, CMD_FL_SYSTEM, "tests a map", idCmdSystem::ArgCompletion_MapName );
@@ -3306,17 +3283,14 @@ void idSessionLocal::Init() {
 	cmdSystem->AddCommand( "timeDemoQuit", Session_TimeDemoQuit_f, CMD_FL_SYSTEM, "times a demo and quits", idCmdSystem::ArgCompletion_DemoName );
 	cmdSystem->AddCommand( "aviDemo", Session_AVIDemo_f, CMD_FL_SYSTEM, "writes AVIs for a demo", idCmdSystem::ArgCompletion_DemoName );
 	cmdSystem->AddCommand( "compressDemo", Session_CompressDemo_f, CMD_FL_SYSTEM, "compresses a demo file", idCmdSystem::ArgCompletion_DemoName );
-#endif
 
 	cmdSystem->AddCommand( "disconnect", Session_Disconnect_f, CMD_FL_SYSTEM, "disconnects from a game" );
 
 	cmdSystem->AddCommand( "demoShot", Session_DemoShot_f, CMD_FL_SYSTEM, "writes a screenshot for a demo" );
 	cmdSystem->AddCommand( "testGUI", Session_TestGUI_f, CMD_FL_SYSTEM, "tests a gui" );
 
-#ifndef	ID_DEDICATED
 	cmdSystem->AddCommand( "saveGame", SaveGame_f, CMD_FL_SYSTEM|CMD_FL_CHEAT, "saves a game" );
 	cmdSystem->AddCommand( "loadGame", LoadGame_f, CMD_FL_SYSTEM|CMD_FL_CHEAT, "loads a game", idCmdSystem::ArgCompletion_SaveGame );
-#endif
 
 	cmdSystem->AddCommand( "rescanSI", Session_RescanSI_f, CMD_FL_SYSTEM, "internal - rescan serverinfo cvars and tell game" );
 
@@ -3333,10 +3307,9 @@ void idSessionLocal::Init() {
 	menuSoundWorld = soundSystem->AllocSoundWorld( rw );
 
 	// we have a single instance of the main menu
-	guiMainMenu = uiManager->FindGui( "guis/mainmenu.gui", true, false, true );
+	ResetMainMenu();
 	guiMainMenu_MapList = uiManager->AllocListGUI();
 	guiMainMenu_MapList->Config( guiMainMenu, "mapList" );
-	guiRestartMenu = uiManager->FindGui( "guis/restart.gui", true, false, true );
 	guiMsg = uiManager->FindGui( "guis/msg.gui", true, false, true );
 
 	whiteMaterial = declManager->FindMaterial( "_white" );

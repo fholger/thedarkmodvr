@@ -620,8 +620,10 @@ void RB_DrawFullScreenQuad( float e ) {
 }
 
 void RB_DrawFullScreenTri() {
+	int oldCulling = backEnd.glState.faceCulling;
 	GL_Cull( CT_TWO_SIDED );
 	qglDrawArrays( GL_TRIANGLES, 0, 3 );
+	GL_Cull( oldCulling );
 }
 
 // postprocess related - J.C.Denton
@@ -713,7 +715,11 @@ was there.  This is used to test for texture thrashing.
 */
 void RB_ShowImages( void ) {
 	idImage	*image;
-	float	x, y, w, h;
+	float	x=-1, y=-1, w, h;
+
+	GLSLProgram::Deactivate();
+	GL_State( GLS_DEFAULT );
+	GL_Cull( CT_TWO_SIDED );
 
 	for ( int i = 0 ; i < globalImages->images.Num() ; i++ ) {
 		image = globalImages->images[i];
@@ -721,18 +727,15 @@ void RB_ShowImages( void ) {
 		if ( image->texnum == idImage::TEXTURE_NOT_LOADED ) {
 			continue;
 		}
-		w = glConfig.vidWidth / 20;
-		h = glConfig.vidHeight / 15;
-		x = i % 20 * w;
-		y = i / 20 * h;
-
+		w = h = 0.1f;
 		// show in proportional size in mode 2
 		if ( r_showImages.GetInteger() == 2 ) {
 			w *= image->uploadWidth / 512.0f;
 			h *= image->uploadHeight / 512.0f;
 		}
+		qglEnable( GL_TEXTURE_2D );
+		qglActiveTexture( 0 );
 		image->Bind();
-
 		qglBegin( GL_QUADS );
 		qglTexCoord2f( 0, 0 );
 		qglVertex2f( x, y );
@@ -743,8 +746,13 @@ void RB_ShowImages( void ) {
 		qglTexCoord2f( 0, 1 );
 		qglVertex2f( x, y + h );
 		qglEnd();
+		x += w;
+		if ( x >= 1 ) {
+			y += 0.1f;
+			x = -1;
+		}
 	}
-	qglFinish();
+	qglBindTexture( GL_TEXTURE_2D, 0 );
 }
 
 /*
@@ -890,6 +898,7 @@ void RB_ExecuteBackEndCommands( const emptyCommand_t *cmds ) {
 			RB_Bloom( (bloomCommand_t*)cmds );
 			FB_DebugShowContents();
 			c_drawBloom++;
+			frameBuffers->LeavePrimary();
 			fboOff = true;
 			break;
 		case RC_COPY_RENDER:

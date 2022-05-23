@@ -24,9 +24,12 @@ FrameBufferManager *frameBuffers = &frameBuffersImpl;
 
 namespace {
 	GLenum ColorBufferFormat() {
-		if( r_fboColorBits.GetInteger() == 64 ) {
+		if ( r_fboColorBits.GetInteger() == 64 ) {
 			return GL_RGBA16F;
-		} 
+		}
+		if ( r_fboColorBits.GetInteger() == 16 ) {
+			return GL_RGB5_A1;
+		}
 		return ( glConfig.srgb ? GL_SRGB_ALPHA : GL_RGBA );
 	}
 
@@ -131,6 +134,8 @@ void FrameBufferManager::EnterPrimary() {
 	qglClear( GL_COLOR_BUFFER_BIT ); // otherwise transparent skybox blends with previous frame
 }
 
+idCVar r_fboScaling( "r_fboScaling", "1", CVAR_RENDERER | CVAR_BOOL | CVAR_ARCHIVE, "nearest/linear FBO scaling" );
+
 void FrameBufferManager::LeavePrimary(bool copyToDefault) {
 	// if we want to do tonemapping later, we need to continue to render to a texture,
 	// otherwise we can render the remaining UI views straight to the back buffer
@@ -147,7 +152,7 @@ void FrameBufferManager::LeavePrimary(bool copyToDefault) {
 			ResolvePrimary();
 			resolveFbo->BlitTo( targetFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
 		} else {
-			primaryFbo->BlitTo( targetFbo, GL_COLOR_BUFFER_BIT, GL_LINEAR );
+			primaryFbo->BlitTo( targetFbo, GL_COLOR_BUFFER_BIT, r_fboScaling.GetBool() ? GL_LINEAR : GL_NEAREST );
 		}
 
 		if ( r_frontBuffer.GetBool() && !r_tonemap ) {
@@ -277,9 +282,11 @@ void FrameBufferManager::CreateGui( FrameBuffer *gui ) {
 	gui->AddColorRenderTexture( 0, globalImages->guiRenderImage );
 }
 
-void FrameBufferManager::CopyRender( idImage *image, int x, int y, int imageWidth, int imageHeight ) {
-	if ( image->texnum == idImage::TEXTURE_NOT_LOADED ) // 5257
-		image->MakeDefault();
+void FrameBufferManager::CopyRender( idImage* image, int x, int y, int imageWidth, int imageHeight ) {
+	if ( image->texnum == idImage::TEXTURE_NOT_LOADED ) { // 5257
+		image->generatorFunction = R_RGBA8Image; // otherwise texstorage (when enabled) makes the texture immutable
+		R_RGBA8Image( image ); // image->MakeDefault() can produce a compressed image, unsuitable for copying into
+	}
 	image->Bind();
 	if ( activeFbo == primaryFbo || activeFbo == resolveFbo ) {
 		x *= r_fboResolution.GetFloat();
@@ -291,7 +298,7 @@ void FrameBufferManager::CopyRender( idImage *image, int x, int y, int imageWidt
 	if ( image->uploadWidth != imageWidth || image->uploadHeight != imageHeight ) {
 		image->uploadWidth = imageWidth;
 		image->uploadHeight = imageHeight;
-		qglCopyTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, x, y, imageWidth, imageHeight, 0 );
+		qglCopyTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, x, y, imageWidth, imageHeight, 0 );
 	} else {
 		// otherwise, just subimage upload it so that drivers can tell we are going to be changing
 		// it and don't try and do a texture compression or some other silliness

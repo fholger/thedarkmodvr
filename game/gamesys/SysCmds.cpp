@@ -76,15 +76,15 @@ void Cmd_PrintAIRelations_f( const idCmdArgs &args )
 }
 
 /**
- * greebo: This is a helper command, used by the restart.gui
+ * greebo: This is a helper command, used in mainmenu_failure.gui
  */
 void Cmd_RestartGuiCmd_UpdateObjectives_f(const idCmdArgs &args) 
 {
-	idUserInterface* gui = uiManager->FindGui("guis/restart.gui", false, true, true);
+	idUserInterface* gui = session->GetGui(idSession::gtMainMenu);
 
 	if (gui == NULL) 
 	{
-		gameLocal.Warning("Could not find restart.gui");
+		gameLocal.Warning("Main menu missing");
 		return;
 	}
 	
@@ -556,14 +556,14 @@ Cmd_ActiveEntityList_f
 ===================
 */
 void Cmd_ActiveEntityList_f( const idCmdArgs &args ) {
-	idEntity	*check;
 	int			count;
 
 	count = 0;
 
 	gameLocal.Printf( "%-4s  %-20s %-20s %s\n", " Num", "EntityDef", "Class", "Name" );
 	gameLocal.Printf( "--------------------------------------------------------------------\n" );
-	for( check = gameLocal.activeEntities.Next(); check != NULL; check = check->activeNode.Next() ) {
+	for ( auto iter = gameLocal.activeEntities.Begin(); iter; gameLocal.activeEntities.Next(iter) ) {
+		idEntity *check = iter.entity;
 		char	dormant = check->fl.isDormant ? '-' : ' ';
 		gameLocal.Printf( "%4i:%c%-20s %-20s %s\n", check->entityNumber, dormant, check->GetEntityDefName(), check->GetClassname(), check->name.c_str() );
 		count++;
@@ -3498,14 +3498,7 @@ void Cmd_LODBiasChanged_f( const idCmdArgs& args )
 	// gameLocal.Printf("LOD Bias (Object Detail) changed, checking %i entities.\n", gameLocal.num_entities);
 	// Run through all entities and Hide()/Show() them according to their MinLODBias and
 	// MaxLODBias values.
-	for (int j = 0; j < gameLocal.num_entities; j++)
-	{
-		idEntity *c_ent = gameLocal.entities[ j ];
-		if (c_ent)
-		{
-			c_ent->Event_HideByLODBias();
-		}
-	}
+	gameLocal.lodSystem.UpdateAfterLodBiasChanged();
 }
 
 #ifdef TIMING_BUILD
@@ -3569,9 +3562,11 @@ so it can perform tab completion
 =================
 */
 void idGameLocal::InitConsoleCommands( void ) {
+#if 0	//stgatilov: typeinfo was removed in 2022
 	cmdSystem->AddCommand( "listTypeInfo",			ListTypeInfo_f,				CMD_FL_GAME,				"list type info" );
 	cmdSystem->AddCommand( "writeGameState",		WriteGameState_f,			CMD_FL_GAME,				"write game state" );
 	cmdSystem->AddCommand( "testSaveGame",			TestSaveGame_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"test a save game for a level" );
+#endif
 	cmdSystem->AddCommand( "game_memory",			idClass::DisplayInfo_f,		CMD_FL_GAME,				"displays game class info" );
 	cmdSystem->AddCommand( "listClasses",			idClass::ListClasses_f,		CMD_FL_GAME,				"lists game classes" );
 	cmdSystem->AddCommand( "listThreads",			idThread::ListThreads_f,	CMD_FL_GAME|CMD_FL_CHEAT,	"lists script threads" );

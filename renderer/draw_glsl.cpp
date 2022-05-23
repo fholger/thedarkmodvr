@@ -34,7 +34,6 @@ struct ShadowMapUniforms : GLSLUniformGroup {
 	UNIFORM_GROUP_DEF( ShadowMapUniforms )
 
 	DEFINE_UNIFORM( vec4, lightOrigin )
-	DEFINE_UNIFORM( float, lightRadius )
 	DEFINE_UNIFORM( float, alphaTest )
 	DEFINE_UNIFORM( mat4, modelMatrix )
 };
@@ -53,7 +52,6 @@ static void ChooseInteractionProgram() {
 			currrentInteractionShader = programManager->stencilInteractionShader;
 	}
 	currrentInteractionShader->Activate();
-	currrentInteractionShader->GetUniformGroup<Uniforms::Interaction>()->RGTC.Set( 1 ); // FIXME remove the RGTC uniform
 	GL_CheckErrors();
 }
 
@@ -91,6 +89,7 @@ void RB_GLSL_DrawInteraction( const drawInteraction_t *din ) {
 			return;
 		GL_SelectTexture( 0 );
 		din->bumpImage->Bind();
+		interactionUniforms->RGTC.Set( din->bumpImage->internalFormat == GL_COMPRESSED_RG_RGTC2 );
 		if ( interactionUniforms->hasTextureDNS.IsPresent() ) {
 			interactionUniforms->hasTextureDNS.Set( 1, 1, 1 );
 		}
@@ -206,9 +205,11 @@ void RB_GLSL_DrawLight_Stencil() {
 	}
 	programManager->stencilShadowShader->Activate();
 
-	RB_StencilShadowPass( backEnd.vLight->globalShadows );
-	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
-		frameBuffers->ResolveShadowStencilAA();
+	if ( backEnd.vLight->globalShadows ) {
+		RB_StencilShadowPass( backEnd.vLight->globalShadows );
+		if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
+			frameBuffers->ResolveShadowStencilAA();
+		}
 	}
 
 	const bool NoSelfShadows = true; // don't delete - debug check for low-poly "round" models casting ugly shadows on themselves
@@ -225,11 +226,12 @@ void RB_GLSL_DrawLight_Stencil() {
 	}
 	programManager->stencilShadowShader->Activate();
 
-	RB_StencilShadowPass( backEnd.vLight->localShadows );
-	if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
-		frameBuffers->ResolveShadowStencilAA();
+	if ( backEnd.vLight->localShadows ) {
+		RB_StencilShadowPass( backEnd.vLight->localShadows );
+		if ( useShadowFbo && r_multiSamples.GetInteger() > 1 && r_softShadowsQuality.GetInteger() >= 0 ) {
+			frameBuffers->ResolveShadowStencilAA();
+		}
 	}
-
 
 	if ( useShadowFbo ) {
 		frameBuffers->LeaveShadowStencil();
@@ -244,12 +246,7 @@ void RB_GLSL_DrawLight_Stencil() {
 }
 
 float GetEffectiveLightRadius() {
-	float lightRadius = backEnd.vLight->radius;
-	if (r_softShadowsRadius.GetFloat() < 0.0)
-		lightRadius = -r_softShadowsRadius.GetFloat();	//override
-	else if (lightRadius < 0.0)
-		lightRadius = r_softShadowsRadius.GetFloat();	//default value
-	return lightRadius;
+	return r_softShadowsRadius.GetFloat();	//default value
 }
 
 /*
@@ -275,7 +272,6 @@ void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear = fa
 	lightOrigin.z = backEnd.vLight->globalLightOrigin.z;
 	lightOrigin.w = 0;
 	shadowMapUniforms->lightOrigin.Set( lightOrigin );
-	shadowMapUniforms->lightRadius.Set( GetEffectiveLightRadius() );
 	shadowMapUniforms->alphaTest.Set( -1 );
 	backEnd.currentSpace = NULL;
 
@@ -289,7 +285,7 @@ void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear = fa
 	if ( clear )
 		qglClear( GL_DEPTH_BUFFER_BIT );
 	for ( int i = 0; i < 4; i++ )
-		qglEnable( GL_CLIP_PLANE0 + i );
+		qglEnable( GL_CLIP_DISTANCE0 + i );
 	for ( ; surf; surf = surf->nextOnLight ) {
 		if ( surf->dsFlags & DSF_SHADOW_MAP_IGNORE ) 
 			continue;    // this flag is set by entities with parms.noShadow in R_PrepareLightSurf (candles, torches, etc)
@@ -312,7 +308,7 @@ void RB_GLSL_DrawInteractions_ShadowMap( const drawSurf_t *surf, bool clear = fa
 			qglPolygonOffset( 0, 0 );*/
 	}
 	for ( int i = 0; i < 4; i++ )
-		qglDisable( GL_CLIP_PLANE0 + i );
+		qglDisable( GL_CLIP_DISTANCE0 + i );
 
 	qglDisable( GL_POLYGON_OFFSET_FILL );
 	GL_Cull( CT_FRONT_SIDED );
@@ -679,23 +675,15 @@ void Uniforms::MaterialStage::Set(const shaderStage_t *pStage, const drawSurf_t 
 	idVec4 parm;
 	// screen power of two correction factor, assuming the copy to _currentRender
 	// also copied an extra row and column for the bilerp
-	int	 w = backEnd.viewDef->viewport.x2 - backEnd.viewDef->viewport.x1 + 1;
-	int pot = globalImages->currentRenderImage->uploadWidth;
-	parm[0] = ( float )w / pot;
 	parm[0] = 1;
-	int	 h = backEnd.viewDef->viewport.y2 - backEnd.viewDef->viewport.y1 + 1;
-	pot = globalImages->currentRenderImage->uploadHeight;
-	parm[1] = ( float )h / pot;
 	parm[1] = 1;
 	parm[2] = 0;
 	parm[3] = 1;
  	scalePotToWindow.Set( parm );
 
 	// window coord to 0.0 to 1.0 conversion
-	parm[0] = 1.0 / w;
-	parm[0] = 1.0 / globalImages->currentRenderImage->uploadWidth;
-	parm[1] = 1.0 / h;
-	parm[1] = 1.0 / globalImages->currentRenderImage->uploadHeight;
+	parm[0] = 1.0 / frameBuffers->activeFbo->Width();
+	parm[1] = 1.0 / frameBuffers->activeFbo->Height();
 	parm[2] = 0;
 	parm[3] = 1;
  	scaleWindowToUnit.Set( parm );
@@ -807,6 +795,7 @@ void Uniforms::Interaction::SetForInteraction( const drawInteraction_t *din ) {
 	SetForInteractionBasic( din );
 
 	lightProjectionFalloff.Set( din->lightProjection[0].ToFloatPtr() );
+	lightTextureMatrix.SetArray( 2, din->lightTextureMatrix[0].ToFloatPtr() );
 	// set the constant color
 	diffuseColor.Set( din->diffuseColor );
 	specularColor.Set( din->specularColor );
@@ -819,7 +808,10 @@ void Uniforms::Interaction::SetForInteraction( const drawInteraction_t *din ) {
 		lightOrigin.Set( din->localLightOrigin.ToVec3() );
 		lightOrigin2.Set( backEnd.vLight->globalLightOrigin );
 	}
-	useBumpmapLightTogglingFix.Set(r_useBumpmapLightTogglingFix.GetBool());
+
+	// stgatilov #4825: make translation "lit tangentially" -> "unlit" smoother
+	// #5862 unless surface has "twosided" material
+	useBumpmapLightTogglingFix.Set( r_useBumpmapLightTogglingFix.GetBool() && !din->surf->material->ShouldCreateBackSides() );
 
 	GL_CheckErrors();
 }

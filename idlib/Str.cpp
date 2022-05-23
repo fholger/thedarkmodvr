@@ -445,10 +445,33 @@ void idStr::StripMediaName( const char *name, idStr &mediaName ) {
 
 /*
 =============
+idStr::IendsWith
+=============
+*/
+bool idStr::IendsWith( const char *text, const char *suffix ) {
+	int textLen = Length( text );
+	int suffLen = Length( suffix );
+	if ( suffLen > textLen )
+		return false;
+	int offset = textLen - suffLen;
+
+	for ( int i = 0; i < suffLen; i++ ) {
+		char c1 = text[offset + i];
+		char c2 = suffix[i];
+		if ( ToLower(c1) != ToLower(c2) )
+			return false;
+	}
+
+	return true;
+}
+
+/*
+=============
 idStr::CheckExtension
 =============
 */
 bool idStr::CheckExtension( const char *name, const char *ext ) {
+	assert( ext && ext[0] == '.' );
 	const char *s1 = name + Length( name ) - 1;
 	const char *s2 = ext + Length( ext ) - 1;
 	int c1, c2, d;
@@ -907,7 +930,7 @@ idStr& idStr::StripQuotes ( void )
 idStr::Split
 
 stgatilov: Finds all characters matching "delimiters" list, returns array of substrings
-between them (including substrings before the first delimeter and after the last one).
+between them (including substrings before the first delimiter and after the last one).
 If "delimiters" is NULL, then whitespace characters are treated as delimiters.
 If "skipEmpty" is true, then empty substrings are dropped from result.
 ============
@@ -950,6 +973,70 @@ idStr idStr::Join( const idList<idStr> &tokens, const char *separator )
 		res += tokens[i];
 	}
 	return res;
+}
+
+/*
+============
+idStr::Split
+
+stgatilov: Finds all substrings matching "delimiters" list, returns array of substrings
+between them (including substrings before the first delimiter and after the last one).
+Note that delimiters matching is done greedily, and if several delimiters start as same position, the first one wins.
+If "skipEmpty" is true, then empty substrings are dropped from result.
+============
+*/
+idList<idStr> idStr::Split( const idList<idStr> &delimiters, bool skipEmpty ) const {
+	idList<idStr> tokens;
+
+	int start = 0;
+	for (int i = 0; i <= len; ) {
+		bool tokenEnds = false;
+		int delimLen = 1;
+		if (i == len)
+			tokenEnds = true;
+		else {
+			for (int j = 0; j < delimiters.Num(); j++)
+				if (Cmpn(data + i, delimiters[j].data, delimiters[j].len) == 0) {
+					tokenEnds = true;
+					delimLen = delimiters[j].len;
+					break;
+				}
+		}
+		if (tokenEnds) {
+			int len = i - start;
+			if (len > 0 || !skipEmpty)
+				tokens.Append(idStr::Mid(start, len));
+			i += delimLen;
+			start = i;
+		}
+		else {
+			i++;
+		}
+	}
+	assert(start == len + 1);
+
+	return tokens;
+}
+
+/*
+============
+idStr::SplitLines
+
+stgatilov: Given contents of text file, returns list of its lines.
+Works properly with Windows/Linux/MacOS style of EOL characters.
+See also splitlines in Python.
+============
+*/
+idList<idStr> idStr::SplitLines( void ) const {
+	static idList<idStr> EOLS = {"\r\n", "\n", "\r"};
+	idList<idStr> lines = Split( EOLS, false );
+
+	//like in Python's splitlines, remove last line if it is empty
+	//that's because text file must end with EOL, which does NOT start a new line
+	if ( lines.Num() > 0 && lines[lines.Num() - 1].Length() == 0 )
+		lines.Pop();
+
+	return lines;
 }
 
 /*
@@ -1976,41 +2063,25 @@ void idStr::ShowMemoryUsage_f( const idCmdArgs &args ) {
 idStr::FormatNumber
 ================
 */
-struct formatList_t {
-	int			gran;
-	int			count;
-};
-
-// elements of list need to decend in size
-formatList_t formatList[] = {
-	{ 1000000000, 0 },
-	{ 1000000, 0 },
-	{ 1000, 0 }
-};
-
-int numFormatList = sizeof(formatList) / sizeof( formatList[0] );
-
-
-idStr idStr::FormatNumber( int number ) {
-	idStr string;
-	bool hit;
+idStr idStr::FormatNumber( int64 number ) {
+	// elements of list need to decend in size
+	static const int64 formatList[] = {
+		1000000000000LL, 1000000000, 1000000, 1000
+	};
+	static const int numFormatList = sizeof( formatList ) / sizeof( formatList[0] );
 
 	// reset
-	for ( int i = 0; i < numFormatList; i++ ) {
-		formatList_t *li = formatList + i;
-		li->count = 0;
-	}
+	int counts[numFormatList] = {0};
 
 	// main loop
+	bool hit;
+
 	do {
 		hit = false;
-
 		for ( int i = 0; i < numFormatList; i++ ) {
-			formatList_t *li = formatList + i;
-
-			if ( number >= li->gran ) {
-				li->count++;
-				number -= li->gran;
+			if ( number >= formatList[i] ) {
+				counts[i]++;
+				number -= formatList[i];
 				hit = true;
 				break;
 			}
@@ -2019,20 +2090,19 @@ idStr idStr::FormatNumber( int number ) {
 
 	// print out
 	bool found = false;
+	idStr string;
 
 	for ( int i = 0; i < numFormatList; i++ ) {
-		formatList_t *li = formatList + i;
-
-		if ( li->count ) {
+		if ( counts[i] ) {
 			if ( !found ) {
-				string += va( "%i,", li->count );
+				string += va( "%i,", counts[i] );
 			} else {
-				string += va( "%3.3i,", li->count );
+				string += va( "%3.3i,", counts[i] );
 			}
 			found = true;
 		}
 		else if ( found ) {
-			string += va( "%3.3i,", li->count );
+			string += va( "%3.3i,", counts[i] );
 		}
 	}
 
@@ -2044,7 +2114,7 @@ idStr idStr::FormatNumber( int number ) {
 	}
 
 	// pad to proper size
-	int count = 11 - string.Length();
+	int count = 14 - string.Length();
 
 	for ( int i = 0; i < count; i++ ) {
 		string.Insert( " ", 0 );

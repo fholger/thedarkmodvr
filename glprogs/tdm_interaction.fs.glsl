@@ -13,6 +13,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 ******************************************************************************/
 #pragma tdm_include "tdm_transform.glsl"
+#pragma tdm_include "tdm_lightproject.glsl"
 
 // Contains common formulas for computing interaction.
 // Includes: illumination model, fetching surface and light properties
@@ -37,6 +38,7 @@ uniform float	u_advanced;
 uniform float	u_cubic;
 uniform float	u_RGTC;
 uniform vec3	u_hasTextureDNS;
+uniform vec4	u_lightTextureMatrix[2];
 uniform vec3 	u_lightOrigin;
 uniform vec4 	u_viewOrigin;
 uniform vec4 	u_diffuseColor;
@@ -56,18 +58,6 @@ float NdotH, NdotL, NdotV;
 
 //fetch surface normal at fragment
 void fetchDNS() {
-/*	if (u_hasTextureDNS[1] != 0) {
-		vec4 bumpTexel = texture (u_normalTexture, var_TexNormal.st) * 2. - 1.;
-		RawN = u_RGTC == 1.0
-			? vec3(bumpTexel.x, bumpTexel.y, sqrt(max(1. - bumpTexel.x*bumpTexel.x - bumpTexel.y*bumpTexel.y, 0)))
-			: normalize(bumpTexel.wyz);
-		N = var_TangentBitangentNormalMatrix * RawN;
-	}
-	else {
-		RawN = vec3(0, 0, 1);
-		N = var_TangentBitangentNormalMatrix[2];
-	}
-*/
 	//initialize common variables (TODO: move somewhere else?)
 	lightDir = u_lightOrigin.xyz - var_Position;
 	viewDir = u_viewOrigin.xyz - var_Position;
@@ -80,22 +70,12 @@ void fetchDNS() {
 	NdotV = clamp(dot(N, V), 0.0, 1.0);
 }
 
-//fetch color of the light source
+//fetch color of the light source (light projection and falloff)
 vec3 lightColor() {
-	// compute light projection and falloff 
-	vec3 lightColor;
-	if (u_cubic == 1.0) {
-		vec3 cubeTC = var_TexLight.xyz * 2.0 - 1.0;
-		lightColor = texture(u_lightProjectionCubemap, cubeTC).rgb;
-		float att = clamp(1.0 - length(cubeTC), 0.0, 1.0);
-		lightColor *= att * att;
-	}
-	else {
-		vec3 lightProjection = textureProj(u_lightProjectionTexture, var_TexLight.xyw).rgb;
-		vec3 lightFalloff = texture(u_lightFalloffTexture, vec2(var_TexLight.z, 0.5)).rgb;
-		lightColor = lightProjection * lightFalloff;
-	}
-	return lightColor;
+	if (u_cubic == 1.0)
+		return projFalloffOfCubicLight(u_lightProjectionCubemap, var_TexLight);
+	else
+		return projFalloffOfNormalLight(u_lightProjectionTexture, u_lightFalloffTexture, u_lightTextureMatrix, var_TexLight);
 }
 
 //illumination model with "simple interaction" setting

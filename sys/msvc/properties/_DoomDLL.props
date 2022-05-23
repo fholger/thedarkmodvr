@@ -11,12 +11,12 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)framework;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>__DOOM__;CURL_STATICLIB;AL_LIBTYPE_STATIC;IL_STATIC_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__DOOM__;CURL_STATICLIB;AL_LIBTYPE_STATIC;IL_STATIC_LIB;LIBJPEG_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>dxgi.lib;d3d11.lib;openxr_loader.lib;glfw3.lib;xinput9_1_0.lib;pugixml.lib;zlib.lib;minizip.lib;libcurl.lib;OpenAL32.lib;ogg.lib;vorbis.lib;vorbisfile.lib;libjpeg.lib;libpng16.lib;mbedtls.lib;libavcodec.lib;libavformat.lib;libavutil.lib;libswresample.lib;libswscale.lib;bcrypt.lib;Shell32.lib;Gdi32.lib;Advapi32.lib;dbghelp.lib;dinput8.lib;iphlpapi.lib;odbc32.lib;odbccp32.lib;winmm.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dxgi.lib;d3d11.lib;openxr_loader.lib;glfw3.lib;xinput9_1_0.lib;pugixml.lib;zlib.lib;minizip.lib;libcurl.lib;OpenAL32.lib;ogg.lib;vorbis.lib;vorbisfile.lib;libjpeg.lib;libpng16.lib;mbedtls.lib;mbedcrypto.lib;mbedx509.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;bcrypt.lib;Shell32.lib;Gdi32.lib;Advapi32.lib;dbghelp.lib;dinput8.lib;iphlpapi.lib;odbc32.lib;odbccp32.lib;winmm.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
       <StackReserveSize>16777216</StackReserveSize>
       <StackCommitSize>16777216</StackCommitSize>
@@ -24,7 +24,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <ShowProgress>NotSet</ShowProgress>
-      <AdditionalOptions>/NATVIS:sys\msvc\natvis\idlib.natvis /NATVIS:sys\msvc\natvis\game.natvis /WHOLEARCHIVE:idlib %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/NATVIS:sys\msvc\natvis\idlib.natvis /NATVIS:sys\msvc\natvis\game.natvis %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
       <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
@@ -40,5 +40,13 @@
     <PostBuildEvent>
       <Message>Copy DLLs and assets</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>cd $(ProjectDir)
+call gen_svnversion.cmd
+</Command>
+    </PreBuildEvent>
+    <PreBuildEvent>
+      <Message>Insert SVN revision number into svnversion.h</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
 </Project>

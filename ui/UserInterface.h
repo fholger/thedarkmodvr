@@ -46,7 +46,7 @@ public:
 
 	virtual void				SetUniqued( bool b ) = 0;
 								// returns false if it failed to load
-	virtual bool				InitFromFile( const char *qpath, bool rebuild = true, bool cache = true ) = 0;
+	virtual bool				InitFromFile( const char *qpath, bool rebuild = true ) = 0;
 
 								// handles an event, can return an action string, the caller interprets
 								// any return and acts accordingly
@@ -104,6 +104,9 @@ public:
 
 	//stgatilov: has same effect as "resetTime" command in GUI script.
 	virtual bool				ResetWindowTime(const char *windowName, int startTime = 0) = 0;
+
+	//stgatilov #2454: fetch subtitles from sound world and update GUI variables accordingly
+	virtual void				UpdateSubtitles() = 0;
 };
 
 
@@ -138,7 +141,11 @@ public:
 	virtual void				DeAlloc( idUserInterface *gui ) = 0;
 
 								// Returns NULL if gui by that name does not exist.
-	virtual idUserInterface *	FindGui( const char *qpath, bool autoLoad = false, bool needUnique = false, bool forceUnique = false ) = 0;
+	virtual idUserInterface *	FindGui(
+		const char *qpath,
+		bool autoLoad = false, bool needUnique = false, bool forceUnique = false,
+		idDict presetDefines = {}
+	) = 0;
 
 								// Returns NULL if gui by that name does not exist.
 	virtual idUserInterface *	FindDemoGui( const char *qpath ) = 0;

@@ -22,11 +22,15 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 #include "DeviceContext.h"
 #include "Window.h"
 #include "UserInterfaceLocal.h"
+#include "../sound/snd_local.h"
 
 extern idCVar r_skipGuiShaders;		// 1 = don't render any gui elements on surfaces
 
 idUserInterfaceManagerLocal	uiManagerLocal;
 idUserInterfaceManager *	uiManager = &uiManagerLocal;
+
+//maximum number of slots for subtitles (stgatilov #2454)
+static const int SUBTITLE_SLOTS = 4;
 
 /*
 ===============================================================================
@@ -141,7 +145,7 @@ void idUserInterfaceManagerLocal::ListGuis() const {
 		common->Printf( "%6.1fk %4i (%s) %s ( %i transitions )\n", sz / 1024.0f, guis[i]->GetRefs(), isUnique ? "unique" : "copy", guis[i]->GetSourceFile(), guis[i]->desktop->NumTransitions() );
 		total += sz;
 	}
-	common->Printf( "===========\n  %i total Guis ( %i copies, %i unique ), %.2f total Mbytes", c, copies, unique, total / ( 1024.0f * 1024.0f ) );
+	common->Printf( "===========\n  %i total Guis ( %i copies, %i unique ), %.2f total Mbytes\n", c, copies, unique, total / ( 1024.0f * 1024.0f ) );
 }
 
 bool idUserInterfaceManagerLocal::CheckGui( const char *qpath ) const {
@@ -170,7 +174,7 @@ void idUserInterfaceManagerLocal::DeAlloc( idUserInterface *gui ) {
 	}
 }
 
-idUserInterface *idUserInterfaceManagerLocal::FindGui( const char *qpath, bool autoLoad, bool needUnique, bool forceNOTUnique ) {
+idUserInterface *idUserInterfaceManagerLocal::FindGui( const char *qpath, bool autoLoad, bool needUnique, bool forceNOTUnique, idDict presetDefines ) {
 	int c = guis.Num();
 
 	for ( int i = 0; i < c; i++ ) {
@@ -186,7 +190,8 @@ idUserInterface *idUserInterfaceManagerLocal::FindGui( const char *qpath, bool a
 
 	if ( autoLoad ) {
 		idUserInterface *gui = Alloc();
-		if ( gui->InitFromFile( qpath ) ) {
+		((idUserInterfaceLocal*)gui)->presetDefines = presetDefines;
+		if ( gui->InitFromFile( qpath, true ) ) {
 			gui->SetUniqued( forceNOTUnique ? false : needUnique );
 			return gui;
 		} else {
@@ -266,7 +271,7 @@ bool idUserInterfaceLocal::IsInteractive() const {
 	return interactive;
 }
 
-bool idUserInterfaceLocal::InitFromFile( const char *qpath, bool rebuild, bool cache ) { 
+bool idUserInterfaceLocal::InitFromFile( const char *qpath, bool rebuild ) { 
 
 	if ( !( qpath && *qpath ) ) { 
 		// FIXME: Memory leak!!
@@ -293,6 +298,12 @@ bool idUserInterfaceLocal::InitFromFile( const char *qpath, bool rebuild, bool c
 	src.LoadFile( qpath );
 
 	if ( src.IsLoaded() ) {
+		for (int i = 0; i < presetDefines.GetNumKeyVals(); i++) {
+			const idKeyValue *kv = presetDefines.GetKeyVal(i);
+			idStr line = kv->GetKey() + " " + kv->GetValue();
+			src.AddDefine(line.c_str());
+		}
+
 		idToken token;
 		while( src.ReadToken( &token ) ) {
 			if ( idStr::Icmp( token, "windowDef" ) == 0 ) {
@@ -679,6 +690,11 @@ void idUserInterfaceLocal::SetCursor( float x, float y ) {
 }
 
 
+/*
+==============
+idUserInterfaceLocal::RunGuiScript
+==============
+*/
 const char *idUserInterfaceLocal::RunGuiScript(const char *windowName, int scriptNum) {
 	idWindow *rootWin = GetDesktop();
 	if (!rootWin)
@@ -692,6 +708,11 @@ const char *idUserInterfaceLocal::RunGuiScript(const char *windowName, int scrip
 	return dw->win->cmd.c_str();
 }
 
+/*
+==============
+idUserInterfaceLocal::ResetWindowTime
+==============
+*/
 bool idUserInterfaceLocal::ResetWindowTime(const char *windowName, int startTime) {
 	idWindow *rootWin = GetDesktop();
 	if (!rootWin)
@@ -702,4 +723,85 @@ bool idUserInterfaceLocal::ResetWindowTime(const char *windowName, int startTime
 	dw->win->ResetTime(startTime);
 	dw->win->EvalRegs(-1, true);
 	return true;
+}
+
+/*
+==============
+idUserInterfaceLocal::UpdateSubtitles
+==============
+*/
+void idUserInterfaceLocal::UpdateSubtitles() {
+	//make sure all slots for subtitles are allocated
+	while ( subtitleSlots.Num() < SUBTITLE_SLOTS ) {
+		SubtitleMatch empty = { 0 };
+		subtitleSlots.Append( empty );
+	}
+
+	idList<SubtitleMatch> matches;
+	//fetch active subtitles from sound world
+	if ( cv_tdm_subtitles.GetBool() ) {
+		if ( idSoundWorld *soundWorld = soundSystem->GetPlayingSoundWorld() ) {
+			soundWorld->GetSubtitles( matches );
+		}
+	}
+
+	bool slotUsed[SUBTITLE_SLOTS] = { false };
+	//assign active subtitles to slots
+	for ( int i = 0; i < matches.Num(); i++ ) {
+		int found = -1;
+
+		if ( found < 0 ) {
+			//if same subtitle was active last time, put it to same place
+			for ( int j = 0; j < SUBTITLE_SLOTS; j++ )
+				if ( !slotUsed[j] && subtitleSlots[j].subtitle == matches[i].subtitle ) {
+					found = j;
+					break;
+				}
+		}
+		if ( found < 0 ) {
+			//if same channel was active last time, put its subtitle to same place
+			//TODO: what about rest between phrases of same subtitle?
+			for ( int j = 0; j < SUBTITLE_SLOTS; j++ )
+				if ( !slotUsed[j] && subtitleSlots[j].channel == matches[i].channel ) {
+					found = j;
+					break;
+				}
+		}
+		if ( found < 0 ) {
+			//just take first unused channel
+			for ( int j = 0; j < SUBTITLE_SLOTS; j++ )
+				if ( !slotUsed[j] ) {
+					found = j;
+					break;
+				}
+		}
+
+		if (found < 0) {
+			//overflow: all slots occupied
+			continue;
+		}
+
+		//assign subtitle to slot
+		slotUsed[found] = true;
+		subtitleSlots[found] = matches[i];
+	}
+
+	//clear unused slots
+	for ( int j = 0; j < SUBTITLE_SLOTS; j++ )
+		if ( !slotUsed[j] )
+			subtitleSlots[j] = SubtitleMatch{0};
+
+	//update GUI variables
+	char textVar[] = "subtitle0";
+	char enabledVar[] = "subtitle0_nonempty";
+	for ( int j = 0; j < SUBTITLE_SLOTS; j++ ) {
+		textVar[8] = enabledVar[8] = char('0' + j);
+		const char *subtitleText = "";
+		if ( const Subtitle *sub = subtitleSlots[j].subtitle )
+			subtitleText = sub->text.c_str();
+		if ( idStr::Cmp( GetStateString( textVar ), subtitleText ) ) {
+			SetStateString( textVar, subtitleText );
+			SetStateString( enabledVar, subtitleText[0] ? "1" : "0" );
+		}
+	}
 }

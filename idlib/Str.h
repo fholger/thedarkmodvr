@@ -61,9 +61,16 @@ const int C_COLOR_BLACK				= '9';
 #define S_COLOR_GRAY				"^8"
 #define S_COLOR_BLACK				"^9"
 
+#ifdef ID_TYPEINFO
+//only TypeInfo program sees this
+//it cannot process sizeof, but it does not care about sizes anyway
+const int STR_ALLOC_BASE			= 16;
+#else
 // make idStr a multiple of 32 bytes long
 // don't make too large to keep memory requirements to a minimum
 const int STR_ALLOC_BASE			= 32 - 8 - sizeof(char*);
+#endif
+
 const int STR_ALLOC_GRAN			= 32;
 
 typedef enum {
@@ -202,6 +209,8 @@ public:
 	void				Remove( const char rem );						// Tels: Faster version of Remove(" ");
 	void				Remap( const unsigned int tablesize, const char *table );	// Table-driven remap (replace A w/ B, and B w/ C etc.) many chars simultanously
 	idList<idStr>		Split( const char *delimiters, bool skipEmpty ) const;
+	idList<idStr>		Split( const idList<idStr> &delimiters, bool skipEmpty ) const;
+	idList<idStr>		SplitLines( void ) const;
 	static idStr		Join( const idList<idStr> &tokens, const char *separator );
 
 	// file name methods
@@ -251,6 +260,7 @@ public:
 	static int			FindText( const char *str, const char *text, bool casesensitive = true, int start = 0, int end = -1 );
 	static bool			Filter( const char *filter, const char *name, bool casesensitive );
 	static void			StripMediaName( const char *name, idStr &mediaName );
+	static bool			IendsWith( const char *text, const char *suffix );
 	static bool			CheckExtension( const char *name, const char *ext );
 	static const char *	FloatArrayToString( const float *array, const int length, const int precision );
 
@@ -291,7 +301,7 @@ public:
 	static void			ShowMemoryUsage_f( const idCmdArgs &args );
 
 	int					DynamicMemoryUsed() const;
-	static idStr		FormatNumber( int number );
+	static idStr		FormatNumber( int64 number );
 
 	//stgatilov: these methods are private! do not ever used them!
 	void				ReAllocate( int amount, bool keepold );				// reallocate string data buffer
@@ -1055,7 +1065,7 @@ ID_INLINE bool idStr::CharIsTab( char c ) {
 }
 
 ID_INLINE int idStr::ColorIndex( int c ) {
-	return ( c & 15 );
+	return ( ( c - C_COLOR_DEFAULT ) & 15 );
 }
 
 ID_INLINE int idStr::DynamicMemoryUsed() const {

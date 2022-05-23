@@ -64,6 +64,7 @@ ProcessModel
 */
 bool ProcessModel( uEntity_t *e, bool floodFill ) {
 	bspface_t	*faces;
+	TRACE_CPU_SCOPE_TEXT("ProcessModel", e->nameEntity)
 
 	// build a bsp tree using all of the sides
 	// of all of the structural brushes
@@ -132,6 +133,7 @@ bool ProcessModels( void ) {
 	verbosityLevel_t	oldVerbose;
 	uEntity_t			*entity;
 	uint				counter = 0;  // 4123
+	TRACE_CPU_SCOPE("ProcessModels")
 
 	{	//stgatilov #4970: check for rotation-hacked entities
 		idList<const char *> badRotationFuncStatics;
@@ -157,7 +159,9 @@ bool ProcessModels( void ) {
 		//complain about func_static-s with bad rotation only once
 		if (int k = badRotationFuncStatics.Num()) {
 			idStr list;
-			std::shuffle(badRotationFuncStatics.begin(), badRotationFuncStatics.end(), std::default_random_engine(std::time(0)));
+			idRandom rnd(std::time(0));
+			for (int i = 0; i < badRotationFuncStatics.Num(); i++)
+				idSwap(badRotationFuncStatics[i], badRotationFuncStatics[rnd.RandomInt(i+1)]);
 			for (int i = 0; i < idMath::Imin(k, 10); i++) {
 				if (i) list += ", ";
 				list += idStr("\"") + badRotationFuncStatics[i] + "\"";
@@ -294,6 +298,8 @@ void Dmap( const idCmdArgs &args ) {
 		dmap_fixBrushOpacityFirstSide.SetBool(version >= 208);
 		dmap_bspAllSidesOfVisportal.SetBool(version >= 208);
 		dmap_fixVisportalOutOfBoundaryEffects.SetBool(version >= 208);
+		extern idCVar cm_fixBrushContentsIgnoreLastSide;
+		cm_fixBrushContentsIgnoreLastSide.SetBool(version >= 208);
 		//new in 2.10
 		dmap_planeHashing.SetBool(version >= 210);
 		dmap_fasterPutPrimitives.SetBool(version >= 210);
@@ -307,6 +313,11 @@ void Dmap( const idCmdArgs &args ) {
 		dmap_pruneAasBrushesChopping.SetBool(version >= 210);
 		dmap_fasterAasWaterJumpReachability.SetBool(version >= 210);
 		dmap_disableCellSnappingTjunc.SetBool(version >= 210);
+		extern idCVar cm_buildBspForPatchEntities;
+		cm_buildBspForPatchEntities.SetBool(version >= 210);
+		//new in 2.11
+		extern idCVar dmap_aasExpandBrushUseEdgesOnce;
+		dmap_aasExpandBrushUseEdgesOnce.SetBool(version >= 211);
 	}
 
 	if ( args.Argc() < 2 ) {
@@ -314,6 +325,7 @@ void Dmap( const idCmdArgs &args ) {
 		return;
 	}
 
+	TRACE_CPU_SCOPE_TEXT("Dmap", args.Args());
 	common->Printf("---- dmap ----\n");
 
 	dmapGlobals.fullCarve = true;
@@ -469,6 +481,7 @@ void Dmap( const idCmdArgs &args ) {
 	if ( !leaked ) {
 
 		if ( !noCM ) {
+			TRACE_CPU_SCOPE("CreateCollisionMap")
 
 			// make sure the collision model manager is not used by the game
 			cmdSystem->BufferCommandText( CMD_EXEC_NOW, "disconnect" );

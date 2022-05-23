@@ -895,6 +895,7 @@ void idAI::Save(idSaveGame *savefile) const {
 	savefile->WriteInt(m_maxAlertIndex);
 	savefile->WriteFloat(m_recentHighestAlertLevel);
 	savefile->WriteBool(m_bIgnoreAlerts);
+	savefile->WriteBool(m_drunk);
 
 	m_AlertedByActor.Save(savefile);
 
@@ -1362,6 +1363,7 @@ void idAI::Restore( idRestoreGame *savefile ) {
 	savefile->ReadInt( m_maxAlertIndex);
 	savefile->ReadFloat(m_recentHighestAlertLevel);
 	savefile->ReadBool( m_bIgnoreAlerts );
+	savefile->ReadBool( m_drunk );
 
 	m_AlertedByActor.Restore( savefile );
 	for (i = 0; i < ai::EAlertTypeCount; i++)
@@ -1753,6 +1755,7 @@ void idAI::Spawn( void )
 	spawnArgs.GetFloat( "max_interleave_think_dist",		"3000",		m_maxInterleaveThinkDist);
 
 	spawnArgs.GetBool( "ignore_alerts",						"0",		m_bIgnoreAlerts );
+	spawnArgs.GetBool( "drunk",								"0",		m_drunk );
 
 	if (spawnArgs.GetBool("canOperateElevators", "0"))
 	{
@@ -2427,36 +2430,36 @@ void idAI::Think( void )
 		bounds[0].y += 16;
 		idClip_EntityList ents;
 		int num = gameLocal.clip.EntitiesTouchingBounds( bounds, CONTENTS_SOLID, ents );
-		if (num > 0)
+		for ( int i = 0; i < num; i++ )
 		{
-			for ( int i = 0; i < num; i++ )
-			{
-				// check if there's a door
-				idEntity *e = ents[i];
+			// check if there's a door
+			idEntity *e = ents[i];
 
-				if ( e == NULL )
+			if ( e == NULL )
+			{
+				continue;
+			}
+
+			if ( e->IsType(CFrobDoor::Type) )
+			{
+				CFrobDoor* frobDoor = static_cast<CFrobDoor*>(e);
+				bool foundImpassableDoor = false;
+
+				if ( frobDoor->IsOpen() )
 				{
-					continue;
+					if ( !FitsThrough(frobDoor) )
+					{
+						foundImpassableDoor = true; // can't fit through the open door
+					}
+				}
+				else // can't go through the closed door
+				{
+					foundImpassableDoor = true; // can't go through the closed door
 				}
 
-				if ( e->IsType(CFrobDoor::Type) )
+				int areaNum = frobDoor->GetAASArea(aas);
+				if (areaNum > 0)
 				{
-					CFrobDoor* frobDoor = static_cast<CFrobDoor*>(e);
-					bool foundImpassableDoor = false;
-
-					if ( frobDoor->IsOpen() )
-					{
-						if ( !FitsThrough(frobDoor) )
-						{
-							foundImpassableDoor = true; // can't fit through the open door
-						}
-					}
-					else // can't go through the closed door
-					{
-						foundImpassableDoor = true; // can't go through the closed door
-					}
-
-					int areaNum = frobDoor->GetAASArea(aas);
 					if ( foundImpassableDoor )
 					{
 						// add AAS area number of the door to forbidden areas
@@ -2470,8 +2473,8 @@ void idAI::Think( void )
 						// door is passable, so remove its area number from forbidden areas
 						gameLocal.m_AreaManager.RemoveForbiddenArea(areaNum, this);
 					}
-					break;
 				}
+				break;
 			}
 		}
 	}
@@ -2699,11 +2702,6 @@ void idAI::Think( void )
 		UpdateAnimation();
 	}
 	UpdateParticles();
-
-	if ( m_LODHandle && m_DistCheckTimeStamp > NOLOD ) // SteveL #3770
-	{
-		SwitchLOD();
-	}
 
 	if (!cv_ai_opt_nopresent.GetBool())
 	{
@@ -10434,7 +10432,7 @@ float idAI::GetAcuity(const char *type) const
 //	}
 
 	// angua: drunken AI have reduced acuity, unless they have seen evidence of intruders
-	if ( spawnArgs.GetBool("drunk", "0") && !HasSeenEvidence() )
+	if ( m_drunk && !HasSeenEvidence() )
 	{
 		returnval *= spawnArgs.GetFloat("drunk_acuity_factor", "1");
 	}
@@ -10779,7 +10777,7 @@ float idAI::GetVisibility( idEntity *ent ) const
 	idPlayer* player = static_cast<idPlayer*>(ent);
 
 	// this depends only on the brightness of the light gem and the AI's visual acuity
-	float clampVal = GetCalibratedLightgemValue();
+	float clampVal = GetVisFraction();
 	float clampdist = cv_ai_sightmindist.GetFloat() * clampVal;
 	float safedist = clampdist + (cv_ai_sightmaxdist.GetFloat() - cv_ai_sightmindist.GetFloat()) * clampVal;
 
@@ -10892,7 +10890,7 @@ float idAI::GetVisibility( idEntity *ent ) const
 }
 #endif
 
-float idAI::GetCalibratedLightgemValue() const
+float idAI::GetVisFraction() const
 {
 	idPlayer* player = gameLocal.GetLocalPlayer();
 	if (player == NULL)
@@ -10900,18 +10898,7 @@ float idAI::GetCalibratedLightgemValue() const
 		return 0.0f;
 	}
 
-	float lgem = static_cast<float>(player->GetCurrentLightgemValue());
-
-	float term0 = -0.03f; // grayman #3063 - Wiki (http://wiki.thedarkmod.com/index.php?title=Visual_scan) says -0.03f, and angua says this is what it's supposed to be
-//	float term0 = -0.003f;
-	float term1 = 0.03f * lgem;
-	float term2 = 0.001f * idMath::Pow16(lgem, 2);
-	float term3 = 0.00013f * idMath::Pow16(lgem, 3);
-	float term4 = -0.000011f * idMath::Pow16(lgem, 4);
-	float term5 = 0.0000001892f * idMath::Pow16(lgem, 5);
-
-	float clampVal = term0 + term1 + term2 + term3 + term4 + term5;
-
+	float clampVal = player->GetCalibratedLightgemValue();
 	clampVal *= GetAcuity("vis");
 
 	/* grayman #3492 - allow values > 1
@@ -10923,6 +10910,7 @@ float idAI::GetCalibratedLightgemValue() const
 	// Debug output
 	if (cv_ai_visdist_show.GetFloat() > 0) 
 	{
+		float lgem = static_cast<float>(player->GetCurrentLightgemValue());
 		idStr alertText5(lgem);
 		alertText5 = "lgem: "+ alertText5;
 		gameRenderWorld->DebugText(alertText5.c_str(), GetEyePosition() + idVec3(0,0,40), 0.2f, idVec4( 0.15f, 0.15f, 0.15f, 1.00f ), gameLocal.GetLocalPlayer()->viewAngles.ToMat3(), 1, USERCMD_MSEC);
@@ -11254,8 +11242,10 @@ idActor* idAI::FindEnemyAI(bool useFOV)
 	float bestDist = idMath::INFINITY;
 	idActor* bestEnemy = NULL;
 
-	for (idEntity* ent = gameLocal.activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() )
+	for ( auto iter = gameLocal.activeEntities.Begin(); iter; gameLocal.activeEntities.Next(iter) )
 	{
+		idEntity *ent = iter.entity;
+
 		if ( ent->fl.hidden || ent->fl.isDormant || ent->fl.notarget || ent->fl.invisible || !ent->IsType( idActor::Type ) ) // grayman #3857 - also use 'invisible'
 		{
 			continue;
@@ -11293,7 +11283,9 @@ idActor* idAI::FindFriendlyAI(int requiredTeam)
 	pvsHandle_t pvs(gameLocal.pvs.SetupCurrentPVS( GetPVSAreas(), GetNumPVSAreas()));
 
 	// Iterate through all active entities and find an AI with the given team.
-	for (idEntity* ent = gameLocal.activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
+	for ( auto iter = gameLocal.activeEntities.Begin(); iter; gameLocal.activeEntities.Next(iter) )
+	{
+		idEntity *ent = iter.entity;
 		if ( ent == this || ent->fl.hidden || ent->fl.isDormant || !ent->IsType( idActor::Type ) ) {
 			continue;
 		}
@@ -11417,8 +11409,8 @@ bool idAI::IsEntityHiddenByDarkness(idEntity* p_entity, const float sightThresho
 		// greebo: Commented this out, this is not suitable to detect if player is hidden in darkness
 		//float incAlert = GetPlayerVisualStimulusAmount();
 		
-		// greebo: Check the visibility of the player depending on lgem and distance
-		float visFraction = GetCalibratedLightgemValue(); // returns values in [0..1]
+		// greebo: Check the visibility of the player depending on lgem and visual acuity
+		float visFraction = GetVisFraction(); // returns values in [0..1]
 /*
 		// greebo: Debug output, comment me out
 		gameRenderWorld->DebugText(idStr(visFraction), GetEyePosition() + idVec3(0,0,1), 0.11f, colorGreen, gameLocal.GetLocalPlayer()->viewAngles.ToMat3(), 1, USERCMD_MSEC);
@@ -11495,7 +11487,6 @@ bool idAI::IsEntityHiddenByDarkness(idEntity* p_entity, const float sightThresho
 
 idActor *idAI::FindNearestEnemy( bool useFOV )
 {
-	idEntity	*ent;
 	idActor		*actor, *playerEnemy;
 	idActor		*bestEnemy;
 	float		bestDist;
@@ -11508,7 +11499,9 @@ idActor *idAI::FindNearestEnemy( bool useFOV )
 	bestDist = idMath::INFINITY;
 	bestEnemy = NULL;
 
-	for ( ent = gameLocal.activeEntities.Next(); ent != NULL; ent = ent->activeNode.Next() ) {
+	for ( auto iter = gameLocal.activeEntities.Begin(); iter; gameLocal.activeEntities.Next(iter) )
+	{
+		idEntity *ent = iter.entity;
 		if ( ent->fl.hidden || ent->fl.isDormant || !ent->IsType( idActor::Type ) )
 		{
 			continue;

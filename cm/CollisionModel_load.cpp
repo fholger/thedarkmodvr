@@ -411,6 +411,7 @@ void idCollisionModelManagerLocal::FreeMap( void ) {
 	FreeTrmModelStructure();
 
 	Mem_Free( models );
+	modelsHash.ClearFree();
 
 	Clear();
 
@@ -2646,6 +2647,7 @@ void idCollisionModelManagerLocal::ConvertBrushSides( cm_model_t *model, const i
 		planes[i] = mapBrush->GetSide(i)->GetPlane();
 		planes[i].FixDegeneracies( DEGENERATE_DIST_EPSILON );
 	}
+	idPlane* cuttingPlanes = (idPlane *) _alloca16( mapBrush->GetNumSides() * sizeof( planes[0] ) );
 
 	// create a collision polygon for each brush side
 	for ( i = 0; i < mapBrush->GetNumSides(); i++ ) {
@@ -2654,21 +2656,24 @@ void idCollisionModelManagerLocal::ConvertBrushSides( cm_model_t *model, const i
 		if ( !( material->GetContentFlags() & CONTENTS_REMOVE_UTIL ) ) {
 			continue;
 		}
-		w.BaseForPlane( -planes[i] );
-		for ( j = 0; j < mapBrush->GetNumSides() && w.GetNumPoints(); j++ ) {
-			if ( i == j ) {
+		int numCuts = 0;
+		for ( j = 0; j < mapBrush->GetNumSides(); j++ ) {
+			if ( i == j )
 				continue;
-			}
-			w.ClipInPlace( -planes[j], 0 );
+			cuttingPlanes[numCuts++] = -planes[j];
 		}
-
-		if ( w.GetNumPoints() ) {
-			PolygonFromWinding( model, &w, planes[i], material, primitiveNum );
+		idWinding *w = idWinding::CreateTrimmedPlane( -planes[i], numCuts, cuttingPlanes, 0 );
+		if ( w ) {
+			if ( w->GetNumPoints() ) {
+				idFixedWinding fixedWinding(*w);
+				PolygonFromWinding( model, &fixedWinding, planes[i], material, primitiveNum );
+			}
+			delete w;
 		}
 	}
 }
 
-static idCVar cm_fixBrushContentsIgnoreLastSide("cm_fixBrushContentsIgnoreLastSide", "1", CVAR_BOOL | CVAR_SYSTEM, 
+idCVar cm_fixBrushContentsIgnoreLastSide("cm_fixBrushContentsIgnoreLastSide", "1", CVAR_BOOL | CVAR_SYSTEM, 
 	"If set to 0, then the last side of a brush is ignored when determining brush contents. "
 	"This usually affects water brushes, making them non-liquid. "
 	"Takes effect during dmap, and only if you have deleted .cm file beforehand! "
@@ -2686,7 +2691,6 @@ void idCollisionModelManagerLocal::ConvertBrush( cm_model_t *model, const idMapB
 	idMapBrushSide *mapSide;
 	cm_brush_t *brush;
 	idPlane *planes;
-	idFixedWinding w;
 	const idMaterial *material = NULL;
 
 	contents = 0;
@@ -2698,6 +2702,7 @@ void idCollisionModelManagerLocal::ConvertBrush( cm_model_t *model, const idMapB
 		planes[i] = mapBrush->GetSide(i)->GetPlane();
 		planes[i].FixDegeneracies( DEGENERATE_DIST_EPSILON );
 	}
+	idPlane* cuttingPlanes = (idPlane *) _alloca16( mapBrush->GetNumSides() * sizeof( planes[0] ) );
 
 	// stgatilov #5014: unlike what original D3 said,
 	// we MUST include the last brush too, because we are looking for "contents" here!
@@ -2707,16 +2712,18 @@ void idCollisionModelManagerLocal::ConvertBrush( cm_model_t *model, const idMapB
 		mapSide = mapBrush->GetSide(i);
 		material = declManager->FindMaterial( mapSide->GetMaterial() );
 		contents |= ( material->GetContentFlags() & CONTENTS_REMOVE_UTIL );
-		w.BaseForPlane( -planes[i] );
-		for ( j = 0; j < mapBrush->GetNumSides() && w.GetNumPoints(); j++ ) {
-			if ( i == j ) {
+		int numCuts = 0;
+		for ( j = 0; j < mapBrush->GetNumSides(); j++ ) {
+			if ( i == j )
 				continue;
-			}
-			w.ClipInPlace( -planes[j], 0 );
+			cuttingPlanes[numCuts++] = -planes[j];
 		}
-
-		for ( j = 0; j < w.GetNumPoints(); j++ ) {
-			bounds.AddPoint( w[j].ToVec3() );
+		idWinding *w = idWinding::CreateTrimmedPlane( -planes[i], numCuts, cuttingPlanes, 0 );
+		if ( w ) {
+			for ( j = 0; j < w->GetNumPoints(); j++ ) {
+				bounds.AddPoint( (*w)[j].ToVec3() );
+			}
+			delete w;
 		}
 	}
 	if ( !contents ) {
@@ -3103,6 +3110,12 @@ cm_model_t *idCollisionModelManagerLocal::LoadRenderModel( const char *fileName,
 	return model;
 }
 
+idCVar cm_buildBspForPatchEntities("cm_buildBspForPatchEntities", "1", CVAR_BOOL | CVAR_SYSTEM, 
+	"If set to 0, then patch-only entities never use BSP optimization. "
+	"Trace queries touching such models are slow. "
+	"This issue was fixed in TDM 2.10."
+);
+
 /*
 ================
 idCollisionModelManagerLocal::CollisionModelForMapEntity
@@ -3136,6 +3149,7 @@ cm_model_t *idCollisionModelManagerLocal::CollisionModelForMapEntity( const idMa
 
 	model = AllocModel();
 	model->node = AllocNode( model, NODE_BLOCK_SIZE_SMALL );
+	model->node->planeType = -1;
 
 	CM_EstimateVertsAndEdges( mapEnt, &model->maxVertices, &model->maxEdges );
 	model->numVertices = 0;
@@ -3149,23 +3163,21 @@ cm_model_t *idCollisionModelManagerLocal::CollisionModelForMapEntity( const idMa
 	model->name = name;
 	model->isConvex = false;
 
-	// convert brushes
+	// convert brushes as brushes
 	for ( i = 0; i < mapEnt->GetNumPrimitives(); i++ ) {
-		idMapPrimitive	*mapPrim;
-
-		mapPrim = mapEnt->GetPrimitive(i);
-		if ( mapPrim->GetType() == idMapPrimitive::TYPE_BRUSH ) {
+		idMapPrimitive *mapPrim = mapEnt->GetPrimitive(i);
+		if ( mapPrim->GetType() == idMapPrimitive::TYPE_BRUSH )
 			ConvertBrush( model, static_cast<idMapBrush*>(mapPrim), i );
-			continue;
-		}
 	}
 
-	// create an axial bsp tree for the model if it has more than just a bunch brushes
 	brushCount = CM_CountNodeBrushes( model->node );
-	if ( brushCount > 4 ) {
-		model->node = CreateAxialBSPTree( model, model->node );
-	} else {
-		model->node->planeType = -1;
+	if ( !cm_buildBspForPatchEntities.GetBool() ) {
+		// create an axial bsp tree for the model if it has more than just a bunch brushes
+		if ( brushCount > 4 ) {
+			model->node = CreateAxialBSPTree( model, model->node );
+		} else {
+			model->node->planeType = -1;
+		}
 	}
 
 	// get bounds for hash
@@ -3179,19 +3191,23 @@ cm_model_t *idCollisionModelManagerLocal::CollisionModelForMapEntity( const idMa
 	// different models do not share edges and vertices with each other, so clear the hash
 	ClearHash( bounds );
 
-	// create polygons from patches and brushes
+	// create polygons from patches
 	for ( i = 0; i < mapEnt->GetNumPrimitives(); i++ ) {
-		idMapPrimitive	*mapPrim;
-
-		mapPrim = mapEnt->GetPrimitive(i);
-		if ( mapPrim->GetType() == idMapPrimitive::TYPE_PATCH ) {
+		idMapPrimitive *mapPrim = mapEnt->GetPrimitive(i);
+		if ( mapPrim->GetType() == idMapPrimitive::TYPE_PATCH )
 			ConvertPatch( model, static_cast<idMapPatch*>(mapPrim), i );
-			continue;
-		}
-		if ( mapPrim->GetType() == idMapPrimitive::TYPE_BRUSH ) {
+	}
+
+	if ( cm_buildBspForPatchEntities.GetBool() ) {
+		// stgatilov #5859: build BSP tree taking both brushes and polys from patches into account
+		model->node = CreateAxialBSPTree( model, model->node );
+	}
+
+	// create polygons from brushes
+	for ( i = 0; i < mapEnt->GetNumPrimitives(); i++ ) {
+		idMapPrimitive *mapPrim = mapEnt->GetPrimitive(i);
+		if ( mapPrim->GetType() == idMapPrimitive::TYPE_BRUSH )
 			ConvertBrushSides( model, static_cast<idMapBrush*>(mapPrim), i );
-			continue;
-		}
 	}
 
 	FinishModel( model );
@@ -3201,22 +3217,44 @@ cm_model_t *idCollisionModelManagerLocal::CollisionModelForMapEntity( const idMa
 
 /*
 ================
+idCollisionModelManagerLocal::AddModel
+================
+*/
+cmHandle_t idCollisionModelManagerLocal::AddModel( cm_model_t *model ) {
+	if ( numModels >= MAX_SUBMODELS ) {
+		common->Warning( "AddModel: no free slots" );
+		// since we don't get ownership over model as usual, delete it right now
+		delete model;
+		return -1;
+	}
+	// add both to array of models and to hash table by name
+	int idx = numModels++;
+	models[idx] = model;
+	modelsHash.Add( modelsHash.GenerateKey( model->name, false ), idx );
+	return idx;
+}
+
+/*
+================
 idCollisionModelManagerLocal::FindModel
 ================
 */
 cmHandle_t idCollisionModelManagerLocal::FindModel( const char *name ) {
-	int i;
-
 	// check if this model is already loaded
-	for ( i = 0; i < numModels; i++ ) {
+	int hash = modelsHash.GenerateKey( name, false );
+	for ( int i = modelsHash.First( hash ); i != -1; i = modelsHash.Next( i ) ) {
 		if ( !models[i]->name.Icmp( name ) ) {
-			break;
+			// the model is already loaded
+			return i;
 		}
 	}
-	// if the model is already loaded
-	if ( i < numModels ) {
-		return i;
+
+#if _DEBUG	//make sure hash index is correct
+	for ( int i = 0; i < numModels; i++ ) {
+		assert( models[i]->name.Icmp( name ) != 0);
 	}
+#endif
+
 	return -1;
 }
 
@@ -3334,13 +3372,12 @@ void idCollisionModelManagerLocal::BuildModels( const idMapFile *mapFile ) {
 		for ( i = 0; i < mapFile->GetNumEntities(); i++ ) {
 			mapEnt = mapFile->GetEntity(i);
 
-			if ( numModels >= MAX_SUBMODELS ) {
-				common->Error( "idCollisionModelManagerLocal::BuildModels: more than %d collision models", MAX_SUBMODELS );
-				break;
-			}
-			models[numModels] = CollisionModelForMapEntity( mapEnt );
-			if ( models[ numModels] ) {
-				numModels++;
+			cm_model_t *model = CollisionModelForMapEntity( mapEnt );
+			if ( model ) {
+				cmHandle_t hdl = AddModel( model );
+				if ( hdl == -1 ) {
+					common->Error( "idCollisionModelManagerLocal::BuildModels: more than %d collision models", MAX_SUBMODELS );
+				}
 			}
 		}
 
@@ -3397,6 +3434,8 @@ void idCollisionModelManagerLocal::LoadMap( const idMapFile *mapFile ) {
 	maxModels = MAX_SUBMODELS;
 	numModels = 0;
 	models = (cm_model_t **) Mem_ClearedAlloc( (maxModels+1) * sizeof(cm_model_t *) );
+	modelsHash.ClearFree(1024, 1024);
+	modelsHash.SetGranularity(1024);
 
 	// setup hash to speed up finding shared vertices and edges
 	SetupHash();
@@ -3536,18 +3575,14 @@ idCollisionModelManagerLocal::LoadModel
 */
 cmHandle_t idCollisionModelManagerLocal::LoadModel( const char *modelName, const bool precache, const idDeclSkin* skin ) // skin added #4232 SteveL
 {
-	TRACE_CPU_SCOPE_TEXT("Load:CM", modelName)
+	idStr skinnedName = GetSkinnedName( modelName, skin);
+	TRACE_CPU_SCOPE_STR("Load:CM", skinnedName)
 	int handle;
 
-	handle = FindModel( GetSkinnedName( modelName, skin) );
+	handle = FindModel( skinnedName );
 	if ( handle >= 0 )
 	{
 		return handle;
-	}
-
-	if ( numModels >= MAX_SUBMODELS ) {
-		common->Error( "idCollisionModelManagerLocal::LoadModel: no free slots\n" );
-		return 0;
 	}
 
 	// try to load a .cm file, if the model isn't skinned
@@ -3562,17 +3597,17 @@ cmHandle_t idCollisionModelManagerLocal::LoadModel( const char *modelName, const
 
 	// if only precaching .cm files do not waste memory converting render models
 	if ( precache ) {
-		return 0;
+		return -1;
 	}
 
 	// try to load a .ASE or .LWO model and convert it to a collision model
-	models[numModels] = LoadRenderModel( modelName, skin );
-	if ( models[numModels] != NULL ) {
-		numModels++;
-		return ( numModels - 1 );
+	cm_model_t *model = LoadRenderModel( modelName, skin );
+	if ( model ) {
+		cmHandle_t hdl = AddModel( model );
+		return hdl;
 	}
 
-	return 0;
+	return -1;
 }
 
 /*
@@ -3721,7 +3756,7 @@ bool idCollisionModelManagerLocal::TrmFromModel( const char *modelName, idTraceM
 	cmHandle_t handle;
 
 	handle = LoadModel( modelName, false );
-	if ( !handle ) {
+	if ( handle == -1 ) {
 		common->Printf( "idCollisionModelManagerLocal::TrmFromModel: model %s not found.\n", modelName );
 		return false;
 	}

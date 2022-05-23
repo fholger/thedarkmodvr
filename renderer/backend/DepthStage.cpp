@@ -38,7 +38,7 @@ namespace {
 		if (bindless) {
 			defines.Set( "BINDLESS_TEXTURES", "1" );
 		}
-		shader->InitFromFiles( "stages/depth/depth.vert.glsl", "stages/depth/depth.frag.glsl", defines );
+		shader->LoadFromFiles( "stages/depth/depth.vert.glsl", "stages/depth/depth.frag.glsl", defines );
 		if (!bindless) {
 			DepthUniforms *uniforms = shader->GetUniformGroup<DepthUniforms>();
 			uniforms->texture.Set( 0 );
@@ -115,7 +115,8 @@ void DepthStage::DrawDepth( const viewDef_t *viewDef, drawSurf_t **drawSurfs, in
 
 	// Make the early depth pass available to shaders. #3877
 	if ( !viewDef->IsLightGem() && !r_skipDepthCapture.GetBool() ) {
-		frameBuffers->UpdateCurrentDepthCopy();
+		if ( !backEnd.viewDef->isSubview && !backEnd.viewDef->renderWorld->mapName.IsEmpty()) // compass
+			frameBuffers->UpdateCurrentDepthCopy();
 	}
 }
 

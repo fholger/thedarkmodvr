@@ -18,6 +18,7 @@ Project: The Dark Mod (http://www.thedarkmod.com/)
 
 INATTR_POSITION  //in vec4 attr_Position;
 
+uniform mat4 u_textureMatrix;
 uniform vec4 u_clipPlane;
 uniform mat4 u_matViewRev;
 
