@@ -10,24 +10,32 @@
  * ============================================================================================= */
 
 #define MM_STATE_NONE				0	// no state defined yet
+#define MM_STATE_FORWARD			999	// stgatilov: go to next state in standard sequence
+#define MM_STATE_BACKWARD			998	// stgatilov: go to previous state in standard sequence
 #define MM_STATE_MAINMENU			1	// main menu (initial screen)
 #define MM_STATE_MAINMENU_INGAME	2	// (INTERNAL) main menu (in-game) only for use in mainmenu_utils.gui
 #define MM_STATE_MAINMENU_NOTINGAME	3	// (INTERNAL) main menu (not in-game) only for use in mainmenu_utils.gui
 #define MM_STATE_CREDITS			4	// credits
 #define MM_STATE_SETTINGS			5	// settings
-#define MM_STATE_MOD_SELECT			6	// mod selection
-#define MM_STATE_BRIEFING			7	// briefing
-#define MM_STATE_DIFF_SELECT		8	// pre-game objectives / difficulty
-#define MM_STATE_SHOP				9	// shop / purchase menu
+#define MM_STATE_GUISIZE			17	// changing gui size (Obsttorte)
+#define MM_STATE_DOWNLOAD			15	// download page
 #define MM_STATE_OBJECTIVES			10	// in-game objectives
+#define MM_STATE_END_GAME			13	// stgatilov: auxilliary target which quits mission
 #define MM_STATE_QUITGAME			11	// quit game confirmation
 #define MM_STATE_LOAD_SAVE_GAME		12	// loading / saving
-#define MM_STATE_SUCCESS			13	// mission success
-#define MM_STATE_BRIEFING_VIDEO		14	// briefing video
-#define MM_STATE_DOWNLOAD			15	// download page
-#define MM_STATE_DEBRIEFING_VIDEO	16	// debriefing video
-#define MM_STATE_GUISIZE			17	// changing gui size (Obsttorte)
 #define MM_STATE_VRSETTINGS			18	// VR settings
+#define MM_STATE_FAILURE			20	// mission failed: restart screen
+//standard sequence of starting new game
+#define MM_STATE_MOD_SELECT			100	// mod selection
+#define MM_STATE_BRIEFING_VIDEO		101	// briefing video
+#define MM_STATE_BRIEFING			102	// briefing
+#define MM_STATE_DIFF_SELECT		103	// pre-game objectives / difficulty
+#define MM_STATE_SHOP				104	// shop / purchase menu
+#define MM_STATE_START_GAME			105	// stgatilov: auxilliary target which starts game
+//standard sequence of finishing game successfully
+#define MM_STATE_FINISHED			997 // stgatilov: auxilliary state just before debriefing video
+#define MM_STATE_DEBRIEFING_VIDEO	200	// debriefing video
+#define MM_STATE_SUCCESS			201	// mission success
 
 #define MM_MUSIC_NONE				0	// no music playing
 #define MM_MUSIC_MAINMENU			1	// main menu
@@ -71,23 +79,6 @@
 #define CONTROLS_PAGE_GENERAL		5
 #define CONTROLS_PAGE_INVENTORY		6
 
-// Default sounds for TDM menus
-// When overridden by a mainmenu_custom_defs.gui, these should be #undef'd first
-
-// Played during non-video briefing
-#define MM_BRIEFING_SOUND_CMD "music tdm_objectives;"
-
-// Menu music after startup (not in-game)
-#define MM_MENU_SOUND_CMD "music tdm_mainmenu_background_music;"
-
-// Played in main menu when in-game (ESCaping out of the game)
-#define MM_INGAME_MENU_SOUND_CMD "music tdm_objectives;"
-
-// Played while displaying the credits
-#define MM_CREDITS_SOUND_CMD "music deviginti02;"
-
-// Played after completing a mission
-#define MM_MISSION_SUCCESS_SOUND_CMD "music mission_complete;"
 
 // The "Quit mission/game" message box
 #define MM_MSG_BOX_RECT			rect 200, 150, 240, 180 background "guis/assets/mainmenu/oldparchment_backdrop3" matcolor 1, 1, 1, 1
@@ -164,25 +155,28 @@
 #define MM_POS_START_MISSION_ACTION			MM_POS_START_MISSION_BUTTON
 
 // --------------------------------------------------------------
+
 // Obsttorte - "New Mission" button moved downwards if no mission installed (load/save isn't displayed then)
-#define	MM_POS_NEW_MISSION_BUTTON 	MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(0+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
-#define	MM_POS_NEW_MISSION_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y+MM_POS_Y_STEP*(0+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define	MM_POS_HASMOD_SHIFT ("gui::hasCurrentMod" || "gui::inGame")
+
+#define	MM_POS_NEW_MISSION_BUTTON 	MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(0+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
+#define	MM_POS_NEW_MISSION_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y+MM_POS_Y_STEP*(0+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 #define	MM_POS_NEW_MISSION_ACTION 	MM_POS_NEW_MISSION_BUTTON
 
 #define MM_POS_LOAD_GAME_BUTTON 	MM_POS_X, MM_POS_Y+0.5*MM_POS_Y_STEP, MM_POS_W, MM_POS_H
 #define MM_POS_LOAD_GAME_BUTTON_GLOW 	MM_POS_X_GLOW, MM_POS_Y_GLOW+0.5*MM_POS_Y_STEP, MM_POS_W, MM_POS_H
 #define MM_POS_LOAD_GAME_ACTION		MM_POS_LOAD_GAME_BUTTON
 
-#define MM_POS_SETTINGS_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(1+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
-#define MM_POS_SETTINGS_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(1+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_SETTINGS_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(1+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
+#define MM_POS_SETTINGS_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(1+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 #define MM_POS_SETTINGS_ACTION		MM_POS_SETTINGS_BUTTON
 
-#define MM_POS_CREDITS_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(2+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
-#define MM_POS_CREDITS_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(2+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_CREDITS_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(2+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
+#define MM_POS_CREDITS_BUTTON_GLOW	MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(2+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 #define MM_POS_CREDITS_ACTION		MM_POS_CREDITS_BUTTON
 
-#define MM_POS_QUIT_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(3+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
-#define MM_POS_QUIT_BUTTON_GLOW		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(3+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+#define MM_POS_QUIT_BUTTON 		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(3+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
+#define MM_POS_QUIT_BUTTON_GLOW		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(3+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 #define MM_POS_QUIT_ACTION		MM_POS_QUIT_BUTTON
 
 #define	MMIG_POS_RESUME_GAME_BUTTON 		MM_POS_START_MISSION_BUTTON
@@ -279,7 +273,7 @@
 #define MM_POS_NEWGAME_UNINSTALL_BUTTON			rect	20, 115, 240, MM_BUTTON_HEIGHT+4
 #define MM_POS_NEWGAME_UNINSTALL_BUTTON_GLOW	rect	21, 116, 239, MM_BUTTON_HEIGHT+3
 
-// for the restart.gui
+// for the mainmenu_failure.gui
 #define MM_POS_FAILURE_RESTART_BUTTON		rect	40, 430, 180, MM_BUTTON_HEIGHT+4 textaligny -2
 #define MM_POS_FAILURE_RESTART_BUTTON_GLOW	rect	41, 431, 179, MM_BUTTON_HEIGHT+3 textaligny -2
 

@@ -361,6 +361,7 @@ windowDef MainMenuInGame
 		}
 	}
 	// ----------------------- Version -------------------------------------
+#if 0
 	windowDef MMIGVersionText
 	{
 		rect		320,450,128,32
@@ -397,24 +398,25 @@ windowDef MainMenuInGame
 			set "cmd" "check_tdm_version";
 		}
 	}
+#endif
 
 // --------------------- VR Settings -------------------------------------------
 	windowDef MMIGVRSettingsTextH
 	{
-		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(5+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		MM_FONT_GLOW
 		text		"VR Settings"
 	}
 	windowDef MMIGVRSettingsText
 	{
-		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		MM_FONT
 		text		"VR Settings"
 	}
 
 	windowDef MMIGVRSettingsAction
 	{
-		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		visible		1
 		float		exit;
 
@@ -452,20 +454,20 @@ windowDef MainMenuInGame
 
 	windowDef MMIGQuickSaveTextH
 	{
-		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(6+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(6+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		MM_FONT_GLOW
 		text		"Quick Save"		// Load/Save Game
 	}
 	windowDef MMIGQuickSaveText
 	{
-		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(6+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(6+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		MM_FONT
 		text		"Quick Save"		// Load/Save Game
 	}
 
 	windowDef MMIGQuickSaveAction
 	{
-		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(6+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(6+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		visible		1
 		float		exit;
 
@@ -720,7 +722,7 @@ windowDef MainMenuInGame
 
 		onTime 600 {
 			transition "MMIGRestartMission::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
-			transition "MMIGVersionText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
+			//transition "MMIGVersionText::forecolor" SINVISIBLE SNORMAL_COLOR "400" ;
 
 			set "cmd" "log 'MainMenuInGameIntroAnimation successfully executed, stopping.'";
 
@@ -779,8 +781,7 @@ windowDef MainMenuInGame
 
 				onAction
 				{
-					set "cmd" "exec disconnect";
-					set "gui::targetmode" MM_STATE_MAINMENU;
+					set "gui::targetmode" MM_STATE_END_GAME;
 					resetTime "MainMenuModeSelect" 0;
 				}
 			}

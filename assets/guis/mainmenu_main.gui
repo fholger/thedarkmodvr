@@ -114,7 +114,7 @@ windowDef MainMenu
 			set "cmd" "onStartMissionClicked";
 			
 			// Switch states
-			set "gui::targetmode" MM_STATE_BRIEFING_VIDEO;
+			set "gui::targetmode" MM_STATE_FORWARD;
 			resetTime "MainMenuModeSelect" 0;
 		}
 	}
@@ -385,21 +385,21 @@ windowDef MainMenu
 
 	windowDef VRSettingsTextH
 	{
-		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X_GLOW, MM_POS_Y_GLOW + MM_POS_Y_STEP*(5+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		MM_FONT_GLOW
 		text		"VR Settings"
 	}
 
 	windowDef VRSettingsText
 	{
-		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		MM_FONT
 		text		"VR Settings"
 	}
 
 	windowDef VRSettingsAction
 	{
-		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*"gui::hasCurrentMod"), MM_POS_W, MM_POS_H
+		rect		MM_POS_X, MM_POS_Y + MM_POS_Y_STEP*(5+2*MM_POS_HASMOD_SHIFT), MM_POS_W, MM_POS_H
 		visible		1
 		float		exit;
 
@@ -434,6 +434,7 @@ windowDef MainMenu
 		}
 	}
 
+#if 0
 	// ----------------------- Version -------------------------------------
 	windowDef VersionText
 	{
@@ -471,6 +472,8 @@ windowDef MainMenu
 			set "cmd" "check_tdm_version";
 		}
 	}
+#endif
+
 	// ------------------- Uninstall ----------------------------------------
 	windowDef UninstallText
 	{
@@ -522,11 +525,6 @@ windowDef MainMenu
 		// Init methods have onTime 10 instead of onTime 0.
 		onTime 10
 		{
-			if ("gui::inGame"==1)
-			{
-				set "gui::targetmode" MM_STATE_MAINMENU_INGAME;
-				resetTime "MainMenuModeSelect" 0;
-			}
 			set "cmd" "log 'MainMenuStateInit called.'";
 
 			set "cmd" "mainmenu_init";
@@ -650,7 +648,7 @@ windowDef MainMenu
 
 			set "cmd" "log 'MainMenuIntroAnimation successfully executed, stopping.'";
 
-			transition "VersionText::forecolor" "0 0 0 0" "0 0 0 0.8" "800";
+			//transition "VersionText::forecolor" "0 0 0 0" "0 0 0 0.8" "800";
 			transition "UninstallText::forecolor" "0 0 0 0" "0 0 0 0.8" "800";
 
 			set "introAnimPlayed" 1;

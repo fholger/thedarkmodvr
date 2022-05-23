@@ -27,455 +27,8 @@ windowDef MainMenuModeSelect
 
 	onTime 0
 	{
-		set "cmd" "log 'MainMenuModeSelect called.';";
-
-		// Check if the modes have been set to proper values already
-		if ("gui::targetmode" == MM_STATE_NONE && "gui::mode" == MM_STATE_NONE)
-		{
-			// Target mode and current mode not initialised? Do this now.
-			set "cmd" "log 'Both targetmode and mode are MM_STATE_NONE, switching to main menu.';";
-
-			set "gui::targetmode" MM_STATE_MAINMENU;
-			resetTime 0;
-		}
-		else if ("gui::targetmode" == MM_STATE_NONE)
-		{
-			set "cmd" "log 'Tried to switch mode to MM_STATE_NONE, prevented this. Switching back to main menu.'";
-
-			set "gui::targetmode" MM_STATE_MAINMENU;
-			resetTime 0;
-		}
-		else if ("gui::targetmode" == MM_STATE_MAINMENU)
-		{
-			if ("gui::targetmode" == "gui::mode")
-			{
-				set "cmd" "log 'Tried to switch to same mode as before (MM_STATE_MAINMENU), bailing out.'";
-			} else
-			{
-				// Special case for main menu options: Do a fork to the in-game/non-in-game menu
-				if ("gui::ingame" == 0)
-				{
-					//set "cmd" "log 'Setting MM_STATE_MAINMENU_NOTINGAME.'";
-					set "gui::targetmode" MM_STATE_MAINMENU_NOTINGAME;
-				}
-				else
-				{
-					//set "cmd" "log 'Setting MM_STATE_MAINMENU_INGAME.'";
-					set "gui::targetmode" MM_STATE_MAINMENU_INGAME;
-				}
-				// Restart this routine
-				resetTime 0;
-			}
-		}
-		// Check the video prerequisites if switching to VIDEO
-		else if ("gui::targetmode" == MM_STATE_BRIEFING_VIDEO && ENABLE_MAINMENU_BRIEFING_VIDEO == 0)
-		{
-			set "cmd" "log 'No video enabled, redirecting to briefing.'";
-
-			set "gui::targetmode" MM_STATE_BRIEFING;
-			// Restart this routine
-			resetTime 0;
-		}
-		// We're ready for switching
-		else
-		{
-			// First, end the current mode
-			if ("gui::mode" == MM_STATE_MAINMENU)
-			{
-				// This should not happen, the state should either be MAINMENU_NOTINGAME or MAINMENU_INGAME
-				set "cmd" "log 'This should not happen, the state should either be MAINMENU_NOTINGAME or MAINMENU_INGAME.'";
-
-				// Deal with it by ending both states
-				set "MainMenuStateEnd::notime" "0";
-				resetTime "MainMenuStateEnd" 0;
-
-				set "MainMenuInGameStateEnd::notime" "0";
-				resetTime "MainMenuInGameStateEnd" 0;
-			}
-			else if ("gui::mode" == MM_STATE_MAINMENU_NOTINGAME)
-			{
-				set "cmd" "log 'Switching from MM_STATE_MAINMENU_NOTINGAME, calling state end.'";
-				
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "MainMenuStateEnd::notime" "0";
-					resetTime "MainMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_MAINMENU_INGAME)
-			{
-				set "cmd" "log 'Switching from MM_STATE_MAINMENU_INGAME, calling state end.'";
-				
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "MainMenuInGameStateEnd::notime" "0";
-					resetTime "MainMenuInGameStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_MOD_SELECT)
-			{
-				set "cmd" "log 'Switching from MM_STATE_MOD_SELECT.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "NewGameMenuStateEnd::notime" "0";
-					resetTime "NewGameMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_QUITGAME)
-			{
-				set "cmd" "log 'Switching from MM_STATE_QUITGAME.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "QuitGameStateEnd::notime" "0";
-					resetTime "QuitGameStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_CREDITS)
-			{
-				set "cmd" "log 'Switching from MM_STATE_CREDITS.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "CreditsMenuStateEnd::notime" "0";
-					resetTime "CreditsMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_LOAD_SAVE_GAME)
-			{
-				set "cmd" "log 'Switching from MM_STATE_LOAD_SAVE_GAME.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "LoadSaveGameMenuStateEnd::notime" "0";
-					resetTime "LoadSaveGameMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_SUCCESS)
-			{
-				set "cmd" "log 'Switching from MM_STATE_SUCCESS.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "SuccessScreenStateEnd::notime" "0";
-					resetTime "SuccessScreenStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_BRIEFING)
-			{
-				set "cmd" "log 'Switching from MM_STATE_BRIEFING.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "BriefingStateEnd::notime" "0";
-					resetTime "BriefingStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_BRIEFING_VIDEO)
-			{
-				set "cmd" "log 'Switching from MM_STATE_BRIEFING_VIDEO.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "BriefingVidStateEnd::notime" "0";
-					resetTime "BriefingVidStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_DIFF_SELECT)
-			{
-				set "cmd" "log 'Switching from MM_STATE_DIFF_SELECT.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "ObjectivesStateEnd::notime" "0";
-					resetTime "ObjectivesStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_OBJECTIVES)
-			{
-				set "cmd" "log 'Switching from MM_STATE_OBJECTIVES.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "ObjectivesStateEnd::notime" "0";
-					resetTime "ObjectivesStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_SHOP)
-			{
-				set "cmd" "log 'Switching from MM_STATE_SHOP.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "ShopMenuStateEnd::notime" "0";
-					resetTime "ShopMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_SETTINGS)
-			{
-				set "cmd" "log 'Switching from MM_STATE_SETTINGS.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "SettingsMenuStateEnd::notime" "0";
-					resetTime "SettingsMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_VRSETTINGS)
-			{
-				set "cmd" "log 'Switching from MM_STATE_VRSETTINGS.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "VRSettingsMenuStateEnd::notime" "0";
-					resetTime "VRSettingsMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_SELECT_LANGUAGE)
-			{
-				set "cmd" "log 'Switching from MM_STATE_SELECT_LANGUAGE.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "SelectLanguageStateEnd::notime" "0";
-					resetTime "SelectLanguageStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_DOWNLOAD)
-			{
-				set "cmd" "log 'Switching from MM_STATE_DOWNLOAD.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "DownloadMissionsMenuStateEnd::notime" "0";
-					resetTime "DownloadMissionsMenuStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_DEBRIEFING_VIDEO)
-			{
-				set "cmd" "log 'Switching from MM_STATE_DEBRIEFING_VIDEO.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "DebriefingVideoStateEnd::notime" "0";
-					resetTime "DebriefingVideoStateEnd" 0;
-				}
-			}
-			else if ("gui::mode" == MM_STATE_GUISIZE) // Obsttorte
-			{
-				set "cmd" "log 'Switching from MM_STATE_GUISIZE.'";
-
-				if ("gui::targetmode" == "gui::mode")
-				{
-					set "cmd" "log 'Tried to switch to same mode as before, bailing out.'";
-				} else
-				{
-					set "GuiSizeMenuStateEnd::notime" "0";
-					resetTime "GuiSizeMenuStateEnd" 0;
-				}
-			}
-			// -- End Switch From --------------
-
-			// Second, switch to the target mode
-			if ("gui::targetmode" != "gui::mode")
-			{
-				if ("gui::targetmode" == MM_STATE_MAINMENU)
-				{
-					// This should not happen, targetmod should never be MM_STATE_MAINMENU
-					set "cmd" "log 'This should not happen, target state should either be MAINMENU_NOTINGAME or MAINMENU_INGAME.'";
-				}
-				else if ("gui::targetmode" == MM_STATE_MAINMENU_NOTINGAME)
-				{
-					set "cmd" "log 'Switching to MM_STATE_MAINMENU_NOTINGAME.'";
-
-					set "MainMenuStateInit::notime" "0";
-					resetTime "MainMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_MAINMENU_INGAME)
-				{
-					set "cmd" "log 'Switching to MM_STATE_MAINMENU_INGAME.'";
-
-					set "MainMenuInGameStateInit::notime" "0";
-					resetTime "MainMenuInGameStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_MOD_SELECT)
-				{
-					set "cmd" "log 'Switching to MM_STATE_MOD_SELECT.'";
-
-					set "NewGameMenuStateInit::notime" "0";
-					resetTime "NewGameMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_QUITGAME)
-				{
-					set "cmd" "log 'Switching to MM_STATE_QUITGAME.'";
-
-					set "QuitGameStateInit::notime" "0";
-					resetTime "QuitGameStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_CREDITS)
-				{
-					set "cmd" "log 'Switching to MM_STATE_CREDITS.'";
-
-					set "CreditsMenuStateInit::notime" "0";
-					resetTime "CreditsMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_LOAD_SAVE_GAME)
-				{
-					set "cmd" "log 'Switching to MM_STATE_LOAD_SAVE_GAME.'";
-
-					set "LoadSaveGameMenuStateInit::notime" "0";
-					resetTime "LoadSaveGameMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_SUCCESS)
-				{
-					set "cmd" "log 'Switching to MM_STATE_SUCCESS.'";
-
-					set "SuccessScreenStateInit::notime" "0";
-					resetTime "SuccessScreenStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_BRIEFING)
-				{
-					set "cmd" "log 'Switching to MM_STATE_BRIEFING.'";
-
-					set "BriefingStateInit::notime" "0";
-					resetTime "BriefingStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_BRIEFING_VIDEO)
-				{
-					set "cmd" "log 'Switching to MM_STATE_BRIEFING_VIDEO.'";
-
-					set "BriefingVidStateInit::notime" "0";
-					resetTime "BriefingVidStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_DIFF_SELECT)
-				{
-					set "cmd" "log 'Switching to MM_STATE_DIFF_SELECT.'";
-
-					set "ObjectivesStateInit::notime" "0";
-					resetTime "ObjectivesStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_OBJECTIVES)
-				{
-					set "cmd" "log 'Switching to MM_STATE_OBJECTIVES.'";
-
-					set "ObjectivesStateInit::notime" "0";
-					resetTime "ObjectivesStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_SHOP)
-				{
-					set "cmd" "log 'Switching to MM_STATE_SHOP.'";
-
-					set "ShopMenuStateInit::notime" "0";
-					resetTime "ShopMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_SETTINGS)
-				{
-					set "cmd" "log 'Switching to MM_STATE_SETTINGS.'";
-
-					set "SettingsMenuStateInit::notime" "0";
-					resetTime "SettingsMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_VRSETTINGS)
-				{
-					set "cmd" "log 'Switching to MM_STATE_VRSETTINGS.'";
-
-					set "VRSettingsMenuStateInit::notime" "0";
-					resetTime "VRSettingsMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_SELECT_LANGUAGE)
-				{
-					set "cmd" "log 'Switching to MM_STATE_SELECT_LANGUAGE.'";
-
-					set "SelectLanguageStateInit::notime" "0";
-					resetTime "SelectLanguageStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_DOWNLOAD)
-				{
-					set "cmd" "log 'Switching to MM_STATE_DOWNLOAD.'";
-
-					set "DownloadMissionsMenuStateInit::notime" "0";
-					resetTime "DownloadMissionsMenuStateInit" 0;
-				}
-				else if ("gui::targetmode" == MM_STATE_DEBRIEFING_VIDEO)
-				{
-					set "cmd" "log 'Switching to MM_STATE_DEBRIEFING_VIDEO.'";
-
-					set "DebriefingVideoStateInit::notime" "0";
-					resetTime "DebriefingVideoStateInit" 0;
-				}
-				else if("gui::targetmode" == MM_STATE_GUISIZE) // Obsttorte
-				{
-					set "cmd" "log 'Switching to MM_STATE_GUISIZE.'";
-					
-					set "SettingsGuiSizeInit::notime" "0";
-					resetTime "SettingsGuiSizeInit" 0;
-				}
-				else 
-				{
-					set "cmd" "log 'Target mode is something else? Switching to main menu.'";
-
-					set "gui::targetmode" MM_STATE_MAINMENU;
-					resetTime 0;
-				}
-
-				// We've switched, set the new mode
-				set "gui::mode" "gui::targetmode";
-			}
-		}
-
-		//set "cmd" "log 'MainMenuModeSelect done.';";
+		set "cmd" "log 'MainMenuModeSelect called.'";
+		set "cmd" "mainmenumodeselect";
 	}
 }
 
@@ -486,19 +39,20 @@ windowDef MainMenuStartUp
 {
 	rect	0, 0, 0, 0
 	visible	1
+	notime	1
 
-	float initialised;
+	//stgatilov: use onActivate instead of onTime 0 to trigger initialization
+	//onTime 0 events can trigger before activation on engine restart, with all GUI cmds suppressed
+	onActivate {
+		set "cmd" "log 'MainMenuStartUp activated.'"; 
+		resetTime 0;
+	}
 
 	onTime 0 {
 		// Avoid double-entering this function
-		if ("MainMenuStartUp::initialised" == 0)
+		if ("gui::MainMenuInitialised" == 0)
 		{
 			set "cmd" "log 'MainMenuStartup called.'"; 
-
-			// We start with an empty state, this variable needs to be cleared
-			// as it can be remnant from a previous session
-			set "gui::mode" MM_STATE_NONE;
-			set "gui::music" MM_MUSIC_NONE;
 
 			// Select the proper menu
 			set "MainMenuModeSelect::notime" "0";
@@ -508,7 +62,7 @@ windowDef MainMenuStartUp
 			set "MainMenuMusicSelect::notime" "0";
 			resetTime "MainMenuMusicSelect" 0;
 
-			set "MainMenuStartUp::initialised" 1;
+			set "gui::MainMenuInitialised" 1;
 
 			// Issue the initialise command
 			set "cmd" "mainMenuStartup";
@@ -529,7 +83,7 @@ windowDef MainMenuStartUp
 
 			set "SettingsPageSelect::notime" "0";
 			resetTime "SettingsPageSelect" 0;
-			set "gui::vrsettingspage" VRSETTINGS_PAGE_GENERAL
+			set "gui::vrsettingspage" VRSETTINGS_PAGE_GENERAL;
 
 			set "VRSettingsPageSelect::notime" "0";
 			resetTime "VRSettingsPageSelect" 0;
@@ -610,7 +164,7 @@ onEsc
 		set "cmd" "play sound/meta/menu/mnu_select;";
 
 		// Go to briefing text
-		set "gui::targetmode" MM_STATE_BRIEFING;
+		set "gui::targetmode" MM_STATE_FORWARD;
 		resetTime "MainMenuModeSelect" 0;
 	}
 	else if ("gui::DebriefingVideoPlaying" == 1) // Skip the debriefing video if playing
@@ -621,7 +175,7 @@ onEsc
 		set "cmd" "play sound/meta/menu/mnu_select;";
 
 		// Go to success screen
-		set "gui::targetmode" MM_STATE_SUCCESS;
+		set "gui::targetmode" MM_STATE_FORWARD;
 		resetTime "MainMenuModeSelect" 0;
 	}
 	else if ("gui::mode" == MM_STATE_SUCCESS)
@@ -652,6 +206,14 @@ windowDef HeartBeat
 		// greebo: Send an "heartbeat" event back to the SDK, so that it can know that the menu is visible
 		set "cmd" "mainmenu_heartbeat;";
 		resetTime 0;
+
+/*		if ("gui::mode" == MM_STATE_NONE)
+		{
+			set "cmd" "log 'Detected NONE state, selecting MAINMENU.'"; 
+			set "gui::targetmode" MM_STATE_MAINMENU;
+			set "gui::backgrounds" "";
+			resetTime "MainMenuModeSelect" 0;
+		}*/
 	}
 }
 windowDef ToolTip
@@ -667,18 +229,18 @@ windowDef ToolTip
 	}
 }
 #define showToolTip(TTtext)\
-set "ToolTipText::text" TTtext;
+set "ToolTipText::text" TTtext
 
 #define hideToolTip\
-set "ToolTipText::text" "";
+set "ToolTipText::text" ""
 
 #define toolTip(TTtext)\
 onMouseEnter\
 {\
-	showToolTip(TTtext)\
+	showToolTip(TTtext);\
 }\
 onMouseExit\
 {\
-	hideToolTip\
+	hideToolTip;\
 }
 			

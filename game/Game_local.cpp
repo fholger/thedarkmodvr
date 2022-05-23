@@ -4098,6 +4098,7 @@ void idGameLocal::HandleMainMenuCommands( const char *menuCommand, idUserInterfa
 			{"OBJECTIVES", "ObjectivesState", "EXTRAMENU_INGAME", "Music%INGAME%"},
 			{"SHOP", "ShopMenuState", "SHOP", "MusicBriefing"},
 			{"SETTINGS", "SettingsMenuState", "MAINMENU_%INGAME%", "Music%INGAME%"},
+			{"VRSETTINGS", "VRSettingsMenuState", "MAINMENU_%INGAME%", "Music%INGAME%"},
 			{"SELECT_LANGUAGE", "SelectLanguageState", "MAINMENU_%INGAME%", "Music%INGAME%"},
 			{"DOWNLOAD", "DownloadMissionsMenuState", "EXTRAMENU_NOTINGAME", "Music%INGAME%"},
 			{"DEBRIEFING_VIDEO", "DebriefingVidState", "", "MusicDebriefingVideo"},

@@ -21,7 +21,6 @@
 windowDef Desktop
 {
 	rect		0, 0, 640, 640 
-	backcolor	0.14, 0.02, 0, 1 // Note: This background colour shouldn't be visible (dark reddish brown)
 	menugui	1
 	visible	1
 
