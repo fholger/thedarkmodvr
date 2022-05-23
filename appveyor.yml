@@ -36,7 +36,7 @@ for:
     provider: GitHub
     description: 'The Dark Mod VR'
     auth_token:
-      secure: jMupWwNFaEHDNRvaZX4pxtGeLa9LpAK68sdQgBoUgki2JdEdRjms7irbi1PDHbKo
+      secure: e1wZU5UvI8kUlEcPMW9H8p5xw3wfDKXN1Ne0UV9O921Asuihq6yIrHBRMtEKsyME
     artifact: 'TheDarkModVR'
     draft: true
     prerelease: true
@@ -79,7 +79,7 @@ for:
     provider: GitHub
     description: 'The Dark Mod VR'
     auth_token:
-      secure: jMupWwNFaEHDNRvaZX4pxtGeLa9LpAK68sdQgBoUgki2JdEdRjms7irbi1PDHbKo
+      secure: e1wZU5UvI8kUlEcPMW9H8p5xw3wfDKXN1Ne0UV9O921Asuihq6yIrHBRMtEKsyME
     artifact: 'TheDarkModVRLinux'
     draft: true
     prerelease: true
